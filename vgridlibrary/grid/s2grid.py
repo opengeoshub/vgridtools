@@ -7,7 +7,7 @@
 # https://gis.stackexchange.com/questions/293716/creating-shapefile-of-s2-cells-for-given-level
 # https://s2sphere.readthedocs.io/en/latest/quickstart.html
 import s2sphere
-import geojson
+import json
 import argparse
 from tqdm import tqdm
 
@@ -45,18 +45,40 @@ def cell_to_polygon(cell_id):
     for i in range(4):
         vertex = s2sphere.LatLng.from_point(cell.get_vertex(i))
         vertices.append((vertex.lng().degrees, vertex.lat().degrees))
+    
     vertices.append(vertices[0])  # Close the polygon
-    return geojson.Polygon([vertices])
+    
+    # Return a dictionary representing the GeoJSON polygon
+    polygon = {
+        "type": "Polygon",
+        "coordinates": [vertices]
+    }
+    
+    return polygon
 
 def save_s2_grid_as_geojson(cell_ids, output_filename):
     features = []
     for cell_id in tqdm(cell_ids, desc="Saving cells"):
         polygon = cell_to_polygon(cell_id)
-        feature = geojson.Feature(geometry=polygon, properties={"cell_id": cell_id.to_token()})
+        
+        # Create a feature dictionary
+        feature = {
+            "type": "Feature",
+            "geometry": polygon,
+            "properties": {"cell_id": cell_id.to_token()}
+        }
+        
         features.append(feature)
-    feature_collection = geojson.FeatureCollection(features)
+    
+    # Create a FeatureCollection
+    feature_collection = {
+        "type": "FeatureCollection",
+        "features": features
+    }
+    
+    # Save the feature collection to a JSON file
     with open(output_filename, 'w') as f:
-        geojson.dump(feature_collection, f)
+        json.dump(feature_collection, f)
 
 def main():
     parser = argparse.ArgumentParser(description="Generate S2 grid at a specific zoom level and save as GeoJSON.")

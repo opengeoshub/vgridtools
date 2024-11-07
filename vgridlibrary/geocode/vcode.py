@@ -1,13 +1,28 @@
-from ..utils import mercantile
+import vgrid.utils.mercantile as mercantile
 import re
-# import geojson
+import math, json
 from shapely.geometry import Polygon
 from shapely.ops import transform
 import pyproj
 from shapely.geometry import box
 import argparse
 import string
-# from geopy.distance import geodesic
+
+def haversine(lat1, lon1, lat2, lon2):
+    # Radius of the Earth in meters
+    R = 6371000  
+
+    # Convert latitude and longitude from degrees to radians
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    # Haversine formula
+    a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    return R * c  # Distance in meters
 
 
 # Define the character set excluding 'z', 'x', and 'y'
@@ -94,8 +109,8 @@ def vcode2geojson(vcode):
         center_lat = (min_lat + max_lat) / 2
         center_lon = (min_lon + max_lon) / 2
                
-        lat_len = geodesic((min_lat, min_lon), (max_lat, min_lon)).meters 
-        lon_len = geodesic((min_lat, min_lon), (min_lat, max_lon)).meters  
+        lat_len = haversine(min_lat, min_lon, max_lat, min_lon)
+        lon_len = haversine(min_lat, min_lon, min_lat, max_lon)
 
         bbox_width =  f'{round(lon_len,1)} m'
         bbox_height =  f'{round(lat_len,1)} m'
@@ -112,9 +127,13 @@ def vcode2geojson(vcode):
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ]
         
-        geojson_feature = geojson.Feature(
-            geometry=geojson.Polygon([polygon_coords]),
-            properties={
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [polygon_coords]
+            },
+            "properties": {
                 "vcode": vcode,  # Include the OLC as a property
                 # "quadkey": quadkey,
                 "center_lat": center_lat,
@@ -122,10 +141,15 @@ def vcode2geojson(vcode):
                 "bbox_height": bbox_height,
                 "bbox_width": bbox_width,
                 "precision": z  # Using the code length as precision
-                }
-            )
-        feature_collection = geojson.FeatureCollection([geojson_feature])
-        return feature_collection
+            }
+        }
+
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [feature]
+        }
+        
+        return json.dumps(feature_collection)
 
 
 def vcode2bbox(vcode):
@@ -552,7 +576,7 @@ def children2geojson(vcode):
         
         # Save the GeoJSON feature to a file
         with open(filename, 'w') as file:
-            geojson.dump(feature_collection, file, indent=2)
+            json.dump(feature_collection, file, indent=2)
         # print(f"Saved {child_vcode} to {filename}")
 
 def vcode_parent(vcode):
@@ -684,7 +708,7 @@ def neighbors2geojson(vcode):
         
         # Save the GeoJSON feature to a file
         with open(filename, 'w') as file:
-            geojson.dump(feature_collection, file, indent=2)
+            json.dump(feature_collection, file, indent=2)
         # print(f"Saved {neighbor_vcode} to {filename}")
 
 

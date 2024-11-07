@@ -4,7 +4,7 @@
 import argparse
 import h3
 from shapely.geometry import Polygon, mapping
-import geojson
+import json
 from tqdm import tqdm
 
 def h3_to_polygon(h3_index):
@@ -29,24 +29,42 @@ def generate_h3_indices(resolution):
     return h3_indices
 
 def create_world_polygons_at_resolution(resolution):
-    """Create a GeoJSON FeatureCollection of polygons at a given resolution level."""
+    """Create a JSON-compatible structure of polygons at a given resolution level."""
     h3_polygons = []
     h3_indices = generate_h3_indices(resolution)
     
     for h3_index in tqdm(h3_indices, desc='Generating Polygons'):
         polygon = h3_to_polygon(h3_index)
-        h3_polygons.append(geojson.Feature(
-            geometry=mapping(polygon),
-            properties={"h3": h3_index}
-        ))
+        
+        # Create a polygon in the JSON structure format
+        json_polygon = {
+            "type": "Polygon",
+            "coordinates": [list(polygon.exterior.coords)]  # Ensure it's in the correct format for GeoJSON
+        }
+
+        # Create the feature dictionary
+        feature = {
+            "type": "Feature",
+            "geometry": json_polygon,
+            "properties": {"h3": h3_index}
+        }
+        
+        # Append the feature to the list
+        h3_polygons.append(feature)
     
-    feature_collection = geojson.FeatureCollection(h3_polygons)
-    return feature_collection
+    # Create the FeatureCollection structure
+    feature_collection = {
+        "type": "FeatureCollection",
+        "features": h3_polygons
+    }
+
+    # Convert to JSON format (optional step, if you need to return as a JSON string)
+    return json.dumps(feature_collection)
 
 def save_to_geojson(feature_collection, filename):
     """Save the FeatureCollection to a GeoJSON file."""
     with open(filename, 'w') as f:
-        geojson.dump(feature_collection, f)
+        json.dump(feature_collection, f)
 
 def main():
     parser = argparse.ArgumentParser(description='Generate world polygons based on H3 indices.')

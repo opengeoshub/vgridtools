@@ -2,12 +2,27 @@ from vgrid.geocode import mgrs, maidenhead, geohash, georef, olc, s2
 from vgrid.geocode.s2 import LatLng, CellId
 from vgrid.geocode.gars import GARSGrid
 import h3
-from geopy.distance import geodesic
-import geojson, os
+import math
+import json, os
 import geopandas as gpd
 from shapely.geometry import Polygon, Point
 import argparse
 
+def haversine(lat1, lon1, lat2, lon2):
+    # Radius of the Earth in meters
+    R = 6371000  
+
+    # Convert latitude and longitude from degrees to radians
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    # Haversine formula
+    a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+    return R * c  # Distance in meters
 
 def olc2geojson(olc_code):
     # Decode the Open Location Code into a CodeArea object
@@ -21,8 +36,8 @@ def olc2geojson(olc_code):
         center_lat, center_lon = coord.latitudeCenter, coord.longitudeCenter
         precision = coord.codeLength 
        
-        lat_len = geodesic((min_lat, min_lon), (max_lat, min_lon)).meters 
-        lon_len = geodesic((min_lat, min_lon), (min_lat, max_lon)).meters  
+        lat_len = haversine(min_lat, min_lon, max_lat, min_lon)
+        lon_len = haversine(min_lat, min_lon, min_lat, max_lon)
 
         bbox_width =  f'{round(lon_len,1)} m'
         bbox_height =  f'{round(lat_len,1)} m'
@@ -39,20 +54,28 @@ def olc2geojson(olc_code):
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ]
         
-        geojson_feature = geojson.Feature(
-            geometry=geojson.Polygon([polygon_coords]),
-            properties={
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [polygon_coords]
+            },
+            "properties": {
                 "olc": olc_code,  # Include the OLC as a property
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "bbox_height": bbox_height,
                 "bbox_width": bbox_width,
-                "precision": precision  # Using the code length as precision
-                }
-            )
+                "precision": precision
+            }
+        }
 
-        feature_collection = geojson.FeatureCollection([geojson_feature])
-        return feature_collection
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [feature]
+        }
+        
+        return json.dumps(feature_collection)
 
 def olc2geojson_cli():
     """
@@ -70,9 +93,9 @@ def maidenhead2geojson(maidenhead_code):
     center_lat, center_lon, min_lat, min_lon, max_lat, max_lon, _ = maidenhead.maidenGrid(maidenhead_code)
     precision = int(len(maidenhead_code)/2)
     
-    lat_len = geodesic((min_lat, min_lon), (max_lat, min_lon)).meters 
-    lon_len = geodesic((min_lat, min_lon), (min_lat, max_lon)).meters  
-    
+    lat_len = haversine(min_lat, min_lon, max_lat, min_lon)
+    lon_len = haversine(min_lat, min_lon, min_lat, max_lon)
+
     bbox_width =  f'{round(lon_len,1)} m'
     bbox_height =  f'{round(lat_len,1)} m'
     
@@ -90,21 +113,28 @@ def maidenhead2geojson(maidenhead_code):
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ]
 
-        # Create the GeoJSON structure
-        geojson_feature = geojson.Feature(
-            geometry=geojson.Polygon([polygon_coords]),
-            properties={
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [polygon_coords]
+            },
+            "properties": {
                 "maidenhead": maidenhead_code,  # Include the OLC as a property
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "bbox_height": bbox_height,
                 "bbox_width": bbox_width,
-                "precision": precision  # Using the code length as precision
-                }
-            )
+                "precision": precision
+            }
+        }
 
-        feature_collection = geojson.FeatureCollection([geojson_feature])
-        return feature_collection
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [feature]
+        }
+        
+        return json.dumps(feature_collection)
 
 def maidenhead2geojson_cli():
     """
@@ -135,9 +165,9 @@ def gars2geojson(gars_code):
         center_lat = (min_lat + max_lat) / 2
 
         # Calculate bounding box width and height
-        lat_len = geodesic((min_lat, min_lon), (max_lat, min_lon)).meters 
-        lon_len = geodesic((min_lat, min_lon), (min_lat, max_lon)).meters  
-
+        lat_len = haversine(min_lat, min_lon, max_lat, min_lon)
+        lon_len = haversine(min_lat, min_lon, min_lat, max_lon)
+ 
         bbox_width =  f'{round(lon_len,1)} m'
         bbox_height =  f'{round(lat_len,1)} m'
 
@@ -145,23 +175,31 @@ def gars2geojson(gars_code):
             bbox_width = f'{round(lon_len/1000,1)} km'
             bbox_height = f'{round(lat_len/1000,1)} km'
 
-        geojson_feature = geojson.Feature(
-            geometry=geojson.Polygon([list(wkt_polygon.exterior.coords)]),
-             properties={
-                "gars": gars_code,  # Include the OLC as a property
+        polygon_coords = list(wkt_polygon.exterior.coords)
+
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [polygon_coords]  # Directly use the coordinates list
+            },
+            "properties": {
+                "gars": gars_code,
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "bbox_height": bbox_height,
                 "bbox_width": bbox_width,
-                "precision_minute": precision_minute  # Using the code length as precision
+                "precision_minute": precision_minute
                 }
-        )
-
-        # Create GeoJSON FeatureCollection
-        feature_collection = geojson.FeatureCollection([geojson_feature])
-
-        return feature_collection
-
+            }
+        
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [feature]
+        }
+        
+        return json.dumps(feature_collection)
+     
 def gars2geojson_cli():
     """
     Command-line interface for gars2geojson.
@@ -185,9 +223,9 @@ def geohash2geojson(geohash_code):
         
         precision =  len(geohash_code)
 
-        lat_len = geodesic((min_lat, min_lon), (max_lat, min_lon)).meters 
-        lon_len = geodesic((min_lat, min_lon), (min_lat, max_lon)).meters  
-        
+        lat_len = haversine(min_lat, min_lon, max_lat, min_lon)
+        lon_len = haversine(min_lat, min_lon, min_lat, max_lon)
+ 
         bbox_width =  f'{round(lon_len,1)} m'
         bbox_height =  f'{round(lat_len,1)} m'
         if lon_len >= 10000:
@@ -203,22 +241,29 @@ def geohash2geojson(geohash_code):
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ]
 
-        # Create the GeoJSON structure
-        geojson_feature = geojson.Feature(
-            geometry=geojson.Polygon([polygon_coords]),
-            properties={
-                "geohsah": geohash_code,  
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [polygon_coords]  # Directly use the coordinates list
+            },
+            "properties": {
+                "geohash": geohash_code,
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "bbox_height": bbox_height,
                 "bbox_width": bbox_width,
-                "precision": precision  # Using the code length as precision
+                "precision_minute": precision
                 }
-            )
-
-        feature_collection = geojson.FeatureCollection([geojson_feature])
-        return feature_collection
-
+            }
+        
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [feature]
+        }
+        
+        return json.dumps(feature_collection)
+    
 def geohash2geojson_cli():
     """
     Command-line interface for geohash2geojson.
@@ -233,9 +278,9 @@ def geohash2geojson_cli():
 def mgrs2geojson(mgrs_code,lat=None,lon=None):
     origin_lat, origin_lon, min_lat, min_lon, max_lat, max_lon,precision = mgrs.mgrscell(mgrs_code)
 
-    lat_len = geodesic((min_lat, min_lon), (max_lat, min_lon)).meters 
-    lon_len = geodesic((min_lat, min_lon), (min_lat, max_lon)).meters  
-    
+    lat_len = haversine(min_lat, min_lon, max_lat, min_lon)
+    lon_len = haversine(min_lat, min_lon, min_lat, max_lon)
+  
     bbox_width =  f'{round(lon_len,1)} m'
     bbox_height =  f'{round(lat_len,1)} m'
     
@@ -254,29 +299,33 @@ def mgrs2geojson(mgrs_code,lat=None,lon=None):
         ]
 
         mgrs_polygon = Polygon(polygon_coords)
-
-        # Create the original GeoJSON feature
-        geojson_feature = geojson.Feature(
-            geometry=geojson.Polygon([polygon_coords]),
-            properties={
+        
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [polygon_coords]  # Directly use the coordinates list
+            },
+            "properties": {
                 "mgrs": mgrs_code,
                 "origin_lat": origin_lat,
                 "origin_lon": origin_lon,
                 "bbox_height": bbox_height,
                 "bbox_width": bbox_width,
-                "precision": precision
+                "precision_minute": precision
+                }
             }
-        )
+        
         if lat is not None and lon is not None:
-            # Load the GZD GeoJSON file from the same folder
-            gzd_geojson_path = os.path.join(os.path.dirname(__file__), 'gzd.geojson')
-            with open(gzd_geojson_path) as f:
-                gzd_geojson = geojson.load(f)
+            # Load the GZD JSON file (treated as GeoJSON format) from the same folder
+            gzd_json_path = os.path.join(os.path.dirname(__file__), 'gzd.geojson')
+            with open(gzd_json_path) as f:
+                gzd_json = json.load(f)
 
-            # Convert the GZD GeoJSON to a GeoDataFrame
-            gzd_gdf = gpd.GeoDataFrame.from_features(gzd_geojson['features'], crs="EPSG:4326")
+            # Convert the GZD JSON to a GeoDataFrame
+            gzd_gdf = gpd.GeoDataFrame.from_features(gzd_json['features'], crs="EPSG:4326")
 
-            # Convert the MGRS polygon to a GeoSeries for intersection
+            # Convert the MGRS polygon to a GeoDataFrame for intersection
             mgrs_gdf = gpd.GeoDataFrame(geometry=[mgrs_polygon], crs="EPSG:4326")
 
             # Perform the intersection
@@ -290,10 +339,14 @@ def mgrs2geojson(mgrs_code,lat=None,lon=None):
                 # Check if the point is inside any of the intersection polygons
                 for intersection_polygon in intersection_gdf.geometry:
                     if intersection_polygon.contains(point):
-                        # Return the intersection as GeoJSON if the point is inside
-                        intersection_geojson = geojson.Feature(
-                            geometry=geojson.Polygon([list(intersection_polygon.exterior.coords)]),
-                            properties={
+                        # Manually construct the intersection as a JSON-like structure
+                        intersection_feature = {
+                            "type": "Feature",
+                            "geometry": {
+                                "type": "Polygon",
+                                "coordinates": [list(intersection_polygon.exterior.coords)]
+                            },
+                            "properties": {
                                 "mgrs": mgrs_code,
                                 "origin_lat": origin_lat,
                                 "origin_lon": origin_lon,
@@ -301,15 +354,24 @@ def mgrs2geojson(mgrs_code,lat=None,lon=None):
                                 "bbox_width": bbox_width,
                                 "precision": precision
                             }
-                        )
-                        intersection_feature_collection = geojson.FeatureCollection([intersection_geojson])
-                        return intersection_feature_collection
+                        }
+
+                        # Wrap the feature in a FeatureCollection
+                        intersection_feature_collection = {
+                            "type": "FeatureCollection",
+                            "features": [intersection_feature]
+                        }
+
+                        return json.dumps(intersection_feature_collection)
 
         # If no intersection or point not contained, return the original MGRS GeoJSON
-        # Create a FeatureCollection
-        feature_collection = geojson.FeatureCollection([geojson_feature])
-        return feature_collection
-
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [feature]
+        }
+        
+        return json.dumps(feature_collection)
+    
 def mgrs2geojson_cli():
     """
     Command-line interface for mgrs2geojson.
@@ -324,9 +386,9 @@ def mgrs2geojson_cli():
 def georef2geojson(georef_code):
     center_lat, center_lon, min_lat, min_lon, max_lat, max_lon,precision = georef.georefcell(georef_code)
 
-    lat_len = geodesic((min_lat, min_lon), (max_lat, min_lon)).meters 
-    lon_len = geodesic((min_lat, min_lon), (min_lat, max_lon)).meters
-    
+    lat_len = haversine(min_lat, min_lon, max_lat, min_lon)
+    lon_len = haversine(min_lat, min_lon, min_lat, max_lon)
+  
     bbox_width =  f'{round(lon_len,1)} m'
     bbox_height =  f'{round(lat_len,1)} m'
     
@@ -344,22 +406,28 @@ def georef2geojson(georef_code):
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ]
 
-        # Create the GeoJSON structure
-        geojson_feature = geojson.Feature(
-            geometry=geojson.Polygon([polygon_coords]),
-            properties={
-                "georef": georef_code,  # Include the OLC as a property
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [polygon_coords]  # Directly use the coordinates list
+            },
+            "properties": {
+                "georef": georef_code,
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "bbox_height": bbox_height,
                 "bbox_width": bbox_width,
-                "precision": precision  # Using the code length as precision
+                "precision_minute": precision
                 }
-            )
-
-        # Create a FeatureCollection
-        feature_collection = geojson.FeatureCollection([geojson_feature])
-        return feature_collection
+            }
+        
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [feature]
+        }
+        
+        return json.dumps(feature_collection)
 
 def georef2geojson_cli():
     """
@@ -375,29 +443,42 @@ def georef2geojson_cli():
 def h32geojson(h3_code):
     # Get the boundary coordinates of the H3 cell
     boundary = h3.cell_to_boundary(h3_code)
+    
     if boundary:
         # Get the center coordinates of the H3 cell
         center_lat, center_lon = h3.cell_to_latlng(h3_code)
         precision = h3.get_resolution(h3_code)
         edge_len = h3.average_hexagon_edge_length(precision,unit='m')
-        # Create the GeoJSON Feature
-        geojson_feature = geojson.Feature(
-            geometry=geojson.Polygon([[
-                [lon, lat] for lat, lon in boundary
-            ]]),
-            properties={
+        
+        boundary = list(boundary)
+        # Ensure the polygon boundary is closed
+        if boundary[0] != boundary[-1]:
+            boundary.append(boundary[0])
+        
+        feature = {
+            "type": "Feature",
+            "geometry": {
+                "type": "Polygon",
+               "coordinates": [[
+                [lon, lat] for lat, lon in boundary  # Convert boundary to the correct coordinate order
+                ]]
+            },
+            "properties": {
                 "h3": h3_code,
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "edge_len": edge_len,
                 "precision": precision
             }
-        )
-        
-        # Create a FeatureCollection
-        feature_collection = geojson.FeatureCollection([geojson_feature])
+        }
+        # Wrap the feature in a FeatureCollection
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [feature]
+        }
 
-        return feature_collection
+        # Convert the feature collection to JSON formatted string
+        return json.dumps(feature_collection)
 
 def h32geojson_cli():
     """
@@ -411,30 +492,32 @@ def h32geojson_cli():
 
 
 def s22geojson(cell_id_token):
-     # Create an S2 cell from the given cell ID
-    cell_id= CellId.from_token(cell_id_token)
+    # Create an S2 cell from the given cell ID
+    cell_id = CellId.from_token(cell_id_token)
     cell = s2.Cell(cell_id)
+    
     if cell:
         # Get the vertices of the cell (4 vertices for a rectangular cell)
         vertices = [cell.get_vertex(i) for i in range(4)]
         
-        # Create GeoJSON structure
-        geojson_vertices = []
-
-        # Extract latitude and longitude from each vertex
+        # Prepare vertices in [longitude, latitude] format
+        json_vertices = []
         for vertex in vertices:
             lat_lng = LatLng.from_point(vertex)  # Convert Point to LatLng
-            longitude = lat_lng.lng().degrees  # Access the degree value for longitude
-            latitude = lat_lng.lat().degrees    # Access the degree value for latitude
-            geojson_vertices.append((longitude, latitude))
+            longitude = lat_lng.lng().degrees  # Access longitude in degrees
+            latitude = lat_lng.lat().degrees    # Access latitude in degrees
+            json_vertices.append([longitude, latitude])
 
         # Close the polygon by adding the first vertex again
-        geojson_vertices.append(geojson_vertices[0])  # Closing the polygon
+        json_vertices.append(json_vertices[0])  # Closing the polygon
 
-        # Create a GeoJSON Polygon
-        geojson_polygon = geojson.Polygon([geojson_vertices])
+        # Create a JSON-compatible polygon structure
+        json_polygon = {
+            "type": "Polygon",
+            "coordinates": [json_vertices]
+        }
 
-        # Get center of the cell
+        # Get the center of the cell
         center = cell.get_center()
         center_lat_lng = LatLng.from_point(center)
         center_lat = center_lat_lng.lat().degrees
@@ -447,30 +530,43 @@ def s22geojson(cell_id_token):
         min_lon = rect_bound.lng_lo().degrees
         max_lon = rect_bound.lng_hi().degrees
         
-        lat_len = geodesic((min_lat, min_lon), (max_lat, min_lon)).meters 
-        lon_len = geodesic((min_lat, min_lon), (min_lat, max_lon)).meters
-        
-        bbox_width =  f'{round(lon_len,1)} m'
-        bbox_height =  f'{round(lat_len,1)} m'
+        # Calculate width and height of the bounding box
+        lat_len = haversine(min_lat, min_lon, max_lat, min_lon)
+        lon_len = haversine(min_lat, min_lon, min_lat, max_lon)
+  
+        bbox_width = f'{round(lon_len, 1)} m'
+        bbox_height = f'{round(lat_len, 1)} m'
         
         if lon_len >= 10000:
-            bbox_width = f'{round(lon_len/1000,1)} km'
-            bbox_height = f'{round(lat_len/1000,1)} km'
-        # Create properties dictionary for the FeatureCollection
-        
-        geojson_feature = geojson.Feature(geometry=geojson_polygon, properties = {
-            "s2": cell_id.id(),
+            bbox_width = f'{round(lon_len / 1000, 1)} km'
+            bbox_height = f'{round(lat_len / 1000, 1)} km'
+
+        # Create properties for the Feature
+        properties = {
+            # "s2": cell_id.id(),
+            "s2": cell_id_token,
             "center_lat": center_lat,
             "center_lon": center_lon,
-            "bbox_width":bbox_width,
-            "bbox_height":bbox_height,
-            "level": cell_id.level() 
-        })
+            "bbox_width": bbox_width,
+            "bbox_height": bbox_height,
+            "level": cell_id.level()
+        }
 
-        # Create a FeatureCollection
-        feature_collection = geojson.FeatureCollection([geojson_feature])
+        # Manually create the Feature and FeatureCollection
+        feature = {
+            "type": "Feature",
+            "geometry": json_polygon,
+            "properties": properties
+        }
+        
+        # Create the FeatureCollection
+        feature_collection = {
+            "type": "FeatureCollection",
+            "features": [feature]
+        }
 
-        return feature_collection
+        # Convert to JSON format
+        return json.dumps(feature_collection)
 
 def s22geojson_cli():
     """
