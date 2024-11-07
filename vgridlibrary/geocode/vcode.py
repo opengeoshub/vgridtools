@@ -1,4 +1,4 @@
-import vgrid.utils.mercantile as mercantile
+from ..utils import mercantile
 import re
 import math, json
 from shapely.geometry import Polygon
