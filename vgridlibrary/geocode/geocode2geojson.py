@@ -1,6 +1,6 @@
-from vgrid.geocode import mgrs, maidenhead, geohash, georef, olc, s2
-from vgrid.geocode.s2 import LatLng, CellId
-from vgrid.geocode.gars import GARSGrid
+import mgrs, maidenhead, geohash, georef, olc, s2
+from s2 import LatLng, CellId
+from gars import GARSGrid
 import h3
 import math
 import json, os

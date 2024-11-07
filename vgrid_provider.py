@@ -32,26 +32,7 @@ import os
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-# from vgrid.processing_provider.Vect_Antipodal import Antipodal
-# from vgrid.processing_provider.Vect_Reversed_X import Reversed_X
-# from vgrid.processing_provider.Vect_Reversed_Y import Reversed_Y
-# from vgrid.processing_provider.Vect_Swap_XY import Swap_XY
-
-# from vgrid.processing_provider.Vect_Wedge import Wedge
-# from vgrid.processing_provider.Vect_SpiralWedge import SpiralWedge
-
-
-# from vgrid.processing_provider.Vect_SplitPolygon import SplitPolygon
-
-
-# from vgrid.processing_provider.Vect_Skeleton import Skeleton
-# from vgrid.processing_provider.Vect_Isolation import Isolation
-# from vgrid.processing_provider.Vect_DirectionalMerge import DirectionalMerge
-# from vgrid.processing_provider.Vect_Lec import Lec
-# from vgrid.processing_provider.Vect_Mic import Mic
-# from vgrid.processing_provider.Vect_ClosestFarthest import ClosestFarthest
-
-# from vgrid.processing_provider.Att_FontConvert import FontConvert
+from .processing_provider.codes2cells import Codes2Cells
 
 class VgridProvider(QgsProcessingProvider):
 
@@ -69,32 +50,13 @@ class VgridProvider(QgsProcessingProvider):
         pass
 
     def loadAlgorithms(self):
-        # self.addAlgorithm(Antipodal())
-
-        # self.addAlgorithm(Reversed_X())
-        # self.addAlgorithm(Reversed_Y())
-        # self.addAlgorithm(Swap_XY())
-
-        # self.addAlgorithm(Wedge())
-        # self.addAlgorithm(SpiralWedge())
-
-        # self.addAlgorithm(SplitPolygon())
-
-        # self.addAlgorithm(Skeleton())
-        # self.addAlgorithm(Isolation())
-        # self.addAlgorithm(DirectionalMerge())
-        # self.addAlgorithm(Lec())
-        # self.addAlgorithm(Mic())
-        # self.addAlgorithm(ClosestFarthest())  
-
-        # self.addAlgorithm(FontConvert())
-        pass
-
+        self.addAlgorithm(Codes2Cells())
+    
     def id(self):
         return 'vgrid'
 
     def name(self):
-        return self.tr('vgrid Tools')
+        return self.tr('Vgrid Tools')
 
     def icon(self):
         return QIcon(os.path.dirname(__file__) + '/images/vgrid.svg')
