@@ -84,7 +84,7 @@ def olc2geojson_cli():
     parser = argparse.ArgumentParser(description="Convert OLC/ Google Plus Codes to GeoJSON")
     parser.add_argument("olc", help="Input OLC, e.g., olc2geojson 7P28QPG4+4P7")
     args = parser.parse_args()
-    geojson_data = olc2geojson(args.olc)
+    geojson_data = json.dumps(olc2geojson(args.olc))
     print(geojson_data)
 
 
@@ -143,7 +143,7 @@ def maidenhead2geojson_cli():
     parser = argparse.ArgumentParser(description="Convert Maidenhead code to GeoJSON")
     parser.add_argument("maidenhead", help="Input Maidenhead code, e.g., maidenhead2geojson OK30is46")
     args = parser.parse_args()
-    geojson_data = maidenhead2geojson(args.maidenhead)
+    geojson_data = json.dumps(maidenhead2geojson(args.maidenhead))
     print(geojson_data)
 
 # SOS: Convert gars_code object to str first
@@ -207,7 +207,7 @@ def gars2geojson_cli():
     parser = argparse.ArgumentParser(description="Convert GARS code to GeoJSON")
     parser.add_argument("gars", help="Input GARS code, e.g., gars2geojson 574JK1918")
     args = parser.parse_args()
-    geojson_data = gars2geojson(args.gars)
+    geojson_data = json.dumps(gars2geojson(args.gars))
     print(geojson_data)
 
 
@@ -271,7 +271,7 @@ def geohash2geojson_cli():
     parser = argparse.ArgumentParser(description="Convert Geohash code to GeoJSON")
     parser.add_argument("geohash", help="Input Geohash code, e.g., geohash2geojson w3gvk1td8")
     args = parser.parse_args()
-    geojson_data = geohash2geojson(args.geohash)
+    geojson_data = json.dumps(geohash2geojson(args.geohash))
     print(geojson_data)
 
 
@@ -362,7 +362,7 @@ def mgrs2geojson(mgrs_code,lat=None,lon=None):
                             "features": [intersection_feature]
                         }
 
-                        return json.dumps(intersection_feature_collection)
+                        return intersection_feature_collection
 
         # If no intersection or point not contained, return the original MGRS GeoJSON
         feature_collection = {
@@ -379,7 +379,7 @@ def mgrs2geojson_cli():
     parser = argparse.ArgumentParser(description="Convert MGRS code to GeoJSON")
     parser.add_argument("mgrs", help="Input MGRS code, e.g., mgrs2geojson 34TGK56063228")
     args = parser.parse_args()
-    geojson_data = mgrs2geojson(args.mgrs)
+    geojson_data = json.dumps(mgrs2geojson(args.mgrs))
     print(geojson_data)
 
 
@@ -436,7 +436,7 @@ def georef2geojson_cli():
     parser = argparse.ArgumentParser(description="Convert GEOREF code to GeoJSON")
     parser.add_argument("georef", help="Input GEOREF code, e.g., georef2geojson VGBL42404651")
     args = parser.parse_args()
-    geojson_data = georef2geojson(args.georef)
+    geojson_data = json.dumps(georef2geojson(args.georef))
     print(geojson_data)
 
 
@@ -487,7 +487,7 @@ def h32geojson_cli():
     parser = argparse.ArgumentParser(description="Convert H3 code to GeoJSON")
     parser.add_argument("h3", help="Input H3 code, e.g., h32geojson 8d65b56628e46bf")
     args = parser.parse_args()
-    geojson_data = h32geojson(args.h3)
+    geojson_data = json.dumps(h32geojson(args.h3))
     print(geojson_data)
 
 
@@ -575,5 +575,5 @@ def s22geojson_cli():
     parser = argparse.ArgumentParser(description="Convert S2 cell token to GeoJSON")
     parser.add_argument("s2", help="Input S2 cell token, e.g., s22geojson 31752f45cc94")
     args = parser.parse_args()
-    geojson_data = s22geojson(args.s2)
+    geojson_data = json.dumps(s22geojson(args.s2))
     print(geojson_data)
