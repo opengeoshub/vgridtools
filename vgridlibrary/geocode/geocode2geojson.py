@@ -75,7 +75,7 @@ def olc2geojson(olc_code):
             "features": [feature]
         }
         
-        return json.dumps(feature_collection)
+        return feature_collection
 
 def olc2geojson_cli():
     """
@@ -134,7 +134,7 @@ def maidenhead2geojson(maidenhead_code):
             "features": [feature]
         }
         
-        return json.dumps(feature_collection)
+        return feature_collection
 
 def maidenhead2geojson_cli():
     """
@@ -198,7 +198,7 @@ def gars2geojson(gars_code):
             "features": [feature]
         }
         
-        return json.dumps(feature_collection)
+        return feature_collection
      
 def gars2geojson_cli():
     """
@@ -262,7 +262,7 @@ def geohash2geojson(geohash_code):
             "features": [feature]
         }
         
-        return json.dumps(feature_collection)
+        return feature_collection
     
 def geohash2geojson_cli():
     """
@@ -370,7 +370,7 @@ def mgrs2geojson(mgrs_code,lat=None,lon=None):
             "features": [feature]
         }
         
-        return json.dumps(feature_collection)
+        return feature_collection
     
 def mgrs2geojson_cli():
     """
@@ -427,7 +427,7 @@ def georef2geojson(georef_code):
             "features": [feature]
         }
         
-        return json.dumps(feature_collection)
+        return feature_collection
 
 def georef2geojson_cli():
     """
@@ -478,7 +478,7 @@ def h32geojson(h3_code):
         }
 
         # Convert the feature collection to JSON formatted string
-        return json.dumps(feature_collection)
+        return feature_collection
 
 def h32geojson_cli():
     """
@@ -566,7 +566,7 @@ def s22geojson(cell_id_token):
         }
 
         # Convert to JSON format
-        return json.dumps(feature_collection)
+        return feature_collection
 
 def s22geojson_cli():
     """
