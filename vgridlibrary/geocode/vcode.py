@@ -149,7 +149,7 @@ def vcode2geojson(vcode):
             "features": [feature]
         }
         
-        return json.dumps(feature_collection)
+        return feature_collection
 
 
 def vcode2bbox(vcode):
@@ -197,7 +197,7 @@ def vcode2geojson_cli():
     args = parser.parse_args()
 
     # Generate the GeoJSON feature
-    geojson_data = vcode2geojson(args.vcode)
+    geojson_data = json.dumps(vcode2geojson(args.vcode))
     print(geojson_data)
 
 def zxy2vcode(z, x, y):
