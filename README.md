@@ -1,6 +1,6 @@
 <!-- PROJECT LOGO -->
 <p align="center">
-    <img src="images/vgrid.png" alt="Logo" width="90" height="75">
+    <img src="images/vgrid192.svg" alt="Logo">
   <h3 align="center">Vgrid</h3>
   <p align="center">
     <b><i>Vgrid Tools for QGIS</i><b>

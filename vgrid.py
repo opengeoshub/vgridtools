@@ -78,7 +78,7 @@ class VgridPlugin(object):
         self.iface.mainWindow().menuBar().insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.Vgrid_menu)
         
         self.VgridHome_menu = QMenu(u'Vgrid Home')	
-        icon = QIcon(os.path.dirname(__file__) + "/images/vgrid_logo.png")	
+        icon = QIcon(os.path.dirname(__file__) + "/images/vgrid.svg")	
         self.Vgrid_add_submenu2(self.VgridHome_menu, icon)
        
         self.VgridHome_action = QAction(icon, u'Vgrid Home', self.iface.mainWindow())
