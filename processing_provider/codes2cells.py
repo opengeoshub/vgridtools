@@ -17,30 +17,34 @@ __copyright__ = '(L) 2024, Thang Quach'
 import os
 
 from qgis.core import (
-    QgsFeature,  QgsWkbTypes, QgsPropertyDefinition)
-
-from qgis.core import (
     QgsProcessing,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
-    QgsProcessingParameters,
     QgsProcessingFeatureBasedAlgorithm,
-    QgsProcessingParameterNumber
+    QgsProcessingParameterEnum,
+    QgsWkbTypes    
     )
 
 from qgis.core import QgsApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QCoreApplication,QVariant
+
 
 from ..vgridlibrary.imgs import Imgs
-from ..vgridlibrary.geocode.geocode2qgsfeature import olc2qgsfeature
+from ..vgridlibrary.geocode.geocode2qgsfeature import *
 
 class Codes2Cells(QgsProcessingFeatureBasedAlgorithm):
     """
-    Algorithm to covert OLC/ OpenLocationCode/ Google Plus Code, MGRS, Geohash, GEOREF, S2, Vcode, Maidenhead, GARS to Gecode grid cells
+    Algorithm to convert OLC/ OpenLocationCode/ Google Plus Code, MGRS, Geohash, GEOREF, S2, Vcode, Maidenhead, GARS to Gecode grid cells
     """
     INPUT = 'INPUT'
-    CODEFIELD = 'CODEFIELD'
+    CODE_FIELD = 'CODE_FIELD'
+    GRID_TYPE = 'GRID_TYPE'
+    GRID_OPTIONS = [
+        'OLC', 'MGRS', 'Geohash', 'GEOREF', 'S2', 'Vcode', 'Maidenhead', 'GARS'
+    ]
+    OUTPUT = 'OUTPUT'
+
 
     LOC = QgsApplication.locale()[:2]
 
@@ -56,6 +60,7 @@ class Codes2Cells(QgsProcessingFeatureBasedAlgorithm):
                 return self.translate(string[0])
         else:
             return self.translate(string[0])
+    
     def createInstance(self):
         return Codes2Cells()
 
@@ -79,7 +84,7 @@ class Codes2Cells(QgsProcessingFeatureBasedAlgorithm):
     
     txt_en = 'Codes to Cells'
     txt_vi = 'Codes to Cells'
-    figure = 'images/tutorial/geocode_codes2cells.png'
+    figure = 'images/tutorial/codes2cells.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -102,10 +107,18 @@ class Codes2Cells(QgsProcessingFeatureBasedAlgorithm):
     
     def outputWkbType(self, input_wkb_type):
         return (QgsWkbTypes.Polygon)   
-        # return (QgsWkbTypes.Point)   
     
     def outputFields(self, input_fields):
-        return(input_fields)
+        output_fields = QgsFields()
+        output_fields.append(QgsField('code', QVariant.String))
+        output_fields.append(QgsField('center_lat', QVariant.Double))
+        output_fields.append(QgsField('center_lon', QVariant.Double))
+        output_fields.append(QgsField('bbox_height', QVariant.String))
+        output_fields.append(QgsField('bbox_width', QVariant.String))
+        output_fields.append(QgsField('precision', QVariant.Int))
+
+        return (output_fields)
+        # return(input_fields)
 
     def supportInPlaceEdit(self, layer):
         return False
@@ -120,9 +133,19 @@ class Codes2Cells(QgsProcessingFeatureBasedAlgorithm):
 
         # Code field
         param = QgsProcessingParameterField(
-            self.CODEFIELD,  
+            self.CODE_FIELD,  
             self.tr('Code field') ,
+            type=QgsProcessingParameterField.String,
             parentLayerParameterName=self.INPUT
+        )
+        self.addParameter(param)
+
+        # Grid Type
+        param = QgsProcessingParameterEnum(
+            self.GRID_TYPE,
+            self.tr('Grid type'),
+            options=self.GRID_OPTIONS,
+            defaultValue=0  # Default to the first option (OLC)
         )
         self.addParameter(param)
 
@@ -131,33 +154,48 @@ class Codes2Cells(QgsProcessingFeatureBasedAlgorithm):
         source = self.parameterAsSource(parameters, self.INPUT, context)
         self.total_features = source.featureCount()
         self.num_bad = 0
-
-        self.code_field = self.parameterAsString(parameters, self.CODEFIELD, context)
+        
+        self.code_field = self.parameterAsString(parameters, self.CODE_FIELD, context)
+        self.grid_type_index = self.parameterAsEnum(parameters, self.GRID_TYPE, context)
+        self.grid_type_functions = {
+            'olc': olc2qgsfeature,
+            'mgrs': mgrs2qgsfeature,
+            'geohash': geohash2qgsfeature,
+            'georef': georef2qgsfeature,
+            's2': s22qgsfeature,
+            'vcode': vcode2qgsfeature,
+            'maidenhead': maidenhead2qgsfeature,
+            'gars': gars2qgsfeature
+        }
         return True
     
-    def processFeature(self, feature, context, feedback):         
+    def processFeature(self, feature, context, feedback):
         try:
-            # Retrieve the OLC code from the feature's attribute
-            # olc_code = '7P28QMFQ+R26'
+            code = feature[self.code_field]
 
-            olc_code = feature[self.code_field]
-            # Generate a new feature using the OLC code
-            cell_feature = olc2qgsfeature(olc_code)
-            
-            if cell_feature:
-                # Optionally, copy over attributes from the original feature
-                cell_feature.setAttributes(feature.attributes())
-                # Return the feature in a list
-                return [cell_feature]
+            grid_type_key = self.GRID_OPTIONS[self.grid_type_index].lower()
+            conversion_function = self.grid_type_functions.get(grid_type_key)
+            # feedback.pushInfo(f"{grid_type_key}")
+            if grid_type_key == 'mgrs':
+                point = feature.geometry().asPoint()  # Returns a QgsPointXY object
+                x, y = point.x(), point.y()  # Get the x and y coordinates
+                
+                # Call the mgrs2qgsfeature function with the coordinates
+                cell_feature = mgrs2qgsfeature(code, y, x)  # Use y, x for lat, lon
+                if cell_feature:
+                    return [cell_feature]
+
+            elif conversion_function:
+                # Call the conversion function
+                cell_feature = conversion_function(code)
+                if cell_feature:
+                    return [cell_feature]
             
         except Exception as e:
-            # Increment the error count and log the error
             self.num_bad += 1
             feedback.reportError(f"Error processing feature {feature.id()}: {str(e)}")
         
-        # Return an empty list if no feature was created or an error occurred
         return []
-
 
     def postProcessAlgorithm(self, context, feedback):
         if self.num_bad:
