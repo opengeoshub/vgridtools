@@ -34,10 +34,9 @@ import os
 import sys
 import inspect
 from PyQt5.QtWidgets import *
-from qgis.core import (QgsProcessingAlgorithm,
+from qgis.core import (
                        QgsApplication,
                        QgsExpression)
-# from PyQt5.QtCore import QCoreApplication
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -45,7 +44,7 @@ from PyQt5.QtGui import *
 from .vgrid_provider import VgridProvider
 from .expressions import *
 from .vgridlibrary.grid import gzd
-from .vgrid_dialogs import *
+# from .vgrid_dialogs import *
 
 
 exprs =(latlon2olc,latlon2mgrs,latlon2geohash,latlon2georef,latlon2s2,latlon2vcode,latlon2maidenhead,latlon2gars)
@@ -78,7 +77,7 @@ class VgridPlugin(object):
         self.Vgrid_menu = QMenu(QCoreApplication.translate("Vgrid", "Vgrid"))
         self.iface.mainWindow().menuBar().insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.Vgrid_menu)
         
-        self.VgridGenerator_menu = QMenu(u'Vgrid Generator')	
+        self.VgridGenerator_menu = QMenu(u'Vgrid')	
         icon = QIcon(os.path.dirname(__file__) + "/images/grid_generator.png")	
         self.Vgrid_add_submenu2(self.VgridGenerator_menu, icon)
         
@@ -87,12 +86,6 @@ class VgridPlugin(object):
         self.VgridGZD_action = QAction(icon, u'Grid Zone Designators', self.iface.mainWindow())
         self.VgridGZD_action.triggered.connect(lambda: gzd.main())
         self.VgridGenerator_menu.addAction(self.VgridGZD_action)
-
-
-        icon = QIcon(os.path.dirname(__file__) + "/images/grid_gzd.png")  
-        self.VgridGeohash_action = QAction(icon, u'Geohash', self.iface.mainWindow())
-        self.VgridGeohash_action.triggered.connect(self.geohash_grid)
-        self.VgridGenerator_menu.addAction(self.VgridGeohash_action)
 
 
         self.VgridHome_menu = QMenu(u'Vgrid Home')	
@@ -130,6 +123,3 @@ class VgridPlugin(object):
     def VgridHome(self):
         webbrowser.open("https://vgrid.vn") 
     
-    def geohash_grid(self):
-        dialog = vgrid_geohash_dialog(self.iface)
-        dialog.exec_()

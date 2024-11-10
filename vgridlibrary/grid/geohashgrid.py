@@ -8,7 +8,6 @@ def geohash_to_bbox(gh):
     """Convert geohash to bounding box coordinates."""
     lat, lon = geohash.decode(gh)
     lat_err, lon_err = geohash.decode_exactly(gh)[2:]
-    
     bbox = {
         'w': max(lon - lon_err, -180),
         'e': min(lon + lon_err, 180),
@@ -62,10 +61,10 @@ def create_world_polygons_at_precision(precision):
             'geometry': polygon,
             'geohash': gh
         })
-    
-    gdf = gpd.GeoDataFrame(geohash_polygons, columns=['geometry', 'geohash'])
-    gdf.crs = 'EPSG:4326'  # Set the CRS to WGS84
-    return gdf
+    return geohash_polygons
+    # gdf = gpd.GeoDataFrame(geohash_polygons, columns=['geometry', 'geohash'])
+    # gdf.crs = 'EPSG:4326'  # Set the CRS to WGS84
+    # return gdf
 
 def save_to_shapefile(gdf, filename):
     """Save the GeoDataFrame to a Shapefile."""
