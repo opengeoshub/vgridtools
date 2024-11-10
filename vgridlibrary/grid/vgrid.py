@@ -1,7 +1,7 @@
 import argparse
 import os
-from vgrid.utils.mapbox_vector_tile import encode
-import vgrid.utils.mercantile as mercantile
+from ..utils.mapbox_vector_tile import encode
+from ..utils.mercantile import mercantile
 from shapely.geometry import box, mapping
 import sqlite3
 import gzip

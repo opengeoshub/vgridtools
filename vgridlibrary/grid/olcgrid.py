@@ -2,7 +2,7 @@
 # https://github.com/google/open-location-code
 
 import argparse
-import vgrid.geocode.olc as olc
+from ..geocode import olc
 from tqdm import tqdm
 from shapely.geometry import Polygon, mapping
 import geopandas as gpd

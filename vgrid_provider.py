@@ -33,6 +33,7 @@ from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
 from .processing_provider.codes2cells import Codes2Cells
+from .processing_provider.grid_geohash import GridGeohash
 
 class VgridProvider(QgsProcessingProvider):
 
@@ -51,7 +52,8 @@ class VgridProvider(QgsProcessingProvider):
 
     def loadAlgorithms(self):
         self.addAlgorithm(Codes2Cells())
-    
+        self.addAlgorithm(GridGeohash())
+
     def id(self):
         return 'vgrid'
 

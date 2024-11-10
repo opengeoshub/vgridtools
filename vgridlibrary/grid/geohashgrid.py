@@ -1,8 +1,7 @@
 # Reference: https://geohash.softeng.co/uekkn, https://github.com/vinsci/geohash, https://www.movable-type.co.uk/scripts/geohash.html?geohash=dp3
 import argparse
-import  vgrid.geocode.geohash as geohash
+from  ..geocode import geohash
 from shapely.geometry import Polygon, mapping
-from tqdm import tqdm
 import geopandas as gpd
 
 def geohash_to_bbox(gh):
@@ -57,7 +56,7 @@ def create_world_polygons_at_precision(precision):
     geohash_polygons = []
     geohashes = generate_geohashes(precision)
     
-    for gh in tqdm(geohashes, desc='Generating Polygons'):
+    for gh in geohashes:
         polygon = geohash_to_polygon(gh)
         geohash_polygons.append({
             'geometry': polygon,
@@ -67,12 +66,6 @@ def create_world_polygons_at_precision(precision):
     gdf = gpd.GeoDataFrame(geohash_polygons, columns=['geometry', 'geohash'])
     gdf.crs = 'EPSG:4326'  # Set the CRS to WGS84
     return gdf
-
-def save_to_shapefile(gdf, filename):
-    """Save the GeoDataFrame to a Shapefile."""
-    gdf.to_file(filename, driver='ESRI Shapefile')
-    print(f"Shapefile saved as: {filename}")
-
 
 def save_to_shapefile(gdf, filename):
     """Save the GeoDataFrame to a Shapefile."""
