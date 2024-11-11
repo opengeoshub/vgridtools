@@ -17,7 +17,7 @@ def generate_georef_grid():
     lat_min, lat_max = -90.0, 90.0
     
     # Initialize a list to store GARS grid polygons
-    gars_grid = []
+    georef_grid = []
     res = 1
     # Use numpy to generate ranges with floating-point steps
     longitudes = np.arange(lon_min, lon_max, res)
@@ -33,12 +33,12 @@ def generate_georef_grid():
             # poly = gars_code.polygon
             # print(gars_code)
             # print(poly)
-            gars_grid.append({'geometry': poly, 'georef': str(gars_code)})
+            georef_grid.append({'geometry': poly, 'georef': str(gars_code)})
     
-    print(gars_grid)
+    print(georef_grid)
     
     # # Create a GeoDataFrame
-    gars_gdf = gpd.GeoDataFrame(gars_grid, crs=CRS.from_epsg(4326))
+    gars_gdf = gpd.GeoDataFrame(georef_grid, crs=CRS.from_epsg(4326))
     
     # # Save the grid
     gars_gdf.to_file('./data/georef/georef_grid_15minutes.geojson', driver='GeoJSON')

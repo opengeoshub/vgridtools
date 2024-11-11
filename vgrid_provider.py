@@ -34,6 +34,11 @@ from qgis.PyQt.QtGui import QIcon
 
 from .processing_provider.codes2cells import Codes2Cells
 from .processing_provider.grid_geohash import GridGeohash
+from .processing_provider.grid_georef import GridGeoref
+from .processing_provider.grid_olc import GridOLC
+from .processing_provider.grid_maidenhead import GridMaidenhead
+from .processing_provider.grid_gars import GridGARS
+
 
 class VgridProvider(QgsProcessingProvider):
 
@@ -52,8 +57,10 @@ class VgridProvider(QgsProcessingProvider):
 
     def loadAlgorithms(self):
         self.addAlgorithm(Codes2Cells())
+        # self.addAlgorithm(GridOLC())
         self.addAlgorithm(GridGeohash())
-
+        self.addAlgorithm(GridMaidenhead())
+        self.addAlgorithm(GridGARS())
     def id(self):
         return 'vgrid'
 

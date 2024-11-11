@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-grid_geohash.py
+grid_georef.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -39,11 +39,11 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
 
-from ..vgridlibrary.geocode import geohash
+from ..vgridlibrary.geocode import georef
 from ..vgridlibrary.imgs import Imgs
 
 
-class GridGeohash(QgsProcessingAlgorithm):
+class GridGeoref(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'
     PRECISION = 'PRECISION'
     OUTPUT = 'OUTPUT'
@@ -64,16 +64,16 @@ class GridGeohash(QgsProcessingAlgorithm):
             return self.translate(string[0])
     
     def createInstance(self):
-        return GridGeohash()
+        return GridGeoref()
 
     def name(self):
-        return 'grid_geohash'
+        return 'grid_georef'
 
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'images/grid_gzd.png'))
     
     def displayName(self):
-        return self.tr('Geohash', 'Geohash')
+        return self.tr('Georef', 'Georef')
 
     def group(self):
         return self.tr('Grid Generator', 'Grid Generator')
@@ -82,10 +82,10 @@ class GridGeohash(QgsProcessingAlgorithm):
         return 'grid'
 
     def tags(self):
-        return self.tr('Geohash, grid, generator').split(',')
+        return self.tr('Georef, grid, generator').split(',')
     
-    txt_en = 'Geohash Grid'
-    txt_vi = 'Geohash Grid'
+    txt_en = 'Georef Grid'
+    txt_vi = 'Georef Grid'
     figure = 'images/tutorial/codes2cells.png'
 
     def shortHelpString(self):
@@ -113,35 +113,35 @@ class GridGeohash(QgsProcessingAlgorithm):
                     self.tr('Precision'),
                     QgsProcessingParameterNumber.Integer,
                     defaultValue=1,
-                    minValue= 1,
-                    maxValue=10,
+                    minValue= 0,
+                    maxValue=5,
                     optional=False)
         self.addParameter(param)
 
         param = QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
-                'Geohash')
+                'Georef')
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
         self.precision = self.parameterAsInt(parameters, self.PRECISION, context)  
-        if self.precision < 1 or self.precision>10:
-            feedback.reportError('Precision parameter must be in range [1,10]')
+        if self.precision < 0 or self.precision>5:
+            feedback.reportError('Density parameter must be in range [0,5]')
             return False
          
          # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-        # Ensure that when precision > 4, the extent must be set
-        if self.precision > 4 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when precision is greater than 4, the grid extent must be set.')
+        # Ensure that when precision > 3, the extent must be set
+        if self.precision > 3 and (self.grid_extent is None or self.grid_extent.isEmpty()):
+            feedback.reportError('For performance reason, when precision is greater than 3, the grid extent must be set.')
             return False
         
         return True
     
-    def geohash_to_bbox(self, gh):
-        """Convert geohash to bounding box coordinates."""
-        lat, lon = geohash.decode(gh)
-        lat_err, lon_err = geohash.decode_exactly(gh)[2:]
+    def georef_to_bbox(self, gh):
+        """Convert georef to bounding box coordinates."""
+        lat, lon = georef.decode(gh)
+        lat_err, lon_err = georef.decode_exactly(gh)[2:]
         bbox = {
             'w': max(lon - lon_err, -180),
             'e': min(lon + lon_err, 180),
@@ -150,9 +150,9 @@ class GridGeohash(QgsProcessingAlgorithm):
         }
         return bbox
 
-    def geohash_to_polygon(self, gh):
-        """Convert geohash to a QGIS QgsGeometry Polygon."""
-        bbox = self.geohash_to_bbox(gh)
+    def georef_to_polygon(self, gh):
+        """Convert georef to a QGIS QgsGeometry Polygon."""
+        bbox = self.georef_to_bbox(gh)
 
         # Create a list of QgsPointXY from the bounding box coordinates
         qgis_points = [
@@ -166,27 +166,27 @@ class GridGeohash(QgsProcessingAlgorithm):
         # Create and return a QGIS QgsGeometry Polygon from the points
         return QgsGeometry.fromPolygonXY([qgis_points])
 
-    def expand_geohash(self, gh, target_length, writer, fields, feedback):
-        """Recursive function to expand geohashes to target precision and write them."""
+    def expand_georef(self, gh, target_length, writer, fields, feedback):
+        """Recursive function to expand georefes to target precision and write them."""
         if len(gh) == target_length:
-            polygon = self.geohash_to_polygon(gh)
+            polygon = self.georef_to_polygon(gh)
             feature = QgsFeature(fields)
-            feature.setAttribute("geohash", gh)
+            feature.setAttribute("georef", gh)
             feature.setGeometry(polygon)
             writer.addFeature(feature)
             return
         
-        # Expand the geohash with all possible characters
+        # Expand the georef with all possible characters
         for char in "0123456789bcdefghjkmnpqrstuvwxyz":
             if feedback.isCanceled():
                 return
-            self.expand_geohash(gh + char, target_length, writer, fields, feedback)
+            self.expand_georef(gh + char, target_length, writer, fields, feedback)
 
-    def expand_geohash_within_extent(self, gh, target_length, writer, fields, extent, feedback):
-        """Recursive function to expand geohashes to target precision and write them within the specified extent."""
+    def expand_georef_within_extent(self, gh, target_length, writer, fields, extent, feedback):
+        """Recursive function to expand georefes to target precision and write them within the specified extent."""
         
-        # Get the geohash as a QgsGeometry polygon
-        polygon = self.geohash_to_polygon(gh)
+        # Get the georef as a QgsGeometry polygon
+        polygon = self.georef_to_polygon(gh)
 
         # Check if the polygon's bounding box intersects with the extent
         if not polygon.boundingBox().intersects(extent):
@@ -196,22 +196,22 @@ class GridGeohash(QgsProcessingAlgorithm):
         # If we reach the target length, we can write the feature
         if len(gh) == target_length:
             feature = QgsFeature(fields)
-            feature.setAttribute("geohash", gh)
+            feature.setAttribute("georef", gh)
             feature.setGeometry(polygon)
             writer.addFeature(feature)
             return
         
-        # If not at the target length, expand the geohash with all possible characters
+        # If not at the target length, expand the georef with all possible characters
         for char in "0123456789bcdefghjkmnpqrstuvwxyz":
             if feedback.isCanceled():
                 return
             
-            # Recursively expand the geohash with the next character
-            self.expand_geohash_within_extent(gh + char, target_length, writer, fields, extent, feedback)
+            # Recursively expand the georef with the next character
+            self.expand_georef_within_extent(gh + char, target_length, writer, fields, extent, feedback)
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = QgsFields()
-        fields.append(QgsField("geohash", QVariant.String))
+        fields.append(QgsField("georef", QVariant.String))
 
         # Get the output sink and its destination ID (this handles both file and temporary layers)
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context, 
@@ -221,40 +221,40 @@ class GridGeohash(QgsProcessingAlgorithm):
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
         
-        # Initial geohashes covering the world at the lowest precision
-        initial_geohashes = ["b", "c", "f", "g", "u", "v", "y", "z", 
+        # Initial georefes covering the world at the lowest precision
+        initial_georefes = ["b", "c", "f", "g", "u", "v", "y", "z", 
                             "8", "9", "d", "e", "s", "t", "w", "x", 
                             "0", "1", "2", "3", "p", "q", "r", "k", 
                             "m", "n", "h", "j", "4", "5", "6", "7"]
 
-        # Expand each initial geohash to the target precision
-        total_geohashes = len(initial_geohashes)
-        feedback.pushInfo(f"Expanding initial geohashes to precision {self.precision}")
+        # Expand each initial georef to the target precision
+        total_georefes = len(initial_georefes)
+        feedback.pushInfo(f"Expanding initial georefes to precision {self.precision}")
        
         if  self.grid_extent is None or self.grid_extent.isEmpty():
-            for idx, gh in enumerate(initial_geohashes):
+            for idx, gh in enumerate(initial_georefes):
                 if feedback.isCanceled():
                     break
                 
-                feedback.setProgress(int((idx / total_geohashes) * 100))
-                feedback.pushInfo(f"Processing geohash prefix: {gh}")
+                feedback.setProgress(int((idx / total_georefes) * 100))
+                feedback.pushInfo(f"Processing georef prefix: {gh}")
 
-                self.expand_geohash(gh, self.precision, sink, fields,feedback)
+                self.expand_georef(gh, self.precision, sink, fields,feedback)
         else: 
-            filtered_geohashes = []
-            for gh in initial_geohashes:
-                geohash_polygon = self.geohash_to_polygon(gh)  # Already a QgsGeometry now
-                if geohash_polygon.boundingBox().intersects(self.grid_extent):
-                    filtered_geohashes.append(gh)
-            initial_geohashes = filtered_geohashes  # Replace with only intersecting geohashes
-            for idx, gh in enumerate(initial_geohashes):
+            filtered_georefes = []
+            for gh in initial_georefes:
+                georef_polygon = self.georef_to_polygon(gh)  # Already a QgsGeometry now
+                if georef_polygon.boundingBox().intersects(self.grid_extent):
+                    filtered_georefes.append(gh)
+            initial_georefes = filtered_georefes  # Replace with only intersecting georefes
+            for idx, gh in enumerate(initial_georefes):
                 if feedback.isCanceled():
                     break
                 
-                feedback.setProgress(int((idx / total_geohashes) * 100))
-                feedback.pushInfo(f"Processing geohash prefix: {gh}")
+                feedback.setProgress(int((idx / total_georefes) * 100))
+                feedback.pushInfo(f"Processing georef prefix: {gh}")
 
-                self.expand_geohash_within_extent(gh, self.precision, sink, fields, self.grid_extent,feedback)
+                self.expand_georef_within_extent(gh, self.precision, sink, fields, self.grid_extent,feedback)
 
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor('#FF0000')
@@ -281,7 +281,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
         label = QgsPalLayerSettings()
-        label.fieldName = 'geohash'
+        label.fieldName = 'georef'
         format = label.format()
         format.setColor(self.font_color)
         format.setSize(8)
