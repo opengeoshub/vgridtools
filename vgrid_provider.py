@@ -38,6 +38,9 @@ from .processing_provider.grid_georef import GridGeoref
 from .processing_provider.grid_olc import GridOLC
 from .processing_provider.grid_maidenhead import GridMaidenhead
 from .processing_provider.grid_gars import GridGARS
+from .processing_provider.grid_vcode import GridVcode
+from .processing_provider.grid_s2 import GridS2
+from .processing_provider.grid_mgrs import GridMGRS
 
 
 class VgridProvider(QgsProcessingProvider):
@@ -61,6 +64,11 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(GridGeohash())
         self.addAlgorithm(GridMaidenhead())
         self.addAlgorithm(GridGARS())
+        self.addAlgorithm(GridVcode())
+        self.addAlgorithm(GridS2())
+        self.addAlgorithm(GridMGRS())
+
+
     def id(self):
         return 'vgrid'
 

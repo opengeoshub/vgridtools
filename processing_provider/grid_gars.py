@@ -290,8 +290,6 @@ class GridGARS(QgsProcessingAlgorithm):
                     feedback.pushInfo("Process canceled by user.")
                     return []  # Cancel if the user stops the process
 
-            
-
         return gars_grid
 
     def processAlgorithm(self, parameters, context, feedback):
