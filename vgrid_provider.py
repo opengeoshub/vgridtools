@@ -41,6 +41,7 @@ from .processing_provider.grid_gars import GridGARS
 from .processing_provider.grid_vcode import GridVcode
 from .processing_provider.grid_s2 import GridS2
 from .processing_provider.grid_mgrs import GridMGRS
+from .processing_provider.grid_gzd import GridGZD
 
 
 class VgridProvider(QgsProcessingProvider):
@@ -67,6 +68,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(GridVcode())
         self.addAlgorithm(GridS2())
         self.addAlgorithm(GridMGRS())
+        self.addAlgorithm(GridGZD())
 
 
     def id(self):

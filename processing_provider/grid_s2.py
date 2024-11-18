@@ -161,8 +161,8 @@ class GridS2(QgsProcessingAlgorithm):
         # Get the grid extent or the entire world if not defined
         if self.grid_extent is None or self.grid_extent.isEmpty():
             # Define the entire world extent using LatLngRect
-            south_west = LatLng.from_degrees(-90, -180)
-            north_east = LatLng.from_degrees(90, 180)
+            south_west = LatLng.from_degrees(-85.051129, -180)
+            north_east = LatLng.from_degrees(85.051129, 180)
             bounds = LatLngRect(south_west, north_east)
         else:
             xmin = self.grid_extent.xMinimum()
