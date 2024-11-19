@@ -41,7 +41,7 @@ from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
-from ..vgridlibrary.geocode.s2 import CellId, LatLng, LatLngRect,Cell
+from ..vgridlibrary.geocode import s2 
 from ..vgridlibrary.imgs import Imgs
 
 
@@ -123,7 +123,7 @@ class GridS2(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
-                's2')
+                'S2')
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
@@ -134,115 +134,98 @@ class GridS2(QgsProcessingAlgorithm):
          
          # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-        # Ensure that when precision > 4, the extent must be set
-        if self.precision > 10 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when precision is greater than 10, the grid extent must be set.')
+        if self.precision > 8 and (self.grid_extent is None or self.grid_extent.isEmpty()):
+            feedback.reportError('For performance reason, when precision is greater than 8, the grid extent must be set.')
             return False
         
         return True
     
     def processAlgorithm(self, parameters, context, feedback):
         fields = QgsFields()
-        fields.append(QgsField("s2", QVariant.String))
-
-        # Create the output sink (vector layer)
+        fields.append(QgsField("s2_token", QVariant.String))
+        fields.append(QgsField("s2_id", QVariant.String))
+        
+        # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
-            parameters, 
-            self.OUTPUT, 
-            context, 
-            fields, 
-            QgsWkbTypes.Polygon, 
+            parameters,
+            self.OUTPUT,
+            context,
+            fields,
+            QgsWkbTypes.Polygon,
             QgsCoordinateReferenceSystem('EPSG:4326')
         )
 
-        if sink is None:
-            raise QgsProcessingException("Failed to create output sink")
+        if not sink:
+            raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
-        # Get the grid extent or the entire world if not defined
         if self.grid_extent is None or self.grid_extent.isEmpty():
-            # Define the entire world extent using LatLngRect
-            south_west = LatLng.from_degrees(-85.051129, -180)
-            north_east = LatLng.from_degrees(85.051129, 180)
-            bounds = LatLngRect(south_west, north_east)
+            extent_bbox = None
         else:
-            xmin = self.grid_extent.xMinimum()
-            ymin = self.grid_extent.yMinimum()
-            xmax = self.grid_extent.xMaximum()
-            ymax = self.grid_extent.yMaximum()
-            
-            # Create LatLng objects for bounds (SW and NE corners)
-            south_west = LatLng.from_degrees(ymin, xmin)
-            north_east = LatLng.from_degrees(ymax, xmax)
-            
-            # Create LatLngRect from corners
-            bounds = LatLngRect(south_west, north_east)
-
-        # Get S2 cell ID at the given precision (resolution level)
-        s2_level = self.precision  # Precision corresponds to the S2 cell level (0-30)
-        cell_ids = []
-
-        # Iterate over the bounding box and generate S2 cells
-        for lat in range(int(bounds.lat_lo().degrees), int(bounds.lat_hi().degrees) + 1):
-            for lng in range(int(bounds.lng_lo().degrees), int(bounds.lng_hi().degrees) + 1):
-                # Generate a LatLng from the coordinates
-                lat_lng = LatLng.from_degrees(lat, lng)
-                
-                # Create an S2 cell ID at the given precision
-                cell_id = CellId.from_lat_lng(lat_lng)
-                cell_id = cell_id.parent(s2_level) 
-                
-                cell_ids.append(cell_id)
-
-        total_cells = len(cell_ids)
-
-        # Iterate over the generated S2 cells and create features
-        for index, cell_id in enumerate(cell_ids):
-            # Convert CellId to S2Cell
-            s2cell = Cell(cell_id)
-
-            # Get the LatLngRect for the cell using the S2Cell's getRectBound method
-            cell_rect = s2cell.get_rect_bound()
-
-            # Define the corner points of the cell polygon
-            points = [
-                QgsPointXY(cell_rect.lat_lo().degrees, cell_rect.lng_lo().degrees),
-                QgsPointXY(cell_rect.lat_lo().degrees, cell_rect.lng_hi().degrees),
-                QgsPointXY(cell_rect.lat_hi().degrees, cell_rect.lng_hi().degrees),
-                QgsPointXY(cell_rect.lat_hi().degrees, cell_rect.lng_lo().degrees),
-                QgsPointXY(cell_rect.lat_lo().degrees, cell_rect.lng_lo().degrees)  # Closing the polygon
+            extent_bbox = [
+                [self.grid_extent.xMinimum(), self.grid_extent.yMinimum()],
+                [self.grid_extent.xMaximum(), self.grid_extent.yMaximum()]
             ]
-            
-            # Create a QgsGeometry polygon from the points
-            polygon = QgsGeometry.fromPolygonXY([points])
-            
-            # Generate the 's2' attribute for the S2 cell (e.g., "s2x123456")
-            s2_code = f"{cell_id.id()}"
+        
+        region = None
+        if extent_bbox:
+            region = s2.LatLngRect.from_point_pair(
+                s2.LatLng.from_degrees(extent_bbox[0][1], extent_bbox[0][0]),
+                s2.LatLng.from_degrees(extent_bbox[1][1], extent_bbox[1][0])
+            )
 
-            # Create a new feature and set its geometry and attributes
-            feature = QgsFeature(fields)
-            feature.setGeometry(polygon)
-            feature.setAttribute("s2", s2_code)
+        covering = s2.RegionCoverer()
+        covering.min_level = self.precision
+        covering.max_level = self.precision
+        covering.max_cells = 5000
 
-            # Add the feature to the output sink
+        # Get covering for the specified region or all regions
+        cells = covering.get_covering(region) if region else covering.get_covering(s2.LatLngRect.full())
+        total_cells = len(cells)
+        
+        feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
+        if total_cells > 1000000:
+            feedback.reportError("For performance reason, it must be lesser than 1000,000. Please input an appropriate extent or precision")
+            return {self.OUTPUT: dest_id}
+        
+        for idx, s2_cell_id in enumerate(cells):
+            progress = int((idx / total_cells) * 100)
+            feedback.setProgress(progress)
+
+            cell = s2.Cell(s2_cell_id)
+            s2_token = s2.CellId.to_token(s2_cell_id)
+            vertices = []
+            for i in range(4):  # S2 cells are quads
+                vertex = cell.get_vertex(i)
+                latlng = s2.LatLng.from_point(vertex)
+                vertices.append([latlng.lng().degrees, latlng.lat().degrees])
+            vertices.append(vertices[0])  # Close the ring
+
+            cell_geometry = QgsGeometry.fromPolygonXY([[QgsPointXY(x, y) for x, y in vertices]])
+
+            # Filter cells by extent if it exists
+            if extent_bbox:
+                if not cell_geometry.intersects(QgsGeometry.fromRect(self.grid_extent)):
+                    continue
+
+            feature = QgsFeature()
+            feature.setGeometry(cell_geometry)
+            feature.setAttributes([s2_token,str(s2_cell_id.id())])
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
 
-            # Push progress information every 1000 cells
-            if (index + 1) % 1000 == 0:
-                message = f"Processed {index + 1}/{total_cells}"
-                feedback.pushInfo(message)
+            if idx % 10000 == 0:  # Log progress every 10000 cells
+                feedback.pushInfo(f"Processed {idx} of {total_cells} cells...")
 
-            # Check if the process has been canceled
             if feedback.isCanceled():
                 break
-
-
-        # Apply style to the layer if loaded on completion
+        
+        feedback.pushInfo("S2 grid generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor('#FF0000')
             fontColor = QColor('#000000')
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
         
         return {self.OUTPUT: dest_id}
+
 
 class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
     instance = None
@@ -262,7 +245,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
         label = QgsPalLayerSettings()
-        label.fieldName = 's2'
+        label.fieldName = 's2_token'
         format = label.format()
         format.setColor(self.font_color)
         format.setSize(8)

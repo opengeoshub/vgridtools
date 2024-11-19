@@ -22,12 +22,16 @@ from qgis.core import (
     QgsProcessingLayerPostProcessorInterface,
     QgsProcessingParameterExtent,
     QgsProcessingParameterNumber,
+    QgsProcessingException,
     QgsProcessingParameterFeatureSink,
     QgsProcessingAlgorithm,
-    QgsProcessingException,
+    QgsCoordinateTransform,
+    QgsRectangle,
     QgsFields,
     QgsField,
     QgsPointXY, 
+    QgsPoint,
+    QgsPolygon,
     QgsFeature,
     QgsGeometry,
     QgsWkbTypes,
@@ -40,7 +44,7 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os,math
+import os, math
 from ..vgridlibrary.geocode import mgrs
 from ..vgridlibrary.imgs import Imgs
 
@@ -141,23 +145,26 @@ class GridMGRS(QgsProcessingAlgorithm):
         
         return True
     
-
     def processAlgorithm(self, parameters, context, feedback):
-        # Define fields
         fields = QgsFields()
-        fields.append(QgsField("MGRS", QVariant.String))
+        fields.append(QgsField("mgrs", QVariant.String))
 
-        # Create output sink
+        # Get the output sink and its destination ID
         (sink, dest_id) = self.parameterAsSink(
-            parameters, self.OUTPUT,
-            context, fields, QgsWkbTypes.Polygon, QgsCoordinateReferenceSystem("EPSG:4326")
+            parameters, 
+            self.OUTPUT, 
+            context, 
+            fields, 
+            QgsWkbTypes.Polygon, 
+            QgsCoordinateReferenceSystem('EPSG:4326')
         )
-        
+
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")        
+        
 
         if self.grid_extent is None or self.grid_extent.isEmpty():
-            lat_min, lat_max = -80, 84.0  # MGRS is valid between these latitudes
+            lat_min, lat_max = -79.99999, 84.0  # MGRS is valid between these latitudes
             lon_min, lon_max = -180.0, 180.0
         else:
             lon_min = self.grid_extent.xMinimum()
@@ -165,88 +172,80 @@ class GridMGRS(QgsProcessingAlgorithm):
             lon_max = self.grid_extent.xMaximum()
             lat_max = self.grid_extent.yMaximum()
 
-        feedback.pushInfo(f"Generating MGRS grid at precision {self.precision}.")
+        step = 1
+        if self.precision == 0:
+            step = 1    # 100 km grid cell
+        if self.precision == 1:
+            step = 0.1    # 10 km grid cell
+        elif self.precision == 2:
+            step = 0.01   # 1 km grid cell
+        elif self.precision == 3:
+            step = 0.001  # 100 m grid cell
+        elif self.precision == 4:
+            step = 0.0001 # 10 m grid cell
+        elif self.precision == 5:
+            step = 0.00001 # 1 m grid cell
+        else:
+            step = 1 
+    
 
-        # Define the grid zone bounds and step sizes
-        bands = "CDEFGHJKLMNPQRSTUVWX"
-        # bands = "C"
-        lat = -80
-        for band in bands:
-            feedback.pushInfo(f"Processing band {band}")
-            height = 8 if band != 'X' else 12
-            lon = -180
-            while lon < 180:
-                # Loop through GZDs
-                gzd = f"{(int((lon + 180) / 6) + 1):02d}{band}"
-                create_mgrs_grids(lon, lat, 6, height, gzd, self.precision, sink, feedback)
-                lon += 6
-            lat += height
+        total_cells = int(((lat_max - lat_min) / step) * ((lon_max - lon_min) / step)) 
+        processed_cells = 0
 
-        feedback.pushInfo("MGRS grid generation completed.")
 
-        # Apply styling (optional)
+        lat = lat_min
+        while lat <= lat_max:
+            lon = lon_min
+            while lon <= lon_max:
+                # Convert lat/lon to MGRS code at the desired precision
+                mgrs_code = mgrs.toMgrs(lat, lon, self.precision)
+
+                # Get the MGRS cell polygon (a tuple of (lon, lat) coordinates for the corners of the MGRS cell)
+                origin_lat, origin_lon, min_lat, min_lon, max_lat, max_lon, precision = mgrs.mgrscell(mgrs_code)
+
+                # Create the coordinates for the polygon (using the corners)
+                vertices = [
+                    QgsPointXY(min_lon, min_lat),
+                    QgsPointXY(max_lon, min_lat),
+                    QgsPointXY(max_lon, max_lat),
+                    QgsPointXY(min_lon, max_lat),
+                    QgsPointXY(min_lon, min_lat)
+                ]
+                polygon = QgsGeometry.fromPolygonXY([vertices])
+
+                # Create a QgsFeature and set the geometry
+                feature = QgsFeature()
+                feature.setGeometry(polygon)
+
+                # Optionally, add attributes to the feature
+                feature.setAttributes([mgrs_code])
+
+                # Add the feature to the sink (using FastInsert for efficiency)
+                sink.addFeature(feature, QgsFeatureSink.FastInsert)
+
+                processed_cells += 1
+                # Optionally, show progress info
+                if processed_cells % 10000 == 0:  # Log every 100 processed cells
+                    feedback.pushInfo(f"Processed {processed_cells}/{total_cells} cells")
+                
+                progress_percentage = (processed_cells / total_cells) * 100
+                feedback.setProgress(int(progress_percentage))  # Update progress bar
+
+                if feedback.isCanceled():
+                    break
+                lon += step
+            lat += step
+      
+        # Apply styling if layer is loaded on completion
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor('#FF0000')  # Red lines
-            fontColor = QColor('#000000')  # Black font
+            lineColor = QColor('#FF0000')
+            fontColor = QColor('#000000')
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
                 StylePostProcessor.create(lineColor, fontColor)
             )
-
+        
+        feedback.pushInfo("Processing complete.")
         return {self.OUTPUT: dest_id}
-
-def km_to_lon_degree(km, lat):
-    """Convert a distance in kilometers to degrees of longitude at a given latitude."""
-    return km / (111.32 * math.cos(math.radians(lat)))
-
-def create_mgrs_grids(lon_start, lat_start, lon_width, lat_height, gzd, precision, sink, feedback):
-    """Create MGRS grids at the specified precision."""
-    if precision == 0:
-        # Precision 0 means 100 km x 100 km squares (100,000 meters)
-        lon_step_km = 100  # 100 km step in longitude
-        lat_step_km = 100  # 100 km step in latitude
-
-        # Convert lon_step_km and lat_step_km to degrees of longitude and latitude
-        lon_step_deg = km_to_lon_degree(lon_step_km, lat_start)  # Convert to degrees at the current latitude
-        lat_step_deg = lat_step_km / 111.32  # Convert km to degrees for latitude (constant)
-
-    else:
-        # Calculate the step size for higher precision
-        step = 10 ** (5 - precision)  # Step size in meters
-        lon_step_deg = km_to_lon_degree(step / 1000, lat_start)  # Convert meters to degrees
-        lat_step_deg = step / 111.32  # Convert meters to degrees for latitude
-
-    # Add logging to check the calculated steps
-    feedback.pushInfo(f"Lon step (in degrees): {lon_step_deg}, Lat step (in degrees): {lat_step_deg}")
-
-    # Iterate over the grid to create each polygon
-    for i in range(int(lon_width / lon_step_deg)):
-        for j in range(int(lat_height / lat_step_deg)):
-            lon_min = lon_start + i * lon_step_deg
-            lon_max = lon_min + lon_step_deg
-            lat_min = lat_start + j * lat_step_deg
-            lat_max = lat_min + lat_step_deg
-
-            # Create a MGRS code for each grid square
-            mgrs_code = f"{gzd}{i:02d}{j:02d}"
-            add_polygon_to_sink(lon_min, lat_min, lon_max, lat_max, mgrs_code, sink, feedback)
-
-def add_polygon_to_sink(lon_min, lat_min, lon_max, lat_max, mgrs_code, sink, feedback):
-    """Add a polygon representing the MGRS grid cell to the sink."""
-    try:
-        # Define the coordinates of the polygon
-        polygon = QgsGeometry.fromPolygonXY([[QgsPointXY(lon_min, lat_min),
-                                              QgsPointXY(lon_max, lat_min),
-                                              QgsPointXY(lon_max, lat_max),
-                                              QgsPointXY(lon_min, lat_max),
-                                              QgsPointXY(lon_min, lat_min)]])
-        # Create a feature and add the polygon geometry
-        feature = QgsFeature()
-        feature.setGeometry(polygon)
-        feature.setAttributes([mgrs_code])  # Set the MGRS code as an attribute
-        sink.addFeature(feature, QgsFeatureSink.FastInsert)
-        feedback.pushInfo(f"Added MGRS cell: {mgrs_code}")
-    except Exception as e:
-        feedback.pushWarning(f"Error adding MGRS cell {mgrs_code}: {e}")
 
 
 class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):

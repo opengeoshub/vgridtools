@@ -138,8 +138,8 @@ class GridGARS(QgsProcessingAlgorithm):
         # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
         # Ensure that when precision > 4, the extent must be set
-        if self.precision < 15 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when precision is smaller than 15 minutes, the grid extent must be set.')
+        if self.precision < 30 and (self.grid_extent is None or self.grid_extent.isEmpty()):
+            feedback.reportError('For performance reason, when precision is smaller than 30 minutes, the grid extent must be set.')
             return False
         
         return True
@@ -150,14 +150,16 @@ class GridGARS(QgsProcessingAlgorithm):
         lat_min, lat_max = -90.0, 90.0
         
         # Set resolution in degrees based on precision in minutes
-        if precision == 1:
-            res = 1 / 60.0  # 1 minute in degrees
-        elif precision == 5:
-            res = 5 / 60.0  # 5 minutes in degrees
-        elif precision == 15:
-            res = 15 / 60.0  # 15 minutes in degrees
-        elif precision == 30:
-            res = 30 / 60.0  # 30 minutes in degrees
+        if precision in [30,15,5,1]:
+            res = precision/ 60.0
+        # if precision == 1:
+        #     res = 1 / 60.0  # 1 minute in degrees
+        # elif precision == 5:
+        #     res = 5 / 60.0  # 5 minutes in degrees
+        # elif precision == 15:
+        #     res = 15 / 60.0  # 15 minutes in degrees
+        # elif precision == 30:
+        #     res = 30 / 60.0  # 30 minutes in degrees
         else:
             raise ValueError("Unsupported precision. Choose from 1, 5, 15, or 30 minutes.")
         
@@ -170,6 +172,12 @@ class GridGARS(QgsProcessingAlgorithm):
         # Calculate total cells for progress reporting
         total_cells = len(longitudes) * len(latitudes)
         cell_count = 0
+
+        feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
+        
+        if total_cells > 1000000:
+            feedback.reportError("For performance reason, it must be lesser than 1000000. Please input an appropriate extent or precision")
+            return None
 
         # Loop over longitudes and latitudes
         for lon in longitudes:
@@ -213,14 +221,16 @@ class GridGARS(QgsProcessingAlgorithm):
         lat_min, lat_max = -90.0, 90.0
         
         # Set resolution in degrees based on precision in minutes
-        if precision == 1:
-            res = 1 / 60.0  # 1 minute in degrees
-        elif precision == 5:
-            res = 5 / 60.0  # 5 minutes in degrees
-        elif precision == 15:
-            res = 15 / 60.0  # 15 minutes in degrees
-        elif precision == 30:
-            res = 30 / 60.0  # 30 minutes in degrees
+        if precision in [30,15,5,1]:
+            res = precision/ 60.0
+        # if precision == 1:
+        #     res = 0.5 / 60.0  # 1 minute in degrees
+        # elif precision == 5:
+        #     res = 5 / 60.0  # 5 minutes in degrees
+        # elif precision == 15:
+        #     res = 15 / 60.0  # 15 minutes in degrees
+        # elif precision == 30:
+        #     res = 30 / 60.0  # 30 minutes in degrees
         else:
             raise ValueError("Unsupported precision. Choose from 1, 5, 15, or 30 minutes.")
         
@@ -239,6 +249,11 @@ class GridGARS(QgsProcessingAlgorithm):
         # Total cells to process, for progress feedback
         total_cells = (max_x - min_x) * (max_y - min_y)
         cell_count = 0
+        feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
+        
+        if total_cells > 1000000:
+            feedback.reportError("For performance reason, it must be lesser than 1000,000. Please input an appropriate extent or precision")
+            return None
 
         # Prepare to process only the cells within the valid range (intersecting with extent)
         for i in range(min_x, max_x):
@@ -311,33 +326,35 @@ class GridGARS(QgsProcessingAlgorithm):
 
         if self.grid_extent is None or self.grid_extent.isEmpty():
             grid_cells = self.garsgrid(self.precision,feedback)
-            for entry in grid_cells:
-                # Create a QgsFeature object
-                feature = QgsFeature()
-                
-                # Set the feature's geometry (from the dictionary)
-                feature.setGeometry(entry['geometry'])
-                
-                # Set the feature's attributes (in this case, just the 'gars' attribute)
-                feature.setAttributes([entry['gars']])
-                
-                # Add the feature to the sink (use FastInsert for faster insertion)
-                sink.addFeature(feature, QgsFeatureSink.FastInsert)
+            if grid_cells:
+                for entry in grid_cells:
+                    # Create a QgsFeature object
+                    feature = QgsFeature()
+                    
+                    # Set the feature's geometry (from the dictionary)
+                    feature.setGeometry(entry['geometry'])
+                    
+                    # Set the feature's attributes (in this case, just the 'gars' attribute)
+                    feature.setAttributes([entry['gars']])
+                    
+                    # Add the feature to the sink (use FastInsert for faster insertion)
+                    sink.addFeature(feature, QgsFeatureSink.FastInsert)
 
         else:
             grid_cells = self.garsgrid_with_extent(self.precision, self.grid_extent, feedback)
-            for feature in grid_cells:
-                # Create a QgsFeature object
-                feature_object = QgsFeature()
-                
-                # Set the feature's geometry (from the feature returned by garsgrid_with_extent)
-                feature_object.setGeometry(feature.geometry())
-                
-                # Set the feature's attributes (in this case, just the 'gars' attribute)
-                feature_object.setAttributes([feature['gars']])
-                
-                # Add the feature to the sink (use FastInsert for faster insertion)
-                sink.addFeature(feature_object, QgsFeatureSink.FastInsert)
+            if (grid_cells):
+                for feature in grid_cells:
+                    # Create a QgsFeature object
+                    feature_object = QgsFeature()
+                    
+                    # Set the feature's geometry (from the feature returned by garsgrid_with_extent)
+                    feature_object.setGeometry(feature.geometry())
+                    
+                    # Set the feature's attributes (in this case, just the 'gars' attribute)
+                    feature_object.setAttributes([feature['gars']])
+                    
+                    # Add the feature to the sink (use FastInsert for faster insertion)
+                    sink.addFeature(feature_object, QgsFeatureSink.FastInsert)
             
 
         if context.willLoadLayerOnCompletion(dest_id):
