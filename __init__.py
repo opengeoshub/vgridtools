@@ -27,16 +27,21 @@ __author__ = 'Thang Quach'
 __date__ = '2024-11-20'
 __copyright__ = '(L) 2024 by Thang Quach'
 
+from PyQt5.QtWidgets import QInputDialog
 
 # noinspection PyPep8Naming
-def classFactory(iface):  # pylint: disable=invalid-name
-    """Load vgrid class from file vgrid.
-    :param iface: A QGIS interface instance.
-    :type iface: QgsInterface
-    """
-    #
-    from .vgrid import VgridPlugin
-    # from .vgrid_menu import vgrid_menu
+def classFactory(iface):  # pylint: disable=invalid-name  
+  try:
+      import h3
+  except ImportError:
+    command = "import pip\npip.main(['install','h3'])"   
+    text, ok = QInputDialog.getMultiLineText(None, "Vgrid Tools - H3 module not found", 
+                                            "To run Vgrid Tooks, please copy and run this in the Python console to install H3 and reload QGIS:", 
+                                            command)
 
-    return VgridPlugin(iface)
-    # return vgrid_menu(iface)
+  from .vgrid import VgridPlugin
+  # from .vgrid_menu import vgrid_menu
+
+  return VgridPlugin(iface)
+  # return vgrid_menu(iface)
+  

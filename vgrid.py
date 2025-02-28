@@ -45,22 +45,17 @@ from .vgrid_provider import VgridProvider
 from .expressions import *
 from .vgridlibrary.grid import gzd
 # from .vgrid_dialogs import *
-
-
 exprs =(latlon2olc,latlon2mgrs,latlon2geohash,latlon2georef,latlon2s2,latlon2vcode,latlon2maidenhead,latlon2gars)
 
-cmd_folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
-
-if cmd_folder not in sys.path:
-    sys.path.insert(0, cmd_folder)
-
+    
 class VgridPlugin(object):
 
-    def __init__(self, iface):
+    def __init__(self, iface,):
         self.provider = None
         self.plugin_dir = os.path.dirname(__file__)
         self.iface = iface
-        self.Vgrid_menu = None
+        self.Vgrid_menu = None                 
+    
 
     def initProcessing(self):
         """Init Processing provider for QGIS >= 3.8."""
@@ -68,7 +63,7 @@ class VgridPlugin(object):
         QgsApplication.processingRegistry().addProvider(self.provider)
 
 
-    def initGui(self):
+    def initGui(self):       
         self.initProcessing()
         for expr in exprs:
             if not QgsExpression.isFunctionName(expr.name()):

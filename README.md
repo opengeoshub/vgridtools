@@ -54,7 +54,7 @@ Convert LatLon to Open Location Code (OLC)/ Google Plus Code.
 Convert LatLon to MGRS Code.
 <h4>Syntax</h4>
 <li>
-<code>latlon2mgrs(lat, long, precision [0-->5]) or latlon2mgrs($y, $x, precision)</span> in WGS84 CRS</code>
+<code>latlon2mgrs(lat, long, resolution [0-->5]) or latlon2mgrs($y, $x, resolution)</span> in WGS84 CRS</code>
 </li> 
 <h4>Example usage</h4>
 <li>
@@ -70,7 +70,7 @@ Convert LatLon to MGRS Code.
 Convert LatLon to Geohash Code.
 <h4>Syntax</h4>
 <li>
-<code>latlon2geohash(lat, long, precision [1-->30]) or latlon2geohash($y, $x, precision)</span> in WGS84 CRS</code>
+<code>latlon2geohash(lat, long, resolution [1-->30]) or latlon2geohash($y, $x, resolution)</span> in WGS84 CRS</code>
 </li> 
 <h4>Example usage</h4>
 <li>
@@ -86,7 +86,7 @@ Convert LatLon to Geohash Code.
 Convert LatLon to GEOREF Code.
 <h4>Syntax</h4>
 <li>
-<code>latlon2georef(lat, long, precision [0-->10]) or latlon2georef($y, $x, precision)</span> in WGS84 CRS</code>
+<code>latlon2georef(lat, long, resolution [0-->10]) or latlon2georef($y, $x, resolution)</span> in WGS84 CRS</code>
 </li> 
 <h4>Example usage</h4>
 <li>
@@ -102,7 +102,7 @@ Convert LatLon to GEOREF Code.
 Convert LatLon to S2 Code.
 <h4>Syntax</h4>
 <li>
-<code>latlon2s2(lat, long, precision [0-->30]) or latlon2s2($y, $x, precision)</span> in WGS84 CRS</code>
+<code>latlon2s2(lat, long, resolution [0-->30]) or latlon2s2($y, $x, resolution)</span> in WGS84 CRS</code>
 </li> 
 <h4>Example usage</h4>
 <li>
@@ -118,7 +118,7 @@ Convert LatLon to S2 Code.
 Convert LatLon to Vcode.
 <h4>Syntax</h4>
 <li>
-<code>latlon2vcode(lat, long, precision/ zoom level [0;25])  or latlon2vcode($y, $x, precision/ zoom level)</span> in WGS84 CRS</code>
+<code>latlon2vcode(lat, long, resolution/ zoom level [0;25])  or latlon2vcode($y, $x, resolution/ zoom level)</span> in WGS84 CRS</code>
 </li> 
 <h4>Example usage</h4>
 <li>
@@ -134,7 +134,7 @@ Convert LatLon to Vcode.
 Convert LatLon to Maidenhead Code.
 <h4>Syntax</h4>
 <li>
-<code>latlon2maidenhead(lat, long, precision [1-->4]) or latlon2maidenhead($y, $x, precision)</span> in WGS84 CRS</code>
+<code>latlon2maidenhead(lat, long, resolution [1-->4]) or latlon2maidenhead($y, $x, resolution)</span> in WGS84 CRS</code>
 </li> 
 <h4>Example usage</h4>
 <li>
@@ -150,7 +150,7 @@ Convert LatLon to Maidenhead Code.
 Convert LatLon to GARS Code.
 <h4>Syntax</h4>
 <li>
-<code>latlon2gars(lat, long, precision [1, 5, 15, 30 (minutes)]) or latlon2gars($y, $x, precision)</span> in WGS84 CRS</code>
+<code>latlon2gars(lat, long, resolution [1, 5, 15, 30 (minutes)]) or latlon2gars($y, $x, resolution)</span> in WGS84 CRS</code>
 </li> 
 <h4>Example usage</h4>
 <li>

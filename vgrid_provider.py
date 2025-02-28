@@ -32,17 +32,22 @@ import os
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-from .processing_provider.codes2cells import Codes2Cells
-from .processing_provider.grid_geohash import GridGeohash
-from .processing_provider.grid_georef import GridGeoref
-from .processing_provider.grid_olc import GridOLC
-from .processing_provider.grid_maidenhead import GridMaidenhead
-from .processing_provider.grid_gars import GridGARS
-from .processing_provider.grid_vcode import GridVcode
-from .processing_provider.grid_s2 import GridS2
-from .processing_provider.grid_mgrs import GridMGRS
-from .processing_provider.grid_gzd import GridGZD
+from .processing_provider.conversion.codes2cells import Codes2Cells
+from .processing_provider.conversion.feature2dggs import Feature2DGGS
 
+from .processing_provider.generator.grid_h3 import GridH3
+from .processing_provider.generator.grid_s2 import GridS2
+from .processing_provider.generator.grid_olc import GridOLC
+from .processing_provider.generator.grid_geohash import GridGeohash
+from .processing_provider.generator.grid_georef import GridGeoref
+from .processing_provider.generator.grid_mgrs import GridMGRS
+from .processing_provider.generator.grid_gzd import GridGZD
+from .processing_provider.generator.grid_tilecode import GridTilecode
+from .processing_provider.generator.grid_maidenhead import GridMaidenhead
+from .processing_provider.generator.grid_gars import GridGARS
+
+
+import pathlib,sys
 
 class VgridProvider(QgsProcessingProvider):
 
@@ -51,6 +56,7 @@ class VgridProvider(QgsProcessingProvider):
         Default constructor.
         """
         QgsProcessingProvider.__init__(self)
+     
 
     def unload(self):
         """
@@ -61,14 +67,18 @@ class VgridProvider(QgsProcessingProvider):
 
     def loadAlgorithms(self):
         self.addAlgorithm(Codes2Cells())
+        self.addAlgorithm(Feature2DGGS())
+
+        self.addAlgorithm(GridH3())
+        self.addAlgorithm(GridS2())
         # self.addAlgorithm(GridOLC())
         self.addAlgorithm(GridGeohash())
-        self.addAlgorithm(GridMaidenhead())
-        self.addAlgorithm(GridGARS())
-        self.addAlgorithm(GridVcode())
-        self.addAlgorithm(GridS2())
+        # self.addAlgorithm(GridGeoref())
         self.addAlgorithm(GridMGRS())
         self.addAlgorithm(GridGZD())
+        self.addAlgorithm(GridTilecode())
+        self.addAlgorithm(GridMaidenhead())
+        self.addAlgorithm(GridGARS())
 
 
     def id(self):

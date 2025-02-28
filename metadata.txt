@@ -1,19 +1,19 @@
 [general]
 name=Vgrid
 qgisMinimumVersion=3.10
-description=Vgrid - DGGS and Cell-based Geocoding Utilities
-about= - Encode, decode Latlong to S2, Rhealpix, OLC/ OpenLocationCode/ Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS, - Convert codes at a certain precision to GeoJSON, - Generate grids 
+description=Vgrid - Global Geocoding Systems
+about= - Encode, decode Latlong to OLC/ OpenLocationCode/ Google Plus Codes, MGRS, Geohash, GEOREF, S2, Vcode, Maidenhead, GARS, - Convert codes at a certain resolution to GeoJSON, - Generate grids for geocoding systems
 version=24.11.20
 author=Thang Quach
 owner=thangqd
 email=quachdongthang@gmail.com
 tracker=https://github.com/thangqd/vgridtools/issues
 repository=https://github.com/thangqd/vgridtools/
-tags=Discrete Global Grid System, DGGS, S2, Rhealpix, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS
+tags=Discrete Global Grid System, DGGS, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, S2, Vcode, Maidenhead, GARS
 
 homepage=https://github.com/thangqd/vgridtools/
 category=Processing
-icon=images/vgrid_logo.png
+icon=images/vgrid.svg
 
 hasProcessingProvider=True
 experimental=False
