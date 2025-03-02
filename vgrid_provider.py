@@ -32,8 +32,8 @@ import os
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-from .processing_provider.conversion.codes2cells import Codes2Cells
-from .processing_provider.conversion.feature2dggs import Feature2DGGS
+from .processing_provider.conversion.cellid2dggs import CellID2DGGS
+from .processing_provider.conversion.vector2dggs import Vector2DGGS
 
 from .processing_provider.generator.grid_h3 import GridH3
 from .processing_provider.generator.grid_s2 import GridS2
@@ -66,8 +66,8 @@ class VgridProvider(QgsProcessingProvider):
         pass
 
     def loadAlgorithms(self):
-        self.addAlgorithm(Codes2Cells())
-        self.addAlgorithm(Feature2DGGS())
+        self.addAlgorithm(CellID2DGGS())
+        self.addAlgorithm(Vector2DGGS())
 
         self.addAlgorithm(GridH3())
         self.addAlgorithm(GridS2())
@@ -88,7 +88,7 @@ class VgridProvider(QgsProcessingProvider):
         return self.tr('Vgrid Tools')
 
     def icon(self):
-        return QIcon(os.path.dirname(__file__) + '/images/vgrid.svg')
+        return QIcon(os.path.dirname(__file__) + '../images/vgrid.svg')
 
     def longName(self):
         """
