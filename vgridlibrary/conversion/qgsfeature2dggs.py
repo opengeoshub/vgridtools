@@ -266,77 +266,86 @@ def point2s2(feature, resolution):
         return [s2_feature]
 
 def poly2s2(feature, resolution):    
-    return None
-    # feature_geometry = feature.geometry()
+    feature_geometry = feature.geometry()
 
-    # feature_rect = feature_geometry.boundingBox()
-    # min_x = feature_rect.xMinimum()
-    # min_y = feature_rect.yMinimum()
-    # max_x = feature_rect.xMaximum()
-    # max_y = feature_rect.yMaximum()
-    # # Create a Shapely box
-    # bbox = box(min_x, min_y, max_x, max_y)    
+    feature_rect = feature_geometry.boundingBox()
+    min_x = feature_rect.xMinimum()
+    min_y = feature_rect.yMinimum()
+    max_x = feature_rect.xMaximum()
+    max_y = feature_rect.yMaximum()
+    # Create a Shapely box
+    # Define the cell level (S2 uses a level system for zoom, where level 30 is the highest resolution)
+    level = resolution
+    # Create a list to store the S2 cell IDs
+    cell_ids = []
+    # Define the cell covering
+    coverer = s2.RegionCoverer()
+    coverer.min_level = level
+    coverer.max_level = level
+ 
+    region = s2.LatLngRect(
+        s2.LatLng.from_degrees(min_y, min_x),
+        s2.LatLng.from_degrees(max_y, max_x)
+    )
+
+    # Get the covering cells
+    covering = coverer.get_covering(region)
+
+    # Convert the covering cells to S2 cell IDs
+    for cell_id in covering:
+        cell_ids.append(cell_id)
+
+    s2_features = []
     
-    # buufer_distance = s2.average_hexagon_edge_length(resolution, unit='m') * 2
-    # bbox_buffer = geodesic_buffer(bbox, buufer_distance)
-    # bbox_buffer_cells = s2.geo_to_cells(bbox_buffer, resolution)
-        
-    # s2_features = []
-    
-    # for bbox_buffer_cell in bbox_buffer_cells:
-    #     cell_boundary = s2.cell_to_boundary(bbox_buffer_cell)
-    #     filtered_boundary = fix_s2_antimeridian_cells(cell_boundary)
-    #     reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
-    #     cell_polygon = Polygon(reversed_boundary)
+    for cell_id in cell_ids:
+        cell_polygon = s2cell_to_polygon(cell_id)
+        lat_lng = cell_id.to_lat_lng()      
+        cell_token = s2.CellId.to_token(cell_id)      
+        # Extract latitude and longitude in degrees
+        center_lat = round(lat_lng.lat().degrees,7)
+        center_lon = round(lat_lng.lng().degrees,7)
 
-    #     center_lat, center_lon = s2.cell_to_latlng(bbox_buffer_cell)
-    #     center_lat = round(center_lat, 7)
-    #     center_lon = round(center_lon, 7)
-    #     cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]), 2)
-    #     cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
-    #     avg_edge_len = round(cell_perimeter / 6, 2)
-
-    #     if s2.is_pentagon(bbox_buffer_cell):
-    #         avg_edge_len = round(cell_perimeter / 5, 2)
-
-    #     # if cell_polygon.intersects(feature):
-    #     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
-    #       # **Check for intersection with the input feature**
-    #     if not cell_geometry.intersects(feature_geometry):
-    #         continue  # Skip non-intersecting cells
+        cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2) # Area in square meters     
+        cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])  # Perimeter in meters  
+        avg_edge_len = round(cell_perimeter/4,2)
+         # if cell_polygon.intersects(feature):
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
+          # **Check for intersection with the input feature**
+        if not cell_geometry.intersects(feature_geometry):
+            continue  # Skip non-intersecting cells
       
-    #     # Create a single QGIS feature
-    #     s2_feature = QgsFeature()
-    #     s2_feature.setGeometry(cell_geometry)
+        # Create a single QGIS feature
+        s2_feature = QgsFeature()
+        s2_feature.setGeometry(cell_geometry)
         
-    #     # Get all attributes from the input feature
-    #     original_attributes = feature.attributes()
-    #     original_fields = feature.fields()
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
         
-    #     # Define new s2-related attributes
-    #     new_fields = QgsFields()
-    #     new_fields.append(QgsField("s2", QVariant.String))
-    #     new_fields.append(QgsField("center_lat", QVariant.Double))
-    #     new_fields.append(QgsField("center_lon", QVariant.Double))
-    #     new_fields.append(QgsField("cell_area", QVariant.Double))
-    #     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-    #     new_fields.append(QgsField("resolution", QVariant.Int))
+        # Define new S2-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField("s2", QVariant.String))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("resolution", QVariant.Int))
         
-    #     # Combine original fields and new fields
-    #     all_fields = QgsFields()
-    #     for field in original_fields:
-    #         all_fields.append(field)
-    #     for field in new_fields:
-    #         all_fields.append(field)
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
         
-    #     s2_feature.setFields(all_fields)
+        s2_feature.setFields(all_fields)
         
-    #     # Combine original attributes with new attributes
-    #     new_attributes = [str(bbox_buffer_cell), center_lat, center_lon, cell_area, avg_edge_len, resolution]
-    #     all_attributes = original_attributes + new_attributes
+        # Combine original attributes with new attributes
+        new_attributes = [cell_token, center_lat, center_lon, cell_area, avg_edge_len, resolution]
+        all_attributes = original_attributes + new_attributes
         
-    #     s2_feature.setAttributes(all_attributes)    
+        s2_feature.setAttributes(all_attributes)    
 
-    #     s2_features.append(s2_feature)
+        s2_features.append(s2_feature)
     
-    # return s2_features
+    return s2_features
