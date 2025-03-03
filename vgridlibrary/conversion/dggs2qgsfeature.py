@@ -37,7 +37,7 @@ def haversine(lat1, lon1, lat2, lon2):
 
     return R * c  # Distance in meters
 
-def h32qgsfeature(h3_code):
+def h32qgsfeature(feature, h3_code):
       # Get the boundary coordinates of the H3 cell
     cell_boundary = h3.cell_to_boundary(h3_code)    
     if cell_boundary:
@@ -57,38 +57,46 @@ def h32qgsfeature(h3_code):
         if (h3.is_pentagon(h3_code)):
             avg_edge_len = round(cell_perimeter/5 ,3)   
         resolution = h3.get_resolution(h3_code)        
-        
-    
+            
         # Convert WKT to QgsGeometry
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
-   
-        feature = QgsFeature()
-        feature.setGeometry(cell_geometry)
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)   
+       
+        h3_feature = QgsFeature()
+        h3_feature.setGeometry(cell_geometry)
         
-        # Set feature attributes
-        fields  = QgsFields()
-        fields.append(QgsField('h3', QVariant.String))
-        fields.append(QgsField('center_lat', QVariant.Double))
-        fields.append(QgsField('center_lon', QVariant.Double))
-        fields.append(QgsField('avg_edge_len', QVariant.Double))
-        fields.append(QgsField('cell_area', QVariant.Double))
-        fields.append(QgsField('resolution', QVariant.Int))
-        feature.setFields(fields)
-
-
-        feature.setAttribute('h3', h3_code)
-        feature.setAttribute('center_lat', center_lat)
-        feature.setAttribute('center_lon', center_lon)
-        feature.setAttribute('avg_edge_len', avg_edge_len)
-        feature.setAttribute('cell_area', cell_area)
-        feature.setAttribute('resolution', resolution)
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
         
-        return feature
+        # Define new H3-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField("h3", QVariant.String))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        h3_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [h3_code, center_lat, center_lon, cell_area, avg_edge_len, resolution]
+        all_attributes = original_attributes + new_attributes
+        
+        h3_feature.setAttributes(all_attributes)    
+        return h3_feature
     else:
         return None
 
 
-def s22qgsfeature(cell_id_token):
+def s22qgsfeature(feature, cell_id_token):
     # Create an S2 cell from the given cell ID
     cell_id = CellId.from_token(cell_id_token)
     cell = s2.Cell(cell_id)
@@ -119,34 +127,41 @@ def s22qgsfeature(cell_id_token):
         avg_edge_len = round(cell_perimeter/4,3)
         resolution = cell_id.level()
       
-        # Convert WKT to QgsGeometry
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
-   
-        feature = QgsFeature()
-        feature.setGeometry(cell_geometry)
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)   
+       
+        h3_feature = QgsFeature()
+        h3_feature.setGeometry(cell_geometry)
         
-        # Set feature attributes
-        fields  = QgsFields()
-        fields.append(QgsField('s2', QVariant.String))
-        fields.append(QgsField('center_lat', QVariant.Double))
-        fields.append(QgsField('center_lon', QVariant.Double))
-        fields.append(QgsField('avg_edge_len', QVariant.Double))
-        fields.append(QgsField('cell_area', QVariant.Double))
-        fields.append(QgsField('resolution', QVariant.Int))
-        feature.setFields(fields)
-
-
-        feature.setAttribute('s2', cell_id_token)
-        feature.setAttribute('center_lat', center_lat)
-        feature.setAttribute('center_lon', center_lon)
-        feature.setAttribute('avg_edge_len', avg_edge_len)
-        feature.setAttribute('cell_area', cell_area)
-        feature.setAttribute('resolution', resolution)
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
         
-        return feature
+        # Define new H3-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField("h3", QVariant.String))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        h3_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [cell_id_token, center_lat, center_lon, cell_area, avg_edge_len, resolution]
+        all_attributes = original_attributes + new_attributes
+        
+        h3_feature.setAttributes(all_attributes)    
+        return h3_feature
     else:
         return None
-
 
 def olc2qgsfeature(olc_code):
     # Decode the Open Location Code into a CodeArea object

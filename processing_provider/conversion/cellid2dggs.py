@@ -104,7 +104,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return [QgsProcessing.TypeVector]
 
     def outputName(self):
-        return self.tr('Output DGGS')
+        return self.tr('CellID2DGGS')
     
     def outputCrs(self, input_crs):
         return QgsCoordinateReferenceSystem("EPSG:4326")
@@ -114,7 +114,13 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return (QgsWkbTypes.Polygon)   
     
     def outputFields(self, input_fields):
-        output_fields = QgsFields()        
+        output_fields = QgsFields()
+
+        # Preserve all original input fields
+        for field in input_fields:
+            output_fields.append(field)
+
+        # Append H3-related fields
         output_fields.append(QgsField('cell_id', QVariant.String))
         output_fields.append(QgsField('center_lat', QVariant.Double))
         output_fields.append(QgsField('center_lon', QVariant.Double))
@@ -122,8 +128,8 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         output_fields.append(QgsField('cell_area', QVariant.Double))
         output_fields.append(QgsField('resolution', QVariant.Int))
 
-        return (output_fields)
-        # return(input_fields)
+        return output_fields
+
 
     def supportInPlaceEdit(self, layer):
         return False
@@ -193,7 +199,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
             elif conversion_function:
                 # Call the conversion function
-                cell_feature = conversion_function(code)
+                cell_feature = conversion_function(feature,code)
                 if cell_feature:
                     return [cell_feature]
             

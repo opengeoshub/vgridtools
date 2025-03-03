@@ -46,7 +46,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     ]
     DGGS_RESOLUTION = {
         'H3': (0, 15, 10),
-        'S2': (0, 30, 10),
+        'S2': (0, 30, 16),
         'Rhealpix': (1, 15,10),
         'ISEA4T':(0,39,18),
         'ISEA3H':(0,40,20),
@@ -120,7 +120,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return [QgsProcessing.TypeVector]
 
     def outputName(self):
-        return self.tr('Output DGGS')
+        return self.tr('Vector2DGGS')
     
     def outputWkbType(self, input_wkb_type):
         return (QgsWkbTypes.Polygon)   
@@ -158,7 +158,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             self.DGGS_TYPE,
             "DGGS Type",
             options=self.DGGS_TYPES,
-            defaultValue=5
+            defaultValue=0
         ))
 
         self.resolution_param = QgsProcessingParameterNumber(
@@ -186,17 +186,11 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         if (selected_dggs == 'OLC'):
             if res_value not in (2,4,6,8,10,11,12,13,14,15):
                 return (False, f"Resolution must be in [2,4,6,8,10,11,12,13,14,15] for {selected_dggs}.")
-        
-        if (selected_dggs == 'OLC'):
-            if res_value not in (2,4,6,8,10,11,12,13,14,15):
-                return (False, f"Resolution must be in [2,4,6,8,10,11,12,13,14,15] for {selected_dggs}.")
         elif (selected_dggs == 'GARS'):
             if res_value not in (30,15,5,1):
                 return (False, f"Resolution must be in [30,15,5,1] minutes for {selected_dggs}.")
         
         return super().checkParameterValues(parameters, context)
-
-
     
     def prepareAlgorithm(self, parameters, context, feedback):       
         
@@ -209,7 +203,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.DGGS_TYPE_functions = {
             'h3': qgsfeature2h3,
-            # 's2': s22qgsfeature,
+            's2': qgsfeature2s2,
             # 'olc': olc2qgsfeature,
             # 'mgrs': mgrs2qgsfeature,
             # 'geohash': geohash2qgsfeature,
@@ -221,60 +215,60 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         # return True
         return super().prepareAlgorithm(parameters, context, feedback)
 
-
     def processFeature(self, feature, context, feedback):
         try:
             DGGS_TYPE_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
             conversion_function = self.DGGS_TYPE_functions.get(DGGS_TYPE_key)
 
-            if conversion_function:
-                geom = feature.geometry()
+            if conversion_function is None:
+                return []
 
-                if geom.isEmpty():
-                    return []
+            geom = feature.geometry()
+            if geom.isEmpty():
+                return []
 
-                multi_features = []
+            cell_polygons = []
+            multi_cell_polygons = []
 
-                # Handle MultiPoint geometry
-                if geom.wkbType() == QgsWkbTypes.MultiPoint:
-                    for point in geom.asMultiPoint():
-                        point_feature = QgsFeature(feature)  # Copy original feature
-                        point_feature.setGeometry(QgsGeometry.fromPointXY(point))  # Set individual point geometry
-                        cell_feature = conversion_function(point_feature, self.RESOLUTION)
-                        if cell_feature:
-                            multi_features.append(cell_feature)
+            # Handle MultiPoint geometry
+            if geom.wkbType() == QgsWkbTypes.MultiPoint:
+                for point in geom.asMultiPoint():
+                    point_feature = QgsFeature(feature)  # Copy original feature
+                    point_feature.setGeometry(QgsGeometry.fromPointXY(point))  # Set individual point geometry
+                    cell_polygons = conversion_function(point_feature, self.RESOLUTION)
+                    multi_cell_polygons.extend(cell_polygons)          
 
-                # Handle MultiLineString geometry
-                elif geom.wkbType() == QgsWkbTypes.MultiLineString:
-                    for linestring in geom.asMultiPolyline():
-                        line_feature = QgsFeature(feature)
-                        line_feature.setGeometry(QgsGeometry.fromPolylineXY(linestring))
-                        cell_feature = conversion_function(line_feature, self.RESOLUTION)
-                        if cell_feature:
-                            multi_features.append(cell_feature)
-
-                # Handle MultiPolygon geometry
-                elif geom.wkbType() == QgsWkbTypes.MultiPolygon:
-                    for polygon in geom.asMultiPolygon():
-                        poly_feature = QgsFeature(feature)
-                        poly_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
-                        cell_feature = conversion_function(poly_feature, self.RESOLUTION)
-                        if cell_feature:
-                            multi_features.append(cell_feature)
-
-                # Handle single-part geometries: Point, LineString, Polygon
-                else:
-                    cell_feature = conversion_function(feature, self.RESOLUTION)
-                    if cell_feature:
-                        multi_features.append(cell_feature)
-
-                return multi_features  # Return a list of converted features
-
+                return multi_cell_polygons
+            
+                    
+            # Handle MultiLineString geometry
+            elif geom.wkbType() == QgsWkbTypes.MultiLineString:
+                for line in geom.asMultiPolyline():
+                    line_feature = QgsFeature(feature)
+                    line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
+                    cell_polygons = conversion_function(line_feature, self.RESOLUTION)
+                    multi_cell_polygons.extend(cell_polygons)                
+           
+                return multi_cell_polygons
+            
+            # Handle MultiPolygon geometry
+            elif geom.wkbType() == QgsWkbTypes.MultiPolygon:
+                for polygon in geom.asMultiPolygon():
+                    polygon_feature = QgsFeature(feature)
+                    polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
+                    cell_polygons = conversion_function(polygon_feature, self.RESOLUTION)
+                    multi_cell_polygons.extend(cell_polygons)                
+           
+                return multi_cell_polygons
+            
+            # Handle Single Geometries
+            else:
+                cell_polygons = conversion_function(feature, self.RESOLUTION)
+                return cell_polygons
+                        
         except Exception as e:
-            self.num_bad += 1
             feedback.reportError(f"Error processing feature {feature.id()}: {str(e)}")
-
-        return []
+            return []
 
 
     def postProcessAlgorithm(self, context, feedback):
