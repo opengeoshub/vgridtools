@@ -76,17 +76,17 @@ class GridGeohash(QgsProcessingAlgorithm):
         return self.tr('Geohash', 'Geohash')
 
     def group(self):
-        return self.tr('Grid Generator', 'Grid Generator')
+        return self.tr('DGGS Generator', 'DGGS Generator')
 
     def groupId(self):
         return 'grid'
 
     def tags(self):
-        return self.tr('Geohash, grid, generator').split(',')
+        return self.tr('DGGS, grid, Geohash, generator').split(',')
     
-    txt_en = 'Geohash Grid'
-    txt_vi = 'Geohash Grid'
-    figure = '../images/tutorial/codes2cells.png'
+    txt_en = 'Geohash Grid Generator'
+    txt_vi = 'Geohash Grid Generator'
+    figure = '../images/tutorial/grid_geohash.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW

@@ -3,7 +3,7 @@
     <img src="images/vgrid192.svg" alt="Logo">
   <h3 align="center">Vgrid</h3>
   <p align="center">
-    <b><i>Vgrid Tools for QGIS</i><b>
+    <b><i>Vgrid DGGS Tools for QGIS</i><b>
     <br />
   </p>
 </p>
@@ -11,7 +11,7 @@
 ## Descriptions
 <!-- TABLE OF CONTENTS -->
 <details open="open">
-  <summary>Vgrid Tools for QGIS</summary>
+  <summary>Vgrid DGGS Tools for QGIS</summary>
   <div align="center">
   <img src="images/tutorial/olc.png">
 </div>

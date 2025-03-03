@@ -75,23 +75,23 @@ class GridS2(QgsProcessingAlgorithm):
         return 'grid_s2'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/grid_gzd.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_s2.svg'))
     
     def displayName(self):
         return self.tr('S2', 'S2')
 
     def group(self):
-        return self.tr('Grid Generator', 'Grid Generator')
+        return self.tr('DGGS Generator', 'DGGS Generator')
 
     def groupId(self):
         return 'grid'
 
     def tags(self):
-        return self.tr('grid, S2, generator').split(',')
+        return self.tr('DGGS, grid, S2, generator').split(',')
     
-    txt_en = 'S2 Grid'
-    txt_vi = 'S2 Grid'
-    figure = '../images/tutorial/codes2cells.png'
+    txt_en = 'S2 Grid Generator'
+    txt_vi = 'S2 Grid Generator'
+    figure = '../images/tutorial/grid_s2.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW

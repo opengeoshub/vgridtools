@@ -76,7 +76,7 @@ class GridOLC(QgsProcessingAlgorithm):
         return self.tr('OLC', 'OLC')
 
     def group(self):
-        return self.tr('Grid Generator', 'Grid Generator')
+        return self.tr('DGGS Generator', 'DGGS Generator')
 
     def groupId(self):
         return 'grid'

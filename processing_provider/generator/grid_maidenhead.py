@@ -79,17 +79,17 @@ class GridMaidenhead(QgsProcessingAlgorithm):
         return self.tr('Maidenhead', 'Maidenhead')
 
     def group(self):
-        return self.tr('Grid Generator', 'Grid Generator')
+        return self.tr('DGGS Generator', 'DGGS Generator')
 
     def groupId(self):
         return 'grid'
 
     def tags(self):
-        return self.tr('Maidenhead, grid, generator').split(',')
+        return self.tr('DGGS, grid, Maidenhead, generator').split(',')
     
-    txt_en = 'Maidenhead Grid'
+    txt_en = 'Maidenhead Grid Generator'
     txt_vi = 'Maidenhead Grid'
-    figure = '../images/tutorial/codes2cells.png'
+    figure = '../images/tutorial/grid_maidenhead.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW

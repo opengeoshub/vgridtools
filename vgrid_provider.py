@@ -85,16 +85,10 @@ class VgridProvider(QgsProcessingProvider):
         return 'vgrid'
 
     def name(self):
-        return self.tr('Vgrid Tools')
+        return self.tr('Vgrid DGGS')
 
     def icon(self):
-        return QIcon(os.path.dirname(__file__) + '../images/vgrid.svg')
+        return QIcon(os.path.dirname(__file__) + './images/vgrid.svg')
 
-    def longName(self):
-        """
-        Returns the a longer version of the provider name, which can include
-        extra details such as version numbers. E.g. "Lastools LIDAR tools
-        (version 2.2.1)". This string should be localised. The default
-        implementation returns the same string as name().
-        """
+    def longName(self):      
         return self.name()

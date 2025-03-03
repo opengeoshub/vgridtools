@@ -78,17 +78,17 @@ class GridMGRS(QgsProcessingAlgorithm):
         return self.tr('MGRS', 'MGRS')
 
     def group(self):
-        return self.tr('Grid Generator', 'Grid Generator')
+        return self.tr('DGGS Generator', 'DGGS Generator')
 
     def groupId(self):
         return 'grid'
 
     def tags(self):
-        return self.tr('grid, MGRS, generator').split(',')
+        return self.tr('DGGS, grid, MGRS, generator').split(',')
     
-    txt_en = 'MGRS Grid'
-    txt_vi = 'MGRS Grid'
-    figure = '../images/tutorial/codes2cells.png'
+    txt_en = 'MGRS Grid Generator'
+    txt_vi = 'MGRS Grid Generator'
+    figure = '../images/tutorial/grid_mgrs.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW

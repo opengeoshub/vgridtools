@@ -35,16 +35,33 @@ from ...vgridlibrary.conversion.qgsfeature2dggs import *
 
 class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     """
-    convert Vector Layer to H3, S2, OLC, Geohash, GEOREF, MGRS, Tilecode, Maidenhead, GARS
+    convert Vector Layer to H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE, OLC, Geohash, GEOREF, MGRS, Tilecode, Maidenhead, GARS
     """
     INPUT = 'INPUT'
     DGGS_TYPE = 'DGGS_TYPE'
     RESOLUTION = 'RESOLUTION'
-    DGGS_OPTIONS = [
-        'H3', 'S2', 'OLC', 'Geohash', 'GEOREF','MGRS',  'Tilecode', 'Maidenhead', 'GARS'
+    DGGS_TYPES = [
+        'H3', 'S2','Rhealpix','ISEA4T', 'ISEA3H','EASE', 'OLC', 'Geohash', 
+        'GEOREF','MGRS', 'Tilecode','Quadkey', 'Maidenhead', 'GARS'
     ]
+    DGGS_RESOLUTION = {
+        'H3': (0, 15, 10),
+        'S2': (0, 30, 10),
+        'Rhealpix': (1, 15,10),
+        'ISEA4T':(0,39,18),
+        'ISEA3H':(0,40,20),
+        'EASE':(0,6,4),
+        'OLC': (2, 15, 10),
+        'Geohash': (1, 30, 15),
+        'GEOREF': (0, 10, 6),
+        'MGRS': (0, 5, 4),
+        'Tilecode': (0, 29, 15),
+        'Quadkey': (0, 29, 15),
+        'Maidenhead': (1, 4, 3),
+        'GARS': (1, 30, 1)
+    }
+    
     OUTPUT = 'OUTPUT'
-
 
     LOC = QgsApplication.locale()[:2]
 
@@ -68,7 +85,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return 'vector2dggs'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/conversion_cellid2dggs.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/conversion/vector2dggs.png'))
     
     def displayName(self):
         return self.tr('Vector to DGGS', 'Vector to DGGS')
@@ -80,11 +97,11 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return 'conversion'
 
     def tags(self):
-        return self.tr('S2, H3, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
+        return self.tr('S2, H3, Rhealpix, ISEA4T, ISEA3H, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
     
     txt_en = 'Vector to DGGS'
     txt_vi = 'Vector to DGGS'
-    figure = '../images/tutorial/cellid2dggs.png'
+    figure = '../images/tutorial/vector2dggs.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -110,6 +127,12 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     
     def outputFields(self, input_fields):
         output_fields = QgsFields()
+
+        # Preserve all original input fields
+        for field in input_fields:
+            output_fields.append(field)
+
+        # Append H3-related fields
         output_fields.append(QgsField('cell_id', QVariant.String))
         output_fields.append(QgsField('center_lat', QVariant.Double))
         output_fields.append(QgsField('center_lon', QVariant.Double))
@@ -117,8 +140,8 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         output_fields.append(QgsField('cell_area', QVariant.Double))
         output_fields.append(QgsField('resolution', QVariant.Int))
 
-        return (output_fields)
-        # return(input_fields)
+        return output_fields
+
 
     def supportInPlaceEdit(self, layer):
         return False
@@ -131,25 +154,52 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 [QgsProcessing.TypeVector])
         self.addParameter(param)
 
-        # DGGS Type
-        param = QgsProcessingParameterEnum(
+        self.addParameter(QgsProcessingParameterEnum(
             self.DGGS_TYPE,
-            self.tr('DGGS type'),
-            options=self.DGGS_OPTIONS,
-            defaultValue=0  # Default to the first option (OLC)
-        )
-        self.addParameter(param)
+            "DGGS Type",
+            options=self.DGGS_TYPES,
+            defaultValue=5
+        ))
 
-        param = QgsProcessingParameterNumber(
-            self.RESOLUTION,  
-            self.tr('Resolution'),  
-            QgsProcessingParameterNumber.Integer,  # Specify the type correctly
-            minValue=0
+        self.resolution_param = QgsProcessingParameterNumber(
+            self.RESOLUTION,
+            "Resolution",
+            QgsProcessingParameterNumber.Integer,
+            10,
+            minValue=0,
+            maxValue=40
         )
-        self.addParameter(param)
+        self.addParameter(self.resolution_param)
 
-         
-    def prepareAlgorithm(self, parameters, context, feedback):
+
+    def checkParameterValues(self, parameters, context):
+        """Dynamically update resolution limits before execution"""
+        selected_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
+        selected_dggs = self.DGGS_TYPES[selected_index]
+
+        min_res, max_res, _ = self.DGGS_RESOLUTION[selected_dggs]
+        res_value = self.parameterAsInt(parameters, self.RESOLUTION, context)
+
+        if not (min_res <= res_value <= max_res):
+            return (False, f"Resolution must be between {min_res} and {max_res} for {selected_dggs}.")
+
+        if (selected_dggs == 'OLC'):
+            if res_value not in (2,4,6,8,10,11,12,13,14,15):
+                return (False, f"Resolution must be in [2,4,6,8,10,11,12,13,14,15] for {selected_dggs}.")
+        
+        if (selected_dggs == 'OLC'):
+            if res_value not in (2,4,6,8,10,11,12,13,14,15):
+                return (False, f"Resolution must be in [2,4,6,8,10,11,12,13,14,15] for {selected_dggs}.")
+        elif (selected_dggs == 'GARS'):
+            if res_value not in (30,15,5,1):
+                return (False, f"Resolution must be in [30,15,5,1] minutes for {selected_dggs}.")
+        
+        return super().checkParameterValues(parameters, context)
+
+
+    
+    def prepareAlgorithm(self, parameters, context, feedback):       
+        
         source = self.parameterAsSource(parameters, self.INPUT, context)
         self.RESOLUTION = self.parameterAsInt(parameters, self.RESOLUTION, context)
 
@@ -168,11 +218,13 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             # 'maidenhead': maidenhead2qgsfeature,
             # 'gars': gars2qgsfeature
         }
-        return True
-    
+        # return True
+        return super().prepareAlgorithm(parameters, context, feedback)
+
+
     def processFeature(self, feature, context, feedback):
         try:
-            DGGS_TYPE_key = self.DGGS_OPTIONS[self.DGGS_TYPE_index].lower()
+            DGGS_TYPE_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
             conversion_function = self.DGGS_TYPE_functions.get(DGGS_TYPE_key)
 
             if conversion_function:

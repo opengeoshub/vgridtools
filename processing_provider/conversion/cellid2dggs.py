@@ -68,7 +68,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return 'cellid2dggs'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/conversion_cellid2dggs.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/conversion/cellid2dggs.png'))
     
     
     def displayName(self):

@@ -35,10 +35,9 @@ def qgsfeature2h3(feature, resolution):
     #     polygon2h3(feature, resolution)
     return h3_features
 
-def point2h3(feature, resolution):
-     # Extract point geometry from feature
+def point2h3(feature, resolution): 
+    # Extract point geometry from feature
     geometry = feature.geometry()
-       
     point = geometry.asPoint()
     latitude = point.y()
     longitude = point.x()
@@ -67,17 +66,33 @@ def point2h3(feature, resolution):
     h3_feature = QgsFeature()
     h3_feature.setGeometry(cell_geometry)
     
-    # Define attributes
-    fields = QgsFields()
-    fields.append(QgsField("h3", QVariant.String))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("resolution", QVariant.Int))
+    # Get all attributes from the input feature
+    original_attributes = feature.attributes()
+    original_fields = feature.fields()
     
-    h3_feature.setFields(fields)
-    h3_feature.setAttributes([h3_cell, center_lat, center_lon, cell_area, avg_edge_len, resolution])
+    # Define new H3-related attributes
+    new_fields = QgsFields()
+    new_fields.append(QgsField("h3", QVariant.String))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    
+    # Combine original fields and new fields
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+    
+    h3_feature.setFields(all_fields)
+    
+    # Combine original attributes with new attributes
+    new_attributes = [h3_cell, center_lat, center_lon, cell_area, avg_edge_len, resolution]
+    all_attributes = original_attributes + new_attributes
+    
+    h3_feature.setAttributes(all_attributes)
     
     return h3_feature
 

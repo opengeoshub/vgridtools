@@ -82,23 +82,23 @@ class GridH3(QgsProcessingAlgorithm):
         return 'grid_h3'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/grid_gzd.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_h3.svg'))
     
     def displayName(self):
         return self.tr('H3', 'H3')
 
     def group(self):
-        return self.tr('Grid Generator', 'Grid Generator')
+        return self.tr('DGGS Generator', 'DGGS Generator')
 
     def groupId(self):
         return 'grid'
 
     def tags(self):
-        return self.tr('grid, H3, generator').split(',')
+        return self.tr('DGGS, grid, H3, generator').split(',')
     
-    txt_en = 'H3 Grid'
-    txt_vi = 'H3 Grid'
-    figure = '../images/tutorial/codes2cells.png'
+    txt_en = 'H3 Grid Generator'
+    txt_vi = 'H3 Grid Generator'
+    figure = '../images/tutorial/grid_h3.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -124,7 +124,7 @@ class GridH3(QgsProcessingAlgorithm):
                     self.RESOLUTION,
                     self.tr('Resolution'),
                     QgsProcessingParameterNumber.Integer,
-                    defaultValue=1,
+                    defaultValue=8,
                     minValue= 0,
                     maxValue= 15,
                     optional=False)

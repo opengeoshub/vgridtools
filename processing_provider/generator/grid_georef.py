@@ -76,7 +76,7 @@ class GridGeoref(QgsProcessingAlgorithm):
         return self.tr('Georef', 'Georef')
 
     def group(self):
-        return self.tr('Grid Generator', 'Grid Generator')
+        return self.tr('DGGS Generator', 'DGGS Generator')
 
     def groupId(self):
         return 'grid'

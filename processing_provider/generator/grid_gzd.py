@@ -71,17 +71,17 @@ class GridGZD(QgsProcessingAlgorithm):
         return self.tr('MGRS GZD', 'MGRS GZD')
 
     def group(self):
-        return self.tr('Grid Generator', 'Grid Generator')
+        return self.tr('DGGS Generator', 'DGGS Generator')
 
     def groupId(self):
         return 'grid'
 
     def tags(self):
-        return self.tr('MGRS Grid Zone Designator, gzd, generator').split(',')
+        return self.tr('DGGS, MGRS Grid Zone Designator, gzd, generator').split(',')
     
-    txt_en = 'MGRS Grid Zone Designator'
-    txt_vi = 'MGRS Grid Zone Designator'
-    figure = '../images/tutorial/codes2cells.png'
+    txt_en = 'MGRS GZD Geneartor'
+    txt_vi = 'MGRS GZD Generator'
+    figure = '../images/tutorial/grid_mgrs.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW

@@ -72,13 +72,13 @@ class GridTilecode(QgsProcessingAlgorithm):
         return 'grid_Tilecode'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/grid_gzd.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)),'../images/grid_gzd.png'))
     
     def displayName(self):
         return self.tr('Tilecode', 'Tilecode')
 
     def group(self):
-        return self.tr('Grid Generator', 'Grid Generator')
+        return self.tr('DGGS Generator', 'DGGS Generator')
 
     def groupId(self):
         return 'grid'
@@ -88,7 +88,7 @@ class GridTilecode(QgsProcessingAlgorithm):
     
     txt_en = 'Tilecode Grid'
     txt_vi = 'Tilecode Grid'
-    figure = '../images/tutorial/codes2cells.png'
+    figure = '../images/tutorial/grid_tilecode.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
