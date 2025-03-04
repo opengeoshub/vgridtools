@@ -43,7 +43,7 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
 import numpy as np
-from ...vgridlibrary.conversion.gars import GARSGrid
+from vgrid.utils.gars.garsgrid import GARSGrid  
 from ...vgridlibrary.imgs import Imgs
 
 

@@ -41,9 +41,9 @@ from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
-from ...vgridlibrary.conversion import s2 
+from vgrid.utils import s2 
 from ...vgridlibrary.imgs import Imgs
-from ...vgridlibrary.utils.antimeridian import fix_polygon
+from vgrid.utils.antimeridian import fix_polygon
 from shapely.geometry import Polygon
 
 max_cells = 10_000_000

@@ -42,7 +42,7 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
 
-from ...vgridlibrary.conversion import maidenhead
+from vgrid.utils import maidenhead
 from ...vgridlibrary.imgs import Imgs
 
 

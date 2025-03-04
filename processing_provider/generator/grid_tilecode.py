@@ -41,7 +41,7 @@ from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
-from ...vgridlibrary.utils import mercantile
+from vgrid.utils import mercantile
 from ...vgridlibrary.imgs import Imgs
 
 

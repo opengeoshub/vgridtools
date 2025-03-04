@@ -41,7 +41,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'vgrid'
-copyright = u'2022, Thang QUach'
+copyright = u'2022, Thang Quach'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the

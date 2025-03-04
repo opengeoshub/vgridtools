@@ -39,7 +39,7 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
 
-from ...vgridlibrary.conversion import geohash
+from vgrid.utils import geohash
 from ...vgridlibrary.imgs import Imgs
 
 

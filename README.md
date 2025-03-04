@@ -24,7 +24,7 @@
         <li><a href="#latlon2geohash">latlon2geohash</a></li>
         <li><a href="#latlon2georef">latlon2georef</a></li>
         <li><a href="#latlon2s2">latlon2s2</a></li>
-        <li><a href="#latlon2vcode">latlon2vcode</a></li>
+        <li><a href="#latlon2tilecode">latlon2tilecode</a></li>
         <li><a href="#latlon2maidenhead">latlon2maidenhead</a></li>
         <li><a href="#latlon2gars">latlon2gars</a></li>
       </ul>
@@ -113,20 +113,20 @@ Convert LatLon to S2 Code.
   <img src="images/readme/latlon2s2.png">
 </div>
 
-### latlon2vcode
+### latlon2tilecode
 
 Convert LatLon to Vcode.
 <h4>Syntax</h4>
 <li>
-<code>latlon2vcode(lat, long, resolution/ zoom level [0;25])  or latlon2vcode($y, $x, resolution/ zoom level)</span> in WGS84 CRS</code>
+<code>latlon2tilecode(lat, long, resolution/ zoom level [0;25])  or latlon2tilecode($y, $x, resolution/ zoom level)</span> in WGS84 CRS</code>
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2vcode(10.775275567242561, 106.70679737574993, 23)→ 'z23x6680752y3941728'</code>
+<code>latlon2tilecode(10.775275567242561, 106.70679737574993, 23)→ 'z23x6680752y3941728'</code>
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2vcode.png">
+  <img src="images/readme/latlon2tilecode.png">
 </div>
 
 ### latlon2maidenhead

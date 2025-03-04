@@ -41,7 +41,7 @@ from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os,math
-from ...vgridlibrary.conversion import mgrs
+from vgrid.utils import mgrs
 from ...vgridlibrary.imgs import Imgs
 
 

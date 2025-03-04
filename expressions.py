@@ -27,7 +27,7 @@ __copyright__ = '(L) 2024 by Thang Quach'
 from qgis.core import *
 from qgis.gui import *
 from qgis.utils import qgsfunction
-from .vgridlibrary.conversion import olc,mgrs,geohash,georef,s2, tilecode,maidenhead,gars
+from vgrid.utils import olc,mgrs,geohash,georef,s2, tile,maidenhead,gars
 
 group_name = 'Vgrid'
 
@@ -187,7 +187,7 @@ def latlon2s2(latitude, longitude, resolution, feature, parent):
 #   return h3.latlng_to_cell(latitude, longitude, resolution)
 
 @qgsfunction(args='auto', group=group_name)
-def latlon2vcode(latitude, longitude, zoom, feature, parent):
+def latlon2tilecode(latitude, longitude, zoom, feature, parent):
   """<style type="text/css">
     .function {
     color: #05688f;
@@ -200,14 +200,14 @@ def latlon2vcode(latitude, longitude, zoom, feature, parent):
   </style>
   Convert latlon to Vcode.
   <h4>Syntax</h4>    
-    <li><span class = function>latlon2vcode</span>(<span class = parameters>lat, long, resolution/ zoom level [0;25]</span>)</li>
+    <li><span class = function>latlon2tilecode</span>(<span class = parameters>lat, long, resolution/ zoom level [0;25]</span>)</li>
   <h4>Example usage</h4>
 
   <ul>
-    <li><span class = function>latlon2vcode</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 23</span>)&rarr; 'z23x6680752y3941728'</li>
+    <li><span class = function>latlon2tilecode</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 23</span>)&rarr; 'z23x6680752y3941728'</li>
   </ul>    
   """ 
-  return tilecode.latlon2vcode(latitude, longitude, zoom) 
+  return tile.latlon2tilecode(latitude, longitude, zoom) 
 
 @qgsfunction(args='auto', group=group_name)
 def latlon2maidenhead(latitude, longitude, resolution, feature, parent):

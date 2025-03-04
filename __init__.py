@@ -2,7 +2,7 @@
 
 """
 /***************************************************************************
- vgrid
+ Vgrid Tools
                                  A QGIS plugin
  Tools for Geoprocessing in QGIS.
                               -------------------
@@ -34,9 +34,9 @@ def classFactory(iface):  # pylint: disable=invalid-name
   try:
       import h3
   except ImportError:
-    command = "import pip\npip.main(['install','h3'])"   
-    text, ok = QInputDialog.getMultiLineText(None, "Vgrid DGGS - H3 module not found", 
-                                            "To run Vgrid Tooks, please copy and run this in the Python console to install H3 and reload QGIS:", 
+    command = "import pip\npip.main(['install','vgrid'])"   
+    text, ok = QInputDialog.getMultiLineText(None, "Vgrid DGGS - Vgrid module not found", 
+                                            "To run Vgrid Tooks, please copy and run this in the Python console to install Vgrid package and reload QGIS:", 
                                             command)
 
   from .vgrid import VgridPlugin

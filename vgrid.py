@@ -2,7 +2,7 @@
 
 """
 /***************************************************************************
- Vgrid
+ Vgrid Tools
                                  A QGIS plugin
  GeoPorocessing Tools based on lftools https://github.com/LEOXINGU/lftools
                               -------------------
@@ -43,9 +43,9 @@ from PyQt5.QtGui import *
 
 from .vgrid_provider import VgridProvider
 from .expressions import *
-from .vgridlibrary.grid import gzd
+from .vgridlibrary.generator import gzd
 # from .vgrid_dialogs import *
-exprs =(latlon2olc,latlon2mgrs,latlon2geohash,latlon2georef,latlon2s2,latlon2vcode,latlon2maidenhead,latlon2gars)
+exprs =(latlon2olc,latlon2mgrs,latlon2geohash,latlon2georef,latlon2s2,latlon2tilecode,latlon2maidenhead,latlon2gars)
 
     
 class VgridPlugin(object):

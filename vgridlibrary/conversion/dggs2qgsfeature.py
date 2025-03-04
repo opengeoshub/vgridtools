@@ -1,13 +1,11 @@
-from . import olc,mgrs, maidenhead, geohash, georef, olc, s2
-from .s2 import LatLng, CellId
-from .gars import GARSGrid
+from vgrid.utils import olc,mgrs, maidenhead, geohash, georef, olc, s2, gars
 import math, re, os
-from ..utils import mercantile
+from vgrid.utils import mercantile
 import geopandas as gpd
 from shapely.geometry import Polygon, Point
 import json
 import h3 
-from ..utils.antimeridian import fix_polygon
+from vgrid.utils.antimeridian import fix_polygon
 
 from qgis.core import QgsFeature, QgsGeometry, QgsPointXY, QgsField, QgsFields
 from PyQt5.QtCore import QVariant
@@ -98,7 +96,7 @@ def h32qgsfeature(feature, h3_code):
 
 def s22qgsfeature(feature, cell_id_token):
     # Create an S2 cell from the given cell ID
-    cell_id = CellId.from_token(cell_id_token)
+    cell_id = s2.CellId.from_token(cell_id_token)
     cell = s2.Cell(cell_id)
     
     if cell:
@@ -108,7 +106,7 @@ def s22qgsfeature(feature, cell_id_token):
         # Convert vertices to QGIS coordinates format [longitude, latitude]
         shapely_vertices = []
         for vertex in vertices:
-            lat_lng = LatLng.from_point(vertex)
+            lat_lng = s2.LatLng.from_point(vertex)
             longitude = lat_lng.lng().degrees
             latitude = lat_lng.lat().degrees
             shapely_vertices.append(QgsPointXY(longitude, latitude))
@@ -537,7 +535,7 @@ def maidenhead2qgsfeature(maidenhead_code):
 
 def gars2qgsfeature(gars_code):
     # Create a GARS grid object and retrieve the polygon
-    gars_grid = GARSGrid(gars_code)
+    gars_grid = gars.GARSGrid(gars_code)
     wkt_polygon = gars_grid.polygon  # Assumes polygon is provided as a WKT polygon
 
     if wkt_polygon:

@@ -47,7 +47,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     DGGS_RESOLUTION = {
         'H3': (0, 15, 10),
         'S2': (0, 30, 16),
-        'Rhealpix': (1, 15,10),
+        'Rhealpix': (1, 15,11),
         'ISEA4T':(0,39,18),
         'ISEA3H':(0,40,20),
         'EASE':(0,6,4),
@@ -133,7 +133,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             output_fields.append(field)
 
         # Append H3-related fields
-        output_fields.append(QgsField('cell_id', QVariant.String))
+        output_fields.append(QgsField("cell_id", QVariant.String))
         output_fields.append(QgsField('center_lat', QVariant.Double))
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
@@ -204,6 +204,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_functions = {
             'h3': qgsfeature2h3,
             's2': qgsfeature2s2,
+            'rhealpix': qgsfeature2rhealpix,
             # 'olc': olc2qgsfeature,
             # 'mgrs': mgrs2qgsfeature,
             # 'geohash': geohash2qgsfeature,
@@ -217,8 +218,8 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
     def processFeature(self, feature, context, feedback):
         try:
-            DGGS_TYPE_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
-            conversion_function = self.DGGS_TYPE_functions.get(DGGS_TYPE_key)
+            self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
+            conversion_function = self.DGGS_TYPE_functions.get(self.dggs_type)
 
             if conversion_function is None:
                 return []
