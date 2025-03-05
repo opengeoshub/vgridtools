@@ -29,7 +29,7 @@ from qgis.core import QgsApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication,QVariant
 
-
+import platform
 from ...vgridlibrary.imgs import Imgs
 from ...vgridlibrary.conversion.qgsfeature2dggs import *
 
@@ -41,15 +41,13 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     DGGS_TYPE = 'DGGS_TYPE'
     RESOLUTION = 'RESOLUTION'
     DGGS_TYPES = [
-        'H3', 'S2','Rhealpix','ISEA4T', 'ISEA3H','EASE', 'OLC', 'Geohash', 
+        'H3', 'S2','Rhealpix','EASE', 'OLC', 'Geohash', 
         'GEOREF','MGRS', 'Tilecode','Quadkey', 'Maidenhead', 'GARS'
     ]
     DGGS_RESOLUTION = {
         'H3': (0, 15, 10),
         'S2': (0, 30, 16),
-        'Rhealpix': (1, 15,11),
-        'ISEA4T':(0,39,18),
-        'ISEA3H':(0,40,20),
+        'Rhealpix': (1, 15,11),      
         'EASE':(0,6,4),
         'OLC': (2, 15, 10),
         'Geohash': (1, 30, 15),
@@ -60,6 +58,15 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         'Maidenhead': (1, 4, 3),
         'GARS': (1, 30, 1)
     }
+    if platform.system() == 'Windows':
+        index = DGGS_TYPES.index('Rhealpix') + 1
+        DGGS_TYPES[index:index] = ['ISEA4T', 'ISEA3H']
+
+        DGGS_RESOLUTION.update({
+            'ISEA4T': (0, 39, 18),
+            'ISEA3H': (0, 40, 20),
+        })
+
     
     OUTPUT = 'OUTPUT'
 
@@ -148,11 +155,10 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
     def initParameters(self, config=None):   
         # Input vector layer
-        param = QgsProcessingParameterFeatureSource(
+        self.addParameter(QgsProcessingParameterFeatureSource(
                 self.INPUT,
                 self.tr('Input vector layer'),
-                [QgsProcessing.TypeVector])
-        self.addParameter(param)
+                [QgsProcessing.TypeVector]))
 
         self.addParameter(QgsProcessingParameterEnum(
             self.DGGS_TYPE,
@@ -161,15 +167,14 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             defaultValue=0
         ))
 
-        self.resolution_param = QgsProcessingParameterNumber(
+        self.addParameter(QgsProcessingParameterNumber(
             self.RESOLUTION,
             "Resolution",
             QgsProcessingParameterNumber.Integer,
             10,
             minValue=0,
             maxValue=40
-        )
-        self.addParameter(self.resolution_param)
+        ))
 
 
     def checkParameterValues(self, parameters, context):
@@ -205,7 +210,8 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'h3': qgsfeature2h3,
             's2': qgsfeature2s2,
             'rhealpix': qgsfeature2rhealpix,
-            # 'olc': olc2qgsfeature,
+            # 'ease': qgsfeature2ease
+            'tilecode': qgsfeature2tilecode,
             # 'mgrs': mgrs2qgsfeature,
             # 'geohash': geohash2qgsfeature,
             # 'georef': georef2qgsfeature,
@@ -213,8 +219,12 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             # 'maidenhead': maidenhead2qgsfeature,
             # 'gars': gars2qgsfeature
         }
-        # return True
-        return super().prepareAlgorithm(parameters, context, feedback)
+        # if platform.system() == 'Windows':
+        #     self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t
+        #     self.DGGS_TYPE_functions['isea3h'] = qgsfeature2isea3h
+
+        return True
+
 
     def processFeature(self, feature, context, feedback):
         try:
