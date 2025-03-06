@@ -35,13 +35,13 @@ from ...vgridlibrary.conversion.qgsfeature2dggs import *
 
 class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     """
-    convert Vector Layer to H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE, OLC, Geohash, GEOREF, MGRS, Tilecode, Maidenhead, GARS
+    convert Vector Layer to H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE, QTM, OLC, Geohash, GEOREF, MGRS, Tilecode, Maidenhead, GARS
     """
     INPUT = 'INPUT'
     DGGS_TYPE = 'DGGS_TYPE'
     RESOLUTION = 'RESOLUTION'
     DGGS_TYPES = [
-        'H3', 'S2','Rhealpix','EASE', 'OLC', 'Geohash', 
+        'H3', 'S2','Rhealpix','EASE', 'QTM', 'OLC', 'Geohash', 
         'GEOREF','MGRS', 'Tilecode','Quadkey', 'Maidenhead', 'GARS'
     ]
     DGGS_RESOLUTION = {
@@ -49,6 +49,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         'S2': (0, 30, 16),
         'Rhealpix': (1, 15,11),      
         'EASE':(0,6,4),
+        'QTM':(1,24,18),
         'OLC': (2, 15, 10),
         'Geohash': (1, 30, 15),
         'GEOREF': (0, 10, 6),
@@ -139,13 +140,13 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         for field in input_fields:
             output_fields.append(field)
 
-        # Append H3-related fields
+        # Append DGGS fields
         output_fields.append(QgsField("cell_id", QVariant.String))
+        output_fields.append(QgsField('resolution', QVariant.Int))
         output_fields.append(QgsField('center_lat', QVariant.Double))
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-        output_fields.append(QgsField('resolution', QVariant.Int))
 
         return output_fields
 
@@ -210,18 +211,18 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'h3': qgsfeature2h3,
             's2': qgsfeature2s2,
             'rhealpix': qgsfeature2rhealpix,
-            # 'ease': qgsfeature2ease
-            'tilecode': qgsfeature2tilecode,
+            'ease': qgsfeature2ease,
+            'qtm': qgsfeature2qtm,
+            'tilecode': qgsfeature2tilecode
             # 'mgrs': mgrs2qgsfeature,
             # 'geohash': geohash2qgsfeature,
             # 'georef': georef2qgsfeature,
-            # 'Tilecode': tilecode2qgsfeature,
             # 'maidenhead': maidenhead2qgsfeature,
             # 'gars': gars2qgsfeature
         }
-        # if platform.system() == 'Windows':
-        #     self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t
-        #     self.DGGS_TYPE_functions['isea3h'] = qgsfeature2isea3h
+        if platform.system() == 'Windows':
+            self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t
+            self.DGGS_TYPE_functions['isea3h'] = qgsfeature2isea3h
 
         return True
 

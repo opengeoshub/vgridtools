@@ -4,8 +4,13 @@ from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.utils.rhealpixdggs.dggs import my_round
 from vgrid.generator.h3grid import fix_h3_antimeridian_cells
 from vgrid.generator.rhealpixgrid import fix_rhealpix_antimeridian_cells
+from vgrid.utils import qtm
+p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (90.0, -180.0), (90.0, -90.0), (90.0, 0.0), (90.0, 90.0), (90.0, 180.0)
+p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (0.0, -180.0), (0.0, -90.0), (0.0, 0.0), (0.0, 90.0), (0.0, 180.0)
+n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (-90.0, -180.0), (-90.0, -90.0), (-90.0, 0.0), (-90.0, 90.0), (-90.0, 180.0)
 
-from shapely.geometry import Polygon, box
+
+from shapely.geometry import Polygon, box, shape, mapping
 import h3 
 
 from vgrid.utils.antimeridian import fix_polygon
@@ -883,7 +888,7 @@ def poly2isea3h(feature, resolution):
 
                 isea3h_features.append(isea3h_feature)
             
-    return isea3h_feature
+    return isea3h_features
 
 #######################
 # QgsFeatures to EASE DGGS
@@ -903,6 +908,198 @@ def point2ease(feature, resolution):
 def poly2ease(feature, resolution):
     return
 
+
+#######################
+# QgsFeatures to QTM
+#######################
+
+def qgsfeature2qtm(feature, resolution):
+    geometry = feature.geometry()
+    if geometry.wkbType() == QgsWkbTypes.Point:
+        return point2qtm(feature, resolution)
+    elif geometry.wkbType() == QgsWkbTypes.LineString or geometry.wkbType() == QgsWkbTypes.Polygon:
+        return poly2qtm(feature, resolution)
+
+
+def point2qtm(feature, resolution):     
+    feature_geometry = feature.geometry()
+    point = feature_geometry.asPoint()
+    longitude = point.x()
+    latitude = point.y()    
+    
+    qtm_id = qtm.latlon_to_qtm_id(latitude, longitude, resolution) 
+    facet = qtm.qtm_id_to_facet(qtm_id)
+    cell_polygon = qtm.constructGeometry(facet)   
+    cell_centroid = cell_polygon.centroid
+    center_lat =  round(cell_centroid.y, 7)
+    center_lon = round(cell_centroid.x, 7)
+    cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)
+    cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
+    avg_edge_len = round(cell_perimeter / 3,2)    
+    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
+   
+    if cell_geometry:            
+        qtm_feature = QgsFeature()
+        qtm_feature.setGeometry(cell_geometry)
+        
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+        
+        # Define new s2-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField("qtm", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        qtm_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [qtm_id, resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+        all_attributes = original_attributes + new_attributes
+        
+        qtm_feature.setAttributes(all_attributes)
+        
+        return [qtm_feature]
+
+def poly2qtm(feature, resolution):
+    feature_geometry = feature.geometry()
+    qtm_features = []
+    
+    levelFacets = {}
+    QTMID = {}
+        
+    for lvl in range(resolution):
+        levelFacets[lvl] = []
+        QTMID[lvl] = []
+
+        if lvl == 0:
+            initial_facets = [
+                [p0_n180, p0_n90, p90_n90, p90_n180, p0_n180, True],
+                [p0_n90, p0_p0, p90_p0, p90_n90, p0_n90, True],
+                [p0_p0, p0_p90, p90_p90, p90_p0, p0_p0, True],
+                [p0_p90, p0_p180, p90_p180, p90_p90, p0_p90, True],
+                [n90_n180, n90_n90, p0_n90, p0_n180, n90_n180, False],
+                [n90_n90, n90_p0, p0_p0, p0_n90, n90_n90, False],
+                [n90_p0, n90_p90, p0_p90, p0_p0, n90_p0, False],
+                [n90_p90, n90_p180, p0_p180, p0_p90, n90_p90, False],
+            ]
+
+            for i, facet in enumerate(initial_facets):
+                QTMID[0].append(str(i + 1))
+                facet_geom = qtm.constructGeometry(facet)
+               
+                cell_centroid = facet_geom.centroid
+                center_lat =  round(cell_centroid.y, 7)
+                center_lon = round(cell_centroid.x, 7)
+                cell_area = round(abs(geod.geometry_area_perimeter(facet_geom)[0]),2)
+                cell_perimeter = abs(geod.geometry_area_perimeter(facet_geom)[1])
+                avg_edge_len = round(cell_perimeter / 3,2)
+                
+                levelFacets[0].append(facet)
+                cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt)      
+                
+                if cell_geometry.intersects(feature_geometry) and resolution == 1 :                                         
+                    # Create a single QGIS feature
+                    qtm_feature = QgsFeature()
+                    qtm_feature.setGeometry(cell_geometry)
+                    
+                    # Get all attributes from the input feature
+                    original_attributes = feature.attributes()
+                    original_fields = feature.fields()
+                    
+                    # Define new S2-related attributes
+                    new_fields = QgsFields()
+                    new_fields.append(QgsField("qtm", QVariant.String))  
+                    new_fields.append(QgsField("resolution", QVariant.Int))
+                    new_fields.append(QgsField("center_lat", QVariant.Double))
+                    new_fields.append(QgsField("center_lon", QVariant.Double))
+                    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+                    new_fields.append(QgsField("cell_area", QVariant.Double))
+                    
+                    # Combine original fields and new fields
+                    all_fields = QgsFields()
+                    for field in original_fields:
+                        all_fields.append(field)
+                    for field in new_fields:
+                        all_fields.append(field)
+                    
+                    qtm_feature.setFields(all_fields)
+                    
+                    # Combine original attributes with new attributes
+                    new_attributes = [QTMID[0][i], resolution, center_lat, center_lon, avg_edge_len, cell_area]
+                    all_attributes = original_attributes + new_attributes
+                    
+                    qtm_feature.setAttributes(all_attributes)    
+
+                    qtm_features.append(qtm_feature)                           
+                        
+                    return qtm_features            
+        else:
+            for i, pf in enumerate(levelFacets[lvl - 1]):
+                subdivided_facets = qtm.divideFacet(pf)
+                for j, subfacet in enumerate(subdivided_facets):
+                    subfacet_geom = qtm.constructGeometry(subfacet)
+                    cell_geometry = QgsGeometry.fromWkt(subfacet_geom.wkt) 
+                    
+                    if cell_geometry.intersects(feature_geometry):  # Only keep intersecting facets
+                        new_id = QTMID[lvl - 1][i] + str(j)
+                        QTMID[lvl].append(new_id)
+                        levelFacets[lvl].append(subfacet)
+                        if lvl == resolution - 1:  # Only store final resolution
+                            cell_centroid = subfacet_geom.centroid
+                            center_lat =  round(cell_centroid.y, 7)
+                            center_lon = round(cell_centroid.x, 7)
+                            cell_area = round(abs(geod.geometry_area_perimeter(subfacet_geom)[0]),2)
+                            cell_perimeter = abs(geod.geometry_area_perimeter(subfacet_geom)[1])
+                            avg_edge_len = round(cell_perimeter / 3,2)                            
+                          
+                            # Create a single QGIS feature
+                            qtm_feature = QgsFeature()
+                            qtm_feature.setGeometry(cell_geometry)
+                            
+                            # Get all attributes from the input feature
+                            original_attributes = feature.attributes()
+                            original_fields = feature.fields()
+                            
+                            # Define new S2-related attributes
+                            new_fields = QgsFields()
+                            new_fields.append(QgsField("qtm", QVariant.String))  
+                            new_fields.append(QgsField("resolution", QVariant.Int))
+                            new_fields.append(QgsField("center_lat", QVariant.Double))
+                            new_fields.append(QgsField("center_lon", QVariant.Double))
+                            new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+                            new_fields.append(QgsField("cell_area", QVariant.Double))
+                            
+                            # Combine original fields and new fields
+                            all_fields = QgsFields()
+                            for field in original_fields:
+                                all_fields.append(field)
+                            for field in new_fields:
+                                all_fields.append(field)
+                            
+                            qtm_feature.setFields(all_fields)
+                            
+                            # Combine original attributes with new attributes
+                            new_attributes = [new_id, resolution, center_lat, center_lon, avg_edge_len, cell_area]
+                            all_attributes = original_attributes + new_attributes
+                            
+                            qtm_feature.setAttributes(all_attributes)    
+
+                            qtm_features.append(qtm_feature)                           
+                        
+    return qtm_features
+        
 
 #######################
 # QgsFeatures to Tilecode

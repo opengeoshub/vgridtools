@@ -27,7 +27,8 @@ __copyright__ = '(L) 2024 by Thang Quach'
 from qgis.core import *
 from qgis.gui import *
 from qgis.utils import qgsfunction
-from vgrid.utils import olc,mgrs,geohash,georef,s2, tile,maidenhead,gars
+from vgrid.utils import s2,qtm,olc,mgrs,geohash,georef,tilecode,maidenhead,gars
+import h3
 
 group_name = 'Vgrid'
 
@@ -43,6 +44,79 @@ def tr(*string):
             return string[0]
     else:
         return string[0]
+
+def latlon2h3(latitude, longitude, resolution, feature, parent):
+  """<style type="text/css">
+    .function {
+    color: #05688f;
+    font-weight: bold;
+    }
+    .parameters {
+    color: red;
+    font-style:italic
+    }
+  </style>
+  Convert latlon to H3 code.
+  <h4>Syntax</h4>    
+    <li><span class = function>latlon2h3</span>(<span class = parameters>lat, long, resolution [0-15]</span>)</li>
+  <h4>Example usage</h4>
+
+  <ul>
+    <li><span class = function>latlon2h3</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 13</span>)&rarr; ''</li>
+  </ul>    
+  """ 
+  return h3.latlng_to_cell(latitude, longitude, resolution)
+
+@qgsfunction(args='auto', group=group_name)
+def latlon2s2(latitude, longitude, resolution, feature, parent):
+  """<style type="text/css">
+    .function {
+    color: #05688f;
+    font-weight: bold;
+    }
+    .parameters {
+    color: red;
+    font-style:italic
+    }
+  </style>
+  Convert latlon to S2 code.
+  <h4>Syntax</h4>    
+    <li><span class = function>latlon2s2</span>(<span class = parameters>lat, long, resolution [0-->30]</span>)</li>
+  <h4>Example usage</h4>
+
+  <ul>
+    <li><span class = function>latlon2s2</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 21</span>)&rarr; '31752f45cc94'</li>
+  </ul>    
+  """ 
+  lat_lng = s2.LatLng.from_degrees(latitude, longitude)
+  cell_id = s2.CellId.from_lat_lng(lat_lng)
+  cell_id = cell_id.parent(resolution)
+  cell_id_token= s2.CellId.to_token(cell_id)
+  return cell_id_token
+
+
+@qgsfunction(args='auto', group=group_name)
+def latlon2qtm(latitude, longitude, resolution, feature, parent):
+  """<style type="text/css">
+    .function {
+    color: #05688f;
+    font-weight: bold;
+    }
+    .parameters {
+    color: red;
+    font-style:italic
+    }
+  </style>
+  Convert latlon to QTM code.
+  <h4>Syntax</h4>    
+    <li><span class = function>latlon2qtm</span>(<span class = parameters>lat, long, resolution [1..24]</span>)</li>
+  <h4>Example usage</h4>
+
+  <ul>
+    <li><span class = function>latlon2qtm</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 18</span>)&rarr; '420123231312110130'</li>
+  </ul>    
+  """
+  return qtm.latlon_to_qtm_id(latitude, longitude, resolution)
 
 # @qgsfunction(args='auto', group=group_name,usesgeometry=True)
 @qgsfunction(args='auto', group=group_name)
@@ -136,55 +210,6 @@ def latlon2georef(latitude, longitude, resolution, feature, parent):
   </ul>    
   """ 
   return georef.encode(latitude, longitude, resolution) 
-
-@qgsfunction(args='auto', group=group_name)
-def latlon2s2(latitude, longitude, resolution, feature, parent):
-  """<style type="text/css">
-    .function {
-    color: #05688f;
-    font-weight: bold;
-    }
-    .parameters {
-    color: red;
-    font-style:italic
-    }
-  </style>
-  Convert latlon to S2 code.
-  <h4>Syntax</h4>    
-    <li><span class = function>latlon2s2</span>(<span class = parameters>lat, long, resolution [0-->30]</span>)</li>
-  <h4>Example usage</h4>
-
-  <ul>
-    <li><span class = function>latlon2s2</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 21</span>)&rarr; '31752f45cc94'</li>
-  </ul>    
-  """ 
-  lat_lng = s2.LatLng.from_degrees(latitude, longitude)
-  cell_id = s2.CellId.from_lat_lng(lat_lng)
-  cell_id = cell_id.parent(resolution)
-  cell_id_token= s2.CellId.to_token(cell_id)
-  return cell_id_token
-
-# def latlon2h3(latitude, longitude, resolution, feature, parent):
-#   """<style type="text/css">
-#     .function {
-#     color: #05688f;
-#     font-weight: bold;
-#     }
-#     .parameters {
-#     color: red;
-#     font-style:italic
-#     }
-#   </style>
-#   Convert latlon to H3 code.
-#   <h4>Syntax</h4>    
-#     <li><span class = function>latlon2h3</span>(<span class = parameters>lat, long, resolution [0-15]</span>)</li>
-#   <h4>Example usage</h4>
-
-#   <ul>
-#     <li><span class = function>latlon2h3</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 13</span>)&rarr; ''</li>
-#   </ul>    
-#   """ 
-#   return h3.latlng_to_cell(latitude, longitude, resolution)
 
 @qgsfunction(args='auto', group=group_name)
 def latlon2tilecode(latitude, longitude, zoom, feature, parent):
