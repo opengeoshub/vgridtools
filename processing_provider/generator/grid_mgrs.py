@@ -40,9 +40,9 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os,math
+import os,math, random
 from vgrid.utils import mgrs
-from ...vgridlibrary.imgs import Imgs
+from ...utils.imgs import Imgs
 
 
 class GridMGRS(QgsProcessingAlgorithm):
@@ -186,7 +186,7 @@ class GridMGRS(QgsProcessingAlgorithm):
 
         # Apply styling (optional)
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor('#FF0000')  # Red lines
+            lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')  # Black font
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
                 StylePostProcessor.create(lineColor, fontColor)

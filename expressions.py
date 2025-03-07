@@ -27,7 +27,9 @@ __copyright__ = '(L) 2024 by Thang Quach'
 from qgis.core import *
 from qgis.gui import *
 from qgis.utils import qgsfunction
-from vgrid.utils import s2,qtm,olc,mgrs,geohash,georef,tilecode,maidenhead,gars
+from vgrid.utils import s2,qtm,olc,mgrs,geohash,georef,tilecode,maidenhead
+from vgrid.utils.gars.garsgrid import GARSGrid  
+
 import h3
 
 group_name = 'Vgrid'
@@ -278,6 +280,6 @@ def latlon2gars(latitude, longitude, resolution, feature, parent):
     <li><span class = function>latlon2gars</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 1</span>)&rarr; '574JK1918'</li>
   </ul>    
   """ 
-  gars_grid = gars.GARSGrid.from_latlon(latitude, longitude, resolution)
+  gars_grid = GARSGrid.from_latlon(latitude, longitude, resolution)
   gars_code = gars_grid.gars_id
   return gars_code

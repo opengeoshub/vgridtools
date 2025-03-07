@@ -40,9 +40,9 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os
+import os, random
 from vgrid.utils import mercantile
-from ...vgridlibrary.imgs import Imgs
+from ...utils.imgs import Imgs
 
 
 class GridTilecode(QgsProcessingAlgorithm):
@@ -114,12 +114,11 @@ class GridTilecode(QgsProcessingAlgorithm):
                     self.RESOLUTION,
                     self.tr('RESOLUTION (Zoom level)'),
                     QgsProcessingParameterNumber.Integer,
-                    defaultValue=20,
+                    defaultValue = 6,
                     minValue= 0,
                     maxValue= 24,
                     optional=False)
         self.addParameter(param)
-
 
         param = QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
@@ -143,7 +142,7 @@ class GridTilecode(QgsProcessingAlgorithm):
     
     def processAlgorithm(self, parameters, context, feedback):
         fields = QgsFields()
-        fields.append(QgsField("Tilecode", QVariant.String))
+        fields.append(QgsField("tilecode", QVariant.String))
 
         (sink, dest_id) = self.parameterAsSink(
             parameters, 
@@ -188,12 +187,12 @@ class GridTilecode(QgsProcessingAlgorithm):
             polygon = QgsGeometry.fromPolygonXY([points])
             
             # Generate the 'Tilecode' attribute in the format "zZxXyY"
-            Tilecode = f"z{tile.z}x{tile.x}y{tile.y}"
+            tilecode = f"z{tile.z}x{tile.x}y{tile.y}"
             
             # Create a new feature and set its geometry and attributes
             feature = QgsFeature(fields)
             feature.setGeometry(polygon)
-            feature.setAttribute("Tilecode", Tilecode)
+            feature.setAttribute("tilecode", tilecode)
             
             # Add the feature to the output sink
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
@@ -210,7 +209,7 @@ class GridTilecode(QgsProcessingAlgorithm):
                 break
 
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor('#FF0000')
+            lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
         

@@ -16,7 +16,7 @@ __author__ = 'Thang Quach'
 __date__ = '2024-11-20'
 __copyright__ = '(L) 2024, Thang Quach'
 
-import os
+import os, random
 
 from qgis.PyQt.QtCore import QCoreApplication,QVariant,Qt
 from qgis.PyQt.QtGui import QIcon, QColor
@@ -34,7 +34,7 @@ from qgis.core import (
     QgsGeometry, QgsVectorLayer, 
     QgsPalLayerSettings, QgsVectorLayerSimpleLabeling)
 
-from ...vgridlibrary.imgs import Imgs
+from ...utils.imgs import Imgs
 
 bands = ['C','D','E','F','G','H','J','K','L','M','N','P','Q','R','S','T','U','V','W','X']
 epsg4326 = QgsCoordinateReferenceSystem('EPSG:4326')
@@ -167,7 +167,7 @@ class GridGZD(QgsProcessingAlgorithm):
 
        
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor('#FF0000')
+            lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
         

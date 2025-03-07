@@ -37,6 +37,8 @@ from .processing_provider.conversion.vector2dggs import Vector2DGGS
 
 from .processing_provider.generator.grid_h3 import GridH3
 from .processing_provider.generator.grid_s2 import GridS2
+from .processing_provider.generator.grid_qtm import GridQTM
+
 from .processing_provider.generator.grid_olc import GridOLC
 from .processing_provider.generator.grid_geohash import GridGeohash
 from .processing_provider.generator.grid_georef import GridGeoref
@@ -71,6 +73,8 @@ class VgridProvider(QgsProcessingProvider):
 
         self.addAlgorithm(GridH3())
         self.addAlgorithm(GridS2())
+        self.addAlgorithm(GridQTM())
+
         # self.addAlgorithm(GridOLC())
         self.addAlgorithm(GridGeohash())
         # self.addAlgorithm(GridGeoref())

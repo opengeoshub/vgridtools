@@ -30,8 +30,8 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication,QVariant
 
 import platform
-from ...vgridlibrary.imgs import Imgs
-from ...vgridlibrary.conversion.qgsfeature2dggs import *
+from ...utils.imgs import Imgs
+from ...utils.conversion.qgsfeature2dggs import *
 
 class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     """
@@ -42,22 +42,19 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     RESOLUTION = 'RESOLUTION'
     DGGS_TYPES = [
         'H3', 'S2','Rhealpix','EASE', 'QTM', 'OLC', 'Geohash', 
-        'GEOREF','MGRS', 'Tilecode','Quadkey', 'Maidenhead', 'GARS'
-    ]
+        'GEOREF','MGRS', 'Tilecode','Quadkey']
     DGGS_RESOLUTION = {
         'H3': (0, 15, 10),
         'S2': (0, 30, 16),
         'Rhealpix': (1, 15,11),      
         'EASE':(0,6,4),
-        'QTM':(1,24,18),
+        'QTM':(1,24,12),
         'OLC': (2, 15, 10),
         'Geohash': (1, 30, 15),
         'GEOREF': (0, 10, 6),
         'MGRS': (0, 5, 4),
         'Tilecode': (0, 29, 15),
-        'Quadkey': (0, 29, 15),
-        'Maidenhead': (1, 4, 3),
-        'GARS': (1, 30, 1)
+        'Quadkey': (0, 29, 15)        
     }
     if platform.system() == 'Windows':
         index = DGGS_TYPES.index('Rhealpix') + 1
@@ -213,12 +210,10 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'rhealpix': qgsfeature2rhealpix,
             'ease': qgsfeature2ease,
             'qtm': qgsfeature2qtm,
-            'tilecode': qgsfeature2tilecode
+            'geohash': qgsfeature2geohash,
+            # 'georef': georef2qgsfeature,   
             # 'mgrs': mgrs2qgsfeature,
-            # 'geohash': geohash2qgsfeature,
-            # 'georef': georef2qgsfeature,
-            # 'maidenhead': maidenhead2qgsfeature,
-            # 'gars': gars2qgsfeature
+            'tilecode': qgsfeature2tilecode
         }
         if platform.system() == 'Windows':
             self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t

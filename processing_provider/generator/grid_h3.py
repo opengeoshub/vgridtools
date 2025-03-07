@@ -27,7 +27,6 @@ from qgis.core import (
     QgsProcessingAlgorithm,
     QgsFields,
     QgsField,
-    QgsPointXY, 
     QgsFeature,
     QgsGeometry,
     QgsWkbTypes,
@@ -40,13 +39,11 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os, sys
-import subprocess
-from PyQt5.QtWidgets import QMessageBox
+import os, random
 
 import h3    
     
-from ...vgridlibrary.imgs import Imgs
+from ...utils.imgs import Imgs
 
 from shapely.geometry import Polygon,box
 from pyproj import Geod
@@ -255,7 +252,7 @@ class GridH3(QgsProcessingAlgorithm):
                 
         feedback.pushInfo("H3 grid generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor('#FF0000')
+            lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
         
@@ -280,7 +277,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
         label = QgsPalLayerSettings()
-        label.fieldName = 's2_token'
+        label.fieldName = 'h3'
         format = label.format()
         format.setColor(self.font_color)
         format.setSize(8)

@@ -30,20 +30,26 @@ from qgis.core import QgsApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication,QVariant
 
+import platform 
 
-from ...vgridlibrary.imgs import Imgs
-from ...vgridlibrary.conversion.dggs2qgsfeature import *
+from ...utils.imgs import Imgs
+from ...utils.conversion.dggs2qgsfeature import *
 
 class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     """
-    Algorithm to convert H3, S2, OLC/ OpenLocationCode/ Google Plus Code, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS to Gecode grid cells
+    Algorithm to convert H3, S2, Rhealpix,EASE, QTM, OLC/ OpenLocationCode/ Google Plus Code, Geohash, 
+        GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS grid cells
     """
     INPUT = 'INPUT'
     CELL_ID = 'CELL_ID'
     DGGS_TYPE = 'DGGS_TYPE'
-    DGGS_OPTIONS = [
-         'H3', 'S2', 'OLC', 'Geohash', 'GEOREF','MGRS',  'Tilecode', 'Maidenhead', 'GARS'
-    ]
+    DGGS_TYPES = ['H3', 'S2','Rhealpix','EASE', 'QTM', 'OLC', 'Geohash', 
+                  'GEOREF','MGRS', 'Tilecode','Quadkey', 'Maidenhead', 'GARS']
+    
+    if platform.system() == 'Windows':
+        index = DGGS_TYPES.index('Rhealpix') + 1
+        DGGS_TYPES[index:index] = ['ISEA4T', 'ISEA3H']
+        
     OUTPUT = 'OUTPUT'
 
     LOC = QgsApplication.locale()[:2]
@@ -81,7 +87,8 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return 'conversion'
 
     def tags(self):
-        return self.tr('H3, S2, OLC, OpenLocationCode, Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Maidenhead, GARS').split(',')
+        return self.tr('H3,S2,Rhealpix,EASE,QTM,OLC,OpenLocationCode,Google Plus Code,Geohash,\
+                        GEOREF,MGRS,Tilecode,Quadkey,Maidenhead,GARS').split(',')
     
     txt_en = 'Cell ID to DGGS'
     txt_vi = 'Cell ID to DGGS'
@@ -109,7 +116,6 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     def outputCrs(self, input_crs):
         return QgsCoordinateReferenceSystem("EPSG:4326")
 
-
     def outputWkbType(self, input_wkb_type):
         return (QgsWkbTypes.Polygon)   
     
@@ -122,23 +128,22 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
         # Append H3-related fields
         output_fields.append(QgsField('cell_id', QVariant.String))
+        output_fields.append(QgsField('resolution', QVariant.Int))
         output_fields.append(QgsField('center_lat', QVariant.Double))
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-        output_fields.append(QgsField('resolution', QVariant.Int))
 
         return output_fields
-
 
     def supportInPlaceEdit(self, layer):
         return False
 
     def initParameters(self, config=None):   
-        # Input vector layer
+        # Input layer
         param = QgsProcessingParameterFeatureSource(
                 self.INPUT,
-                self.tr('Input vector layer'),
+                self.tr('Input layer'),
                 [QgsProcessing.TypeVector])
         self.addParameter(param)
 
@@ -155,8 +160,8 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         param = QgsProcessingParameterEnum(
             self.DGGS_TYPE,
             self.tr('DGGS type'),
-            options=self.DGGS_OPTIONS,
-            defaultValue=0  # Default to the first option (OLC)
+            options=self.DGGS_TYPES,
+            defaultValue=0  # Default to the first option (H3)
         )
         self.addParameter(param)
 
@@ -171,21 +176,28 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_functions = {
             'h3': h32qgsfeature,
             's2': s22qgsfeature,
+            'rhealpix': rhealpix2qgsfeature,
+            'qtm': qtm2qgsfeature,
             'olc': olc2qgsfeature,
             'geohash': geohash2qgsfeature,
             'georef': georef2qgsfeature,
             'mgrs': mgrs2qgsfeature,
-            'Tilecode': tilecode2qgsfeature,
+            'tilecode': tilecode2qgsfeature,
             'maidenhead': maidenhead2qgsfeature,
             'gars': gars2qgsfeature
         }
+        
+        # if platform.system() == 'Windows':
+        #     self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t
+        #     self.DGGS_TYPE_functions['isea3h'] = qgsfeature2isea3h
+
         return True
     
     def processFeature(self, feature, context, feedback):
         try:
-            code = feature[self.CELL_ID]
+            cell_id = feature[self.CELL_ID]
 
-            DGGS_TYPE_key = self.DGGS_OPTIONS[self.DGGS_TYPE_index].lower()
+            DGGS_TYPE_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
             conversion_function = self.DGGS_TYPE_functions.get(DGGS_TYPE_key)
             # feedback.pushInfo(f"{DGGS_TYPE_key}")
             if DGGS_TYPE_key == 'mgrs':
@@ -193,13 +205,13 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 x, y = point.x(), point.y()  # Get the x and y coordinates
                 
                 # Call the mgrs2qgsfeature function with the coordinates
-                cell_feature = mgrs2qgsfeature(code, y, x)  # Use y, x for lat, lon
+                cell_feature = mgrs2qgsfeature(cell_id, y, x)  # Use y, x for lat, lon
                 if cell_feature:
                     return [cell_feature]
 
             elif conversion_function:
                 # Call the conversion function
-                cell_feature = conversion_function(feature,code)
+                cell_feature = conversion_function(feature,cell_id)
                 if cell_feature:
                     return [cell_feature]
             

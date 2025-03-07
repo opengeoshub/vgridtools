@@ -42,9 +42,10 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
 from vgrid.utils import s2 
-from ...vgridlibrary.imgs import Imgs
+from ...utils.imgs import Imgs
 from vgrid.utils.antimeridian import fix_polygon
 from shapely.geometry import Polygon
+import random
 
 max_cells = 10_000_000
 
@@ -115,9 +116,9 @@ class GridS2(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('RESOLUTION'),
+                    self.tr('RESOLUTION [0..30]'),
                     QgsProcessingParameterNumber.Integer,
-                    defaultValue=1,
+                    defaultValue=15,
                     minValue= 0,
                     maxValue= 30,
                     optional=False)
@@ -227,7 +228,8 @@ class GridS2(QgsProcessingAlgorithm):
         
         feedback.pushInfo("S2 grid generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor('#FF0000')
+            # lineColor = QColor('#FF0000')
+            lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
         

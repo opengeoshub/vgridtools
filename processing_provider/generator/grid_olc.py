@@ -37,10 +37,10 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os
+import os, random
 
 from vgrid.utils import olc
-from ...vgridlibrary.imgs import Imgs
+from ...utils.imgs import Imgs
 
 
 class GridOLC(QgsProcessingAlgorithm):
@@ -226,7 +226,15 @@ class GridOLC(QgsProcessingAlgorithm):
             # # Set progress for feedback
             # progress = (idx / total_codes) * 100
             # feedback.setProgress(int(progress))
-
+            if feedback.isCanceled():
+                break
+            
+        feedback.pushInfo("QTM grid generation completed.")
+        if context.willLoadLayerOnCompletion(dest_id):
+            lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+            fontColor = QColor('#000000')
+            context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
+            
         return {self.OUTPUT: dest_id}
 
 

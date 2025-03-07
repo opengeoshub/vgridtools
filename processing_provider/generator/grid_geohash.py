@@ -37,10 +37,10 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os
+import os, random
 
 from vgrid.utils import geohash
-from ...vgridlibrary.imgs import Imgs
+from ...utils.imgs import Imgs
 
 
 class GridGeohash(QgsProcessingAlgorithm):
@@ -257,7 +257,7 @@ class GridGeohash(QgsProcessingAlgorithm):
                 self.expand_geohash_within_extent(gh, self.RESOLUTION, sink, fields, self.grid_extent,feedback)
 
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor('#FF0000')
+            lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
         return {self.OUTPUT: dest_id}
