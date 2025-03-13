@@ -869,8 +869,11 @@ def poly2isea3h(feature, resolution):
             
     return isea3h_features
 
+
+
+
 #######################
-# QgsFeatures to EASE DGGS
+# QgsFeatures to EASE-DGGS
 #######################
 
 def qgsfeature2ease(feature, resolution):

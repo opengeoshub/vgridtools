@@ -32,11 +32,12 @@ import os
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-from .processing_provider.conversion.cellid2dggs import CellID2DGGS
-from .processing_provider.conversion.vector2dggs import Vector2DGGS
+from .processing_provider.conversion.cellid2qgsfeature import CellID2DGGS
+from .processing_provider.conversion.qgsfeature2dggs import Vector2DGGS
 
 from .processing_provider.generator.grid_h3 import GridH3
 from .processing_provider.generator.grid_s2 import GridS2
+from .processing_provider.generator.grid_rhealpix import GridRhealpix
 from .processing_provider.generator.grid_qtm import GridQTM
 
 from .processing_provider.generator.grid_olc import GridOLC
@@ -73,6 +74,7 @@ class VgridProvider(QgsProcessingProvider):
 
         self.addAlgorithm(GridH3())
         self.addAlgorithm(GridS2())
+        self.addAlgorithm(GridRhealpix())
         self.addAlgorithm(GridQTM())
 
         # self.addAlgorithm(GridOLC())

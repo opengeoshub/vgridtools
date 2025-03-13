@@ -41,6 +41,8 @@ if (platform.system() == 'Windows'):
     from vgrid.generator.isea3hgrid import isea3h_res_accuracy_dict
     from vgrid.generator.isea4tgrid import isea4t_res_accuracy_dict
 
+from vgrid.utils.easedggs.dggs.grid_addressing import geos_to_grid_ids
+
 group_name = 'DGGS Vgrid'
 
 # https://qgis.org/pyqgis/3.2/core/Expression/QgsExpression.html
@@ -194,6 +196,33 @@ def latlon2isea3h(latitude, longitude, resolution, feature, parent):
         isea3h_cell = isea3h_dggs.convert_point_to_dggs_cell(lat_long_point)
         return isea3h_cell.get_cell_id()
 
+@qgsfunction(args='auto', group=group_name)
+def latlon2ease(latitude, longitude, resolution, feature, parent):
+  """<style type="text/css">
+    .function {
+    color: #05688f;
+    font-weight: bold;
+    }
+    .parameters {
+    color: red;
+    font-style:italic
+    }
+  </style>
+  Convert latlon to EASE-DGGS.
+  <h4>Syntax</h4>    
+    <li><span class = function>latlon2ease</span>(<span class = parameters>lat, long, resolution [0..6]</span>)</li>
+  <h4>Example usage</h4>
+
+  <ul>
+    <li><span class = function>latlon2ease</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 5</span>)&rarr; 'L5.165767.02.02.22.45.63'</li>
+  </ul>    
+  """ 
+  # res = [0..6]  
+  easedggs_cell = geos_to_grid_ids([(longitude,latitude)],level = resolution)
+  easedggs_cell_id = easedggs_cell['result']['data'][0]
+  return easedggs_cell_id
+  
+  
 @qgsfunction(args='auto', group=group_name)
 def latlon2qtm(latitude, longitude, resolution, feature, parent):
   """<style type="text/css">
