@@ -177,6 +177,8 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'h3': h32qgsfeature,
             's2': s22qgsfeature,
             'rhealpix': rhealpix2qgsfeature,
+            'isea4t': isea4t2qgsfeature,
+            'isea3h': isea3h2qgsfeature,
             'qtm': qtm2qgsfeature,
             'olc': olc2qgsfeature,
             'geohash': geohash2qgsfeature,

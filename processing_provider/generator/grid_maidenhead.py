@@ -204,7 +204,7 @@ class GridMaidenhead(QgsProcessingAlgorithm):
         }
         
         if RESOLUTION not in grid_params:
-            raise ValueError("Unsupported RESOLUTION")
+            raise ValueError("Unsupported Resolution")
 
         x_cells, y_cells, lon_width, lat_width = grid_params[RESOLUTION]
         base_lat, base_lon = -90, -180

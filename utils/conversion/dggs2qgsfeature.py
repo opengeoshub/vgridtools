@@ -6,10 +6,20 @@ from vgrid.generator.h3grid import fix_h3_antimeridian_cells
 from vgrid.conversion.cell2geojson import rhealpix_cell_to_polygon
 from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.utils.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+import platform
+if (platform.system() == 'Windows'):
+    from vgrid.utils.eaggr.eaggr import Eaggr
+    from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
+    from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
+    from vgrid.utils.eaggr.enums.model import Model
+    from vgrid.generator.isea4tgrid import fix_isea4t_wkt, fix_isea4t_antimeridian_cells
+    from vgrid.conversion.cell2geojson import isea3h_cell_to_polygon
+
 
 from vgrid.utils import mercantile
 import geopandas as gpd
 from shapely.geometry import Polygon, Point
+from shapely.wkt import loads
 import json
 import h3 
 from vgrid.utils.antimeridian import fix_polygon
@@ -23,16 +33,16 @@ geod = Geod(ellps="WGS84")
 from qgis.core import QgsMessageLog, Qgis
     
     
-def h32qgsfeature(feature, h3_code):
+def h32qgsfeature(feature, h3_cellid):
       # Get the boundary coordinates of the H3 cell
-    cell_boundary = h3.cell_to_boundary(h3_code)    
+    cell_boundary = h3.cell_to_boundary(h3_cellid)    
     if cell_boundary:
         filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
         # Reverse lat/lon to lon/lat for GeoJSON compatibility
         reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
         cell_polygon = Polygon(reversed_boundary)
         
-        center_lat, center_lon = h3.cell_to_latlng(h3_code)
+        center_lat, center_lon = h3.cell_to_latlng(h3_cellid)
         center_lat = round(center_lat,7)
         center_lon = round(center_lon,7)
 
@@ -40,9 +50,9 @@ def h32qgsfeature(feature, h3_code):
         cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])  # Perimeter in meters  
         avg_edge_len = round(cell_perimeter/6,2)
         
-        if (h3.is_pentagon(h3_code)):
+        if (h3.is_pentagon(h3_cellid)):
             avg_edge_len = round(cell_perimeter/5,2)   
-        resolution = h3.get_resolution(h3_code)        
+        resolution = h3.get_resolution(h3_cellid)        
             
         # Convert WKT to QgsGeometry
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)   
@@ -73,7 +83,7 @@ def h32qgsfeature(feature, h3_code):
         h3_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [h3_code,resolution, center_lat, center_lon, avg_edge_len,cell_area]
+        new_attributes = [h3_cellid,resolution, center_lat, center_lon, avg_edge_len,cell_area]
         all_attributes = original_attributes + new_attributes
         
         h3_feature.setAttributes(all_attributes)    
@@ -144,9 +154,9 @@ def s22qgsfeature(feature, s2_token):
         s2_feature.setAttributes(all_attributes)    
         return s2_feature
 
-def rhealpix2qgsfeature(feature, rhealpix_code):
-    rhealpix_code = str(rhealpix_code)
-    rhealpix_uids = (rhealpix_code[0],) + tuple(map(int, rhealpix_code[1:]))
+def rhealpix2qgsfeature(feature, rhealpix_cellid):
+    rhealpix_cellid = str(rhealpix_cellid)
+    rhealpix_uids = (rhealpix_cellid[0],) + tuple(map(int, rhealpix_cellid[1:]))
     rhealpix_dggs = RHEALPixDGGS(ellipsoid= WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3) 
     rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
     
@@ -191,17 +201,191 @@ def rhealpix2qgsfeature(feature, rhealpix_code):
         rhealpix_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [rhealpix_code, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+        new_attributes = [rhealpix_cellid, resolution, center_lat, center_lon, avg_edge_len,cell_area]
         all_attributes = original_attributes + new_attributes
         
         rhealpix_feature.setAttributes(all_attributes)    
         return rhealpix_feature
     
+
+def isea4t2qgsfeature(feature, isea4t_cellid):
+    if (platform.system() == 'Windows'): 
+        isea4t_dggs = Eaggr(Model.ISEA4T)
+        cell_to_shape = isea4t_dggs.convert_dggs_cell_outline_to_shape_string(DggsCell(isea4t_cellid),ShapeStringFormat.WKT)
+        cell_to_shape_fixed = loads(fix_isea4t_wkt(cell_to_shape))
+    
+        if isea4t_cellid.startswith('00') or isea4t_cellid.startswith('09') or isea4t_cellid.startswith('14')\
+            or isea4t_cellid.startswith('04') or isea4t_cellid.startswith('19'):
+            cell_to_shape_fixed = fix_isea4t_antimeridian_cells(cell_to_shape_fixed)
         
-def qtm2qgsfeature(feature, qtm_code):
-    facet = qtm.qtm_id_to_facet(qtm_code)
+        if cell_to_shape_fixed:
+            resolution = len(isea4t_cellid)-2
+            # Compute centroid
+            cell_centroid = cell_to_shape_fixed.centroid
+            center_lat, center_lon = round(cell_centroid.y,7), round(cell_centroid.x,7)
+            # Compute area using PyProj Geod
+            cell_polygon = Polygon(list(cell_to_shape_fixed.exterior.coords))
+
+            cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)  # Area in square meters
+            cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])  # Perimeter in meters  
+            avg_edge_len = round(cell_perimeter/3,2)  
+
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
+            isea4t_feature = QgsFeature()
+            isea4t_feature.setGeometry(cell_geometry)
+            
+            # Get all attributes from the input feature
+            original_attributes = feature.attributes()
+            original_fields = feature.fields()
+            
+            # Define new H3-related attributes
+            new_fields = QgsFields()
+            new_fields.append(QgsField("isea4t", QVariant.String))
+            new_fields.append(QgsField("resolution", QVariant.Int))
+            new_fields.append(QgsField("center_lat", QVariant.Double))
+            new_fields.append(QgsField("center_lon", QVariant.Double))
+            new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+            new_fields.append(QgsField("cell_area", QVariant.Double))
+            
+            # Combine original fields and new fields
+            all_fields = QgsFields()
+            for field in original_fields:
+                all_fields.append(field)
+            for field in new_fields:
+                all_fields.append(field)
+            
+            isea4t_feature.setFields(all_fields)
+            
+            # Combine original attributes with new attributes
+            new_attributes = [isea4t_cellid, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+            all_attributes = original_attributes + new_attributes
+            
+            isea4t_feature.setAttributes(all_attributes)    
+            return isea4t_feature
+            
+
+def isea3h2qgsfeature(feature, isea3h_cellid):
+    if (platform.system() == 'Windows'): 
+        isea3h_dggs = Eaggr(Model.ISEA3H)
+        accuracy_res_dict = {
+                25_503_281_086_204.43: 0,
+                17_002_187_390_802.953: 1,
+                5_667_395_796_934.327: 2,
+                1_889_131_932_311.4424: 3,
+                629_710_644_103.8047: 4,
+                209_903_548_034.5921: 5,
+                69_967_849_344.8546: 6,
+                23_322_616_448.284866: 7,
+                7_774_205_482.77106: 8,
+                2_591_401_827.5809155: 9,
+                863_800_609.1842003: 10,
+                287_933_536.4041716: 11,
+                95_977_845.45861907: 12,
+                31_992_615.152873024: 13,
+                10_664_205.060395785: 14,
+                3_554_735.0295700384: 15,
+                1_184_911.6670852362: 16,
+                394_970.54625696875: 17,
+                131_656.84875232293: 18,
+                43_885.62568888426: 19,
+                14628.541896294753: 20,
+                4_876.180632098251: 21,
+                1_625.3841059227952: 22,
+                541.7947019742651: 23,
+                180.58879588146658: 24,
+                60.196265293822194: 25,
+                20.074859874562527: 26,
+                6.6821818482323785: 27,
+                2.2368320593659234: 28,
+                0.7361725765001773: 29,
+                0.2548289687885229: 30,
+                0.0849429895961743: 31,
+                0.028314329865391435: 32,
+                
+                0.0: 33, # isea3h2point._accuracy always returns 0.0 from res 33
+                0.0: 34,
+                0.0: 35,
+                0.0: 36,
+                0.0: 37,
+                0.0: 38,
+                0.0: 39,
+                0.0: 40
+            }
+
+        cell_polygon = isea3h_cell_to_polygon(isea3h_cellid)
+    
+        cell_centroid = cell_polygon.centroid
+        center_lat =  round(cell_centroid.y, 7)
+        center_lon = round(cell_centroid.x, 7)
+        
+        cell_area = abs(geod.geometry_area_perimeter(cell_polygon)[0])
+        cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
+        isea3h2point = isea3h_dggs.convert_dggs_cell_to_point(DggsCell(isea3h_cellid))      
+        
+        accuracy = isea3h2point._accuracy
+            
+        avg_edge_len = cell_perimeter / 6
+        resolution  = accuracy_res_dict.get(accuracy)
+        
+        if (resolution == 0): # icosahedron faces at resolution = 0
+            avg_edge_len = cell_perimeter / 3
+        
+        if accuracy == 0.0:
+            if round(avg_edge_len,2) == 0.06:
+                resolution = 33
+            elif round(avg_edge_len,2) == 0.03:
+                resolution = 34
+            elif round(avg_edge_len,2) == 0.02:
+                resolution = 35
+            elif round(avg_edge_len,2) == 0.01:
+                resolution = 36
+            
+            elif round(avg_edge_len,3) == 0.007:
+                resolution = 37
+            elif round(avg_edge_len,3) == 0.004:
+                resolution = 38
+            elif round(avg_edge_len,3) == 0.002:
+                resolution = 39
+            elif round(avg_edge_len,3) <= 0.001:
+                resolution = 40
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
+        isea3h_feature = QgsFeature()
+        isea3h_feature.setGeometry(cell_geometry)
+        
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+        
+        # Define new H3-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField("isea3h", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        isea3h_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [isea3h_cellid, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+        all_attributes = original_attributes + new_attributes
+        
+        isea3h_feature.setAttributes(all_attributes)    
+        return isea3h_feature
+        
+
+def qtm2qgsfeature(feature, qtm_cellid):
+    facet = qtm.qtm_id_to_facet(qtm_cellid)
     if facet:
-        resolution = len(qtm_code)
+        resolution = len(qtm_cellid)
         cell_polygon = qtm.constructGeometry(facet)   
         
         cell_centroid = cell_polygon.centroid
@@ -240,16 +424,16 @@ def qtm2qgsfeature(feature, qtm_code):
             qtm_feature.setFields(all_fields)
             
             # Combine original attributes with new attributes
-            new_attributes = [qtm_code, resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+            new_attributes = [qtm_cellid, resolution, center_lat, center_lon,  avg_edge_len, cell_area]
             all_attributes = original_attributes + new_attributes
             
             qtm_feature.setAttributes(all_attributes)
             
             return qtm_feature
 
-def olc2qgsfeature(feature, olc_code):
+def olc2qgsfeature(feature, olc_cellid):
     # Decode the Open Location Code into a CodeArea object
-    coord = olc.decode(olc_code)   
+    coord = olc.decode(olc_cellid)   
 
     if coord:
         # Create the bounding box coordinates for the polygon
@@ -298,28 +482,16 @@ def olc2qgsfeature(feature, olc_code):
         olc_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [olc_code, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+        new_attributes = [olc_cellid, resolution, center_lat, center_lon, avg_edge_len,cell_area]
         all_attributes = original_attributes + new_attributes
         
         olc_feature.setAttributes(all_attributes)    
         
         return olc_feature
 
-def mgrs2qgsfeature(mgrs_code, lat=None, lon=None):
-    """
-    Converts an MGRS code to a QgsFeature with a Polygon geometry representing the cell's bounds
-    and includes the original MGRS code and other properties as attributes.
-
-    Args:
-        mgrs_code (str): The MGRS code.
-        lat (float, optional): Latitude of a point to check within the intersection.
-        lon (float, optional): Longitude of a point to check within the intersection.
-
-    Returns:
-        QgsFeature: A QgsFeature object representing the MGRS cell, with attributes.
-    """
+def mgrs2qgsfeature(mgrs_cellid, lat=None, lon=None):
     # Assuming mgrs.mgrscell returns cell bounds and origin
-    origin_lat, origin_lon, min_lat, min_lon, max_lat, max_lon, resolution = mgrs.mgrscell(mgrs_code)
+    origin_lat, origin_lon, min_lat, min_lon, max_lat, max_lon, resolution = mgrs.mgrscell(mgrs_cellid)
 
     # Calculate bounding box dimensions
     lat_len = haversine(min_lat, min_lon, max_lat, min_lon)
@@ -353,7 +525,7 @@ def mgrs2qgsfeature(mgrs_code, lat=None, lon=None):
     feature.setFields(fields)
 
 
-    feature.setAttribute("mgrs", mgrs_code)
+    feature.setAttribute("mgrs", mgrs_cellid)
     feature.setAttribute("origin_lat", origin_lat)
     feature.setAttribute("origin_lon", origin_lon)
     feature.setAttribute("bbox_height", bbox_height)
@@ -390,14 +562,14 @@ def mgrs2qgsfeature(mgrs_code, lat=None, lon=None):
     return feature
 
 
-def geohash2qgsfeature(feature, geohash_code):
+def geohash2qgsfeature(feature, geohash_cellid):
     # Decode the Geohash to get bounding box coordinates
-    bbox = geohash.bbox(geohash_code)        
+    bbox = geohash.bbox(geohash_cellid)        
     if bbox:
         # Define the bounding box corners
         min_lat, min_lon = bbox['s'], bbox['w']  # Southwest corner
         max_lat, max_lon = bbox['n'], bbox['e']  # Northeast corner
-        resolution = len(geohash_code)
+        resolution = len(geohash_cellid)
         
         cell_polygon = Polygon([
             [min_lon, min_lat],  # Bottom-left corner
@@ -441,7 +613,7 @@ def geohash2qgsfeature(feature, geohash_code):
         geohash_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [geohash_code, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+        new_attributes = [geohash_cellid, resolution, center_lat, center_lon, avg_edge_len,cell_area]
         all_attributes = original_attributes + new_attributes
         
         geohash_feature.setAttributes(all_attributes)    
@@ -449,8 +621,8 @@ def geohash2qgsfeature(feature, geohash_code):
         return geohash_feature
 
      
-def georef2qgsfeature(feature, georef_code):
-    center_lat, center_lon, min_lat, min_lon, max_lat, max_lon,resolution = georef.georefcell(georef_code)        
+def georef2qgsfeature(feature, georef_cellid):
+    center_lat, center_lon, min_lat, min_lon, max_lat, max_lon,resolution = georef.georefcell(georef_cellid)        
     if center_lat:
         cell_polygon = Polygon([
             [min_lon, min_lat],  # Bottom-left corner
@@ -494,16 +666,16 @@ def georef2qgsfeature(feature, georef_code):
         georef_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [georef_code, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+        new_attributes = [georef_cellid, resolution, center_lat, center_lon, avg_edge_len,cell_area]
         all_attributes = original_attributes + new_attributes
         
         georef_feature.setAttributes(all_attributes)    
         
         return georef_feature
         
-def tilecode2qgsfeature(feature, tile_code):   
+def tilecode2qgsfeature(feature, tilecode_cellid):   
     # Extract z, x, y from the tilecode using regex
-    match = re.match(r'z(\d+)x(\d+)y(\d+)', tile_code)
+    match = re.match(r'z(\d+)x(\d+)y(\d+)', tilecode_cellid)
     if not match:
         raise ValueError("Invalid tilecode format. Expected format: 'zXxYyZ'")
 
@@ -561,7 +733,7 @@ def tilecode2qgsfeature(feature, tile_code):
         tilecode_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [tile_code, z, center_lat, center_lon, avg_edge_len,cell_area]
+        new_attributes = [tilecode_cellid, z, center_lat, center_lon, avg_edge_len,cell_area]
         all_attributes = original_attributes + new_attributes
         
         tilecode_feature.setAttributes(all_attributes)    
@@ -569,9 +741,9 @@ def tilecode2qgsfeature(feature, tile_code):
         return tilecode_feature
     
        
-def maidenhead2qgsfeature(feature, maidenhead_code):
+def maidenhead2qgsfeature(feature, maidenhead_cellid):
     # Decode the Maidenhead code to get the bounding box and center coordinates
-    center_lat, center_lon, min_lat, min_lon, max_lat, max_lon, _ = maidenhead.maidenGrid(maidenhead_code)
+    center_lat, center_lon, min_lat, min_lon, max_lat, max_lon, _ = maidenhead.maidenGrid(maidenhead_cellid)
     if center_lat:
         cell_polygon = Polygon([
             [min_lon, min_lat],  # Bottom-left corner
@@ -580,7 +752,7 @@ def maidenhead2qgsfeature(feature, maidenhead_code):
             [min_lon, max_lat],  # Top-left corner
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ])
-        resolution = int(len(maidenhead_code) / 2)    
+        resolution = int(len(maidenhead_cellid) / 2)    
         # Calculate the center point of the cell
         cell_centroid = cell_polygon.centroid
         center_lat =  round(cell_centroid.y, 7)
@@ -615,17 +787,16 @@ def maidenhead2qgsfeature(feature, maidenhead_code):
         maidenhead_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [maidenhead_code, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+        new_attributes = [maidenhead_cellid, resolution, center_lat, center_lon, avg_edge_len,cell_area]
         all_attributes = original_attributes + new_attributes
         
         maidenhead_feature.setAttributes(all_attributes)    
         
         return maidenhead_feature    
 
-
-def gars2qgsfeature(feature, gars_code):
+def gars2qgsfeature(feature, gars_cellid):
     # Create a GARS grid object and retrieve the polygon
-    gars_grid = GARSGrid(gars_code)
+    gars_grid = GARSGrid(gars_cellid)
     wkt_polygon = gars_grid.polygon  
 
     if wkt_polygon:
@@ -680,7 +851,7 @@ def gars2qgsfeature(feature, gars_code):
         gars_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [gars_code, resolution_minute, center_lat, center_lon, avg_edge_len,cell_area]
+        new_attributes = [gars_cellid, resolution_minute, center_lat, center_lon, avg_edge_len,cell_area]
         all_attributes = original_attributes + new_attributes
         
         gars_feature.setAttributes(all_attributes)    

@@ -44,7 +44,7 @@ import os, random
 import h3    
     
 from ...utils.imgs import Imgs
-
+from vgrid.generator.h3grid import fix_h3_antimeridian_cells
 from shapely.geometry import Polygon,box
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
@@ -121,7 +121,7 @@ class GridH3(QgsProcessingAlgorithm):
                     self.RESOLUTION,
                     self.tr('Resolution'),
                     QgsProcessingParameterNumber.Integer,
-                    defaultValue=8,
+                    defaultValue=1,
                     minValue= 0,
                     maxValue= 15,
                     optional=False)
@@ -147,12 +147,6 @@ class GridH3(QgsProcessingAlgorithm):
         
         return True
     
-    def fix_h3_antimeridian_cells(self, hex_boundary, threshold=-128):
-        if any(lon < threshold for _, lon in hex_boundary):
-            # Adjust all longitudes accordingly
-            return [(lat, lon - 360 if lon > 0 else lon) for lat, lon in hex_boundary]
-        return hex_boundary
-
     def processAlgorithm(self, parameters, context, feedback):        
         fields = QgsFields()
         fields.append(QgsField("h3", QVariant.String))

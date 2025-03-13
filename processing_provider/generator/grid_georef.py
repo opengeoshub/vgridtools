@@ -132,8 +132,8 @@ class GridGeoref(QgsProcessingAlgorithm):
          # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
         # Ensure that when RESOLUTION > 3, the extent must be set
-        if self.RESOLUTION > 3 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when RESOLUTION is greater than 3, the grid extent must be set.')
+        if self.RESOLUTION > 2 and (self.grid_extent is None or self.grid_extent.isEmpty()):
+            feedback.reportError('For performance reason, when RESOLUTION is greater than 2, the grid extent must be set.')
             return False
         
         return True

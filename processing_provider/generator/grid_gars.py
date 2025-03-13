@@ -45,7 +45,7 @@ import os, random
 import numpy as np
 from vgrid.utils.gars.garsgrid import GARSGrid  
 from ...utils.imgs import Imgs
-
+max_cells = 1000_000
 
 class GridGARS(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'
@@ -114,7 +114,7 @@ class GridGARS(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterEnum(
             self.RESOLUTION,
-            self.tr('RESOLUTION'),
+            self.tr('Resolution'),
             [self.tr('30 minutes'), self.tr('15 minutes'),self.tr('5 minutes'),self.tr('1 minute')],
             defaultValue=0,  # Default to the first option (30 minutes)
             optional=False
@@ -132,36 +132,22 @@ class GridGARS(QgsProcessingAlgorithm):
         RESOLUTION_values = [30,15,5,1]
         self.RESOLUTION = RESOLUTION_values[RESOLUTION_index]
         if self.RESOLUTION not in  [30,15,5,1]:
-            feedback.reportError('RESOLUTION parameter must be in [30,15,5,1] minutes')
+            feedback.reportError('Resolution must be in [30,15,5,1] minutes')
             return False
 
         # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-        # Ensure that when RESOLUTION > 4, the extent must be set
+
         if self.RESOLUTION < 30 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when RESOLUTION is smaller than 30 minutes, the grid extent must be set.')
+            feedback.reportError('For performance reason, when Resolution is smaller than 30 minutes, the grid extent must be set.')
             return False
         
         return True
     
     def garsgrid(self, RESOLUTION, feedback):
-        # Define bounds for the whole planet
         lon_min, lon_max = -180.0, 180.0
-        lat_min, lat_max = -90.0, 90.0
-        
-        # Set resolution in degrees based on RESOLUTION in minutes
-        if RESOLUTION in [30,15,5,1]:
-            res = RESOLUTION/ 60.0
-        # if RESOLUTION == 1:
-        #     res = 1 / 60.0  # 1 minute in degrees
-        # elif RESOLUTION == 5:
-        #     res = 5 / 60.0  # 5 minutes in degrees
-        # elif RESOLUTION == 15:
-        #     res = 15 / 60.0  # 15 minutes in degrees
-        # elif RESOLUTION == 30:
-        #     res = 30 / 60.0  # 30 minutes in degrees
-        else:
-            raise ValueError("Unsupported RESOLUTION. Choose from 1, 5, 15, or 30 minutes.")
+        lat_min, lat_max = -90.0, 90.0       
+        res = RESOLUTION/ 60.0      
         
         gars_grid = []
 
@@ -175,9 +161,9 @@ class GridGARS(QgsProcessingAlgorithm):
 
         feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
         
-        if total_cells > 1000000:
-            feedback.reportError("For performance reason, it must be lesser than 1000000. Please input an appropriate extent or RESOLUTION")
-            return None
+        if total_cells > max_cells:
+            feedback.reportError(f"For performance reason, it must be lesser than {max_cells}. Please input an appropriate extent or resolution")
+            return []
 
         # Loop over longitudes and latitudes
         for lon in longitudes:
@@ -206,7 +192,7 @@ class GridGARS(QgsProcessingAlgorithm):
                 feedback.setProgress(progress)
                 
                 # Optionally log progress every 10000 cells
-                if cell_count % 10000 == 0:
+                if cell_count % 10_000 == 0:
                     feedback.pushInfo(f"Processed {cell_count}/{total_cells} cells ")
 
                 if feedback.isCanceled():
@@ -221,18 +207,7 @@ class GridGARS(QgsProcessingAlgorithm):
         lat_min, lat_max = -90.0, 90.0
         
         # Set resolution in degrees based on RESOLUTION in minutes
-        if RESOLUTION in [30,15,5,1]:
-            res = RESOLUTION/ 60.0
-        # if RESOLUTION == 1:
-        #     res = 0.5 / 60.0  # 1 minute in degrees
-        # elif RESOLUTION == 5:
-        #     res = 5 / 60.0  # 5 minutes in degrees
-        # elif RESOLUTION == 15:
-        #     res = 15 / 60.0  # 15 minutes in degrees
-        # elif RESOLUTION == 30:
-        #     res = 30 / 60.0  # 30 minutes in degrees
-        else:
-            raise ValueError("Unsupported RESOLUTION. Choose from 1, 5, 15, or 30 minutes.")
+        res = RESOLUTION/ 60.0   
         
         gars_grid = []
 
@@ -251,17 +226,17 @@ class GridGARS(QgsProcessingAlgorithm):
         cell_count = 0
         feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
         
-        if total_cells > 1000000:
-            feedback.reportError("For performance reason, it must be lesser than 1000,000. Please input an appropriate extent or RESOLUTION")
-            return None
-
+        if total_cells > max_cells:
+            feedback.reportError(f"For performance reason, it must be lesser than {max_cells}. Please input an appropriate extent or resolution")
+            return []
+    
         # Prepare to process only the cells within the valid range (intersecting with extent)
         for i in range(min_x, max_x):
             for j in range(min_y, max_y):
                 lon = longitudes[i]
                 lat = latitudes[j]
 
-                # Define vertices of the polygon for each GARS cell
+              # Define vertices of the polygon for each GARS cell
                 vertices = [
                     QgsPointXY(lon, lat),
                     QgsPointXY(lon + res, lat),
@@ -276,31 +251,18 @@ class GridGARS(QgsProcessingAlgorithm):
                 # Generate GARS code (assuming GARSGrid class with a `from_latlon` method)
                 gars_code = GARSGrid.from_latlon(lat, lon, res * 60)  # Convert res to minutes for GARS
                 
-                # Create a feature
-                feature = QgsFeature()
-
-                # Add 'gars' attribute to the feature (if not already defined)
-                feature.setFields(QgsFields([QgsField('gars', QVariant.String)]))  # Define the 'gars' attribute
-                
-                # Set the geometry of the feature
-                feature.setGeometry(polygon)
-                
-                # Set the 'gars' attribute (set the value of 'gars' for this feature)
-                feature.setAttribute('gars', str(gars_code))  # Store GARS code as attribute
-
-                # Add the feature to the output list
-                gars_grid.append(feature)
+                # Append the QgsGeometry polygon and its GARS code
+                gars_grid.append({'geometry': polygon, 'gars': str(gars_code)})
 
                 # Update progress
                 cell_count += 1
                 progress = int((cell_count / total_cells) * 100)
                 feedback.setProgress(progress)
                 
-                # Optionally log progress every 1000 cells
-                if cell_count % 1000 == 0:
-                    feedback.pushInfo(f"Processed {cell_count}/{total_cells} cells")
+                # Optionally log progress every 10000 cells
+                if cell_count % 10_000 == 0:
+                    feedback.pushInfo(f"Processed {cell_count}/{total_cells} cells ")
 
-                # Stop if process is canceled
                 if feedback.isCanceled():
                     feedback.pushInfo("Process canceled by user.")
                     return []  # Cancel if the user stops the process
@@ -325,43 +287,27 @@ class GridGARS(QgsProcessingAlgorithm):
             raise QgsProcessingException("Failed to create output sink")
 
         if self.grid_extent is None or self.grid_extent.isEmpty():
-            grid_cells = self.garsgrid(self.RESOLUTION,feedback)
-            if grid_cells:
-                for entry in grid_cells:
-                    # Create a QgsFeature object
-                    feature = QgsFeature()
-                    
-                    # Set the feature's geometry (from the dictionary)
-                    feature.setGeometry(entry['geometry'])
-                    
-                    # Set the feature's attributes (in this case, just the 'gars' attribute)
-                    feature.setAttributes([entry['gars']])
-                    
-                    # Add the feature to the sink (use FastInsert for faster insertion)
-                    sink.addFeature(feature, QgsFeatureSink.FastInsert)
-
+            grid_cells = self.garsgrid(self.RESOLUTION, feedback)
         else:
             grid_cells = self.garsgrid_with_extent(self.RESOLUTION, self.grid_extent, feedback)
-            if (grid_cells):
-                for feature in grid_cells:
-                    # Create a QgsFeature object
-                    feature_object = QgsFeature()
-                    
-                    # Set the feature's geometry (from the feature returned by garsgrid_with_extent)
-                    feature_object.setGeometry(feature.geometry())
-                    
-                    # Set the feature's attributes (in this case, just the 'gars' attribute)
-                    feature_object.setAttributes([feature['gars']])
-                    
-                    # Add the feature to the sink (use FastInsert for faster insertion)
-                    sink.addFeature(feature_object, QgsFeatureSink.FastInsert)
-            
 
+        # If no grid cells are generated, stop processing
+        if not grid_cells:
+            return {}
+
+        # Add features to the output layer
+        for grid_cell in grid_cells:
+            gars_feature = QgsFeature()
+            gars_feature.setGeometry(grid_cell['geometry'])
+            gars_feature.setAttributes([grid_cell['gars']])
+            sink.addFeature(gars_feature, QgsFeatureSink.FastInsert)
+
+        # Set styling if loading the layer
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
-        
+
         return {self.OUTPUT: dest_id}
 
 

@@ -41,6 +41,7 @@ import os, random
 
 from vgrid.utils import geohash
 from ...utils.imgs import Imgs
+max_cells = 2000_000
 
 
 class GridGeohash(QgsProcessingAlgorithm):
@@ -110,7 +111,7 @@ class GridGeohash(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('RESOLUTION'),
+                    self.tr('Resolution'),
                     QgsProcessingParameterNumber.Integer,
                     defaultValue=1,
                     minValue= 1,
@@ -126,14 +127,14 @@ class GridGeohash(QgsProcessingAlgorithm):
     def prepareAlgorithm(self, parameters, context, feedback):
         self.RESOLUTION = self.parameterAsInt(parameters, self.RESOLUTION, context)  
         if self.RESOLUTION < 1 or self.RESOLUTION>10:
-            feedback.reportError('RESOLUTION parameter must be in range [1,10]')
+            feedback.reportError('Resolugion must be in range [1,10]')
             return False
          
          # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
         # Ensure that when RESOLUTION > 4, the extent must be set
         if self.RESOLUTION > 4 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when RESOLUTION is greater than 4, the grid extent must be set.')
+            feedback.reportError('For performance reason, when resolution is greater than 4, the grid extent must be set.')
             return False
         
         return True
@@ -229,9 +230,15 @@ class GridGeohash(QgsProcessingAlgorithm):
 
         # Expand each initial geohash to the target RESOLUTION
         total_geohashes = len(initial_geohashes)
-        feedback.pushInfo(f"Expanding initial geohashes to RESOLUTION {self.RESOLUTION}")
+        feedback.pushInfo(f"Expanding initial geohashes to resolution {self.RESOLUTION}")
        
         if  self.grid_extent is None or self.grid_extent.isEmpty():
+            total_cells = 32 ** self.RESOLUTION
+            feedback.pushInfo(f"Total cells to be generated: {total_cells}.")        
+            if total_cells > max_cells:
+                feedback.reportError(f"For performance reason, it must be lesser than {max_cells}. Please input an appropriate extent or resolution")
+                return {}
+        
             for idx, gh in enumerate(initial_geohashes):
                 if feedback.isCanceled():
                     break
@@ -246,7 +253,15 @@ class GridGeohash(QgsProcessingAlgorithm):
                 geohash_polygon = self.geohash_to_polygon(gh)  # Already a QgsGeometry now
                 if geohash_polygon.boundingBox().intersects(self.grid_extent):
                     filtered_geohashes.append(gh)
-            initial_geohashes = filtered_geohashes  # Replace with only intersecting geohashes
+                initial_geohashes = filtered_geohashes  # Replace with only intersecting geohashes
+                total_cells = len(initial_geohashes) * (32 ** (self.RESOLUTION - 1))
+                
+                feedback.pushInfo(f"Total cells to be generated within extent: {total_cells}.")
+                
+                if total_cells > max_cells:
+                    feedback.reportError(f"For performance reasons, it must be lesser than {max_cells}. Please input an appropriate extent or resolution")
+                    return {}
+                
             for idx, gh in enumerate(initial_geohashes):
                 if feedback.isCanceled():
                     break

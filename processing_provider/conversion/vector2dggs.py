@@ -211,7 +211,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'ease': qgsfeature2ease,
             'qtm': qgsfeature2qtm,
             'geohash': qgsfeature2geohash,
-            # 'georef': georef2qgsfeature,   
+            # 'georef': qgsfeature2georef,   
             # 'mgrs': mgrs2qgsfeature,
             'tilecode': qgsfeature2tilecode
         }

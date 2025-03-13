@@ -89,7 +89,7 @@ class VgridProvider(QgsProcessingProvider):
         return 'vgrid'
 
     def name(self):
-        return self.tr('Vgrid DGGS')
+        return self.tr('DGGS Vgrid')
 
     def icon(self):
         return QIcon(os.path.dirname(__file__) + './images/vgrid.svg')

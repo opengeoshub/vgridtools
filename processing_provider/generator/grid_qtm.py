@@ -122,7 +122,7 @@ class GridQTM(QgsProcessingAlgorithm):
                     self.RESOLUTION,
                     self.tr('Resolution'),
                     QgsProcessingParameterNumber.Integer,
-                    defaultValue=12,
+                    defaultValue=1,
                     minValue= 1,
                     maxValue= 24,
                     optional=False)

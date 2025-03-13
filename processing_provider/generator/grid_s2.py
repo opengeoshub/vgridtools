@@ -118,7 +118,7 @@ class GridS2(QgsProcessingAlgorithm):
                     self.RESOLUTION,
                     self.tr('RESOLUTION [0..30]'),
                     QgsProcessingParameterNumber.Integer,
-                    defaultValue=15,
+                    defaultValue=1,
                     minValue= 0,
                     maxValue= 30,
                     optional=False)
