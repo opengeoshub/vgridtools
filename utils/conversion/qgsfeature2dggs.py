@@ -1,4 +1,4 @@
-from vgrid.utils import olc,mgrs, maidenhead, geohash, georef, olc, s2, gars, tilecode
+from vgrid.utils import olc,mgrs, maidenhead, geohash, georef, s2, gars, tilecode
 from vgrid.utils import mercantile
 from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.generator.h3grid import fix_h3_antimeridian_cells, geodesic_buffer
@@ -12,6 +12,9 @@ n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (-90.0, -180.0), (-90.0, -90.0), 
 
 
 from shapely.geometry import Polygon, box, shape, mapping
+
+from shapely.wkt import loads as wkt_loads
+
 import h3 
 
 from vgrid.utils.antimeridian import fix_polygon
@@ -1083,6 +1086,285 @@ def poly2qtm(feature, resolution):
     return qtm_features
         
 
+#######################
+# QgsFeatures to OLC
+#######################
+
+def qgsfeature2olc(feature, resolution):
+    geometry = feature.geometry()
+    if geometry.wkbType() == QgsWkbTypes.Point:
+        return point2olc(feature, resolution)
+    elif geometry.wkbType() == QgsWkbTypes.LineString or geometry.wkbType() == QgsWkbTypes.Polygon:
+        return poly2olc(feature, resolution)
+
+
+def point2olc(feature, resolution):     
+    feature_geometry = feature.geometry()
+    point = feature_geometry.asPoint()
+    longitude = point.x()
+    latitude = point.y()    
+    olc_cellid = olc.encode(latitude, longitude, resolution) 
+    coord = olc.decode(olc_cellid)   
+
+    if coord:
+        # Create the bounding box coordinates for the polygon
+        min_lat, min_lon = coord.latitudeLo, coord.longitudeLo
+        max_lat, max_lon = coord.latitudeHi, coord.longitudeHi
+        
+        center_lat = round(coord.latitudeCenter,7)
+        center_lon = round(coord.longitudeCenter,7)
+      
+        cell_polygon = Polygon([
+            [min_lon, min_lat],  # Bottom-left corner
+            [max_lon, min_lat],  # Bottom-right corner
+            [max_lon, max_lat],  # Top-right corner
+            [min_lon, max_lat],  # Top-left corner
+            [min_lon, min_lat]   # Closing the polygon (same as the first point)
+        ])
+          
+        cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)  # Area in square meters     
+        cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])  # Perimeter in meters  
+        avg_edge_len = round(cell_perimeter/4,2)     
+           
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+        
+        # Define new H3-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField("olc", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
+        olc_feature = QgsFeature()
+        olc_feature.setGeometry(cell_geometry)
+        olc_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [olc_cellid, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+        all_attributes = original_attributes + new_attributes
+        
+        olc_feature.setAttributes(all_attributes)    
+        
+        return [olc_feature]
+        
+def olc_generate_grid(resolution):
+    """
+    Generate a global grid of Open Location Codes (Plus Codes) at the specified precision
+    as a GeoJSON-like feature collection.
+    """
+    # Define the boundaries of the world
+    sw_lat, sw_lng = -90, -180
+    ne_lat, ne_lng = 90, 180
+
+    # Get the precision step size
+    area = olc.decode(olc.encode(sw_lat, sw_lng, resolution))
+    lat_step = area.latitudeHi - area.latitudeLo
+    lng_step = area.longitudeHi - area.longitudeLo
+
+    olc_features = []
+
+    lat = sw_lat
+    while lat < ne_lat:
+        lng = sw_lng
+        while lng < ne_lng:
+            # Generate the Plus Code for the center of the cell
+            center_lat = lat + lat_step / 2
+            center_lon = lng + lng_step / 2
+            olc_code = olc.encode(center_lat, center_lon, resolution)
+            resolution = olc.decode(olc_code).codeLength
+            cell_polygon = Polygon([
+                        [lng, lat],  # SW
+                        [lng, lat + lat_step],  # NW
+                        [lng + lng_step, lat + lat_step],  # NE
+                        [lng + lng_step, lat],  # SE
+                        [lng, lat]  # Close the polygon
+                ])            
+            # Create the feature
+            olc_features.append({
+                "type": "Feature",
+                "geometry": mapping(cell_polygon),
+                "properties": {
+                    "olc": olc_code,
+                    "resolution": resolution
+                    }
+            })
+
+            lng += lng_step
+        lat += lat_step
+
+    # Return the feature collection
+    return {
+        "type": "FeatureCollection",
+        "features": olc_features
+    }
+
+
+def olc_refine_cell(bounds, current_resolution, target_resolution, bbox_poly):
+    """
+    Refine a cell defined by bounds to the target resolution, recursively refining intersecting cells.
+    """
+    min_lon, min_lat, max_lon, max_lat = bounds
+    if current_resolution < 10:
+        valid_resolution = current_resolution + 2
+    else: valid_resolution = current_resolution + 1
+
+    area = olc.decode(olc.encode(min_lat, min_lon, valid_resolution))
+    lat_step = area.latitudeHi - area.latitudeLo
+    lng_step = area.longitudeHi - area.longitudeLo
+
+    olc_features = []
+
+    lat = min_lat
+    while lat < max_lat:
+        lng = min_lon
+        while lng < max_lon:
+            # Define the bounds of the finer cell
+            finer_cell_bounds = (lng, lat, lng + lng_step, lat + lat_step)
+            finer_cell_poly = box(*finer_cell_bounds)
+
+            if bbox_poly.intersects(finer_cell_poly):
+                # Generate the Plus Code for the center of the finer cell
+                center_lat = lat + lat_step / 2
+                center_lon = lng + lng_step / 2
+                olc_code = olc.encode(center_lat, center_lon, valid_resolution)
+                resolution = olc.decode(olc_code).codeLength
+                
+                cell_polygon = Polygon([
+                        [lng, lat],  # SW
+                        [lng, lat + lat_step],  # NW
+                        [lng + lng_step, lat + lat_step],  # NE
+                        [lng + lng_step, lat],  # SE
+                        [lng, lat]  # Close the polygon
+                ])           
+                
+                # Add the finer cell as a feature
+                olc_features.append({
+                "type": "Feature",
+                "geometry": mapping(cell_polygon),
+                "properties": {
+                    "olc": olc_code,
+                    "resolution": resolution
+                    }
+                })
+
+                # Recursively refine the cell if not at target resolution
+                if valid_resolution < target_resolution:
+                    olc_features.extend(
+                        olc_refine_cell(
+                            finer_cell_bounds,
+                            valid_resolution,
+                            target_resolution,
+                            bbox_poly
+                        )
+                    )
+
+            lng += lng_step
+        lat += lat_step
+
+    return olc_features
+
+
+def poly2olc(feature,resolution):
+    feature_geometry = feature.geometry()
+    feature_shapely = wkt_loads(feature_geometry.asWkt())
+    
+    olc_features = []
+    fields = QgsFields()
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("olc", QVariant.String))
+
+    base_resolution = 2
+    base_cells = olc_generate_grid(base_resolution)
+
+    seed_cells = []
+    for base_cell in base_cells["features"]:
+        base_cell_poly = Polygon(base_cell["geometry"]["coordinates"][0])
+        if base_cell_poly.intersects(feature_shapely):
+            seed_cells.append(base_cell)
+
+    refined_features = []
+    for seed_cell in seed_cells:
+        seed_cell_poly = Polygon(seed_cell["geometry"]["coordinates"][0])
+
+        if seed_cell_poly.contains(feature_shapely) and resolution == base_resolution:
+            refined_features.append(seed_cell)
+        else:
+            refined_features.extend(
+                olc_refine_cell(seed_cell_poly.bounds, base_resolution, resolution, feature_shapely)
+            )
+
+    resolution_features = [
+        refine_feature for refine_feature in refined_features if refine_feature["properties"]["resolution"] == resolution
+    ]
+
+    seen_olc_codes = set()
+    for resolution_feature in resolution_features:
+        olc_code = resolution_feature["properties"]["olc"]
+        if olc_code not in seen_olc_codes:
+            seen_olc_codes.add(olc_code)
+            
+            cell_polygon = Polygon(resolution_feature["geometry"]["coordinates"][0])
+            olc_code = resolution_feature["properties"]["olc"]
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            # Compute additional attributes
+            center_lat, center_lon = cell_polygon.centroid.y, cell_polygon.centroid.x
+            cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)
+            cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
+            avg_edge_len = round(cell_perimeter / 4,2)
+
+            olc_feature = QgsFeature()
+            olc_feature.setGeometry(cell_geometry)
+
+            original_attributes = feature.attributes()
+            original_fields = feature.fields()
+            
+            # Define new H3-related attributes
+            new_fields = QgsFields()
+            new_fields.append(QgsField("olc", QVariant.String))
+            new_fields.append(QgsField("resolution", QVariant.Int))
+            new_fields.append(QgsField("center_lat", QVariant.Double))
+            new_fields.append(QgsField("center_lon", QVariant.Double))
+            new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+            new_fields.append(QgsField("cell_area", QVariant.Double))
+            
+            # Combine original fields and new fields
+            all_fields = QgsFields()
+            for field in original_fields:
+                all_fields.append(field)
+            for field in new_fields:
+                all_fields.append(field)
+            
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
+            olc_feature = QgsFeature()
+            olc_feature.setGeometry(cell_geometry)
+            olc_feature.setFields(all_fields)
+            
+            # Combine original attributes with new attributes
+            new_attributes = [olc_code, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+            all_attributes = original_attributes + new_attributes
+            
+            olc_feature.setAttributes(all_attributes)    
+            
+            # Create QgsFeature
+            olc_features.append(olc_feature) 
+        
+    return olc_features
+    
+
+        
 #######################
 # QgsFeatures to Geohash
 #######################

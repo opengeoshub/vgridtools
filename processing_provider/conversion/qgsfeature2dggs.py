@@ -210,6 +210,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'rhealpix': qgsfeature2rhealpix,
             'ease': qgsfeature2ease,
             'qtm': qgsfeature2qtm,
+            'olc': qgsfeature2olc,
             'geohash': qgsfeature2geohash,
             # 'georef': qgsfeature2georef,   
             # 'mgrs': mgrs2qgsfeature,

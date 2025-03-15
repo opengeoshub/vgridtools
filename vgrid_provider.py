@@ -77,7 +77,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(GridRhealpix())
         self.addAlgorithm(GridQTM())
 
-        # self.addAlgorithm(GridOLC())
+        self.addAlgorithm(GridOLC())
         self.addAlgorithm(GridGeohash())
         # self.addAlgorithm(GridGeoref())
         self.addAlgorithm(GridMGRS())

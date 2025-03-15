@@ -18,6 +18,7 @@ __copyright__ = '(L) 2024, Thang Quach'
 
 from qgis.core import (
     QgsApplication,
+    QgsProject,
     QgsFeatureSink,
     QgsProcessingLayerPostProcessorInterface,
     QgsProcessingParameterExtent,
@@ -339,6 +340,14 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         layer.setLabelsEnabled(True)
         iface.layerTreeView().refreshLayerSymbology(layer.id())
 
+        root = QgsProject.instance().layerTreeRoot()
+        layer_node = root.findLayer(layer.id())
+        if layer_node:
+            layer_node.setCustomProperty("showFeatureCount", True)
+        
+        iface.mapCanvas().setExtent(layer.extent())
+        iface.mapCanvas().refresh()
+        
     # Hack to work around sip bug!
     @staticmethod
     def create(line_color, font_color) -> 'StylePostProcessor':
