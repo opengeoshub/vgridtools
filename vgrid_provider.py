@@ -46,6 +46,7 @@ from .processing_provider.generator.grid_georef import GridGeoref
 from .processing_provider.generator.grid_mgrs import GridMGRS
 from .processing_provider.generator.grid_gzd import GridGZD
 from .processing_provider.generator.grid_tilecode import GridTilecode
+from .processing_provider.generator.grid_quadkey import GridQuadkey
 from .processing_provider.generator.grid_maidenhead import GridMaidenhead
 from .processing_provider.generator.grid_gars import GridGARS
 
@@ -83,6 +84,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(GridMGRS())
         self.addAlgorithm(GridGZD())
         self.addAlgorithm(GridTilecode())
+        self.addAlgorithm(GridQuadkey())
         self.addAlgorithm(GridMaidenhead())
         self.addAlgorithm(GridGARS())
 

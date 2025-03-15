@@ -1659,7 +1659,7 @@ def poly2tilecode(feature, resolution):
             
             cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)  # Area in square meters     
             cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
-            avg_edge_len = round(cell_perimeter/6,2)
+            avg_edge_len = round(cell_perimeter/4,2)
             resolution = tile.z 
         
             # Get all attributes from the input feature
@@ -1693,3 +1693,159 @@ def poly2tilecode(feature, resolution):
             tilecode_features.append(tilecode_feature)
             
     return tilecode_features
+
+
+#######################
+# QgsFeatures to Quadkey
+#######################
+
+def qgsfeature2quadkey(feature, resolution):
+    geometry = feature.geometry()
+    if geometry.wkbType() == QgsWkbTypes.Point:
+        return point2quadkey(feature, resolution)
+    elif geometry.wkbType() == QgsWkbTypes.LineString or geometry.wkbType() == QgsWkbTypes.Polygon:
+        return poly2quadkey(feature, resolution)
+
+
+def point2quadkey(feature, resolution):
+    feature_geometry = feature.geometry()
+    point = feature_geometry.asPoint()
+    longitude = point.x()
+    latitude = point.y()    
+    quadkey_id = tilecode.latlon2quadkey(latitude, longitude,resolution)
+    quadkey_cell = mercantile.tile(longitude, latitude, resolution)
+    bounds = mercantile.bounds(quadkey_cell)
+    if bounds:
+        # Create the bounding box coordinates for the polygon
+        min_lat, min_lon = bounds.south, bounds.west
+        max_lat, max_lon = bounds.north, bounds.east        
+        # quadkey = mercantile.quadkey(tilecode_cell)
+        center_lat = round((min_lat + max_lat) / 2,7)
+        center_lon = round((min_lon + max_lon) / 2,7)
+        
+        cell_polygon = Polygon([
+            [min_lon, min_lat],  # Bottom-left corner
+            [max_lon, min_lat],  # Bottom-right corner
+            [max_lon, max_lat],  # Top-right corner
+            [min_lon, max_lat],  # Top-left corner
+            [min_lon, min_lat]   # Closing the polygon (same as the first point)
+        ])
+        cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)  # Area in square meters     
+        cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
+        avg_edge_len = round(cell_perimeter/6,2)
+        resolution = quadkey_cell.z 
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+    
+        if cell_geometry:
+            # Create a single QGIS feature
+            quadkey_feature = QgsFeature()
+            quadkey_feature.setGeometry(cell_geometry)
+            
+            # Get all attributes from the input feature
+            original_attributes = feature.attributes()
+            original_fields = feature.fields()
+            
+            # Define new s2-related attributes
+            new_fields = QgsFields()
+            new_fields.append(QgsField("quadkey", QVariant.String))
+            new_fields.append(QgsField("resolution", QVariant.Int))
+            new_fields.append(QgsField("center_lat", QVariant.Double))
+            new_fields.append(QgsField("center_lon", QVariant.Double))
+            new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+            new_fields.append(QgsField("cell_area", QVariant.Double))
+            
+            # Combine original fields and new fields
+            all_fields = QgsFields()
+            for field in original_fields:
+                all_fields.append(field)
+            for field in new_fields:
+                all_fields.append(field)
+            
+            quadkey_feature.setFields(all_fields)
+            
+            # Combine original attributes with new attributes
+            new_attributes = [quadkey_id, resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+            all_attributes = original_attributes + new_attributes
+            
+            quadkey_feature.setAttributes(all_attributes)
+            
+            return [quadkey_feature]
+
+def poly2quadkey(feature, resolution):
+    feature_geometry = feature.geometry()
+    feature_rect = feature_geometry.boundingBox()
+    min_x = feature_rect.xMinimum()
+    min_y = feature_rect.yMinimum()
+    max_x = feature_rect.xMaximum()
+    max_y = feature_rect.yMaximum()
+
+    quadkey_features = []
+    tiles = mercantile.tiles(min_x, min_y, max_x, max_y, resolution)
+    
+    for tile in tiles:
+        z, x, y = tile.z, tile.x, tile.y
+        quadkey_id = mercantile.quadkey(tile)
+        bounds = mercantile.bounds(x, y, z)
+        if bounds:
+            # Create the bounding box coordinates for the polygon
+            min_lat, min_lon = bounds.south, bounds.west
+            max_lat, max_lon = bounds.north, bounds.east            
+            # quadkey = mercantile.quadkey(tile)
+            center_lat = round((min_lat + max_lat) / 2,7)
+            center_lon = round((min_lon + max_lon) / 2,7)
+            
+            cell_polygon = Polygon([
+                [min_lon, min_lat],  # Bottom-left corner
+                [max_lon, min_lat],  # Bottom-right corner
+                [max_lon, max_lat],  # Top-right corner
+                [min_lon, max_lat],  # Top-left corner
+                [min_lon, min_lat]   # Closing the polygon (same as the first point)
+            ])
+                 
+
+            # if cell_polygon.intersects(feature):
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
+                # **Check for intersection with the input feature**
+            if not cell_geometry.intersects(feature_geometry):
+                continue  # Skip non-intersecting cells
+            
+            # Create a single QGIS feature
+            quadkey_feature = QgsFeature()
+            quadkey_feature.setGeometry(cell_geometry)
+            
+            cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)  # Area in square meters     
+            cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
+            avg_edge_len = round(cell_perimeter/4,2)
+            resolution = tile.z 
+        
+            # Get all attributes from the input feature
+            original_attributes = feature.attributes()
+            original_fields = feature.fields()
+            
+            # Define new H3-related attributes
+            new_fields = QgsFields()
+            new_fields.append(QgsField("quadkey", QVariant.String))
+            new_fields.append(QgsField("resolution", QVariant.Int))
+            new_fields.append(QgsField("center_lat", QVariant.Double))
+            new_fields.append(QgsField("center_lon", QVariant.Double))
+            new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+            new_fields.append(QgsField("cell_area", QVariant.Double))
+            
+            # Combine original fields and new fields
+            all_fields = QgsFields()
+            for field in original_fields:
+                all_fields.append(field)
+            for field in new_fields:
+                all_fields.append(field)
+            
+            quadkey_feature.setFields(all_fields)
+            
+            # Combine original attributes with new attributes
+            new_attributes = [quadkey_id,resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+            all_attributes = original_attributes + new_attributes
+            
+            quadkey_feature.setAttributes(all_attributes)    
+
+            quadkey_features.append(quadkey_feature)
+            
+    return quadkey_features

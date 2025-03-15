@@ -184,6 +184,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'georef': georef2qgsfeature,
             'mgrs': mgrs2qgsfeature,
             'tilecode': tilecode2qgsfeature,
+            'quadkey': quadkey2qgsfeature,
             'maidenhead': maidenhead2qgsfeature,
             'gars': gars2qgsfeature
         }

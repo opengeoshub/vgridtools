@@ -807,7 +807,67 @@ def tilecode2qgsfeature(feature, tilecode_cellid):
         tilecode_feature.setAttributes(all_attributes)    
         
         return tilecode_feature
-    
+
+def quadkey2qgsfeature(feature, quadkey_cellid):   
+    tile = mercantile.quadkey_to_tile(quadkey_cellid)    
+    z = tile.z
+    x = tile.x
+    y = tile.y    
+    # Get the bounds of the tile in (west, south, east, north)
+    bounds = mercantile.bounds(x, y, z)        
+    if bounds:
+        # Define bounding box coordinates
+        min_lat, min_lon = bounds.south, bounds.west
+        max_lat, max_lon = bounds.north, bounds.east
+        cell_polygon = Polygon([
+            [min_lon, min_lat],  # Bottom-left corner
+            [max_lon, min_lat],  # Bottom-right corner
+            [max_lon, max_lat],  # Top-right corner
+            [min_lon, max_lat],  # Top-left corner
+            [min_lon, min_lat]   # Closing the polygon (same as the first point)
+        ])
+
+        # Calculate the center point of the tile
+        cell_centroid = cell_polygon.centroid
+        center_lat =  round(cell_centroid.y, 7)
+        center_lon = round(cell_centroid.x, 7)
+        cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)  # Area in square meters     
+        cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])  # Perimeter in meters  
+        avg_edge_len = round(cell_perimeter/4,2)     
+           
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+        
+        # Define new H3-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField("quadkey", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
+        quadkey_feature = QgsFeature()
+        quadkey_feature.setGeometry(cell_geometry)
+        quadkey_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [quadkey_cellid, z, center_lat, center_lon, avg_edge_len,cell_area]
+        all_attributes = original_attributes + new_attributes
+        
+        quadkey_feature.setAttributes(all_attributes)    
+        
+        return quadkey_feature
+
        
 def maidenhead2qgsfeature(feature, maidenhead_cellid):
     # Decode the Maidenhead code to get the bounding box and center coordinates

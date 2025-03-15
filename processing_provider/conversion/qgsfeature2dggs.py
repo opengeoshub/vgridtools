@@ -214,7 +214,8 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'geohash': qgsfeature2geohash,
             # 'georef': qgsfeature2georef,   
             # 'mgrs': mgrs2qgsfeature,
-            'tilecode': qgsfeature2tilecode
+            'tilecode': qgsfeature2tilecode,
+            'quadkey': qgsfeature2quadkey
         }
         if platform.system() == 'Windows':
             self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t

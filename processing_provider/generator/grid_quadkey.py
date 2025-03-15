@@ -46,7 +46,7 @@ from vgrid.utils import mercantile
 from ...utils.imgs import Imgs
 
 
-class GridTilecode(QgsProcessingAlgorithm):
+class GridQuadkey(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'
     RESOLUTION = 'RESOLUTION'
     OUTPUT = 'OUTPUT'
@@ -67,16 +67,16 @@ class GridTilecode(QgsProcessingAlgorithm):
             return self.translate(string[0])
     
     def createInstance(self):
-        return GridTilecode()
+        return GridQuadkey()
 
     def name(self):
-        return 'grid_Tilecode'
+        return 'grid_quadkey'
 
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)),'../images/grid_gzd.png'))
     
     def displayName(self):
-        return self.tr('Tilecode', 'Tilecode')
+        return self.tr('Quadkey', 'Quadkey')
 
     def group(self):
         return self.tr('DGGS Generator', 'DGGS Generator')
@@ -85,10 +85,10 @@ class GridTilecode(QgsProcessingAlgorithm):
         return 'grid'
 
     def tags(self):
-        return self.tr('Vgrid, Tilecode, generator').split(',')
+        return self.tr('Vgrid, Quadkey, generator').split(',')
     
-    txt_en = 'Tilecode Grid'
-    txt_vi = 'Tilecode Grid'
+    txt_en = 'Quadkey Grid'
+    txt_vi = 'Quadkey Grid'
     figure = '../images/tutorial/grid_tilecode.png'
 
     def shortHelpString(self):
@@ -123,27 +123,27 @@ class GridTilecode(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
-                'Tilecode')
+                'Quadkey')
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
         self.RESOLUTION = self.parameterAsInt(parameters, self.RESOLUTION, context)  
         if self.RESOLUTION < 0 or self.RESOLUTION > 24:
-            feedback.reportError('RESOLUTION parameter must be in range [0,24]')
+            feedback.reportError('Resolution parameter must be in range [0,24]')
             return False
          
          # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
         # Ensure that when RESOLUTION > 4, the extent must be set
         if self.RESOLUTION > 10 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when RESOLUTION is greater than 10, the grid extent must be set.')
+            feedback.reportError('For performance reason, when resolution is greater than 10, the grid extent must be set.')
             return False
         
         return True
     
     def processAlgorithm(self, parameters, context, feedback):
         fields = QgsFields()
-        fields.append(QgsField("tilecode", QVariant.String))
+        fields.append(QgsField("quadkey", QVariant.String))
 
         (sink, dest_id) = self.parameterAsSink(
             parameters, 
@@ -174,7 +174,7 @@ class GridTilecode(QgsProcessingAlgorithm):
         for index, tile in enumerate(tiles):
             # Get the tile's bounding box in geographic coordinates
             bounds = mercantile.bounds(tile)
-            
+            quadkey_id = mercantile.quadkey(tile)
             # Define the corner points of the tile polygon
             points = [
                 QgsPointXY(bounds.west, bounds.south),
@@ -187,18 +187,16 @@ class GridTilecode(QgsProcessingAlgorithm):
             # Create a QgsGeometry polygon from the points
             polygon = QgsGeometry.fromPolygonXY([points])
             
-            # Generate the 'Tilecode' attribute in the format "zZxXyY"
-            tilecode = f"z{tile.z}x{tile.x}y{tile.y}"
-            
+
             # Create a new feature and set its geometry and attributes
             feature = QgsFeature(fields)
             feature.setGeometry(polygon)
-            feature.setAttribute("tilecode", tilecode)
+            feature.setAttribute("quadkey", quadkey_id)
             
             # Add the feature to the output sink
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
             
-            if (index + 1) % 10000 == 0:
+            if (index + 1) % 10_000 == 0:
                 message = f"Processed {index + 1}/{total_tiles} tiles"
                 feedback.pushInfo(message)
 
@@ -235,7 +233,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
         label = QgsPalLayerSettings()
-        label.fieldName = 'tilecode'
+        label.fieldName = 'quadkey'
         format = label.format()
         format.setColor(self.font_color)
         format.setSize(8)
