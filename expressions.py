@@ -351,7 +351,7 @@ def latlon2tilecode(latitude, longitude, zoom, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to Vcode.
+  Convert latlon to Tilecode.
   <h4>Syntax</h4>    
     <li><span class = function>latlon2tilecode</span>(<span class = parameters>lat, long, resolution/ zoom level [0;25]</span>)</li>
   <h4>Example usage</h4>
@@ -361,6 +361,30 @@ def latlon2tilecode(latitude, longitude, zoom, feature, parent):
   </ul>    
   """ 
   return tilecode.latlon2tilecode(latitude, longitude, zoom) 
+
+
+@qgsfunction(args='auto', group=group_name)
+def latlon2quadkey(latitude, longitude, zoom, feature, parent):
+  """<style type="text/css">
+    .function {
+    color: #05688f;
+    font-weight: bold;
+    }
+    .parameters {
+    color: red;
+    font-style:italic
+    }
+  </style>
+  Convert latlon to Quadkey.
+  <h4>Syntax</h4>    
+    <li><span class = function>latlon2quadkey</span>(<span class = parameters>lat, long, resolution/ zoom level [0;25]</span>)</li>
+  <h4>Example usage</h4>
+
+  <ul>
+    <li><span class = function>latlon2quadkey</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 23</span>)&rarr; '13223011131020212310000'</li>
+  </ul>    
+  """ 
+  return tilecode.latlon2quadkey(latitude, longitude, zoom) 
 
 @qgsfunction(args='auto', group=group_name)
 def latlon2maidenhead(latitude, longitude, resolution, feature, parent):

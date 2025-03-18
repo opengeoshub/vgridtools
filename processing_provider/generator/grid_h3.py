@@ -196,7 +196,7 @@ class GridH3(QgsProcessingAlgorithm):
                 # Get the boundary of the cell
                 hex_boundary = h3.cell_to_boundary(bbox_buffer_cell)
                 # Wrap and filter the boundary
-                filtered_boundary = self.fix_h3_antimeridian_cells(hex_boundary)
+                filtered_boundary = fix_h3_antimeridian_cells(hex_boundary)
                 # Reverse lat/lon to lon/lat for GeoJSON compatibility
                 reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
                 cell_wkt = Polygon(reversed_boundary).wkt            
@@ -231,7 +231,7 @@ class GridH3(QgsProcessingAlgorithm):
                     # Get the boundary of the cell
                     hex_boundary = h3.cell_to_boundary(child_cell)
                     # Wrap and filter the boundary
-                    filtered_boundary = self.fix_h3_antimeridian_cells(hex_boundary)
+                    filtered_boundary = fix_h3_antimeridian_cells(hex_boundary)
                     # Reverse lat/lon to lon/lat for GeoJSON compatibility
                     reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
                     cell_wkt = Polygon(reversed_boundary).wkt

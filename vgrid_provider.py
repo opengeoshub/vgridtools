@@ -32,7 +32,7 @@ import os
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-from .processing_provider.conversion.cellid2qgsfeature import CellID2DGGS
+from .processing_provider.conversion.dggs2qgsfeature import CellID2DGGS
 from .processing_provider.conversion.qgsfeature2dggs import Vector2DGGS
 
 from .processing_provider.generator.grid_h3 import GridH3

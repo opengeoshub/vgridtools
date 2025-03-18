@@ -2,7 +2,7 @@ from vgrid.utils import olc,mgrs, maidenhead, geohash, georef, s2, gars, tilecod
 from vgrid.utils import mercantile
 from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.generator.h3grid import fix_h3_antimeridian_cells, geodesic_buffer
-from vgrid.conversion.cell2geojson import rhealpix_cell_to_polygon
+from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
 from vgrid.generator.geohashgrid import geohash_to_polygon
 
 from vgrid.utils import qtm

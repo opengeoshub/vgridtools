@@ -42,7 +42,7 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
 
-from vgrid.conversion.cell2geojson import rhealpix_cell_to_polygon
+from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
 from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.utils.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 from vgrid.utils.rhealpixdggs.utils import my_round
