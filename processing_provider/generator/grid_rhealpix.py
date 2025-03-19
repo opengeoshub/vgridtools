@@ -44,18 +44,11 @@ import os, random
 
 from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
 from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.utils.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
-from vgrid.utils.rhealpixdggs.utils import my_round
 from ...utils.imgs import Imgs
-
-
 from shapely.geometry import Polygon,box
 from pyproj import Geod
-
+from vgrid.generator.settings import geodesic_dggs_metrics
 rhealpix_dggs = RHEALPixDGGS()
-
-geod = Geod(ellps="WGS84")
-max_cells = 1_000_000
 
 
 class GridRhealpix(QgsProcessingAlgorithm):
@@ -126,7 +119,7 @@ class GridRhealpix(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('Resolution'),
+                    self.tr('Resolution [0..15]'),
                     QgsProcessingParameterNumber.Integer,
                     defaultValue=1,
                     minValue= 0,
@@ -142,11 +135,6 @@ class GridRhealpix(QgsProcessingAlgorithm):
                     
     def prepareAlgorithm(self, parameters, context, feedback):
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)  
-        if self.resolution < 0 or self.resolution > 15:
-            feedback.reportError('resolution parameter must be in range [0,15]')
-            return False
-         
-         # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
         if self.resolution > 5 and (self.grid_extent is None or self.grid_extent.isEmpty()):
             feedback.reportError('For performance reason, when resolution is greater than 4, the grid extent must be set.')
@@ -156,7 +144,13 @@ class GridRhealpix(QgsProcessingAlgorithm):
     
     def processAlgorithm(self, parameters, context, feedback):        
         fields = QgsFields()
-        fields.append(QgsField("rhealpix", QVariant.String))
+        fields.append(QgsField("rhealpix", QVariant.String))   # S2 token
+        fields.append(QgsField("resolution", QVariant.Int)) 
+        fields.append(QgsField("center_lat", QVariant.Double)) # Centroid latitude
+        fields.append(QgsField("center_lon", QVariant.Double)) # Centroid longitude
+        fields.append(QgsField("avg_edge_len", QVariant.Double)) # Average edge length
+        fields.append(QgsField("cell_area", QVariant.Double))  # Area in square meters
+
         
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
@@ -180,20 +174,102 @@ class GridRhealpix(QgsProcessingAlgorithm):
             ]        
               
         if extent_bbox:
-          return
+            minx, miny = extent_bbox[0]
+            maxx, maxy = extent_bbox[1]
+            # Create a Shapely box
+            bbox_polygon = box(minx, miny, maxx, maxy)
+            bbox_center_lon = bbox_polygon.centroid.x
+            bbox_center_lat = bbox_polygon.centroid.y
+            seed_point = (bbox_center_lon, bbox_center_lat)
+
+            seed_cell = rhealpix_dggs.cell_from_point(self.resolution, seed_point, plane=False)
+            seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
+            seed_cell_polygon = rhealpix_cell_to_polygon(seed_cell)
+
+            if seed_cell_polygon.contains(bbox_polygon):             
+                num_edges = 4
+                if seed_cell.ellipsoidal_shape() == 'dart':
+                    num_edges = 3
+                
+                seed_cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
+            
+                rhealpix_feature = QgsFeature()
+                rhealpix_feature.setGeometry(seed_cell_geometry) 
+                
+                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                rhealpix_feature.setAttributes([seed_cell_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area])                    
+                sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)                    
+
+            else:
+                # Initialize sets and queue
+                covered_cells = set()  # Cells that have been processed (by their unique ID)
+                queue = [seed_cell]  # Queue for BFS exploration
+                while queue:
+                    current_cell = queue.pop()
+                    current_cell_id = str(current_cell)  # Unique identifier for the current cell
+
+                    if current_cell_id in covered_cells:
+                        continue
+                    # Add current cell to the covered set
+                    covered_cells.add(current_cell_id)
+                    # Convert current cell to polygon
+                    cell_polygon = rhealpix_cell_to_polygon(current_cell)
+                    # Skip cells that do not intersect the bounding box
+                    if not cell_polygon.intersects(bbox_polygon):
+                        continue
+                    # Get neighbors and add to queue
+                    neighbors = current_cell.neighbors(plane=False)
+                    for _, neighbor in neighbors.items():
+                        neighbor_id = str(neighbor)  # Unique identifier for the neighbor
+                        if neighbor_id not in covered_cells:
+                            queue.append(neighbor)
+                    if feedback.isCanceled():
+                        break
+
+                for idx, cover_cell in enumerate(covered_cells):
+                    progress = int((idx / len(covered_cells)) * 100)
+                    feedback.setProgress(progress)
+                    
+                    rhealpix_uids = (cover_cell[0],) + tuple(map(int, cover_cell[1:]))
+                    cell = rhealpix_dggs.cell(rhealpix_uids)    
+                    cell_polygon = rhealpix_cell_to_polygon(cell)          
+                    if cell_polygon.intersects(bbox_polygon):
+                        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)            
+                        rhealpix_feature = QgsFeature()
+                        rhealpix_feature.setGeometry(cell_geometry) 
+                        
+                        cell_id = str(cover_cell)      
+                        num_edges = 4
+                        if seed_cell.ellipsoidal_shape() == 'dart':
+                            num_edges = 3
+                        
+                        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                        rhealpix_feature.setAttributes([cell_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area])                    
+                        sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert) 
+                        
+                    if feedback.isCanceled():
+                        break
        
         else:
             total_cells = rhealpix_dggs.num_cells(self.resolution)
+            feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
             rhealpix_grid = rhealpix_dggs.grid(self.resolution)
-            for cell in rhealpix_grid:
+            for idx, cell in enumerate(rhealpix_grid):
+                progress = int((idx / total_cells) * 100)
+                feedback.setProgress(progress)            
                 cell_polygon = rhealpix_cell_to_polygon(cell)
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-                feature = QgsFeature()
-                feature.setGeometry(cell_geometry)
-                feature.setAttributes([str(cell)])
-                sink.addFeature(feature, QgsFeatureSink.FastInsert)                    
-
+                rhealpix_feature = QgsFeature()
+                rhealpix_feature.setGeometry(cell_geometry)                
+                
+                rhealpix_id = str(cell)
+                num_edges = 4
+                if cell.ellipsoidal_shape() == 'dart':
+                    num_edges = 3
+                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                rhealpix_feature.setAttributes([rhealpix_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area])                    
+                sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)                    
                 if feedback.isCanceled():
                     break
                 

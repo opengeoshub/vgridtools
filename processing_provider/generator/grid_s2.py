@@ -47,8 +47,7 @@ from ...utils.imgs import Imgs
 from vgrid.utils.antimeridian import fix_polygon
 from shapely.geometry import Polygon
 import random
-
-max_cells = 1_000_000
+from vgrid.generator.settings import max_cells,geodesic_dggs_metrics
 
 class GridS2(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'
@@ -117,7 +116,7 @@ class GridS2(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('RESOLUTION [0..30]'),
+                    self.tr('Resolution [0..30]'),
                     QgsProcessingParameterNumber.Integer,
                     defaultValue=1,
                     minValue= 0,
@@ -132,24 +131,24 @@ class GridS2(QgsProcessingAlgorithm):
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.RESOLUTION = self.parameterAsInt(parameters, self.RESOLUTION, context)  
-        if self.RESOLUTION < 0 or self.RESOLUTION > 30:
-            feedback.reportError('RESOLUTION parameter must be in range [0,30]')
-            return False
-         
-         # Get the extent parameter
+        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)  
+        # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-        if self.RESOLUTION > 8 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when RESOLUTION is greater than 8, the grid extent must be set.')
+        if self.resolution > 8 and (self.grid_extent is None or self.grid_extent.isEmpty()):
+            feedback.reportError('For performance reason, when resolution is greater than 8, the grid extent must be set.')
             return False
         
         return True
     
     def processAlgorithm(self, parameters, context, feedback):
         fields = QgsFields()
-        fields.append(QgsField("s2_token", QVariant.String))
-        fields.append(QgsField("s2_id", QVariant.String))
-        
+        fields.append(QgsField("s2", QVariant.String))   # S2 token
+        fields.append(QgsField("resolution", QVariant.Int)) 
+        fields.append(QgsField("center_lat", QVariant.Double)) # Centroid latitude
+        fields.append(QgsField("center_lon", QVariant.Double)) # Centroid longitude
+        fields.append(QgsField("avg_edge_len", QVariant.Double)) # Average edge length
+        fields.append(QgsField("cell_area", QVariant.Double))  # Area in square meters
+
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -179,18 +178,18 @@ class GridS2(QgsProcessingAlgorithm):
             )
 
         covering = s2.RegionCoverer()
-        covering.min_level = self.RESOLUTION
-        covering.max_level = self.RESOLUTION
-        covering.max_cells = 5000
+        covering.min_level = self.resolution
+        covering.max_level = self.resolution
+        # covering.max_cells = 10_000
 
         # Get covering for the specified region or all regions
         cells = covering.get_covering(region) if region else covering.get_covering(s2.LatLngRect.full())
         total_cells = len(cells)
         
         feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
-        if total_cells > max_cells:
-            feedback.reportError(f"For performance reason, it must be lesser than {max_cells}. Please input an appropriate extent or RESOLUTION")
-            return {self.OUTPUT: dest_id}
+        # if total_cells > max_cells:
+        #     feedback.reportError(f"For performance reason, it must be lesser than {max_cells}. Please input an appropriate extent or RESOLUTION")
+        #     return {self.OUTPUT: dest_id}
         
         for idx, s2_cell_id in enumerate(cells):
             progress = int((idx / total_cells) * 100)
@@ -205,28 +204,25 @@ class GridS2(QgsProcessingAlgorithm):
                 vertices.append([latlng.lng().degrees, latlng.lat().degrees])
             vertices.append(vertices[0])  # Close the ring
 
-            cell_polygon = Polygon(vertices)
-            cell_wkt = fix_polygon(cell_polygon).wkt
-
-            # cell_geometry = QgsGeometry.fromPolygonXY([[QgsPointXY(x, y) for x, y in vertices]])
-            cell_geometry = QgsGeometry.fromWkt(cell_wkt)
+            cell_polygon = fix_polygon(Polygon(vertices))
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
             # Filter cells by extent if it exists
             if extent_bbox:
                 if not cell_geometry.intersects(QgsGeometry.fromRect(self.grid_extent)):
                     continue
-
-            feature = QgsFeature()
-            feature.setGeometry(cell_geometry)
-            feature.setAttributes([s2_token,str(s2_cell_id.id())])
-            sink.addFeature(feature, QgsFeatureSink.FastInsert)
-
-            if idx % 10000 == 0:  # Log progress every 10000 cells
-                feedback.pushInfo(f"Processed {idx} of {total_cells} cells...")
+            
+            s2_feature = QgsFeature()
+            s2_feature.setGeometry(cell_geometry)
+            
+            num_edges = 4
+            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            s2_feature.setAttributes([s2_token, self.resolution,center_lat, center_lon, avg_edge_len, cell_area])                    
+            sink.addFeature(s2_feature, QgsFeatureSink.FastInsert)                    
 
             if feedback.isCanceled():
                 break
-        
+            
         feedback.pushInfo("S2 grid generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
             # lineColor = QColor('#FF0000')
@@ -255,7 +251,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
         label = QgsPalLayerSettings()
-        label.fieldName = 's2_token'
+        label.fieldName = 's2'
         format = label.format()
         format.setColor(self.font_color)
         format.setSize(8)

@@ -44,6 +44,8 @@ from PyQt5.QtCore import QVariant
 import os, random
 from vgrid.utils import mercantile
 from ...utils.imgs import Imgs
+from vgrid.generator.settings import graticule_dggs_metrics
+from shapely.geometry import Polygon
 
 
 class GridTilecode(QgsProcessingAlgorithm):
@@ -70,7 +72,7 @@ class GridTilecode(QgsProcessingAlgorithm):
         return GridTilecode()
 
     def name(self):
-        return 'grid_Tilecode'
+        return 'grid_tilecode'
 
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)),'../images/grid_gzd.png'))
@@ -113,7 +115,7 @@ class GridTilecode(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('RESOLUTION (Zoom level)'),
+                    self.tr('Resolution/ zoom level [0.24]'),
                     QgsProcessingParameterNumber.Integer,
                     defaultValue = 6,
                     minValue= 0,
@@ -127,23 +129,24 @@ class GridTilecode(QgsProcessingAlgorithm):
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.RESOLUTION = self.parameterAsInt(parameters, self.RESOLUTION, context)  
-        if self.RESOLUTION < 0 or self.RESOLUTION > 24:
-            feedback.reportError('RESOLUTION parameter must be in range [0,24]')
-            return False
-         
+        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)          
          # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-        # Ensure that when RESOLUTION > 4, the extent must be set
-        if self.RESOLUTION > 10 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when RESOLUTION is greater than 10, the grid extent must be set.')
+        if self.resolution > 9 and (self.grid_extent is None or self.grid_extent.isEmpty()):
+            feedback.reportError('For performance reason, when resolution is greater than 9, the grid extent must be set.')
             return False
         
         return True
     
     def processAlgorithm(self, parameters, context, feedback):
         fields = QgsFields()
-        fields.append(QgsField("tilecode", QVariant.String))
+        fields.append(QgsField("tilecode", QVariant.String))   
+        fields.append(QgsField("resolution", QVariant.Int)) 
+        fields.append(QgsField("center_lat", QVariant.Double))
+        fields.append(QgsField("center_lon", QVariant.Double)) 
+        fields.append(QgsField("cell_width", QVariant.Double))
+        fields.append(QgsField("cell_height", QVariant.Double)) 
+        fields.append(QgsField("cell_area", QVariant.Double)) 
 
         (sink, dest_id) = self.parameterAsSink(
             parameters, 
@@ -159,53 +162,41 @@ class GridTilecode(QgsProcessingAlgorithm):
 
         if self.grid_extent is None or self.grid_extent.isEmpty():
         # Cover the entire world extent
-            tiles = list(mercantile.tiles(-180.0,-85.05112878,180.0,85.05112878,self.RESOLUTION))
+            tiles = list(mercantile.tiles(-180.0,-85.05112878,180.0,85.05112878,self.resolution))
         else:
             # Use the specified grid extent
             xmin = self.grid_extent.xMinimum()
             ymin = self.grid_extent.yMinimum()
             xmax = self.grid_extent.xMaximum()
             ymax = self.grid_extent.yMaximum()
-            tiles = list(mercantile.tiles(xmin, ymin, xmax, ymax, self.RESOLUTION))
+            tiles = list(mercantile.tiles(xmin, ymin, xmax, ymax, self.resolution))
 
-        total_tiles = len(tiles)
-        
+        total_cells = len(tiles)
+        feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
+
         # Iterate over each tile to create features
-        for index, tile in enumerate(tiles):
+        for idx, tile in enumerate(tiles):
+            progress = int((idx / total_cells) * 100)
+            feedback.setProgress(progress)            
             # Get the tile's bounding box in geographic coordinates
-            bounds = mercantile.bounds(tile)
-            
-            # Define the corner points of the tile polygon
-            points = [
-                QgsPointXY(bounds.west, bounds.south),
-                QgsPointXY(bounds.east, bounds.south),
-                QgsPointXY(bounds.east, bounds.north),
-                QgsPointXY(bounds.west, bounds.north),
-                QgsPointXY(bounds.west, bounds.south)  # Closing the polygon
-            ]
-            
-            # Create a QgsGeometry polygon from the points
-            polygon = QgsGeometry.fromPolygonXY([points])
-            
-            # Generate the 'Tilecode' attribute in the format "zZxXyY"
-            tilecode = f"z{tile.z}x{tile.x}y{tile.y}"
-            
-            # Create a new feature and set its geometry and attributes
-            feature = QgsFeature(fields)
-            feature.setGeometry(polygon)
-            feature.setAttribute("tilecode", tilecode)
-            
-            # Add the feature to the output sink
-            sink.addFeature(feature, QgsFeatureSink.FastInsert)
-            
-            if (index + 1) % 10000 == 0:
-                message = f"Processed {index + 1}/{total_tiles} tiles"
-                feedback.pushInfo(message)
+            bounds = mercantile.bounds(tile)  
 
-            # Update progress
-            feedback.setProgress(int(100 * (index + 1) / total_tiles))
+            # Create a Shapely polygon
+            cell_polygon = Polygon( [
+                (bounds.west, bounds.south),
+                (bounds.east, bounds.south),
+                (bounds.east, bounds.north),
+                (bounds.west, bounds.north),
+                (bounds.west, bounds.south)  # Closing the polygon
+            ])
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            tilecode_feature = QgsFeature()
+            tilecode_feature.setGeometry(cell_geometry)
             
-            # Check if the process has been canceled
+            tilecode_id = f"z{tile.z}x{tile.x}y{tile.y}"
+            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            tilecode_feature.setAttributes([tilecode_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+            sink.addFeature(tilecode_feature, QgsFeatureSink.FastInsert)
             if feedback.isCanceled():
                 break
 

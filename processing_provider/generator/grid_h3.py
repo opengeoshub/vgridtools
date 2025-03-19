@@ -47,9 +47,7 @@ import h3
 from ...utils.imgs import Imgs
 from vgrid.generator.h3grid import fix_h3_antimeridian_cells
 from shapely.geometry import Polygon,box
-from pyproj import Geod
-geod = Geod(ellps="WGS84")
-max_cells = 10_000_000
+from vgrid.generator.settings import geodesic_dggs_metrics
 
 
 class GridH3(QgsProcessingAlgorithm):
@@ -120,7 +118,7 @@ class GridH3(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('Resolution'),
+                    self.tr('Resolution [0.15]'),
                     QgsProcessingParameterNumber.Integer,
                     defaultValue=1,
                     minValue= 0,
@@ -135,12 +133,7 @@ class GridH3(QgsProcessingAlgorithm):
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)  
-        if self.resolution < 0 or self.resolution > 15:
-            feedback.reportError('resolution parameter must be in range [0,15]')
-            return False
-         
-         # Get the extent parameter
+        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)         
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
         if self.resolution > 4 and (self.grid_extent is None or self.grid_extent.isEmpty()):
             feedback.reportError('For performance reason, when resolution is greater than 4, the grid extent must be set.')
@@ -150,8 +143,13 @@ class GridH3(QgsProcessingAlgorithm):
     
     def processAlgorithm(self, parameters, context, feedback):        
         fields = QgsFields()
-        fields.append(QgsField("h3", QVariant.String))
-        
+        fields.append(QgsField("h3", QVariant.String))   # H3 cell index
+        fields.append(QgsField("resolution", QVariant.Int)) 
+        fields.append(QgsField("center_lat", QVariant.Double)) # Centroid latitude
+        fields.append(QgsField("center_lon", QVariant.Double)) # Centroid longitude
+        fields.append(QgsField("avg_edge_len", QVariant.Double)) # Average edge length
+        fields.append(QgsField("cell_area", QVariant.Double))  # Area in square meters
+
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -178,52 +176,48 @@ class GridH3(QgsProcessingAlgorithm):
             minx, miny = extent_bbox[0]
             maxx, maxy = extent_bbox[1]
             # Create a Shapely box
-            bbox = box(minx, miny, maxx, maxy)
-            
-            # if extent_bbox:           
+            bbox = box(minx, miny, maxx, maxy)            
             bbox_cells  = h3.geo_to_cells(bbox,self.resolution)
-
             total_cells = len(bbox_cells)           
                     
             feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
-            if total_cells > max_cells:
-                feedback.reportError(f"For performance reason, the total cells must be lesser than {max_cells}. Please input an appropriate extent or resolution")
-                return {self.OUTPUT: dest_id}
+            # if total_cells > max_cells:
+            #     feedback.reportError(f"For performance reason, the total cells must be < {max_cells}. Please input an appropriate extent or resolution")
+            #     return {self.OUTPUT: dest_id}
             
-            for idx, bbox_buffer_cell in enumerate(bbox_cells):
+            for idx, bbox_cell in enumerate(bbox_cells):
                 progress = int((idx / total_cells) * 100)
                 feedback.setProgress(progress)
-                # Get the boundary of the cell
-                hex_boundary = h3.cell_to_boundary(bbox_buffer_cell)
-                # Wrap and filter the boundary
+
+                hex_boundary = h3.cell_to_boundary(bbox_cell)
                 filtered_boundary = fix_h3_antimeridian_cells(hex_boundary)
-                # Reverse lat/lon to lon/lat for GeoJSON compatibility
                 reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
-                cell_wkt = Polygon(reversed_boundary).wkt            
-                
-                # Convert WKT to QgsGeometry
-                cell_geometry = QgsGeometry.fromWkt(cell_wkt)
+                cell_polygon = Polygon(reversed_boundary)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
                 if not cell_geometry.intersects(QgsGeometry.fromRect(self.grid_extent)):
                     continue
                                      
-                feature = QgsFeature()
-                feature.setGeometry(cell_geometry)
-                feature.setAttributes([bbox_buffer_cell])
-                sink.addFeature(feature, QgsFeatureSink.FastInsert)
-
-                if idx % 10_000 == 0 and idx > 10_000:  # Log progress every 10_000 cells
-                    feedback.pushInfo(f"Processed {idx} of {total_cells} cells...")
+                h3_feature = QgsFeature()
+                h3_feature.setGeometry(cell_geometry)
+                
+                num_edges = 6
+                if (h3.is_pentagon(bbox_cell)):
+                    num_edges = 5                
+                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                h3_feature.setAttributes([bbox_cell, self.resolution, center_lat, center_lon, avg_edge_len, cell_area])                    
+                sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)                    
 
                 if feedback.isCanceled():
                     break
         else:
             base_cells = h3.get_res0_cells()
             total_base_cells = len(base_cells)
+            total_cells = h3.get_num_cells(self.resolution)
+            feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
             for idx, cell in enumerate(base_cells):
                 progress = int((idx / total_base_cells) * 100)
                 feedback.setProgress(progress) 
-                feedback.pushInfo(f"Processed {idx} of {total_base_cells} base cells...")               
                
                 child_cells = h3.cell_to_children(cell, self.resolution)                
                 # Progress bar for child cells
@@ -234,13 +228,19 @@ class GridH3(QgsProcessingAlgorithm):
                     filtered_boundary = fix_h3_antimeridian_cells(hex_boundary)
                     # Reverse lat/lon to lon/lat for GeoJSON compatibility
                     reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
-                    cell_wkt = Polygon(reversed_boundary).wkt
-                    cell_geometry = QgsGeometry.fromWkt(cell_wkt)
+                    cell_polygon = Polygon(reversed_boundary) 
+                    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                 
-                    feature = QgsFeature()
-                    feature.setGeometry(cell_geometry)
-                    feature.setAttributes([child_cell])
-                    sink.addFeature(feature, QgsFeatureSink.FastInsert)                    
+                    h3_feature = QgsFeature()
+                    h3_feature.setGeometry(cell_geometry)
+                    
+                    num_edges = 6
+                    if (h3.is_pentagon(child_cell)):
+                        num_edges = 5 
+                    
+                    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                    h3_feature.setAttributes([child_cell, self.resolution, center_lat, center_lon, avg_edge_len, cell_area])                    
+                    sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)                    
 
                     if feedback.isCanceled():
                         break
@@ -252,7 +252,6 @@ class GridH3(QgsProcessingAlgorithm):
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
         
         return {self.OUTPUT: dest_id}
-
 
 class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
     instance = None

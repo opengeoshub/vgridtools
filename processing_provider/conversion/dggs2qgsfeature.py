@@ -128,7 +128,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
         # Append H3-related fields
         output_fields.append(QgsField('cell_id', QVariant.String))
-        output_fields.append(QgsField('resolution', QVariant.Int))
+        output_fields.append(QgsField('resolution', vgrid.conversion.dggs2geojson))
         output_fields.append(QgsField('center_lat', QVariant.Double))
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))

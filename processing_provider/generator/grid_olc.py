@@ -42,13 +42,10 @@ from PyQt5.QtCore import QVariant
 import os, random
 
 from vgrid.utils import olc
-from vgrid.generator.olcgrid import calculate_total_cells
+from vgrid.generator.olcgrid import generate_grid, refine_cell
+from vgrid.generator.settings import graticule_dggs_metrics
 from ...utils.imgs import Imgs
-
-from shapely.geometry import Polygon,box, mapping
-from pyproj import Geod
-geod = Geod(ellps="WGS84")
-max_cells = 1_000_000
+from shapely.geometry import Polygon,box
 
 
 class GridOLC(QgsProcessingAlgorithm):
@@ -123,7 +120,7 @@ class GridOLC(QgsProcessingAlgorithm):
                     QgsProcessingParameterNumber.Integer,
                     defaultValue=2,
                     minValue= 2,
-                    maxValue=15,
+                    maxValue= 15,
                     optional=False)
         self.addParameter(param)
 
@@ -142,228 +139,41 @@ class GridOLC(QgsProcessingAlgorithm):
         # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
 
-        if self.resolution > 11 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when Code length is greater than 11, the grid extent must be set.')
+        if self.resolution > 6 and (self.grid_extent is None or self.grid_extent.isEmpty()):
+            feedback.reportError('For performance reason, when resolutin/ code length is greater than 6, the grid extent must be set.')
             return False
         
         return True
 
-     
     def processAlgorithm(self, parameters, context, feedback):
-        def generate_grid(code_length):
-            """
-            Generate a global grid of Open Location Codes (Plus Codes) at the specified precision
-            as a GeoJSON-like feature collection.
-            """
-            # Define the boundaries of the world
-            sw_lat, sw_lng = -90, -180
-            ne_lat, ne_lng = 90, 180
-
-            # Get the precision step size
-            area = olc.decode(olc.encode(sw_lat, sw_lng, code_length))
-            lat_step = area.latitudeHi - area.latitudeLo
-            lng_step = area.longitudeHi - area.longitudeLo
-
-            features = []
-
-            # Calculate the total number of steps for progress tracking
-            total_lat_steps = int((ne_lat - sw_lat) / lat_step)
-            total_lng_steps = int((ne_lng - sw_lng) / lng_step)
-            total_steps = total_lat_steps * total_lng_steps
-
-            # Iterate over the entire globe with tqdm for progress tracking
-            lat = sw_lat
-            while lat < ne_lat:
-                lng = sw_lng
-                while lng < ne_lng:
-                    # Generate the Plus Code for the center of the cell
-                    center_lat = lat + lat_step / 2
-                    center_lon = lng + lng_step / 2
-                    olc_code = olc.encode(center_lat, center_lon, code_length)
-                    resolution = olc.decode(olc_code).codeLength
-                    cell_polygon = Polygon([
-                                [lng, lat],  # SW
-                                [lng, lat + lat_step],  # NW
-                                [lng + lng_step, lat + lat_step],  # NE
-                                [lng + lng_step, lat],  # SE
-                                [lng, lat]  # Close the polygon
-                        ])
-                    
-                    cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)
-                    cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
-                    avg_edge_len = round(cell_perimeter / 3,2)
-                                
-                    # Create the feature
-                    features.append({
-                        "type": "Feature",
-                        "geometry": mapping(cell_polygon),
-                        "properties": {
-                            "olc": olc_code,
-                            "resolution": resolution,
-                            "center_lat": center_lat,
-                            "center_lon": center_lon,
-                            "avg_edge_len": avg_edge_len,
-                            "cell_area": cell_area
-                        }
-                    })
-
-                    lng += lng_step
-                lat += lat_step
-
-            # Return the feature collection
-            return {
-                "type": "FeatureCollection",
-                "features": features
-            }
-
-
-        def refine_cell(bounds, current_resolution, target_resolution, bbox_poly):
-            """
-            Refine a cell defined by bounds to the target resolution, recursively refining intersecting cells.
-            """
-            min_lon, min_lat, max_lon, max_lat = bounds
-            if current_resolution < 10:
-                valid_resolution = current_resolution + 2
-            else: valid_resolution = current_resolution + 1
-            
-            area = olc.decode(olc.encode(min_lat, min_lon, valid_resolution))
-            lat_step = area.latitudeHi - area.latitudeLo
-            lng_step = area.longitudeHi - area.longitudeLo
-
-            features = []
-            total_lat_steps = int((max_lat - min_lat) / lat_step)
-            total_lng_steps = int((max_lon - min_lon) / lng_step)
-            total_steps = total_lat_steps * total_lng_steps
-
-            lat = min_lat
-            while lat < max_lat:
-                lng = min_lon
-                while lng < max_lon:
-                    # Define the bounds of the finer cell
-                    finer_cell_bounds = (lng, lat, lng + lng_step, lat + lat_step)
-                    finer_cell_poly = box(*finer_cell_bounds)
-
-                    if bbox_poly.intersects(finer_cell_poly):
-                        # Generate the Plus Code for the center of the finer cell
-                        center_lat = lat + lat_step / 2
-                        center_lon = lng + lng_step / 2
-                        olc_code = olc.encode(center_lat, center_lon, valid_resolution)
-                        resolution = olc.decode(olc_code).codeLength
-                        
-                        cell_polygon = Polygon([
-                                [lng, lat],  # SW
-                                [lng, lat + lat_step],  # NW
-                                [lng + lng_step, lat + lat_step],  # NE
-                                [lng + lng_step, lat],  # SE
-                                [lng, lat]  # Close the polygon
-                        ])
-                    
-                        cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)
-                        cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
-                        avg_edge_len = round(cell_perimeter / 3,2)
-                        
-                        # Add the finer cell as a feature
-                        features.append({
-                        "type": "Feature",
-                        "geometry": mapping(cell_polygon),
-                        "properties": {
-                            "olc": olc_code,
-                            "resolution": resolution,
-                            "center_lat": center_lat,
-                            "center_lon": center_lon,
-                            "avg_edge_len": avg_edge_len,
-                            "cell_area": cell_area
-                            }
-                        })
-
-                        # Recursively refine the cell if not at target resolution
-                        if valid_resolution < target_resolution:
-                            features.extend(
-                                refine_cell(
-                                    finer_cell_bounds,
-                                    valid_resolution,
-                                    target_resolution,
-                                    bbox_poly
-                                )
-                            )
-
-                    lng += lng_step
-                lat += lat_step
-
-            return features
-
         fields = QgsFields()
         fields.append(QgsField("olc", QVariant.String))
-        fields.append(QgsField('resolution', QVariant.Int))
-        fields.append(QgsField('center_lat', QVariant.Double))
-        fields.append(QgsField('center_lon', QVariant.Double))
-        fields.append(QgsField('avg_edge_len', QVariant.Double))
-        fields.append(QgsField('cell_area', QVariant.Double))
-
+        fields.append(QgsField("resolution", QVariant.Int)) 
+        fields.append(QgsField("center_lat", QVariant.Double))
+        fields.append(QgsField("center_lon", QVariant.Double)) 
+        fields.append(QgsField("cell_width", QVariant.Double))
+        fields.append(QgsField("cell_height", QVariant.Double)) 
+        fields.append(QgsField("cell_area", QVariant.Double)) 
 
         # Get the output sink and its destination ID
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
                                                 fields, QgsWkbTypes.Polygon,
                                                 QgsCoordinateReferenceSystem('EPSG:4326'))
 
-        if sink is None:
-            raise QgsProcessingException("Failed to create output sink")
-
-        feedback.pushInfo(f"Generating OLC grid at resolution {self.resolution}")
+        if not sink:
+            raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
         if self.grid_extent is None or self.grid_extent.isEmpty():
-           # Define the boundaries of the world
-            sw_lat, sw_lon = -90, -180
-            ne_lat, ne_lon = 90, 180
+            extent_bbox = None
+        else:
+            extent_bbox = [
+                [self.grid_extent.xMinimum(), self.grid_extent.yMinimum()],
+                [self.grid_extent.xMaximum(), self.grid_extent.yMaximum()]
+            ]        
 
-            # Get the precision step size
-            area = olc.decode(olc.encode(sw_lat, sw_lon, self.resolution))
-            lat_step = area.latitudeHi - area.latitudeLo
-            lon_step = area.longitudeHi - area.longitudeLo
-
-            # Calculate the total number of steps for progress tracking
-            total_lat_steps = int((ne_lat - sw_lat) / lat_step)
-            total_lon_steps = int((ne_lon - sw_lon) / lon_step)
-            total_cells = total_lat_steps * total_lon_steps
-            # Iterate over the entire globe with tqdm for progress tracking
-            lat = sw_lat
-            count = 0
-            while lat < ne_lat:
-                lon = sw_lon
-                while lon < ne_lon:
-                    # Generate the Plus Code for the center of the cell
-                    center_lat = lat + lat_step / 2
-                    center_lon = lon + lon_step / 2
-                    olc_code = olc.encode(center_lat, center_lon, self.resolution)
-                    cell_polygon = Polygon([
-                                [lon, lat],  # SW
-                                [lon, lat + lat_step],  # NW
-                                [lon + lon_step, lat + lat_step],  # NE
-                                [lon + lon_step, lat],  # SE
-                                [lon, lat]  # Close the polygon
-                        ])
-                    
-                    cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)
-                    cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
-                    avg_edge_len = round(cell_perimeter / 4,2)
-                    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                    feature = QgsFeature()
-                    feature.setGeometry(cell_geometry)
-                    feature.setAttributes([olc_code, self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
-                    sink.addFeature(feature, QgsFeatureSink.FastInsert)
-
-                    count += 1  # Increment counter        
-                    if count % 10_000 == 0:  # Log progress every 10,000 cells
-                        percent_done = (count / total_cells) * 100
-                        feedback.pushInfo(f"Processed {count} of {total_cells} cells ({percent_done:.2f}%)...") 
-                    lon += lon_step
-                
-                if feedback.isCanceled():
-                        break   
-                lat += lat_step
-        else:            
-            min_lon, min_lat = self.grid_extent.xMinimum(), self.grid_extent.yMinimum()
-            max_lon, max_lat = self.grid_extent.xMaximum(), self.grid_extent.yMaximum()
+        if extent_bbox: 
+            min_lon, min_lat = extent_bbox[0]
+            max_lon, max_lat = extent_bbox[1]           
             bbox_poly = box(min_lon, min_lat, max_lon, max_lat)
             # Step 1: Generate base cells at the lowest resolution (e.g., resolution 2)
             base_resolution = 2
@@ -390,49 +200,38 @@ class GridOLC(QgsProcessingAlgorithm):
                     refined_features.extend(
                         refine_cell(seed_cell_poly.bounds, base_resolution, self.resolution, bbox_poly)
                     )
-
+                if feedback.isCanceled():
+                    break
+                
             resolution_features = [
                 feature for feature in refined_features if feature["properties"]["resolution"] == self.resolution
             ]
 
             final_features = []
-            seen_olc_codes = set()  # Reset the set for final feature filtering
+            seen_olc_ids = set()  # Reset the set for final feature filtering
 
             for feature in resolution_features:
-                olc_code = feature["properties"]["olc"]
-                if olc_code not in seen_olc_codes:  # Check if OLC code is already in the set
+                olc_id = feature["properties"]["olc"]
+                if olc_id not in seen_olc_ids:  # Check if OLC code is already in the set
                     final_features.append(feature)
-                    seen_olc_codes.add(olc_code)
-
-            fields = QgsFields()
-            fields.append(QgsField("resolution", QVariant.Int))
-            fields.append(QgsField("olc", QVariant.String))
+                    seen_olc_ids.add(olc_id)
+                if feedback.isCanceled():
+                    break
 
             # Convert final_features to QgsFeature
             for feature in final_features:
                 cell_polygon = Polygon(feature["geometry"]["coordinates"][0])
-                olc_code = feature["properties"]["olc"]
+                olc_id = feature["properties"]["olc"]
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-                # Compute additional attributes
-                center_lat, center_lon = cell_polygon.centroid.y, cell_polygon.centroid.x
-                avg_edge_len = sum([cell_polygon.exterior.length / len(cell_polygon.exterior.coords)])  # Average edge length
-                cell_area = cell_polygon.area  # Compute area
-
-                # Create QgsFeature
-                qgs_feature = QgsFeature()
-                qgs_feature.setGeometry(cell_geometry)
-                qgs_feature.setAttributes([
-                    olc_code, 
-                    self.resolution, 
-                    center_lat, 
-                    center_lon, 
-                    avg_edge_len, 
-                    cell_area
-                ])
-
-                sink.addFeature(qgs_feature, QgsFeatureSink.FastInsert)
-
+                
+                olc_feature = QgsFeature()
+                olc_feature.setGeometry(cell_geometry)
+                center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)                     
+                olc_feature.setAttributes([olc_id,self.resolution,center_lat,center_lon,cell_width, cell_height,cell_area])
+                sink.addFeature(olc_feature, QgsFeatureSink.FastInsert) 
+                # sink.addFeature(qgs_feature, QgsFeatureSink.FastInsert)
+                if feedback.isCanceled():
+                    break
 
         feedback.pushInfo("OLC grid generation completed.")
         

@@ -107,13 +107,13 @@ class GridMGRS(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         param = QgsProcessingParameterExtent(self.EXTENT,
                                              self.tr('Grid extent'),
-                                             optional=True
+                                             optional=False
                                             )
         self.addParameter(param)
 
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('RESOLUTION'),
+                    self.tr('Resolution [0..5]'),
                     QgsProcessingParameterNumber.Integer,
                     defaultValue=0,
                     minValue= 0,
@@ -128,18 +128,9 @@ class GridMGRS(QgsProcessingAlgorithm):
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.RESOLUTION = self.parameterAsInt(parameters, self.RESOLUTION, context)  
-        if self.RESOLUTION < 0 or self.RESOLUTION > 5:
-            feedback.reportError('RESOLUTION parameter must be in range [0,5]')
-            return False
-         
-         # Get the extent parameter
-        self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-        # Ensure that when RESOLUTION > 4, the extent must be set
-        if self.RESOLUTION > 3 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when RESOLUTION is greater than 3, the grid extent must be set.')
-            return False
-        
+        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)  
+        # Get the extent parameter
+        self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)        
         return True
     
 
@@ -166,21 +157,27 @@ class GridMGRS(QgsProcessingAlgorithm):
             lon_max = self.grid_extent.xMaximum()
             lat_max = self.grid_extent.yMaximum()
 
-        feedback.pushInfo(f"Generating MGRS grid at RESOLUTION {self.RESOLUTION}.")
 
         # Define the grid zone bounds and step sizes
         bands = "CDEFGHJKLMNPQRSTUVWX"
         # bands = "C"
-        lat = -80
+        # lat = -80
+        lat = lat_min
         for band in bands:
             feedback.pushInfo(f"Processing band {band}")
             height = 8 if band != 'X' else 12
-            lon = -180
-            while lon < 180:
+            # lon = -180
+            lon = lon_min
+            # while lon < 180:
+            while lon < lon_max:
                 # Loop through GZDs
                 gzd = f"{(int((lon + 180) / 6) + 1):02d}{band}"
-                create_mgrs_grids(lon, lat, 6, height, gzd, self.RESOLUTION, sink, feedback)
+                # gzd = f"{(int((lon + lon_max) / 6) + 1):02d}{band}"
+                create_mgrs_grids(lon, lat, 6, height, gzd, self.resolution, sink, feedback)
                 lon += 6
+                if feedback.isCanceled():
+                    break
+
             lat += height
 
         feedback.pushInfo("MGRS grid generation completed.")
@@ -199,9 +196,9 @@ def km_to_lon_degree(km, lat):
     """Convert a distance in kilometers to degrees of longitude at a given latitude."""
     return km / (111.32 * math.cos(math.radians(lat)))
 
-def create_mgrs_grids(lon_start, lat_start, lon_width, lat_height, gzd, RESOLUTION, sink, feedback):
+def create_mgrs_grids(lon_start, lat_start, lon_width, lat_height, gzd, resolution, sink, feedback):
     """Create MGRS grids at the specified RESOLUTION."""
-    if RESOLUTION == 0:
+    if resolution == 0:
         # RESOLUTION 0 means 100 km x 100 km squares (100,000 meters)
         lon_step_km = 100  # 100 km step in longitude
         lat_step_km = 100  # 100 km step in latitude
@@ -212,12 +209,12 @@ def create_mgrs_grids(lon_start, lat_start, lon_width, lat_height, gzd, RESOLUTI
 
     else:
         # Calculate the step size for higher RESOLUTION
-        step = 10 ** (5 - RESOLUTION)  # Step size in meters
+        step = 10 ** (5 - resolution)  # Step size in meters
         lon_step_deg = km_to_lon_degree(step / 1000, lat_start)  # Convert meters to degrees
         lat_step_deg = step / 111.32  # Convert meters to degrees for latitude
 
     # Add logging to check the calculated steps
-    feedback.pushInfo(f"Lon step (in degrees): {lon_step_deg}, Lat step (in degrees): {lat_step_deg}")
+    # feedback.pushInfo(f"Lon step (in degrees): {lon_step_deg}, Lat step (in degrees): {lat_step_deg}")
 
     # Iterate over the grid to create each polygon
     for i in range(int(lon_width / lon_step_deg)):
@@ -230,7 +227,7 @@ def create_mgrs_grids(lon_start, lat_start, lon_width, lat_height, gzd, RESOLUTI
             # Create a MGRS code for each grid square
             mgrs_code = f"{gzd}{i:02d}{j:02d}"
             add_polygon_to_sink(lon_min, lat_min, lon_max, lat_max, mgrs_code, sink, feedback)
-
+            
 def add_polygon_to_sink(lon_min, lat_min, lon_max, lat_max, mgrs_code, sink, feedback):
     """Add a polygon representing the MGRS grid cell to the sink."""
     try:
@@ -245,7 +242,7 @@ def add_polygon_to_sink(lon_min, lat_min, lon_max, lat_max, mgrs_code, sink, fee
         feature.setGeometry(polygon)
         feature.setAttributes([mgrs_code])  # Set the MGRS code as an attribute
         sink.addFeature(feature, QgsFeatureSink.FastInsert)
-        feedback.pushInfo(f"Added MGRS cell: {mgrs_code}")
+        # feedback.pushInfo(f"Added MGRS cell: {mgrs_code}")
     except Exception as e:
         feedback.pushWarning(f"Error adding MGRS cell {mgrs_code}: {e}")
 

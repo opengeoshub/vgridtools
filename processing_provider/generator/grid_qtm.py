@@ -41,13 +41,10 @@ from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
-from vgrid.utils import qtm  
-    
+from vgrid.utils import qtm   
+from vgrid.generator.settings import geodesic_dggs_metrics  
 from ...utils.imgs import Imgs
 
-from pyproj import Geod
-geod = Geod(ellps="WGS84")
-max_cells = 1_000_000
 p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (90.0, -180.0), (90.0, -90.0), (90.0, 0.0), (90.0, 90.0), (90.0, 180.0)
 p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (0.0, -180.0), (0.0, -90.0), (0.0, 0.0), (0.0, 90.0), (0.0, 180.0)
 n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (-90.0, -180.0), (-90.0, -90.0), (-90.0, 0.0), (-90.0, 90.0), (-90.0, 180.0)
@@ -121,9 +118,9 @@ class GridQTM(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('Resolution'),
+                    self.tr('Resolution [1..24]'),
                     QgsProcessingParameterNumber.Integer,
-                    defaultValue=1,
+                    defaultValue=2,
                     minValue= 1,
                     maxValue= 24,
                     optional=False)
@@ -137,21 +134,16 @@ class GridQTM(QgsProcessingAlgorithm):
                     
     def prepareAlgorithm(self, parameters, context, feedback):
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)  
-        if self.resolution < 1 or self.resolution > 24:
-            feedback.reportError('resolution parameter must be in range [1,24]')
-            return False
-         
-         # Get the extent parameter
+        # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-        if self.resolution > 8 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when resolution is greater than 8, the grid extent must be set.')
+        if self.resolution > 9 and (self.grid_extent is None or self.grid_extent.isEmpty()):
+            feedback.reportError('For performance reason, when resolution is greater than 9, the grid extent must be set.')
             return False
         
         return True    
 
     def outputFields(self):
         output_fields = QgsFields() 
-
         # Append DGGS fields
         output_fields.append(QgsField("qtm", QVariant.String))
         output_fields.append(QgsField('resolution', QVariant.Int))
@@ -209,20 +201,18 @@ class GridQTM(QgsProcessingAlgorithm):
                     for i, facet in enumerate(initial_facets):
                         QTMID[0].append(str(i + 1))
                         facet_geom = qtm.constructGeometry(facet)
-                        cell_centroid = facet_geom.centroid
-                        center_lat =  round(cell_centroid.y, 7)
-                        center_lon = round(cell_centroid.x, 7)
-                        cell_area = round(abs(geod.geometry_area_perimeter(facet_geom)[0]),2)
-                        cell_perimeter = abs(geod.geometry_area_perimeter(facet_geom)[1])
-                        avg_edge_len = round(cell_perimeter / 3,2)
-                        cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt)       
-
+                        cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt) 
                         levelFacets[0].append(facet)                                         
                         if cell_geometry.intersects(QgsGeometry.fromRect(self.grid_extent)) and self.resolution == 1:
-                            feature = QgsFeature()
-                            feature.setGeometry(cell_geometry)
-                            feature.setAttributes([QTMID[0][i],self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
-                            sink.addFeature(feature, QgsFeatureSink.FastInsert)      
+                            qtm_feature = QgsFeature()
+                            qtm_feature.setGeometry(cell_geometry)
+                            qtm_id = QTMID[0][i]
+                            num_edges = 3
+                            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(facet_geom, num_edges)
+                            qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
+                            sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)      
+                        if feedback.isCanceled():
+                                break
                 else:
                     for i, pf in enumerate(levelFacets[lvl - 1]):
                         subdivided_facets = qtm.divideFacet(pf)
@@ -234,19 +224,20 @@ class GridQTM(QgsProcessingAlgorithm):
                                 QTMID[lvl].append(new_id)
                                 levelFacets[lvl].append(subfacet)
                                 if lvl == self.resolution - 1:  # Only store final resolution
-                                    cell_centroid = subfacet_geom.centroid
-                                    center_lat =  round(cell_centroid.y, 7)
-                                    center_lon = round(cell_centroid.x, 7)
-                                    cell_area = round(abs(geod.geometry_area_perimeter(subfacet_geom)[0]),2)
-                                    cell_perimeter = abs(geod.geometry_area_perimeter(subfacet_geom)[1])
-                                    avg_edge_len = round(cell_perimeter / 3,2)
-                                    
-                                       
-                                    feature = QgsFeature()
-                                    feature.setGeometry(cell_geometry)
-                                    feature.setAttributes([new_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
-                                    sink.addFeature(feature, QgsFeatureSink.FastInsert)   
-        else:
+                                    qtm_feature = QgsFeature()
+                                    qtm_feature.setGeometry(cell_geometry)
+                                    qtm_id = new_id
+                                    num_edges = 3
+                                    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(subfacet_geom, num_edges)
+                                    qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
+                                    sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)   
+                            if feedback.isCanceled():
+                                break
+                
+        else:  # global scale            
+            total_cells = 8*4**(self.resolution-1)                
+            feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
+            processed_cells = 0  # Counter for progress tracking
             for lvl in range(self.resolution):
                 levelFacets[lvl] = []
                 QTMID[lvl] = []
@@ -266,21 +257,21 @@ class GridQTM(QgsProcessingAlgorithm):
                     for i, facet in enumerate(initial_facets):
                         facet_geom = qtm.constructGeometry(facet)
                         QTMID[0].append(str(i + 1))
-                        levelFacets[0].append(facet)
-                        
-                        cell_centroid = facet_geom.centroid
-                        center_lat =  round(cell_centroid.y, 7)
-                        center_lon = round(cell_centroid.x, 7)
-                        cell_area = round(abs(geod.geometry_area_perimeter(facet_geom)[0]),2)
-                        cell_perimeter = abs(geod.geometry_area_perimeter(facet_geom)[1])
-                        avg_edge_len = round(cell_perimeter / 3,2)                         
-
-                        cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt)                        
-                        
-                        feature = QgsFeature()
-                        feature.setGeometry(cell_geometry)
-                        feature.setAttributes([QTMID[0][i],self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
-                        sink.addFeature(feature, QgsFeatureSink.FastInsert)               
+                        levelFacets[0].append(facet)                        
+                        if (self.resolution ==1):
+                            qtm_id = QTMID[0][i]
+                            num_edges = 3
+                            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(facet_geom, num_edges)                       
+                            cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt) 
+                            qtm_feature = QgsFeature()
+                            qtm_feature.setGeometry(cell_geometry)
+                            qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
+                            sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)  
+                            # Update progress
+                            processed_cells += 1
+                            feedback.setProgress(int(100 * processed_cells / total_cells)) 
+                            if feedback.isCanceled():
+                                break
                 else:
                     for i, pf in enumerate(levelFacets[lvl - 1]):
                         subdivided_facets = qtm.divideFacet(pf)
@@ -290,19 +281,19 @@ class GridQTM(QgsProcessingAlgorithm):
                             levelFacets[lvl].append(subfacet)
                             if lvl == self.resolution -1:
                                 subfacet_geom= qtm.constructGeometry(subfacet)
-                                cell_centroid = subfacet_geom.centroid
-                                center_lat =  round(cell_centroid.y, 7)
-                                center_lon = round(cell_centroid.x, 7)
-                                cell_area = round(abs(geod.geometry_area_perimeter(subfacet_geom)[0]),2)
-                                cell_perimeter = abs(geod.geometry_area_perimeter(subfacet_geom)[1])
-                                avg_edge_len = round(cell_perimeter / 3,2)                
-                               
-                                cell_geometry = QgsGeometry.fromWkt(subfacet_geom.wkt)                        
-                                feature = QgsFeature()
-                                feature.setGeometry(cell_geometry)
-                                feature.setAttributes([new_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
-                                sink.addFeature(feature, QgsFeatureSink.FastInsert)                                        
-                                    
+                                qtm_id = new_id
+                                num_edges = 3
+                                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(subfacet_geom, num_edges)
+                            
+                                cell_geometry = QgsGeometry.fromWkt(subfacet_geom.wkt) 
+                                qtm_feature = QgsFeature()
+                                qtm_feature.setGeometry(cell_geometry)
+                                qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
+                                sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)           
+                                 # Update progress
+                                processed_cells += 1
+                                feedback.setProgress(int(100 * processed_cells / total_cells))
+
                             if feedback.isCanceled():
                                 break
                 
