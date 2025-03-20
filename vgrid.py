@@ -77,7 +77,7 @@ class VgridPlugin(object):
         # self.Vgrid_add_submenu2(self.VgridGenerator_menu, icon)
         
 
-        # icon = QIcon(os.path.dirname(__file__) + "/images/grid_gzd.png")  
+        # icon = QIcon(os.path.dirname(__file__) + "/images/grid.svg")  
         # self.VgridGZD_action = QAction(icon, u'Grid Zone Designators', self.iface.mainWindow())
         # self.VgridGZD_action.triggered.connect(lambda: gzd.main())
         # self.VgridGenerator_menu.addAction(self.VgridGZD_action)

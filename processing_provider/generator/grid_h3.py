@@ -141,15 +141,19 @@ class GridH3(QgsProcessingAlgorithm):
         
         return True
     
-    def processAlgorithm(self, parameters, context, feedback):        
-        fields = QgsFields()
-        fields.append(QgsField("h3", QVariant.String))   # H3 cell index
-        fields.append(QgsField("resolution", QVariant.Int)) 
-        fields.append(QgsField("center_lat", QVariant.Double)) # Centroid latitude
-        fields.append(QgsField("center_lon", QVariant.Double)) # Centroid longitude
-        fields.append(QgsField("avg_edge_len", QVariant.Double)) # Average edge length
-        fields.append(QgsField("cell_area", QVariant.Double))  # Area in square meters
+    def outputFields(self):
+        output_fields = QgsFields() 
+        output_fields.append(QgsField("h3", QVariant.String))
+        output_fields.append(QgsField('resolution', QVariant.Int))
+        output_fields.append(QgsField('center_lat', QVariant.Double))
+        output_fields.append(QgsField('center_lon', QVariant.Double))
+        output_fields.append(QgsField('avg_edge_len', QVariant.Double))
+        output_fields.append(QgsField('cell_area', QVariant.Double))
 
+        return output_fields
+
+    def processAlgorithm(self, parameters, context, feedback):        
+        fields = self.outputFields()
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -165,26 +169,15 @@ class GridH3(QgsProcessingAlgorithm):
 
         if self.grid_extent is None or self.grid_extent.isEmpty():
             extent_bbox = None
-        else:
-            extent_bbox = [
-                [self.grid_extent.xMinimum(), self.grid_extent.yMinimum()],
-                [self.grid_extent.xMaximum(), self.grid_extent.yMaximum()]
-            ]        
-        bbox = None
+        else:        
+            extent_bbox = box(self.grid_extent.xMinimum(), self.grid_extent.yMinimum(), 
+                            self.grid_extent.xMaximum(), self.grid_extent.yMaximum())  
               
-        if extent_bbox:
-            minx, miny = extent_bbox[0]
-            maxx, maxy = extent_bbox[1]
-            # Create a Shapely box
-            bbox = box(minx, miny, maxx, maxy)            
-            bbox_cells  = h3.geo_to_cells(bbox,self.resolution)
+        if extent_bbox:                
+            bbox_cells  = h3.geo_to_cells(extent_bbox,self.resolution)
             total_cells = len(bbox_cells)           
                     
             feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
-            # if total_cells > max_cells:
-            #     feedback.reportError(f"For performance reason, the total cells must be < {max_cells}. Please input an appropriate extent or resolution")
-            #     return {self.OUTPUT: dest_id}
-            
             for idx, bbox_cell in enumerate(bbox_cells):
                 progress = int((idx / total_cells) * 100)
                 feedback.setProgress(progress)

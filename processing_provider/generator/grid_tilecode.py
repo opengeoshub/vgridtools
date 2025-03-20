@@ -75,7 +75,7 @@ class GridTilecode(QgsProcessingAlgorithm):
         return 'grid_tilecode'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)),'../images/grid_gzd.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)),'../images/generator/grid_quad.svg'))
     
     def displayName(self):
         return self.tr('Tilecode', 'Tilecode')
@@ -138,16 +138,20 @@ class GridTilecode(QgsProcessingAlgorithm):
         
         return True
     
-    def processAlgorithm(self, parameters, context, feedback):
-        fields = QgsFields()
-        fields.append(QgsField("tilecode", QVariant.String))   
-        fields.append(QgsField("resolution", QVariant.Int)) 
-        fields.append(QgsField("center_lat", QVariant.Double))
-        fields.append(QgsField("center_lon", QVariant.Double)) 
-        fields.append(QgsField("cell_width", QVariant.Double))
-        fields.append(QgsField("cell_height", QVariant.Double)) 
-        fields.append(QgsField("cell_area", QVariant.Double)) 
+    def outputFields(self):
+        output_fields = QgsFields() 
+        output_fields.append(QgsField("tilecode", QVariant.String))
+        output_fields.append(QgsField('resolution', QVariant.Int))
+        output_fields.append(QgsField('center_lat', QVariant.Double))
+        output_fields.append(QgsField('center_lon', QVariant.Double))
+        output_fields.append(QgsField('cell_width', QVariant.Double))
+        output_fields.append(QgsField('cell_height', QVariant.Double))
+        output_fields.append(QgsField('cell_area', QVariant.Double))
 
+        return output_fields
+
+    def processAlgorithm(self, parameters, context, feedback):
+        vgrid.conversion.dggs2geojson()   
         (sink, dest_id) = self.parameterAsSink(
             parameters, 
             self.OUTPUT, 
@@ -199,7 +203,8 @@ class GridTilecode(QgsProcessingAlgorithm):
             sink.addFeature(tilecode_feature, QgsFeatureSink.FastInsert)
             if feedback.isCanceled():
                 break
-
+        
+        feedback.pushInfo("Tilecode grid generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')

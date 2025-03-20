@@ -42,7 +42,9 @@ import os, random
 
 from vgrid.utils import geohash
 from ...utils.imgs import Imgs
-max_cells = 2000_000
+from vgrid.generator.settings import graticule_dggs_metrics
+from shapely.geometry import box
+from vgrid.generator.geohashgrid import geohash_to_polygon
 
 
 class GridGeohash(QgsProcessingAlgorithm):
@@ -72,8 +74,8 @@ class GridGeohash(QgsProcessingAlgorithm):
         return 'grid_geohash'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/grid_gzd.png'))
-    
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
+
     def displayName(self):
         return self.tr('Geohash', 'Geohash')
 
@@ -112,7 +114,7 @@ class GridGeohash(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('Resolution'),
+                    self.tr('Resolution [1..10]'),
                     QgsProcessingParameterNumber.Integer,
                     defaultValue=1,
                     minValue= 1,
@@ -126,94 +128,75 @@ class GridGeohash(QgsProcessingAlgorithm):
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.RESOLUTION = self.parameterAsInt(parameters, self.RESOLUTION, context)  
-        if self.RESOLUTION < 1 or self.RESOLUTION>10:
-            feedback.reportError('Resolugion must be in range [1,10]')
-            return False
-         
-         # Get the extent parameter
+        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)  
+        # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-        # Ensure that when RESOLUTION > 4, the extent must be set
-        if self.RESOLUTION > 4 and (self.grid_extent is None or self.grid_extent.isEmpty()):
+        # Ensure that when resolution > 4, the extent must be set
+        if self.resolution > 4 and (self.grid_extent is None or self.grid_extent.isEmpty()):
             feedback.reportError('For performance reason, when resolution is greater than 4, the grid extent must be set.')
             return False
         
         return True
     
-    def geohash_to_bbox(self, gh):
-        """Convert geohash to bounding box coordinates."""
-        lat, lon = geohash.decode(gh)
-        lat_err, lon_err = geohash.decode_exactly(gh)[2:]
-        bbox = {
-            'w': max(lon - lon_err, -180),
-            'e': min(lon + lon_err, 180),
-            's': max(lat - lat_err, -85.051129),
-            'n': min(lat + lat_err, 85.051129)
-        }
-        return bbox
+    def outputFields(self):
+        output_fields = QgsFields() 
+        output_fields.append(QgsField("geohash", QVariant.String))
+        output_fields.append(QgsField('resolution', QVariant.Int))
+        output_fields.append(QgsField('center_lat', QVariant.Double))
+        output_fields.append(QgsField('center_lon', QVariant.Double))
+        output_fields.append(QgsField('cell_width', QVariant.Double))
+        output_fields.append(QgsField('cell_height', QVariant.Double))
+        output_fields.append(QgsField('cell_area', QVariant.Double))
 
-    def geohash_to_polygon(self, gh):
-        """Convert geohash to a QGIS QgsGeometry Polygon."""
-        bbox = self.geohash_to_bbox(gh)
-
-        # Create a list of QgsPointXY from the bounding box coordinates
-        qgis_points = [
-            QgsPointXY(bbox['w'], bbox['s']),
-            QgsPointXY(bbox['w'], bbox['n']),
-            QgsPointXY(bbox['e'], bbox['n']),
-            QgsPointXY(bbox['e'], bbox['s']),
-            QgsPointXY(bbox['w'], bbox['s']),
-        ]
-
-        # Create and return a QGIS QgsGeometry Polygon from the points
-        return QgsGeometry.fromPolygonXY([qgis_points])
-
+        return output_fields
+    
     def expand_geohash(self, gh, target_length, writer, fields, feedback):
         """Recursive function to expand geohashes to target RESOLUTION and write them."""
         if len(gh) == target_length:
-            polygon = self.geohash_to_polygon(gh)
-            feature = QgsFeature(fields)
-            feature.setAttribute("geohash", gh)
-            feature.setGeometry(polygon)
-            writer.addFeature(feature)
+            cell_polygon = geohash_to_polygon(gh)
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            geohash_feature = QgsFeature(fields)
+            geohash_feature.setGeometry(cell_geometry)
+            
+            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)            
+            geohash_feature.setAttributes([gh, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+
+            writer.addFeature(geohash_feature)
             return
         
         # Expand the geohash with all possible characters
         for char in "0123456789bcdefghjkmnpqrstuvwxyz":
+            self.expand_geohash(gh + char, target_length, writer, fields, feedback)
             if feedback.isCanceled():
                 return
-            self.expand_geohash(gh + char, target_length, writer, fields, feedback)
+
 
     def expand_geohash_within_extent(self, gh, target_length, writer, fields, extent, feedback):
-        """Recursive function to expand geohashes to target RESOLUTION and write them within the specified extent."""
-        
-        # Get the geohash as a QgsGeometry polygon
-        polygon = self.geohash_to_polygon(gh)
-
-        # Check if the polygon's bounding box intersects with the extent
-        if not polygon.boundingBox().intersects(extent):
-            # If the bounding box does not intersect the extent, exit early (no need to expand)
+        cell_polygon = geohash_to_polygon(gh)
+        extent_bbox = box(self.grid_extent.xMinimum(), self.grid_extent.yMinimum(), 
+                            self.grid_extent.xMaximum(), self.grid_extent.yMaximum())       
+        if not cell_polygon.intersects(extent_bbox):
             return
-        
-        # If we reach the target length, we can write the feature
+   
         if len(gh) == target_length:
-            feature = QgsFeature(fields)
-            feature.setAttribute("geohash", gh)
-            feature.setGeometry(polygon)
-            writer.addFeature(feature)
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            geohash_feature = QgsFeature(fields)
+            geohash_feature.setGeometry(cell_geometry)
+            
+            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)            
+            geohash_feature.setAttributes([gh, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+
+            writer.addFeature(geohash_feature)
             return
         
         # If not at the target length, expand the geohash with all possible characters
-        for char in "0123456789bcdefghjkmnpqrstuvwxyz":
+        for char in "0123456789bcdefghjkmnpqrstuvwxyz":            
+            self.expand_geohash_within_extent(gh + char, target_length, writer, fields, extent, feedback)
             if feedback.isCanceled():
                 return
-            
-            # Recursively expand the geohash with the next character
-            self.expand_geohash_within_extent(gh + char, target_length, writer, fields, extent, feedback)
 
     def processAlgorithm(self, parameters, context, feedback):
-        fields = QgsFields()
-        fields.append(QgsField("geohash", QVariant.String))
+        fields = self.outputFields()
 
         # Get the output sink and its destination ID (this handles both file and temporary layers)
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context, 
@@ -231,47 +214,33 @@ class GridGeohash(QgsProcessingAlgorithm):
 
         # Expand each initial geohash to the target RESOLUTION
         total_geohashes = len(initial_geohashes)
-        feedback.pushInfo(f"Expanding initial geohashes to resolution {self.RESOLUTION}")
        
         if  self.grid_extent is None or self.grid_extent.isEmpty():
-            total_cells = 32 ** self.RESOLUTION
-            feedback.pushInfo(f"Total cells to be generated: {total_cells}.")        
-            if total_cells > max_cells:
-                feedback.reportError(f"For performance reason, it must be lesser than {max_cells}. Please input an appropriate extent or resolution")
-                return {}
-        
-            for idx, gh in enumerate(initial_geohashes):
-                if feedback.isCanceled():
-                    break
-                
+            total_cells = 32 ** self.resolution
+            feedback.pushInfo(f"Total cells to be generated: {total_cells}.")       
+          
+            for idx, gh in enumerate(initial_geohashes):               
+                self.expand_geohash(gh, self.resolution, sink, fields,feedback)
                 feedback.setProgress(int((idx / total_geohashes) * 100))
-                feedback.pushInfo(f"Processing geohash prefix: {gh}")
-
-                self.expand_geohash(gh, self.RESOLUTION, sink, fields,feedback)
+                if feedback.isCanceled():
+                    break                
         else: 
             filtered_geohashes = []
             for gh in initial_geohashes:
-                geohash_polygon = self.geohash_to_polygon(gh)  # Already a QgsGeometry now
-                if geohash_polygon.boundingBox().intersects(self.grid_extent):
+                cell_polygon = geohash_to_polygon(gh)  
+                extent_bbox = box(self.grid_extent.xMinimum(), self.grid_extent.yMinimum(), 
+                                self.grid_extent.xMaximum(), self.grid_extent.yMaximum())       
+                if cell_polygon.intersects(extent_bbox):
                     filtered_geohashes.append(gh)
-                initial_geohashes = filtered_geohashes  # Replace with only intersecting geohashes
-                total_cells = len(initial_geohashes) * (32 ** (self.RESOLUTION - 1))
-                
-                feedback.pushInfo(f"Total cells to be generated within extent: {total_cells}.")
-                
-                if total_cells > max_cells:
-                    feedback.reportError(f"For performance reasons, it must be lesser than {max_cells}. Please input an appropriate extent or resolution")
-                    return {}
-                
-            for idx, gh in enumerate(initial_geohashes):
-                if feedback.isCanceled():
-                    break
-                
+            
+            for idx, gh in enumerate(filtered_geohashes):
                 feedback.setProgress(int((idx / total_geohashes) * 100))
-                feedback.pushInfo(f"Processing geohash prefix: {gh}")
-
-                self.expand_geohash_within_extent(gh, self.RESOLUTION, sink, fields, self.grid_extent,feedback)
-
+                # feedback.pushInfo(f"Processing geohash prefix: {gh}")
+                self.expand_geohash_within_extent(gh, self.resolution, sink, fields, self.grid_extent,feedback)
+                if feedback.isCanceled():
+                    break   
+        
+        feedback.pushInfo("Geohash grid generation completed.")            
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')

@@ -43,12 +43,8 @@ from PyQt5.QtCore import QVariant
 import os, random
 from vgrid.utils import qtm   
 from vgrid.generator.settings import geodesic_dggs_metrics  
+from shapely.geometry import box
 from ...utils.imgs import Imgs
-
-p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (90.0, -180.0), (90.0, -90.0), (90.0, 0.0), (90.0, 90.0), (90.0, 180.0)
-p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (0.0, -180.0), (0.0, -90.0), (0.0, 0.0), (0.0, 90.0), (0.0, 180.0)
-n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (-90.0, -180.0), (-90.0, -90.0), (-90.0, 0.0), (-90.0, 90.0), (-90.0, 180.0)
-
 
 class GridQTM(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'
@@ -78,7 +74,7 @@ class GridQTM(QgsProcessingAlgorithm):
         return 'grid_qtm'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_qtm.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_triangle.svg'))
     
     def displayName(self):
         return self.tr('QTM', 'QTM')
@@ -94,7 +90,7 @@ class GridQTM(QgsProcessingAlgorithm):
     
     txt_en = 'QTM Grid Generator'
     txt_vi = 'QTM Grid Generator'
-    figure = '../images/tutorial/grid_qtm.png'
+    figure = '../images/tutorial/grid_triangle.svg'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -155,9 +151,12 @@ class GridQTM(QgsProcessingAlgorithm):
         return output_fields
 
 
-    def processAlgorithm(self, parameters, context, feedback):        
-        fields = self.outputFields()
-        
+    def processAlgorithm(self, parameters, context, feedback): 
+        p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (90.0, -180.0), (90.0, -90.0), (90.0, 0.0), (90.0, 90.0), (90.0, 180.0)
+        p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (0.0, -180.0), (0.0, -90.0), (0.0, 0.0), (0.0, 90.0), (0.0, 180.0)
+        n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (-90.0, -180.0), (-90.0, -90.0), (-90.0, 0.0), (-90.0, 90.0), (-90.0, 180.0)
+
+        fields = self.outputFields()        
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -174,10 +173,8 @@ class GridQTM(QgsProcessingAlgorithm):
         if self.grid_extent is None or self.grid_extent.isEmpty():
             extent_bbox = None
         else:
-            extent_bbox = [
-                [self.grid_extent.xMinimum(), self.grid_extent.yMinimum()],
-                [self.grid_extent.xMaximum(), self.grid_extent.yMaximum()]
-            ]        
+            extent_bbox = box(self.grid_extent.xMinimum(), self.grid_extent.yMinimum(), 
+                            self.grid_extent.xMaximum(), self.grid_extent.yMaximum())         
         
         QTMID = {}
         levelFacets = {}
@@ -200,10 +197,10 @@ class GridQTM(QgsProcessingAlgorithm):
 
                     for i, facet in enumerate(initial_facets):
                         QTMID[0].append(str(i + 1))
-                        facet_geom = qtm.constructGeometry(facet)
-                        cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt) 
+                        facet_geom = qtm.constructGeometry(facet)                        
                         levelFacets[0].append(facet)                                         
-                        if cell_geometry.intersects(QgsGeometry.fromRect(self.grid_extent)) and self.resolution == 1:
+                        if facet_geom.intersects(extent_bbox) and self.resolution == 1:
+                            cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt) 
                             qtm_feature = QgsFeature()
                             qtm_feature.setGeometry(cell_geometry)
                             qtm_id = QTMID[0][i]
@@ -218,8 +215,8 @@ class GridQTM(QgsProcessingAlgorithm):
                         subdivided_facets = qtm.divideFacet(pf)
                         for j, subfacet in enumerate(subdivided_facets):
                             subfacet_geom = qtm.constructGeometry(subfacet)
-                            cell_geometry = QgsGeometry.fromWkt(subfacet_geom.wkt)    
-                            if cell_geometry.intersects(QgsGeometry.fromRect(self.grid_extent)):  # Only keep intersecting facets
+                            if subfacet_geom.intersects(extent_bbox):  # Only keep intersecting facets
+                                cell_geometry = QgsGeometry.fromWkt(subfacet_geom.wkt)  
                                 new_id = QTMID[lvl - 1][i] + str(j)
                                 QTMID[lvl].append(new_id)
                                 levelFacets[lvl].append(subfacet)

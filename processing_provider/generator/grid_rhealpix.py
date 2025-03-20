@@ -79,7 +79,7 @@ class GridRhealpix(QgsProcessingAlgorithm):
         return 'grid_rhealpix'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)),  '../images/grid_gzd.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)),  '../images/generator/grid_quad.svg'))
     
     def displayName(self):
         return self.tr('Rhealpix', 'Rhealpix')
@@ -142,16 +142,19 @@ class GridRhealpix(QgsProcessingAlgorithm):
         
         return True
     
-    def processAlgorithm(self, parameters, context, feedback):        
-        fields = QgsFields()
-        fields.append(QgsField("rhealpix", QVariant.String))   # S2 token
-        fields.append(QgsField("resolution", QVariant.Int)) 
-        fields.append(QgsField("center_lat", QVariant.Double)) # Centroid latitude
-        fields.append(QgsField("center_lon", QVariant.Double)) # Centroid longitude
-        fields.append(QgsField("avg_edge_len", QVariant.Double)) # Average edge length
-        fields.append(QgsField("cell_area", QVariant.Double))  # Area in square meters
+    def outputFields(self):
+        output_fields = QgsFields() 
+        output_fields.append(QgsField("rhealpix", QVariant.String))
+        output_fields.append(QgsField('resolution', QVariant.Int))
+        output_fields.append(QgsField('center_lat', QVariant.Double))
+        output_fields.append(QgsField('center_lon', QVariant.Double))
+        output_fields.append(QgsField('avg_edge_len', QVariant.Double))
+        output_fields.append(QgsField('cell_area', QVariant.Double))
 
-        
+        return output_fields
+
+    def processAlgorithm(self, parameters, context, feedback):        
+        fields = self.outputFields()        
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -168,25 +171,19 @@ class GridRhealpix(QgsProcessingAlgorithm):
         if self.grid_extent is None or self.grid_extent.isEmpty():
             extent_bbox = None
         else:
-            extent_bbox = [
-                [self.grid_extent.xMinimum(), self.grid_extent.yMinimum()],
-                [self.grid_extent.xMaximum(), self.grid_extent.yMaximum()]
-            ]        
+            extent_bbox = box(self.grid_extent.xMinimum(), self.grid_extent.yMinimum(), 
+                            self.grid_extent.xMaximum(), self.grid_extent.yMaximum())              
               
         if extent_bbox:
-            minx, miny = extent_bbox[0]
-            maxx, maxy = extent_bbox[1]
-            # Create a Shapely box
-            bbox_polygon = box(minx, miny, maxx, maxy)
-            bbox_center_lon = bbox_polygon.centroid.x
-            bbox_center_lat = bbox_polygon.centroid.y
+            bbox_center_lon = extent_bbox.centroid.x
+            bbox_center_lat = extent_bbox.centroid.y
             seed_point = (bbox_center_lon, bbox_center_lat)
 
             seed_cell = rhealpix_dggs.cell_from_point(self.resolution, seed_point, plane=False)
             seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
             seed_cell_polygon = rhealpix_cell_to_polygon(seed_cell)
 
-            if seed_cell_polygon.contains(bbox_polygon):             
+            if seed_cell_polygon.contains(extent_bbox):             
                 num_edges = 4
                 if seed_cell.ellipsoidal_shape() == 'dart':
                     num_edges = 3
@@ -215,7 +212,7 @@ class GridRhealpix(QgsProcessingAlgorithm):
                     # Convert current cell to polygon
                     cell_polygon = rhealpix_cell_to_polygon(current_cell)
                     # Skip cells that do not intersect the bounding box
-                    if not cell_polygon.intersects(bbox_polygon):
+                    if not cell_polygon.intersects(extent_bbox):
                         continue
                     # Get neighbors and add to queue
                     neighbors = current_cell.neighbors(plane=False)
@@ -233,7 +230,7 @@ class GridRhealpix(QgsProcessingAlgorithm):
                     rhealpix_uids = (cover_cell[0],) + tuple(map(int, cover_cell[1:]))
                     cell = rhealpix_dggs.cell(rhealpix_uids)    
                     cell_polygon = rhealpix_cell_to_polygon(cell)          
-                    if cell_polygon.intersects(bbox_polygon):
+                    if cell_polygon.intersects(extent_bbox):
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)            
                         rhealpix_feature = QgsFeature()
                         rhealpix_feature.setGeometry(cell_geometry) 
@@ -273,8 +270,7 @@ class GridRhealpix(QgsProcessingAlgorithm):
                 if feedback.isCanceled():
                     break
                 
-        feedback.pushInfo("Rhealpix grid generation completed.")
-        
+        feedback.pushInfo("Rhealpix grid generation completed.")        
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')

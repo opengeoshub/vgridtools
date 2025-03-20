@@ -42,8 +42,9 @@ from PyQt5.QtCore import QVariant
 import os, random
 
 from vgrid.utils import olc
-from vgrid.generator.olcgrid import generate_grid, refine_cell
-from vgrid.generator.settings import graticule_dggs_metrics
+from vgrid.generator.olcgrid import refine_cell
+from vgrid.generator.settings import graticule_dggs_metrics, graticule_dggs_to_feature
+
 from ...utils.imgs import Imgs
 from shapely.geometry import Polygon,box
 
@@ -75,7 +76,7 @@ class GridOLC(QgsProcessingAlgorithm):
         return 'grid_olc'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/grid_gzd.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
         return self.tr('OLC', 'OLC')
@@ -145,20 +146,77 @@ class GridOLC(QgsProcessingAlgorithm):
         
         return True
 
-    def processAlgorithm(self, parameters, context, feedback):
-        fields = QgsFields()
-        fields.append(QgsField("olc", QVariant.String))
-        fields.append(QgsField("resolution", QVariant.Int)) 
-        fields.append(QgsField("center_lat", QVariant.Double))
-        fields.append(QgsField("center_lon", QVariant.Double)) 
-        fields.append(QgsField("cell_width", QVariant.Double))
-        fields.append(QgsField("cell_height", QVariant.Double)) 
-        fields.append(QgsField("cell_area", QVariant.Double)) 
+    def outputFields(self):
+        output_fields = QgsFields() 
+        output_fields.append(QgsField("olc", QVariant.String))
+        output_fields.append(QgsField('resolution', QVariant.Int))
+        output_fields.append(QgsField('center_lat', QVariant.Double))
+        output_fields.append(QgsField('center_lon', QVariant.Double))
+        output_fields.append(QgsField('cell_width', QVariant.Double))
+        output_fields.append(QgsField('cell_height', QVariant.Double))
+        output_fields.append(QgsField('cell_area', QVariant.Double))
 
+        return output_fields
+    
+    def generate_grid(self, resolution):
+        """
+        Generate a global grid of Open Location Codes (Plus Codes) at the specified precision
+        as a GeoJSON-like feature collection.
+        """
+        # Define the boundaries of the world
+        sw_lat, sw_lng = -90, -180
+        ne_lat, ne_lng = 90, 180
+
+        # Get the precision step size
+        area = olc.decode(olc.encode(sw_lat, sw_lng, resolution))
+        lat_step = area.latitudeHi - area.latitudeLo
+        lng_step = area.longitudeHi - area.longitudeLo
+
+        olc_features = []
+
+        # Calculate the total number of steps for progress tracking
+        total_lat_steps = int((ne_lat - sw_lat) / lat_step)
+        total_lng_steps = int((ne_lng - sw_lng) / lng_step)
+        total_steps = total_lat_steps * total_lng_steps
+
+        # Iterate over the entire globe with tqdm for progress tracking
+        lat = sw_lat
+        while lat < ne_lat:
+            lng = sw_lng
+            while lng < ne_lng:
+                # Generate the Plus Code for the center of the cell
+                center_lat = lat + lat_step / 2
+                center_lon = lng + lng_step / 2
+                olc_id = olc.encode(center_lat, center_lon, resolution)
+                resolution = olc.decode(olc_id).codeLength
+                cell_polygon = Polygon([
+                            [lng, lat],  # SW
+                            [lng, lat + lat_step],  # NW
+                            [lng + lng_step, lat + lat_step],  # NE
+                            [lng + lng_step, lat],  # SE
+                            [lng, lat]  # Close the polygon
+                    ])
+                olc_feature = graticule_dggs_to_feature('olc',olc_id,resolution,cell_polygon)
+                olc_features.append(olc_feature)
+                lng += lng_step
+            lat += lat_step
+
+        # Return the feature collection
+        return {
+            "type": "FeatureCollection",
+            "features": olc_features
+        }
+
+
+
+    def processAlgorithm(self, parameters, context, feedback):
+        fields = self.outputFields() 
         # Get the output sink and its destination ID
-        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                                fields, QgsWkbTypes.Polygon,
-                                                QgsCoordinateReferenceSystem('EPSG:4326'))
+        (sink, dest_id) = self.parameterAsSink(
+            parameters, self.OUTPUT, context,
+            fields, QgsWkbTypes.Polygon,
+            QgsCoordinateReferenceSystem('EPSG:4326')
+        )
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
@@ -166,24 +224,18 @@ class GridOLC(QgsProcessingAlgorithm):
         if self.grid_extent is None or self.grid_extent.isEmpty():
             extent_bbox = None
         else:
-            extent_bbox = [
-                [self.grid_extent.xMinimum(), self.grid_extent.yMinimum()],
-                [self.grid_extent.xMaximum(), self.grid_extent.yMaximum()]
-            ]        
-
+            extent_bbox = box(self.grid_extent.xMinimum(), self.grid_extent.yMinimum(), 
+                            self.grid_extent.xMaximum(), self.grid_extent.yMaximum())  
         if extent_bbox: 
-            min_lon, min_lat = extent_bbox[0]
-            max_lon, max_lat = extent_bbox[1]           
-            bbox_poly = box(min_lon, min_lat, max_lon, max_lat)
             # Step 1: Generate base cells at the lowest resolution (e.g., resolution 2)
             base_resolution = 2
-            base_cells = generate_grid(base_resolution)
+            base_cells = self.generate_grid(base_resolution)
 
             # Step 2: Identify seed cells that intersect with the bounding box
             seed_cells = []
             for base_cell in base_cells["features"]:
                 base_cell_poly = Polygon(base_cell["geometry"]["coordinates"][0])
-                if bbox_poly.intersects(base_cell_poly):
+                if extent_bbox.intersects(base_cell_poly):
                     seed_cells.append(base_cell)
 
             refined_features = []
@@ -192,13 +244,13 @@ class GridOLC(QgsProcessingAlgorithm):
             for seed_cell in seed_cells:
                 seed_cell_poly = Polygon(seed_cell["geometry"]["coordinates"][0])
 
-                if seed_cell_poly.contains(bbox_poly) and self.resolution == base_resolution:
+                if seed_cell_poly.contains(extent_bbox) and self.resolution == base_resolution:
                     # Append the seed cell directly if fully contained and resolution matches
                     refined_features.append(seed_cell)
                 else:
                     # Refine the seed cell to the output resolution and add it to the output
                     refined_features.extend(
-                        refine_cell(seed_cell_poly.bounds, base_resolution, self.resolution, bbox_poly)
+                        refine_cell(seed_cell_poly.bounds, base_resolution, self.resolution, extent_bbox)
                     )
                 if feedback.isCanceled():
                     break
@@ -233,8 +285,7 @@ class GridOLC(QgsProcessingAlgorithm):
                 if feedback.isCanceled():
                     break
 
-        feedback.pushInfo("OLC grid generation completed.")
-        
+        feedback.pushInfo("OLC grid generation completed.")        
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')

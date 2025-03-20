@@ -45,7 +45,7 @@ import os
 from vgrid.utils import s2 
 from ...utils.imgs import Imgs
 from vgrid.utils.antimeridian import fix_polygon
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, box
 import random
 from vgrid.generator.settings import max_cells,geodesic_dggs_metrics
 
@@ -140,16 +140,19 @@ class GridS2(QgsProcessingAlgorithm):
         
         return True
     
-    def processAlgorithm(self, parameters, context, feedback):
-        fields = QgsFields()
-        fields.append(QgsField("s2", QVariant.String))   # S2 token
-        fields.append(QgsField("resolution", QVariant.Int)) 
-        fields.append(QgsField("center_lat", QVariant.Double)) # Centroid latitude
-        fields.append(QgsField("center_lon", QVariant.Double)) # Centroid longitude
-        fields.append(QgsField("avg_edge_len", QVariant.Double)) # Average edge length
-        fields.append(QgsField("cell_area", QVariant.Double))  # Area in square meters
+    def outputFields(self):
+        output_fields = QgsFields() 
+        output_fields.append(QgsField("s2", QVariant.String))
+        output_fields.append(QgsField('resolution', QVariant.Int))
+        output_fields.append(QgsField('center_lat', QVariant.Double))
+        output_fields.append(QgsField('center_lon', QVariant.Double))
+        output_fields.append(QgsField('avg_edge_len', QVariant.Double))
+        output_fields.append(QgsField('cell_area', QVariant.Double))
 
-        # Output layer initialization
+        return output_fields
+
+    def processAlgorithm(self, parameters, context, feedback):
+        fields = self.outputFields()  
         (sink, dest_id) = self.parameterAsSink(
             parameters,
             self.OUTPUT,
@@ -165,16 +168,14 @@ class GridS2(QgsProcessingAlgorithm):
         if self.grid_extent is None or self.grid_extent.isEmpty():
             extent_bbox = None
         else:
-            extent_bbox = [
-                [self.grid_extent.xMinimum(), self.grid_extent.yMinimum()],
-                [self.grid_extent.xMaximum(), self.grid_extent.yMaximum()]
-            ]
-        
+            extent_bbox = box(self.grid_extent.xMinimum(), self.grid_extent.yMinimum(), 
+                            self.grid_extent.xMaximum(), self.grid_extent.yMaximum())      
+            
         region = None
         if extent_bbox:
             region = s2.LatLngRect.from_point_pair(
-                s2.LatLng.from_degrees(extent_bbox[0][1], extent_bbox[0][0]),
-                s2.LatLng.from_degrees(extent_bbox[1][1], extent_bbox[1][0])
+                s2.LatLng.from_degrees(self.grid_extent.yMinimum(), self.grid_extent.xMinimum()),
+                s2.LatLng.from_degrees(self.grid_extent.yMaximum(), self.grid_extent.xMaximum())
             )
 
         covering = s2.RegionCoverer()
@@ -205,13 +206,13 @@ class GridS2(QgsProcessingAlgorithm):
             vertices.append(vertices[0])  # Close the ring
 
             cell_polygon = fix_polygon(Polygon(vertices))
-            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            
+
             # Filter cells by extent if it exists
             if extent_bbox:
-                if not cell_geometry.intersects(QgsGeometry.fromRect(self.grid_extent)):
+                if not cell_polygon.intersects(extent_bbox):
                     continue
             
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             s2_feature = QgsFeature()
             s2_feature.setGeometry(cell_geometry)
             

@@ -77,7 +77,7 @@ class GridMGRS(QgsProcessingAlgorithm):
         return 'grid_mgrs'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/grid_gzd.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
         return self.tr('MGRS', 'MGRS')

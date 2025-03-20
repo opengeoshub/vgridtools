@@ -73,7 +73,7 @@ class GridMGRS(QgsProcessingAlgorithm):
         return 'grid_mgrs'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/grid_gzd.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
         return self.tr('MGRS', 'MGRS')
@@ -181,7 +181,6 @@ class GridMGRS(QgsProcessingAlgorithm):
             lat += height
 
         feedback.pushInfo("MGRS grid generation completed.")
-
         # Apply styling (optional)
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))

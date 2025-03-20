@@ -1,0 +1,10 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#672a5c" stroke-width="10" fill="none">
+    <!-- Vertical grid lines -->
+    <path d="M 85 0 V 256 M 171 0 V 256"/>
+    <!-- Horizontal grid lines -->
+    <path d="M 0 85 H 256 M 0 171 H 256"/>
+    <!-- Outer boundary with the same stroke width -->
+    <rect x="5" y="5" width="246" height="246"/>
+  </g>
+</svg>

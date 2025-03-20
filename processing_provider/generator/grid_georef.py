@@ -71,7 +71,7 @@ class GridGeoref(QgsProcessingAlgorithm):
         return 'grid_georef'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/grid_gzd.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
         return self.tr('Georef', 'Georef')
@@ -253,10 +253,9 @@ class GridGeoref(QgsProcessingAlgorithm):
                     break
                 
                 feedback.setProgress(int((idx / total_georefes) * 100))
-                feedback.pushInfo(f"Processing georef prefix: {gh}")
-
                 self.expand_georef_within_extent(gh, self.RESOLUTION, sink, fields, self.grid_extent,feedback)
 
+        feedback.pushInfo("Georef grid generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')

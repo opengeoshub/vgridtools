@@ -1,0 +1,8 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#672a5c" stroke-width="10" fill="none">
+    <!-- Outer equilateral triangle -->
+    <polygon points="128,22 22,214 234,214"/>
+    <!-- Inner triangle with vertices at the midpoints of the outer triangle -->
+    <polygon points="75,118 181,118 128,214"/>
+  </g>
+</svg>
