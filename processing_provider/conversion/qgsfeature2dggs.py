@@ -130,23 +130,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     def outputWkbType(self, input_wkb_type):
         return (QgsWkbTypes.Polygon)   
     
-    def outputFields(self, input_fields):
-        output_fields = QgsFields()
-
-        # Preserve all original input fields
-        for field in input_fields:
-            output_fields.append(field)
-
-        # Append DGGS fields
-        output_fields.append(QgsField("cell_id", QVariant.String))
-        output_fields.append(QgsField('resolution', QVariant.Int))
-        output_fields.append(QgsField('center_lat', QVariant.Double))
-        output_fields.append(QgsField('center_lon', QVariant.Double))
-        output_fields.append(QgsField('avg_edge_len', QVariant.Double))
-        output_fields.append(QgsField('cell_area', QVariant.Double))
-
-        return output_fields
-
 
     def supportInPlaceEdit(self, layer):
         return False
@@ -195,10 +178,74 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         
         return super().checkParameterValues(parameters, context)
     
+    # def outputFields(self, input_fields):
+    #     output_fields = QgsFields()
+
+    #     # Preserve all original input fields
+    #     for field in input_fields:
+    #         output_fields.append(field)
+        
+    #     dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
+        
+    #     output_fields.append(QgsField(dggs_type, QVariant.String))
+    #     output_fields.append(QgsField("resolution", QVariant.Int))
+    #     output_fields.append(QgsField('center_lat', QVariant.Double))
+    #     output_fields.append(QgsField('center_lon', QVariant.Double))
+
+    
+    #     # If geodesic DGGS:
+    #     if dggs_type in ('h3', 's2','rhealpix','isea4t','isea3h','ease', 'qtm'):
+    #         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
+    #     else: 
+    #         output_fields.append(QgsField('cell_width', QVariant.Double))
+    #         output_fields.append(QgsField('cell_height', QVariant.Double))
+    #     output_fields.append(QgsField('cell_area', QVariant.Double))
+
+    #     return output_fields
+
+    
+    def outputFields(self, input_fields): 
+        output_fields = QgsFields()
+
+        # Preserve all original input fields
+        for field in input_fields:
+            output_fields.append(field)
+
+        # Function to generate a unique field name by adding a suffix if necessary
+        def get_unique_name(base_name):
+            existing_names = {field.name() for field in output_fields}
+            if base_name not in existing_names:
+                return base_name
+            i = 1
+            while f"{base_name}_{i}" in existing_names:
+                i += 1
+            return f"{base_name}_{i}"
+
+        dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
+
+        # Fields to be added
+        new_fields = [
+            QgsField(get_unique_name(dggs_type), QVariant.String),
+            QgsField(get_unique_name("resolution"), QVariant.Int),
+            QgsField(get_unique_name("center_lat"), QVariant.Double),
+            QgsField(get_unique_name("center_lon"), QVariant.Double),
+            QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') else "cell_width"), QVariant.Double),
+            QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') else None,
+            QgsField(get_unique_name("cell_area"), QVariant.Double)
+        ]
+
+        # Append the fields to output_fields
+        for field in new_fields:
+            if field:
+                output_fields.append(field)
+
+        return output_fields
+
+
     def prepareAlgorithm(self, parameters, context, feedback):       
         
         source = self.parameterAsSource(parameters, self.INPUT, context)
-        self.RESOLUTION = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
 
         self.total_features = source.featureCount()
         self.num_bad = 0
@@ -244,7 +291,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 for point in geom.asMultiPoint():
                     point_feature = QgsFeature(feature)  # Copy original feature
                     point_feature.setGeometry(QgsGeometry.fromPointXY(point))  # Set individual point geometry
-                    cell_polygons = conversion_function(point_feature, self.RESOLUTION)
+                    cell_polygons = conversion_function(point_feature, self.resolution)
                     multi_cell_polygons.extend(cell_polygons)          
 
                 return multi_cell_polygons
@@ -255,7 +302,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 for line in geom.asMultiPolyline():
                     line_feature = QgsFeature(feature)
                     line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
-                    cell_polygons = conversion_function(line_feature, self.RESOLUTION)
+                    cell_polygons = conversion_function(line_feature, self.resolution)
                     multi_cell_polygons.extend(cell_polygons)                
            
                 return multi_cell_polygons
@@ -265,14 +312,14 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 for polygon in geom.asMultiPolygon():
                     polygon_feature = QgsFeature(feature)
                     polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
-                    cell_polygons = conversion_function(polygon_feature, self.RESOLUTION)
+                    cell_polygons = conversion_function(polygon_feature, self.resolution)
                     multi_cell_polygons.extend(cell_polygons)                
            
                 return multi_cell_polygons
             
             # Handle Single Geometries
             else:
-                cell_polygons = conversion_function(feature, self.RESOLUTION)
+                cell_polygons = conversion_function(feature, self.resolution)
                 return cell_polygons
                         
         except Exception as e:

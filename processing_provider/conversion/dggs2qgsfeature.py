@@ -119,23 +119,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     def outputWkbType(self, input_wkb_type):
         return (QgsWkbTypes.Polygon)   
     
-    def outputFields(self, input_fields):
-        output_fields = QgsFields()
-
-        # Preserve all original input fields
-        for field in input_fields:
-            output_fields.append(field)
-
-        # Append H3-related fields
-        output_fields.append(QgsField('cell_id', QVariant.String))
-        output_fields.append(QgsField('resolution', vgrid.conversion.dggs2geojson))
-        output_fields.append(QgsField('center_lat', QVariant.Double))
-        output_fields.append(QgsField('center_lon', QVariant.Double))
-        output_fields.append(QgsField('avg_edge_len', QVariant.Double))
-        output_fields.append(QgsField('cell_area', QVariant.Double))
-
-        return output_fields
-
+    
     def supportInPlaceEdit(self, layer):
         return False
 
@@ -161,7 +145,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             self.DGGS_TYPE,
             self.tr('DGGS type'),
             options=self.DGGS_TYPES,
-            defaultValue=0  # Default to the first option (H3)
+            defaultValue=0  
         )
         self.addParameter(param)
 
@@ -177,7 +161,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'h3': h32qgsfeature,
             's2': s22qgsfeature,
             'rhealpix': rhealpix2qgsfeature,
-            # 'ease': ease2qgsfeature,
+            # 'ease': ease2qgsfeature, # prone to unexpected errors
             'qtm': qtm2qgsfeature,
             'olc': olc2qgsfeature,
             'geohash': geohash2qgsfeature,
@@ -194,6 +178,45 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             self.DGGS_TYPE_functions['isea3h'] = isea3h2qgsfeature
 
         return True
+    
+
+    def outputFields(self, input_fields): 
+        output_fields = QgsFields()
+
+        # Preserve all original input fields
+        for field in input_fields:
+            output_fields.append(field)
+
+        # Function to generate a unique field name by adding a suffix if necessary
+        def get_unique_name(base_name):
+            existing_names = {field.name() for field in output_fields}
+            if base_name not in existing_names:
+                return base_name
+            i = 1
+            while f"{base_name}_{i}" in existing_names:
+                i += 1
+            return f"{base_name}_{i}"
+
+        dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
+
+        # Fields to be added
+        new_fields = [
+            QgsField(get_unique_name(dggs_type), QVariant.String),
+            QgsField(get_unique_name("resolution"), QVariant.Int),
+            QgsField(get_unique_name("center_lat"), QVariant.Double),
+            QgsField(get_unique_name("center_lon"), QVariant.Double),
+            QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') else "cell_width"), QVariant.Double),
+            QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') else None,
+            QgsField(get_unique_name("cell_area"), QVariant.Double)
+        ]
+
+        # Append the fields to output_fields
+        for field in new_fields:
+            if field:
+                output_fields.append(field)
+
+        return output_fields
+
     
     def processFeature(self, feature, context, feedback):
         try:
