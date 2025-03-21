@@ -228,7 +228,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'h3': qgsfeature2h3,
             's2': qgsfeature2s2,
             'rhealpix': qgsfeature2rhealpix,
-            'ease': qgsfeature2ease,
+            # 'ease': qgsfeature2ease,
             'qtm': qgsfeature2qtm,
             'olc': qgsfeature2olc,
             'geohash': qgsfeature2geohash, # Need to check polyline/ polygon2geohash
@@ -245,7 +245,9 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
 
     def processFeature(self, feature, context, feedback):
-        try:            
+        try:     
+            if feedback.isCanceled():
+                return []       
             self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
             conversion_function = self.DGGS_TYPE_functions.get(self.dggs_type)
 

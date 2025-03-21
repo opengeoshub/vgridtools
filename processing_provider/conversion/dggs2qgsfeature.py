@@ -242,9 +242,8 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             
         except Exception as e:
             self.num_bad += 1
-            feedback.reportError(f"Error processing feature {feature.id()}: {str(e)}")        
-        
-        return []
+            feedback.reportError(f"Error processing feature {feature.id()}: {str(e)}")     
+            return []
 
     def postProcessAlgorithm(self, context, feedback):
         if self.num_bad:

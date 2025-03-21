@@ -38,6 +38,8 @@ from .processing_provider.conversion.qgsfeature2dggs import Vector2DGGS
 from .processing_provider.generator.grid_h3 import GridH3
 from .processing_provider.generator.grid_s2 import GridS2
 from .processing_provider.generator.grid_rhealpix import GridRhealpix
+from .processing_provider.generator.grid_isea4t import GridISEA4T
+
 from .processing_provider.generator.grid_qtm import GridQTM
 
 from .processing_provider.generator.grid_olc import GridOLC
@@ -76,6 +78,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(GridH3())
         self.addAlgorithm(GridS2())
         self.addAlgorithm(GridRhealpix())
+        self.addAlgorithm(GridISEA4T())
         self.addAlgorithm(GridQTM())
 
         self.addAlgorithm(GridOLC())

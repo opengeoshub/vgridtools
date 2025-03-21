@@ -22,9 +22,8 @@ from vgrid.utils.easedggs.constants import levels_specs
 from vgrid.utils.easedggs.dggs.grid_addressing import grid_ids_to_geos
 from vgrid.utils import mercantile
 import geopandas as gpd
-from shapely.geometry import Polygon, Point
+from shapely.geometry import Polygon
 from shapely.wkt import loads
-import json
 import h3 
 from vgrid.utils.antimeridian import fix_polygon
 from vgrid.generator.settings import geodesic_dggs_metrics, graticule_dggs_metrics
@@ -320,32 +319,35 @@ def isea3h2qgsfeature(feature, isea3h_id):
         
 
 def ease2qgsfeature(feature, ease_id):
-    level = int(ease_id[1])  # Get the level (e.g., 'L0' -> 0)
-    # Get level specs
-    level_spec = levels_specs[level]
-    n_row = level_spec["n_row"]
-    n_col = level_spec["n_col"]
-    
-    geo = grid_ids_to_geos([ease_id])
-    center_lon, center_lat = geo['result']['data'][0] 
+    try:
+        level = int(ease_id[1])  # Get the level (e.g., 'L0' -> 0)
+        # Get level specs
+        level_spec = levels_specs[level]
+        n_row = level_spec["n_row"]
+        n_col = level_spec["n_col"]
+        
+        geo = grid_ids_to_geos([ease_id])
+        center_lon, center_lat = geo['result']['data'][0] 
 
-    cell_min_lat = center_lat - (180 / (2 * n_row))
-    cell_max_lat = center_lat + (180 / (2 * n_row))
-    cell_min_lon = center_lon - (360 / (2 * n_col))
-    cell_max_lon = center_lon + (360 / (2 * n_col))
+        cell_min_lat = center_lat - (180 / (2 * n_row))
+        cell_max_lat = center_lat + (180 / (2 * n_row))
+        cell_min_lon = center_lon - (360 / (2 * n_col))
+        cell_max_lon = center_lon + (360 / (2 * n_col))
 
-    cell_polygon = Polygon([
-        [cell_min_lon, cell_min_lat],
-        [cell_max_lon, cell_min_lat],
-        [cell_max_lon, cell_max_lat],
-        [cell_min_lon, cell_max_lat],
-        [cell_min_lon, cell_min_lat]
-    ])
-    if cell_polygon:
-        cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),2)
-        cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])       
-        avg_edge_len = round(cell_perimeter / 4,2) 
+        cell_polygon = Polygon([
+            [cell_min_lon, cell_min_lat],
+            [cell_max_lon, cell_min_lat],
+            [cell_max_lon, cell_max_lat],
+            [cell_min_lon, cell_max_lat],
+            [cell_min_lon, cell_min_lat]
+        ])
+        
+        if not cell_polygon.is_valid:
+            raise ValueError("Generated polygon is invalid")
 
+        num_edges = 4        
+        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
         ease_feature = QgsFeature()
         ease_feature.setGeometry(cell_geometry)
@@ -379,8 +381,10 @@ def ease2qgsfeature(feature, ease_id):
         ease_feature.setAttributes(all_attributes)    
         
         return ease_feature
-        
-
+    except Exception as e:
+        print(f"Error in ease2qgsfeature: {str(e)}")
+        return []
+  
 
 def qtm2qgsfeature(feature, qtm_cellid):
     facet = qtm.qtm_id_to_facet(qtm_cellid)

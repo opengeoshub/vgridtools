@@ -15,6 +15,9 @@ from vgrid.generator.geohashgrid import geohash_to_polygon
 from vgrid.utils.antimeridian import fix_polygon
 from vgrid.generator.settings import graticule_dggs_metrics, geodesic_dggs_metrics
 
+from vgrid.utils.easedggs.constants import levels_specs
+from vgrid.utils.easedggs.dggs.grid_addressing import grid_ids_to_geos,geos_to_grid_ids
+
 if (platform.system() == 'Windows'):
     from vgrid.utils.eaggr.eaggr import Eaggr
     from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
@@ -601,60 +604,60 @@ def poly2isea4t(feature, resolution):
     bounding_box_wkt = bounding_box.wkt  # Create a bounding box polygon
     accuracy = isea4t_res_accuracy_dict.get(resolution)
     shapes = isea4t_dggs.convert_shape_string_to_dggs_shapes(bounding_box_wkt, ShapeStringFormat.WKT, accuracy)
-    
-    for shape in shapes:
-        bbox_cells = shape.get_shape().get_outer_ring().get_cells()
-        bounding_cell = isea4t_dggs.get_bounding_dggs_cell(bbox_cells)
-        bounding_children_cells = get_isea4t_children_cells_within_bbox(isea4t_dggs,bounding_cell.get_cell_id(), bounding_box,resolution)
-        for child in bounding_children_cells:
-            isea4t_cell = DggsCell(child)
-            cell_polygon = isea4t_cell_to_polygon(isea4t_dggs,isea4t_cell)
-            isea4t_id = isea4t_cell.get_cell_id()
+    shape = shapes[0]
+    # for shape in shapes:
+    bbox_cells = shape.get_shape().get_outer_ring().get_cells()
+    bounding_cell = isea4t_dggs.get_bounding_dggs_cell(bbox_cells)
+    bounding_children_cells = get_isea4t_children_cells_within_bbox(isea4t_dggs,bounding_cell.get_cell_id(), bounding_box,resolution)
+    for child in bounding_children_cells:
+        isea4t_cell = DggsCell(child)
+        cell_polygon = isea4t_cell_to_polygon(isea4t_dggs,isea4t_cell)
+        isea4t_id = isea4t_cell.get_cell_id()
 
-            if isea4t_id.startswith('00') or isea4t_id.startswith('09') or isea4t_id.startswith('14') or isea4t_id.startswith('04') or isea4t_id.startswith('19'):
-                cell_polygon = fix_isea4t_antimeridian_cells(cell_polygon)
-            
-            num_edges = 3
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-
-            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            if not cell_geometry.intersects(feature_geometry):
-                continue  # Skip non-intersecting cells      
-           
-            # Create a single QGIS feature
-            isea4t_feature = QgsFeature()
-            isea4t_feature.setGeometry(cell_geometry)
-            
-            # Get all attributes from the input feature
-            original_attributes = feature.attributes()
-            original_fields = feature.fields()
-            
-            # Define new S2-related attributes
-            new_fields = QgsFields()
-            new_fields.append(QgsField("isea4t", QVariant.String))  
-            new_fields.append(QgsField("resolution", QVariant.Int))
-            new_fields.append(QgsField("center_lat", QVariant.Double))
-            new_fields.append(QgsField("center_lon", QVariant.Double))
-            new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-            new_fields.append(QgsField("cell_area", QVariant.Double))
-            
-            # Combine original fields and new fields
-            all_fields = QgsFields()
-            for field in original_fields:
-                all_fields.append(field)
-            for field in new_fields:
-                all_fields.append(field)
-            
-            isea4t_feature.setFields(all_fields)
-            
-            # Combine original attributes with new attributes
-            new_attributes = [isea4t_id, resolution, center_lat, center_lon, avg_edge_len, cell_area]
-            all_attributes = original_attributes + new_attributes
-            
-            isea4t_feature.setAttributes(all_attributes)    
-
-            isea4t_features.append(isea4t_feature)
+        if isea4t_id.startswith('00') or isea4t_id.startswith('09') or isea4t_id.startswith('14') or isea4t_id.startswith('04') or isea4t_id.startswith('19'):
+            cell_polygon = fix_isea4t_antimeridian_cells(cell_polygon)
         
+        num_edges = 3
+        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+        if not cell_geometry.intersects(feature_geometry):
+            continue  # Skip non-intersecting cells      
+        
+        # Create a single QGIS feature
+        isea4t_feature = QgsFeature()
+        isea4t_feature.setGeometry(cell_geometry)
+        
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+        
+        # Define new S2-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField("isea4t", QVariant.String))  
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        isea4t_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [isea4t_id, resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        all_attributes = original_attributes + new_attributes
+        
+        isea4t_feature.setAttributes(all_attributes)    
+
+        isea4t_features.append(isea4t_feature)
+    
     return isea4t_features
 
 #######################
@@ -740,59 +743,59 @@ def poly2isea3h(feature, resolution):
     bounding_box_wkt = bounding_box.wkt  # Create a bounding box polygon
     accuracy = isea3h_res_accuracy_dict.get(resolution)
     shapes = isea3h_dggs.convert_shape_string_to_dggs_shapes(bounding_box_wkt, ShapeStringFormat.WKT, accuracy)
-    
-    for shape in shapes:
-        bbox_cells = shape.get_shape().get_outer_ring().get_cells()
-        bounding_cell = isea3h_dggs.get_bounding_dggs_cell(bbox_cells)
-        bounding_children_cells = get_isea3h_children_cells_within_bbox(isea3h_dggs,bounding_cell.get_cell_id(), bounding_box,resolution)
-        for child in bounding_children_cells:
-            isea3h_cell = DggsCell(child)
-            cell_polygon = isea3h_cell_to_polygon(isea3h_dggs,isea3h_cell)
-            isea3h_id = isea3h_cell.get_cell_id()
-            
-            num_edges = 6    
-            if resolution == 0:
-                num_edges = 3 # icosahedron faces
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-                    
-            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            
-            if not cell_geometry.intersects(feature_geometry):
-                continue  # Skip non-intersecting cells      
-            # Create a single QGIS feature
-            isea3h_feature = QgsFeature()
-            isea3h_feature.setGeometry(cell_geometry)
-            
-            # Get all attributes from the input feature
-            original_attributes = feature.attributes()
-            original_fields = feature.fields()
-            
-            # Define new S2-related attributes
-            new_fields = QgsFields()
-            new_fields.append(QgsField("isea3h", QVariant.String))  
-            new_fields.append(QgsField("resolution", QVariant.Int))
-            new_fields.append(QgsField("center_lat", QVariant.Double))
-            new_fields.append(QgsField("center_lon", QVariant.Double))
-            new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-            new_fields.append(QgsField("cell_area", QVariant.Double))
-            
-            # Combine original fields and new fields
-            all_fields = QgsFields()
-            for field in original_fields:
-                all_fields.append(field)
-            for field in new_fields:
-                all_fields.append(field)
-            
-            isea3h_feature.setFields(all_fields)
-            
-            # Combine original attributes with new attributes
-            new_attributes = [isea3h_id, resolution, center_lat, center_lon, avg_edge_len, cell_area]
-            all_attributes = original_attributes + new_attributes
-            
-            isea3h_feature.setAttributes(all_attributes)    
+    shape = shapes[0]
+    # for shape in shapes:
+    bbox_cells = shape.get_shape().get_outer_ring().get_cells()
+    bounding_cell = isea3h_dggs.get_bounding_dggs_cell(bbox_cells)
+    bounding_children_cells = get_isea3h_children_cells_within_bbox(isea3h_dggs,bounding_cell.get_cell_id(), bounding_box,resolution)
+    for child in bounding_children_cells:
+        isea3h_cell = DggsCell(child)
+        cell_polygon = isea3h_cell_to_polygon(isea3h_dggs,isea3h_cell)
+        isea3h_id = isea3h_cell.get_cell_id()
+        
+        num_edges = 6    
+        if resolution == 0:
+            num_edges = 3 # icosahedron faces
+        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+        
+        if not cell_geometry.intersects(feature_geometry):
+            continue  # Skip non-intersecting cells      
+        # Create a single QGIS feature
+        isea3h_feature = QgsFeature()
+        isea3h_feature.setGeometry(cell_geometry)
+        
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+        
+        # Define new S2-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField("isea3h", QVariant.String))  
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        isea3h_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [isea3h_id, resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        all_attributes = original_attributes + new_attributes
+        
+        isea3h_feature.setAttributes(all_attributes)    
 
-            isea3h_features.append(isea3h_feature)
-            
+        isea3h_features.append(isea3h_feature)
+        
     return isea3h_features
 
 
@@ -807,12 +810,80 @@ def qgsfeature2ease(feature, resolution):
     elif geometry.wkbType() == QgsWkbTypes.LineString or geometry.wkbType() == QgsWkbTypes.Polygon:
         return poly2ease(feature, resolution)
 
-
 def point2ease(feature, resolution):
-    return
+    feature_geometry = feature.geometry()
+    point = feature_geometry.asPoint()
+    longitude = point.x()
+    latitude = point.y()    
+    ease_cell = geos_to_grid_ids([(longitude,latitude)],level = resolution)
+    ease_id = ease_cell['result']['data'][0]
+
+    level = int(ease_id[1])  # Get the level (e.g., 'L0' -> 0)
+    # Get level specs
+    level_spec = levels_specs[level]
+    n_row = level_spec["n_row"]
+    n_col = level_spec["n_col"]
+        
+    geo = grid_ids_to_geos([ease_id])
+    center_lon, center_lat = geo['result']['data'][0] 
+
+    cell_min_lat = center_lat - (180 / (2 * n_row))
+    cell_max_lat = center_lat + (180 / (2 * n_row))
+    cell_min_lon = center_lon - (360 / (2 * n_col))
+    cell_max_lon = center_lon + (360 / (2 * n_col))
+
+    cell_polygon = Polygon([
+        [cell_min_lon, cell_min_lat],
+        [cell_max_lon, cell_min_lat],
+        [cell_max_lon, cell_max_lat],
+        [cell_min_lon, cell_max_lat],
+        [cell_min_lon, cell_min_lat]
+     ])
+
+    resolution = level
+    num_edges = 4
+    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon,num_edges)  
+
+   
+    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+    
+    # Create a single QGIS feature
+    ease_feature = QgsFeature()
+    ease_feature.setGeometry(cell_geometry)
+    
+    # Get all attributes from the input feature
+    original_attributes = feature.attributes()
+    original_fields = feature.fields()
+    
+    # Define new s2-related attributes
+    new_fields = QgsFields()
+    new_fields.append(QgsField("ease", QVariant.String))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    
+    # Combine original fields and new fields
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+    
+    ease_feature.setFields(all_fields)
+    
+    # Combine original attributes with new attributes
+    new_attributes = [ease_id, resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+    all_attributes = original_attributes + new_attributes
+    
+    ease_feature.setAttributes(all_attributes)
+    
+    return [ease_feature]
+
 
 def poly2ease(feature, resolution):
-    return
+    return []
 
 
 #######################
