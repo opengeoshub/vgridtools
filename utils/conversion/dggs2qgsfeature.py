@@ -312,7 +312,7 @@ def isea3h2qgsfeature(feature, isea3h_id):
         isea3h_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [isea3h_id, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+        new_attributes = [isea3h_id, resolution, center_lat, center_lon, round(avg_edge_len,3),round(cell_area,3)]
         all_attributes = original_attributes + new_attributes
         
         isea3h_feature.setAttributes(all_attributes)    

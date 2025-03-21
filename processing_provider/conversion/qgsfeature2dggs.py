@@ -178,32 +178,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         
         return super().checkParameterValues(parameters, context)
     
-    # def outputFields(self, input_fields):
-    #     output_fields = QgsFields()
-
-    #     # Preserve all original input fields
-    #     for field in input_fields:
-    #         output_fields.append(field)
-        
-    #     dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
-        
-    #     output_fields.append(QgsField(dggs_type, QVariant.String))
-    #     output_fields.append(QgsField("resolution", QVariant.Int))
-    #     output_fields.append(QgsField('center_lat', QVariant.Double))
-    #     output_fields.append(QgsField('center_lon', QVariant.Double))
-
-    
-    #     # If geodesic DGGS:
-    #     if dggs_type in ('h3', 's2','rhealpix','isea4t','isea3h','ease', 'qtm'):
-    #         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
-    #     else: 
-    #         output_fields.append(QgsField('cell_width', QVariant.Double))
-    #         output_fields.append(QgsField('cell_height', QVariant.Double))
-    #     output_fields.append(QgsField('cell_area', QVariant.Double))
-
-    #     return output_fields
-
-    
     def outputFields(self, input_fields): 
         output_fields = QgsFields()
 
@@ -243,7 +217,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
 
     def prepareAlgorithm(self, parameters, context, feedback):       
-        
         source = self.parameterAsSource(parameters, self.INPUT, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
 
@@ -258,21 +231,21 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'ease': qgsfeature2ease,
             'qtm': qgsfeature2qtm,
             'olc': qgsfeature2olc,
-            'geohash': qgsfeature2geohash,
+            'geohash': qgsfeature2geohash, # Need to check polyline/ polygon2geohash
             # 'georef': qgsfeature2georef,   
             # 'mgrs': mgrs2qgsfeature,
             'tilecode': qgsfeature2tilecode,
             'quadkey': qgsfeature2quadkey
         }
         if platform.system() == 'Windows':
-            self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t
-            self.DGGS_TYPE_functions['isea3h'] = qgsfeature2isea3h
+            self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t # Need to check polyline/ polygon2isea4t
+            self.DGGS_TYPE_functions['isea3h'] = qgsfeature2isea3h # Need to check polyline/ polygon2isea4t
 
         return True
 
 
     def processFeature(self, feature, context, feedback):
-        try:
+        try:            
             self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
             conversion_function = self.DGGS_TYPE_functions.get(self.dggs_type)
 
@@ -293,7 +266,8 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                     point_feature.setGeometry(QgsGeometry.fromPointXY(point))  # Set individual point geometry
                     cell_polygons = conversion_function(point_feature, self.resolution)
                     multi_cell_polygons.extend(cell_polygons)          
-
+                    if feedback.isCanceled():
+                        return []
                 return multi_cell_polygons
             
                     
@@ -304,7 +278,9 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                     line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
                     cell_polygons = conversion_function(line_feature, self.resolution)
                     multi_cell_polygons.extend(cell_polygons)                
-           
+                    if feedback.isCanceled():
+                        return []
+
                 return multi_cell_polygons
             
             # Handle MultiPolygon geometry
@@ -314,18 +290,17 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                     polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
                     cell_polygons = conversion_function(polygon_feature, self.resolution)
                     multi_cell_polygons.extend(cell_polygons)                
-           
+                    if feedback.isCanceled():
+                        return []
                 return multi_cell_polygons
             
-            # Handle Single Geometries
-            else:
-                cell_polygons = conversion_function(feature, self.resolution)
-                return cell_polygons
-                        
-        except Exception as e:
-            feedback.reportError(f"Error processing feature {feature.id()}: {str(e)}")
-            return []
+            # # Handle Single Geometries
+            return conversion_function(feature, self.resolution) or []
 
+        except Exception as e:
+            self.num_bad += 1
+            feedback.reportError(f"Error processing feature {feature.id()}: {str(e)}")   
+            return []
 
     def postProcessAlgorithm(self, context, feedback):
         if self.num_bad:
