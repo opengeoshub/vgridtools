@@ -151,7 +151,7 @@ class GridTilecode(QgsProcessingAlgorithm):
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
-        vgrid.conversion.dggs2geojson()   
+        fields = self.outputFields() 
         (sink, dest_id) = self.parameterAsSink(
             parameters, 
             self.OUTPUT, 

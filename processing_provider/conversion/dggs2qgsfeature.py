@@ -221,24 +221,11 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     def processFeature(self, feature, context, feedback):
         try:
             cell_id = feature[self.CELL_ID]
-
             DGGS_TYPE_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
             conversion_function = self.DGGS_TYPE_functions.get(DGGS_TYPE_key)
-            # feedback.pushInfo(f"{DGGS_TYPE_key}")
-            if DGGS_TYPE_key == 'mgrs':
-                point = feature.geometry().asPoint()  # Returns a QgsPointXY object
-                x, y = point.x(), point.y()  # Get the x and y coordinates
-                
-                # Call the mgrs2qgsfeature function with the coordinates
-                cell_feature = mgrs2qgsfeature(cell_id, y, x)  # Use y, x for lat, lon
-                if cell_feature:
-                    return [cell_feature]
-
-            elif conversion_function:
-                # Call the conversion function
-                cell_feature = conversion_function(feature,cell_id)
-                if cell_feature:
-                    return [cell_feature]
+            cell_feature = conversion_function(feature,cell_id)
+            if cell_feature:
+                return [cell_feature]
             
         except Exception as e:
             self.num_bad += 1

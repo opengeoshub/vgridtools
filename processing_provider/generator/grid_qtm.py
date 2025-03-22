@@ -90,7 +90,7 @@ class GridQTM(QgsProcessingAlgorithm):
     
     txt_en = 'QTM Grid Generator'
     txt_vi = 'QTM Grid Generator'
-    figure = '../images/tutorial/grid_triangle.svg'
+    figure = '../images/tutorial/grid_qtm.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW

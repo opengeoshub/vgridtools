@@ -22,7 +22,8 @@ from vgrid.utils.easedggs.constants import levels_specs
 from vgrid.utils.easedggs.dggs.grid_addressing import grid_ids_to_geos
 from vgrid.utils import mercantile
 import geopandas as gpd
-from shapely.geometry import Polygon
+import json
+from shapely.geometry import Polygon,shape
 from shapely.wkt import loads
 import h3 
 from vgrid.utils.antimeridian import fix_polygon
@@ -30,6 +31,10 @@ from vgrid.generator.settings import geodesic_dggs_metrics, graticule_dggs_metri
 
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
+from qgis.core import (
+    QgsVectorLayer,
+    QgsFeature
+)
 
     
 def h32qgsfeature(feature, h3_id):
@@ -481,7 +486,7 @@ def olc2qgsfeature(feature, olc_cellid):
         
         return olc_feature
 
-def mgrs2qgsfeature(feature, mgrs_id, lat=None, lon=None):
+def mgrs2qgsfeature(feature, mgrs_id):
     # Assuming mgrs.mgrscell returns cell bounds and origin
     origin_lat, origin_lon, min_lat, min_lon, max_lat, max_lon, resolution = mgrs.mgrscell(mgrs_id)
     # Define the polygon coordinates for the MGRS cell
@@ -492,9 +497,36 @@ def mgrs2qgsfeature(feature, mgrs_id, lat=None, lon=None):
         [min_lon, max_lat],  # Top-left corner
         [min_lon, min_lat]   # Closing the polygon
     ])
-    
-    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+    def is_fully_within(mgrs_feature, gzd_features):
+        mgrs_geom = mgrs_feature.geometry()  # Get geometry of mgrs_feature
         
+        for gzd_feature in gzd_features:
+            gzd_geom = gzd_feature.geometry()  # Get geometry of gzd_feature
+            
+            if gzd_geom.contains(mgrs_geom):  # Check if gzd_geom fully contains mgrs_geom
+                return True  # At least one GZD feature fully contains the MGRS feature
+        
+        return False  # No GZD feature fully contains the MGRS feature
+
+    def get_intersection(mgrs_feature, gzd_features):
+        mgrs_geom = mgrs_feature.geometry()
+        try:
+            for gzd_feature in gzd_features:
+                gzd_geom = gzd_feature.geometry()
+                # Check if GZD feature has the same mgrs_id
+                if gzd_feature["mgrs"] == mgrs_feature["mgrs"][:3]:
+                    intersection = gzd_geom.intersection(mgrs_geom)  # Get intersection geometry
+                    if not intersection.isEmpty():
+                        intersected_feature = QgsFeature()
+                        intersected_feature.setGeometry(intersection)  # Set intersection geometry
+                        intersected_feature.setAttributes(mgrs_feature.attributes())  # Copy attributes
+                        return intersected_feature  # Return the new feature
+        except:
+            return mgrs_feature  # No intersection found
+
+    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
+    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+    
     # Get all attributes from the input feature
     original_attributes = feature.attributes()
     original_fields = feature.fields()
@@ -508,15 +540,14 @@ def mgrs2qgsfeature(feature, mgrs_id, lat=None, lon=None):
     new_fields.append(QgsField("cell_width", QVariant.Double))
     new_fields.append(QgsField("cell_height", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
         all_fields.append(field)
     for field in new_fields:
         all_fields.append(field)
-    
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
+        
     mgrs_feature = QgsFeature()
     mgrs_feature.setGeometry(cell_geometry)
     mgrs_feature.setFields(all_fields)
@@ -527,36 +558,18 @@ def mgrs2qgsfeature(feature, mgrs_id, lat=None, lon=None):
     
     mgrs_feature.setAttributes(all_attributes)   
     
-    # If lat and lon are provided, check for intersection with GZD polygons
-    # if lat is not None and lon is not None:
-    #     # Load the GZD GeoJSON file
-    #     gzd_json_path = os.path.join(os.path.dirname(__file__), 'gzd.geojson')
-    #     with open(gzd_json_path) as f:
-    #         gzd_json = json.load(f)
-        
-    #     # Convert GZD GeoJSON to a GeoDataFrame
-    #     gzd_gdf = gpd.GeoDataFrame.from_features(gzd_json["features"], crs="EPSG:4326")
-        
-    #     # Create a GeoDataFrame for the MGRS cell polygon
-    #     mgrs_polygon_gdf = gpd.GeoDataFrame(geometry=cell_polygon, crs="EPSG:4326")
-        
-    #     # Perform intersection
-    #     intersection_gdf = gpd.overlay(mgrs_polygon_gdf, gzd_gdf, how='intersection')
 
-    #     # Check if the intersection is valid and if it contains the point
-    #     if not intersection_gdf.empty:
-    #         point = Point(lon, lat)
-    #         for intersected_polygon in intersection_gdf.geometry:
-    #             if intersected_polygon.contains(point):
-    #                 # Update geometry to the intersection polygon if it contains the point
-    #                 intersection_coords = [QgsPointXY(x, y) for x, y in intersected_polygon.exterior.coords]
-    #                 qgs_intersection_polygon = QgsGeometry.fromPolygonXY([intersection_coords])
-    #                 mgrs_feature.setGeometry(qgs_intersection_polygon)
-    #                 break  # Exit loop once a containing polygon is found
-
+    # Load the GZD GeoJSON file
+    gzd_json_path = os.path.join(os.path.dirname(__file__), 'gzd.geojson')   
+    gzd_layer = QgsVectorLayer(gzd_json_path, "geojson_layer", "ogr")
+    gzd_features = [feature for feature in gzd_layer.getFeatures()]
+    
+    if mgrs_feature["mgrs"][2] not in {"A", "B", "Y", "Z"}:
+        if not is_fully_within(mgrs_feature, gzd_features):
+            mgrs_feature = get_intersection(mgrs_feature, gzd_features)
     return mgrs_feature
-
-
+   
+   
 def geohash2qgsfeature(feature, geohash_id):
     # Decode the Geohash to get bounding box coordinates
     bbox = geohash.bbox(geohash_id)        

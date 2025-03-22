@@ -46,6 +46,7 @@ from vgrid.utils import maidenhead
 from ...utils.imgs import Imgs
 from shapely.geometry import Polygon
 from vgrid.generator.settings import graticule_dggs_metrics
+
 grid_params = {
         1: (18, 18, 20, 10),
         2: (180, 180, 2, 1),
@@ -156,111 +157,111 @@ class GridMaidenhead(QgsProcessingAlgorithm):
 
         return output_fields
 
-def processAlgorithm(self, parameters, context, feedback):
-    fields = self.outputFields() 
-    # Get the output sink and its destination ID
-    (sink, dest_id) = self.parameterAsSink(
-        parameters, 
-        self.OUTPUT, 
-        context, 
-        fields, 
-        QgsWkbTypes.Polygon, 
-        QgsCoordinateReferenceSystem('EPSG:4326')
-    )
+    def processAlgorithm(self, parameters, context, feedback):
+        fields = self.outputFields() 
+        # Get the output sink and its destination ID
+        (sink, dest_id) = self.parameterAsSink(
+            parameters, 
+            self.OUTPUT, 
+            context, 
+            fields, 
+            QgsWkbTypes.Polygon, 
+            QgsCoordinateReferenceSystem('EPSG:4326')
+        )
 
-    if sink is None:
-        raise QgsProcessingException("Failed to create output sink")
+        if sink is None:
+            raise QgsProcessingException("Failed to create output sink")
 
-    x_cells, y_cells, lon_width, lat_width = grid_params[self.resolution]
-    base_lat, base_lon = -90.0, -180.0
+        x_cells, y_cells, lon_width, lat_width = grid_params[self.resolution]
+        base_lat, base_lon = -90.0, -180.0
 
-    if self.grid_extent is None or self.grid_extent.isEmpty():
-        total_cells = x_cells * y_cells
-        feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
-        cell_count = 0  # Counter to track progress
-        for i in range(x_cells):
-            for j in range(y_cells):
-                min_lon = base_lon + i * lon_width
-                max_lon = min_lon + lon_width
-                min_lat = base_lat + j * lat_width
-                max_lat = min_lat + lat_width
-                
-                cell_polygon = Polygon( [
-                    (min_lon, min_lat),
-                    (max_lon, min_lat),
-                    (max_lon, max_lat),
-                    (min_lon, max_lat),
-                    (min_lon, min_lat)  # Closing the polygon
-                    ])
-                
-                
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                maidenhead_feature = QgsFeature()
-                maidenhead_feature.setGeometry(cell_geometry)
-                
-                center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-                maidenhead_id = maidenhead.toMaiden(center_lat, center_lon, self.resolution)
-                maidenhead_feature.setAttributes([maidenhead_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
-                
-                sink.addFeature(maidenhead_feature, QgsFeatureSink.FastInsert)         
+        if self.grid_extent is None or self.grid_extent.isEmpty():
+            total_cells = x_cells * y_cells
+            feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
+            cell_count = 0  # Counter to track progress
+            for i in range(x_cells):
+                for j in range(y_cells):
+                    min_lon = base_lon + i * lon_width
+                    max_lon = min_lon + lon_width
+                    min_lat = base_lat + j * lat_width
+                    max_lat = min_lat + lat_width
+                    
+                    cell_polygon = Polygon( [
+                        (min_lon, min_lat),
+                        (max_lon, min_lat),
+                        (max_lon, max_lat),
+                        (min_lon, max_lat),
+                        (min_lon, min_lat)  # Closing the polygon
+                        ])
+                    
+                    
+                    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    maidenhead_feature = QgsFeature()
+                    maidenhead_feature.setGeometry(cell_geometry)
+                    
+                    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+                    maidenhead_id = maidenhead.toMaiden(center_lat, center_lon, self.resolution)
+                    maidenhead_feature.setAttributes([maidenhead_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+                    
+                    sink.addFeature(maidenhead_feature, QgsFeatureSink.FastInsert)         
 
-                # Update progress and feedback message
-                cell_count += 1
-                feedback.setProgress(int((cell_count / total_cells) * 100))
-                
-                if feedback.isCanceled():
-                    break             
-    else:
-        # Calculate the cell indices corresponding to the extent bounds
-        min_x = max(0, int((self.grid_extent.xMinimum() - base_lon) / lon_width))
-        max_x = min(x_cells, int((self.grid_extent.xMaximum() - base_lon) / lon_width) + 1)
-        min_y = max(0, int((self.grid_extent.yMinimum() - base_lat) / lat_width))
-        max_y = min(y_cells, int((self.grid_extent.yMaximum() - base_lat) / lat_width) + 1)
+                    # Update progress and feedback message
+                    cell_count += 1
+                    feedback.setProgress(int((cell_count / total_cells) * 100))
+                    
+                    if feedback.isCanceled():
+                        break             
+        else:
+            # Calculate the cell indices corresponding to the extent bounds
+            min_x = max(0, int((self.grid_extent.xMinimum() - base_lon) / lon_width))
+            max_x = min(x_cells, int((self.grid_extent.xMaximum() - base_lon) / lon_width) + 1)
+            min_y = max(0, int((self.grid_extent.yMinimum() - base_lat) / lat_width))
+            max_y = min(y_cells, int((self.grid_extent.yMaximum() - base_lat) / lat_width) + 1)
 
-        # Total cells to process, for progress feedback
-        total_cells = (max_x - min_x) * (max_y - min_y)
-        feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
-        cell_count = 0
+            # Total cells to process, for progress feedback
+            total_cells = (max_x - min_x) * (max_y - min_y)
+            feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
+            cell_count = 0
 
-        for i in range(min_x, max_x):
-            for j in range(min_y, max_y):
-                min_lon = base_lon + i * lon_width
-                max_lon = min_lon + lon_width
-                min_lat = base_lat + j * lat_width
-                max_lat = min_lat + lat_width
-                
-                cell_polygon = Polygon( [
-                    (min_lon, min_lat),
-                    (max_lon, min_lat),
-                    (max_lon, max_lat),
-                    (min_lon, max_lat),
-                    (min_lon, min_lat)  # Closing the polygon
-                    ])
-                
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                maidenhead_feature = QgsFeature()
-                maidenhead_feature.setGeometry(cell_geometry)
-                
-                center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-                maidenhead_id = maidenhead.toMaiden(center_lat, center_lon, self.resolution)
-                maidenhead_feature.setAttributes([maidenhead_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
-                
-                sink.addFeature(maidenhead_feature, QgsFeatureSink.FastInsert)         
+            for i in range(min_x, max_x):
+                for j in range(min_y, max_y):
+                    min_lon = base_lon + i * lon_width
+                    max_lon = min_lon + lon_width
+                    min_lat = base_lat + j * lat_width
+                    max_lat = min_lat + lat_width
+                    
+                    cell_polygon = Polygon( [
+                        (min_lon, min_lat),
+                        (max_lon, min_lat),
+                        (max_lon, max_lat),
+                        (min_lon, max_lat),
+                        (min_lon, min_lat)  # Closing the polygon
+                        ])
+                    
+                    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    maidenhead_feature = QgsFeature()
+                    maidenhead_feature.setGeometry(cell_geometry)
+                    
+                    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+                    maidenhead_id = maidenhead.toMaiden(center_lat, center_lon, self.resolution)
+                    maidenhead_feature.setAttributes([maidenhead_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+                    
+                    sink.addFeature(maidenhead_feature, QgsFeatureSink.FastInsert)         
 
-                # Update progress and feedback message
-                cell_count += 1
-                feedback.setProgress(int((cell_count / total_cells) * 100))
-                
-                if feedback.isCanceled():
-                    break         
-                
-    feedback.pushInfo("Maidenhead grid generation completed.")
-    if context.willLoadLayerOnCompletion(dest_id):
-        lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-        fontColor = QColor('#000000')
-        context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
-    
-    return {self.OUTPUT: dest_id}
+                    # Update progress and feedback message
+                    cell_count += 1
+                    feedback.setProgress(int((cell_count / total_cells) * 100))
+                    
+                    if feedback.isCanceled():
+                        break         
+                    
+        feedback.pushInfo("Maidenhead grid generation completed.")
+        if context.willLoadLayerOnCompletion(dest_id):
+            lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+            fontColor = QColor('#000000')
+            context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
+        
+        return {self.OUTPUT: dest_id}
 
 
 class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):

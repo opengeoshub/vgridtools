@@ -12,7 +12,6 @@ from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.generator.h3grid import fix_h3_antimeridian_cells, geodesic_buffer
 from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
 from vgrid.generator.geohashgrid import geohash_to_polygon
-from vgrid.utils.antimeridian import fix_polygon
 from vgrid.generator.settings import graticule_dggs_metrics, geodesic_dggs_metrics
 
 from vgrid.utils.easedggs.constants import levels_specs
