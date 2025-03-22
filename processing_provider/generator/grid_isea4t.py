@@ -52,10 +52,8 @@ if (platform.system() == 'Windows'):
                                           fix_isea4t_antimeridian_cells
     isea4t_dggs = Eaggr(Model.ISEA4T)
     
-from tqdm import tqdm
 from ...utils.imgs import Imgs
-from shapely.geometry import Polygon,box
-
+from shapely.geometry import box
 from vgrid.generator.settings import isea4t_res_accuracy_dict, geodesic_dggs_metrics
 from vgrid.utils.antimeridian import fix_polygon
 

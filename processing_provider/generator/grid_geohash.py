@@ -225,17 +225,16 @@ class GridGeohash(QgsProcessingAlgorithm):
                 if feedback.isCanceled():
                     break                
         else: 
-            filtered_geohashes = []
+            intersected_geohashes = []
             for gh in initial_geohashes:
                 cell_polygon = geohash_to_polygon(gh)  
                 extent_bbox = box(self.grid_extent.xMinimum(), self.grid_extent.yMinimum(), 
                                 self.grid_extent.xMaximum(), self.grid_extent.yMaximum())       
                 if cell_polygon.intersects(extent_bbox):
-                    filtered_geohashes.append(gh)
+                    intersected_geohashes.append(gh)
             
-            for idx, gh in enumerate(filtered_geohashes):
+            for idx, gh in enumerate(intersected_geohashes):
                 feedback.setProgress(int((idx / total_geohashes) * 100))
-                # feedback.pushInfo(f"Processing geohash prefix: {gh}")
                 self.expand_geohash_within_extent(gh, self.resolution, sink, fields, self.grid_extent,feedback)
                 if feedback.isCanceled():
                     break   

@@ -179,7 +179,6 @@ class GridOLC(QgsProcessingAlgorithm):
         total_lng_steps = int((ne_lng - sw_lng) / lng_step)
         total_steps = total_lat_steps * total_lng_steps
 
-        # Iterate over the entire globe with tqdm for progress tracking
         lat = sw_lat
         while lat < ne_lat:
             lng = sw_lng

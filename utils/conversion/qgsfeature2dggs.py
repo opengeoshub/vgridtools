@@ -30,7 +30,10 @@ if (platform.system() == 'Windows'):
 
     from vgrid.generator.isea3hgrid import isea3h_cell_to_polygon, isea3h_res_accuracy_dict,get_isea3h_children_cells_within_bbox                                   
     isea3h_dggs = Eaggr(Model.ISEA3H)
-    
+
+from vgrid.generator.geohashgrid import initial_geohashes, geohash_to_polygon, expand_geohash_bbox
+
+from vgrid.conversion import latlon2dggs
 
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
@@ -1405,51 +1408,15 @@ def point2geohash(feature, resolution):
 
 def poly2geohash(feature, resolution):
     geohash_features = []
-    feature_geometry = feature.geometry()
-    feature_rect = feature_geometry.boundingBox()
-    min_x = feature_rect.xMinimum()
-    min_y = feature_rect.yMinimum()
-    max_x = feature_rect.xMaximum()
-    max_y = feature_rect.yMaximum()
+    feature_geometry = feature.geometry()    
+    feature_shapely = wkt_loads(feature_geometry.asWkt())
 
-    # Create a bounding box polygon
-    bounding_box = box(min_x, min_y, max_x, max_y)
-    
-    bbox_center = ((bounding_box[0] + bounding_box[2]) / 2, (bounding_box[1] + bounding_box[3]) / 2)
-    center_geohash = geohash.encode(bbox_center[1], bbox_center[0], precision=resolution)
-
-    # Step 2: Find the ancestor geohash that fully contains the bounding box
-    def find_ancestor_geohash(center_geohash, bbox):
-        for r in range(1, len(center_geohash) + 1):
-            ancestor = center_geohash[:r]
-            polygon = geohash_to_polygon(ancestor)
-            if polygon.contains(Polygon.from_bounds(*bbox)):
-                return ancestor
-        return None  # Fallback if no ancestor is found
-
-    ancestor_geohash = find_ancestor_geohash(center_geohash, bounding_box)
-
-    if not ancestor_geohash:
-        raise ValueError("No ancestor geohash fully contains the bounding box.")
-
-    # Step 3: Expand geohashes recursively from the ancestor
-    bbox_polygon = Polygon.from_bounds(*bounding_box)
-
-    def expand_geohash(gh, target_length, geohashes):
-        """Expand geohash only if it intersects the bounding box."""
-        polygon = geohash_to_polygon(gh)
-        if not polygon.intersects(bbox_polygon):
-            return  # Skip this branch if it doesn't intersect the bounding box
-
-        if len(gh) == target_length:
-            geohashes.add(gh)  # Add to the set if it reaches the target resolution
-            return
-
-        for char in "0123456789bcdefghjkmnpqrstuvwxyz":
-            expand_geohash(gh + char, target_length, geohashes)
-
+    intersected_geohashes = {gh for gh in initial_geohashes if geohash_to_polygon(gh).intersects(feature_shapely)}
+        # Expand geohash bounding box
+   
     geohashes = set()
-    expand_geohash(ancestor_geohash, resolution, geohashes)
+    for gh in intersected_geohashes:
+        expand_geohash_bbox(gh, resolution, geohashes, feature_shapely)
 
     # Step 4: Generate features for geohashes that intersect the bounding box
     for gh in geohashes:
@@ -1497,6 +1464,165 @@ def poly2geohash(feature, resolution):
             
     return geohash_features
     
+
+#######################
+# QgsFeatures to GEOREF
+#######################
+
+def qgsfeature2georef(feature, resolution):
+    geometry = feature.geometry()
+    if geometry.wkbType() == QgsWkbTypes.Point:
+        return point2georef(feature, resolution)
+    elif geometry.wkbType() == QgsWkbTypes.LineString or geometry.wkbType() == QgsWkbTypes.Polygon:
+        return poly2georef(feature, resolution)
+
+
+def point2georef(feature, resolution):
+    feature_geometry = feature.geometry()
+    point = feature_geometry.asPoint()
+    longitude = point.x()
+    latitude = point.y()  
+    georef_id = latlon2dggs.latlon2georef(latitude, longitude, resolution)  
+    center_lat, center_lon, min_lat, min_lon, max_lat, max_lon,resolution = georef.georefcell(georef_id)        
+    cell_polygon = Polygon([
+        [min_lon, min_lat],  # Bottom-left corner
+        [max_lon, min_lat],  # Bottom-right corner
+        [max_lon, max_lat],  # Top-right corner
+        [min_lon, max_lat],  # Top-left corner
+        [min_lon, min_lat]   # Closing the polygon (same as the first point)
+    ])
+
+    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+        
+    # Get all attributes from the input feature
+    original_attributes = feature.attributes()
+    original_fields = feature.fields()
+    
+    # Define new H3-related attributes
+    new_fields = QgsFields()
+    new_fields.append(QgsField("georef", QVariant.String))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("cell_width", QVariant.Double))
+    new_fields.append(QgsField("cell_height", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    
+    # Combine original fields and new fields
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+    
+    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
+    georef_feature = QgsFeature()
+    georef_feature.setGeometry(cell_geometry)
+    georef_feature.setFields(all_fields)
+    
+    # Combine original attributes with new attributes
+    new_attributes = [georef_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area]
+    all_attributes = original_attributes + new_attributes
+    
+    georef_feature.setAttributes(all_attributes)     
+    return [georef_feature]
+    
+   
+def poly2georef(feature, resolution):
+    georef_features = []
+    feature_geometry = feature.geometry()
+    feature_rect = feature_geometry.boundingBox()
+    min_x = feature_rect.xMinimum()
+    min_y = feature_rect.yMinimum()
+    max_x = feature_rect.xMaximum()
+    max_y = feature_rect.yMaximum()
+
+    # Create a bounding box polygon
+    bounding_box = box(min_x, min_y, max_x, max_y)
+    
+    bbox_center = ((bounding_box[0] + bounding_box[2]) / 2, (bounding_box[1] + bounding_box[3]) / 2)
+    center_georef = georef.encode(bbox_center[1], bbox_center[0], precision=resolution)
+
+    # Step 2: Find the ancestor georef that fully contains the bounding box
+    def find_ancestor_georef(center_georef, bbox):
+        for r in range(1, len(center_georef) + 1):
+            ancestor = center_georef[:r]
+            polygon = georef_to_polygon(ancestor)
+            if polygon.contains(Polygon.from_bounds(*bbox)):
+                return ancestor
+        return None  # Fallback if no ancestor is found
+
+    ancestor_georef = find_ancestor_georef(center_georef, bounding_box)
+
+    if not ancestor_georef:
+        raise ValueError("No ancestor georef fully contains the bounding box.")
+
+    # Step 3: Expand georefes recursively from the ancestor
+    bbox_polygon = Polygon.from_bounds(*bounding_box)
+
+    def expand_georef(gh, target_length, georefes):
+        """Expand georef only if it intersects the bounding box."""
+        polygon = georef_to_polygon(gh)
+        if not polygon.intersects(bbox_polygon):
+            return  # Skip this branch if it doesn't intersect the bounding box
+
+        if len(gh) == target_length:
+            georefes.add(gh)  # Add to the set if it reaches the target resolution
+            return
+
+        for char in "0123456789bcdefghjkmnpqrstuvwxyz":
+            expand_georef(gh + char, target_length, georefes)
+
+    georefes = set()
+    expand_georef(ancestor_georef, resolution, georefes)
+
+    # Step 4: Generate features for georefes that intersect the bounding box
+    for gh in georefes:
+        cell_polygon = georef_to_polygon(gh)
+        # if cell_polygon.intersects(feature):
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
+            # **Check for intersection with the input feature**
+        if not cell_geometry.intersects(feature_geometry):
+            continue  # Skip non-intersecting cells
+        
+        # Create a single QGIS feature
+        georef_feature = QgsFeature()
+        georef_feature.setGeometry(cell_geometry)
+        
+        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)  
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+        
+        new_fields = QgsFields()
+        new_fields.append(QgsField("georef", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("cell_width", QVariant.Double))
+        new_fields.append(QgsField("cell_height", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        georef_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [gh,resolution, center_lat, center_lon,  cell_width, cell_height, cell_area]
+        all_attributes = original_attributes + new_attributes
+        
+        georef_feature.setAttributes(all_attributes)    
+
+        georef_features.append(georef_feature)
+            
+    return georef_features
+    
+
 
 #######################
 # QgsFeatures to Tilecode

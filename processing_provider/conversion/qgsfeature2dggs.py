@@ -232,7 +232,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'qtm': qgsfeature2qtm,
             'olc': qgsfeature2olc,
             'geohash': qgsfeature2geohash, # Need to check polyline/ polygon2geohash
-            # 'georef': qgsfeature2georef,   
+            'georef': qgsfeature2georef,   
             # 'mgrs': mgrs2qgsfeature,
             'tilecode': qgsfeature2tilecode,
             'quadkey': qgsfeature2quadkey
