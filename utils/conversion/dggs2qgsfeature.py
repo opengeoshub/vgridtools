@@ -21,18 +21,19 @@ if (platform.system() == 'Windows'):
 from vgrid.utils.easedggs.constants import levels_specs
 from vgrid.utils.easedggs.dggs.grid_addressing import grid_ids_to_geos
 from vgrid.utils import mercantile
-import geopandas as gpd
-import json
 from shapely.geometry import Polygon,shape
 from shapely.wkt import loads
+import json
 import h3 
 from vgrid.utils.antimeridian import fix_polygon
 from vgrid.generator.settings import geodesic_dggs_metrics, graticule_dggs_metrics
-
 from pyproj import Geod
+
 geod = Geod(ellps="WGS84")
 from qgis.core import (
-    QgsVectorLayer,
+    QgsCoordinateReferenceSystem, 
+    QgsCoordinateTransform,
+    QgsProject,
     QgsFeature
 )
 
@@ -486,48 +487,67 @@ def olc2qgsfeature(feature, olc_cellid):
         
         return olc_feature
 
-def mgrs2qgsfeature(feature, mgrs_id):
-    # Assuming mgrs.mgrscell returns cell bounds and origin
-    origin_lat, origin_lon, min_lat, min_lon, max_lat, max_lon, resolution = mgrs.mgrscell(mgrs_id)
+
+def mgrs2qgsfeature(feature, mgrs_id):           
+    resolution, grid_size = mgrs.get_precision_and_grid_size(mgrs_id)
+    zone, hemisphere, easting, northing = mgrs._mgrsToUtm(mgrs_id)
+
+    min_x, min_y = easting, northing
+    max_x, max_y = min_x + grid_size, min_y + grid_size  # Correct max_x, max_y calculation
+
+    # Determine UTM EPSG code
+    if hemisphere == 'N':
+        epsg_code = 32600 + int(zone)
+    else:
+        epsg_code = 32700 + int(zone)
+
+    utm_crs = QgsCoordinateReferenceSystem(epsg_code)
+    wgs84_crs = QgsCoordinateReferenceSystem(4326)  # WGS84
+
+    transform_context = QgsProject.instance().transformContext()
+    transformer = QgsCoordinateTransform(utm_crs, wgs84_crs, transform_context)
+
+    # utm_crs = CRS.from_epsg(epsg_code)
+    # wgs84_crs = CRS.from_epsg(4326)
+    # # # Create transformer from UTM to WGS84
+    # transformer = Transformer.from_crs(utm_crs, wgs84_crs, always_xy=True)
+
+    # Convert all four corners
+    min_lon, min_lat = transformer.transform(min_x, min_y)
+    max_lon, max_lat = transformer.transform(max_x, max_y)
+
     # Define the polygon coordinates for the MGRS cell
-    cell_polygon  = Polygon([
-        [min_lon, min_lat],  # Bottom-left corner
-        [max_lon, min_lat],  # Bottom-right corner
-        [max_lon, max_lat],  # Top-right corner
-        [min_lon, max_lat],  # Top-left corner
-        [min_lon, min_lat]   # Closing the polygon
+    cell_polygon = Polygon([
+        (min_lon, min_lat),  # Bottom-left corner
+        (max_lon, min_lat),  # Bottom-right corner
+        (max_lon, max_lat),  # Top-right corner
+        (min_lon, max_lat),  # Top-left corner
+        (min_lon, min_lat)   # Closing the polygon
     ])
-    def is_fully_within(mgrs_feature, gzd_features):
-        mgrs_geom = mgrs_feature.geometry()  # Get geometry of mgrs_feature
-        
-        for gzd_feature in gzd_features:
-            gzd_geom = gzd_feature.geometry()  # Get geometry of gzd_feature
-            
-            if gzd_geom.contains(mgrs_geom):  # Check if gzd_geom fully contains mgrs_geom
-                return True  # At least one GZD feature fully contains the MGRS feature
-        
-        return False  # No GZD feature fully contains the MGRS feature
-
-    def get_intersection(mgrs_feature, gzd_features):
-        mgrs_geom = mgrs_feature.geometry()
-        try:
-            for gzd_feature in gzd_features:
-                gzd_geom = gzd_feature.geometry()
-                # Check if GZD feature has the same mgrs_id
-                if gzd_feature["mgrs"] == mgrs_feature["mgrs"][:3]:
-                    intersection = gzd_geom.intersection(mgrs_geom)  # Get intersection geometry
-                    if not intersection.isEmpty():
-                        intersected_feature = QgsFeature()
-                        intersected_feature.setGeometry(intersection)  # Set intersection geometry
-                        intersected_feature.setAttributes(mgrs_feature.attributes())  # Copy attributes
-                        return intersected_feature  # Return the new feature
-        except:
-            return mgrs_feature  # No intersection found
-
+    
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
     center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
     
-    # Get all attributes from the input feature
+    try:
+        gzd_json_path = os.path.join(os.path.dirname(__file__), 'gzd.geojson')    
+              
+        with open(gzd_json_path, 'r') as f:
+            gzd_data = json.load(f)
+    
+        gzd_features = gzd_data["features"]
+        gzd_feature = [feature for feature in gzd_features if feature["properties"].get("gzd") == mgrs_id[:3]][0]
+        gzd_geom = shape(gzd_feature["geometry"])
+    
+        if mgrs_id[2] not in {"A", "B", "Y", "Z"}: # not polar bands
+            if cell_polygon.intersects(gzd_geom) and not gzd_geom.contains(cell_polygon):
+                intersected_polygon = cell_polygon.intersection(gzd_geom)  
+                if intersected_polygon:
+                    cell_geometry = QgsGeometry.fromWkt(intersected_polygon.wkt) 
+                    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(intersected_polygon)
+    except:
+        pass    
+    
+      # Get all attributes from the input feature
     original_attributes = feature.attributes()
     original_fields = feature.fields()
     
@@ -558,17 +578,8 @@ def mgrs2qgsfeature(feature, mgrs_id):
     
     mgrs_feature.setAttributes(all_attributes)   
     
-
-    # Load the GZD GeoJSON file
-    gzd_json_path = os.path.join(os.path.dirname(__file__), 'gzd.geojson')   
-    gzd_layer = QgsVectorLayer(gzd_json_path, "geojson_layer", "ogr")
-    gzd_features = [feature for feature in gzd_layer.getFeatures()]
-    
-    if mgrs_feature["mgrs"][2] not in {"A", "B", "Y", "Z"}:
-        if not is_fully_within(mgrs_feature, gzd_features):
-            mgrs_feature = get_intersection(mgrs_feature, gzd_features)
     return mgrs_feature
-   
+    return None
    
 def geohash2qgsfeature(feature, geohash_id):
     # Decode the Geohash to get bounding box coordinates

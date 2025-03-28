@@ -43,7 +43,6 @@ from PyQt5.QtGui import *
 
 from .vgrid_provider import VgridProvider
 from .expressions import *
-from .utils.generator import gzd
 # from .vgrid_dialogs import *
 exprs =(latlon2olc,latlon2mgrs,latlon2geohash,latlon2georef,latlon2s2,latlon2tilecode,latlon2maidenhead,latlon2gars)
 
