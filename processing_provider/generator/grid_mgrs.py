@@ -21,7 +21,7 @@ from qgis.core import (
     QgsProject,
     QgsFeatureSink,
     QgsProcessingLayerPostProcessorInterface,
-    QgsProcessingParameterExtent,
+    QgsProcessingParameterString,
     QgsProcessingParameterNumber,
     QgsProcessingParameterFeatureSink,
     QgsProcessingAlgorithm,
@@ -35,19 +35,28 @@ from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsVectorLayer,
     QgsPalLayerSettings, 
-    QgsVectorLayerSimpleLabeling
+    QgsVectorLayerSimpleLabeling,
+    QgsCoordinateTransform,
+    QgsProject
 )
+
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
+from qgis.core import QgsApplication
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os,math, random
+import os, random
 from vgrid.utils import mgrs
 from ...utils.imgs import Imgs
-
+from vgrid.generator.mgrsgrid import is_valid_gzd
+import json
+from shapely.geometry import shape, Polygon
+from shapely.wkt import loads
+import numpy as np
+from vgrid.generator.settings import graticule_dggs_metrics
 
 class GridMGRS(QgsProcessingAlgorithm):
-    EXTENT = 'EXTENT'
+    GZD = 'GZD'   
     RESOLUTION = 'RESOLUTION'
     OUTPUT = 'OUTPUT'
     
@@ -105,12 +114,15 @@ class GridMGRS(QgsProcessingAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer    
 
     def initAlgorithm(self, config=None):
-        param = QgsProcessingParameterExtent(self.EXTENT,
-                                             self.tr('Grid extent'),
-                                             optional=False
-                                            )
+        # GZD
+        param = QgsProcessingParameterString(
+            self.GZD,
+            self.tr('GZD'),
+            defaultValue='48P',
+            optional=False
+        )
         self.addParameter(param)
-
+        
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
                     self.tr('Resolution [0..5]'),
@@ -128,58 +140,126 @@ class GridMGRS(QgsProcessingAlgorithm):
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)  
-        # Get the extent parameter
-        self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)        
+        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        self.gzd = self.parameterAsString(parameters, self.GZD, context).upper()  
+        if self.resolution > 2:
+            feedback.reportError('For performance reason, resolution must be smaller than 2 (1000 x 1000 km cell size)')
+            return False
+
+
+        if not is_valid_gzd(self.gzd):
+            feedback.reportError('Please input a valid GZD')
+            return False
+                      
         return True
     
 
+    def outputFields(self):
+        output_fields = QgsFields() 
+        output_fields.append(QgsField("mgrs", QVariant.String))
+        output_fields.append(QgsField('resolution', QVariant.Int))
+        output_fields.append(QgsField('center_lat', QVariant.Double))
+        output_fields.append(QgsField('center_lon', QVariant.Double))
+        output_fields.append(QgsField('avg_edge_len', QVariant.Double))
+        output_fields.append(QgsField('cell_area', QVariant.Double))
+
+        return output_fields
+
     def processAlgorithm(self, parameters, context, feedback):
-        # Define fields
-        fields = QgsFields()
-        fields.append(QgsField("MGRS", QVariant.String))
-
-        # Create output sink
+        fields = self.outputFields()        
+        # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
-            parameters, self.OUTPUT,
-            context, fields, QgsWkbTypes.Polygon, QgsCoordinateReferenceSystem("EPSG:4326")
+            parameters,
+            self.OUTPUT,
+            context,
+            fields,
+            QgsWkbTypes.Polygon,
+            QgsCoordinateReferenceSystem('EPSG:4326')
         )
+
+        if not sink:
+            raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+
+        cell_size = 100_000 // (10 ** self.resolution)   
+        north_bands = 'NPQRSTUVWX'
+        south_bands = 'MLKJHGFEDC'
+        band_distance = 111_132 * 8 
+        gzd_band = self.gzd[2]
+
+        if gzd_band >='N': # North Hemesphere
+            epsg_code = int('326' + self.gzd[:2])      
+            min_x, min_y, max_x, max_y = 100000, 0, 900000, 9500000 # for the North   
+            north_band_idx = north_bands.index(gzd_band)
+            max_y = band_distance * (north_band_idx + 1)
+            if gzd_band == 'X':
+                max_y += band_distance # band X = 12 deggrees instead of 8 degrees
         
-        if sink is None:
-            raise QgsProcessingException("Failed to create output sink")        
+        else:  # South Hemesphere
+            epsg_code = int('327' + self.gzd[:2])     
+            min_x, min_y, max_x, max_y = 100000, 0, 900000, 10000000 # for the South         
+            south_band_idx = south_bands.index(gzd_band)
+            max_y = band_distance * (south_band_idx + 1 )
 
-        if self.grid_extent is None or self.grid_extent.isEmpty():
-            lat_min, lat_max = -80, 84.0  # MGRS is valid between these latitudes
-            lon_min, lon_max = -180.0, 180.0
-        else:
-            lon_min = self.grid_extent.xMinimum()
-            lat_min = self.grid_extent.yMinimum()
-            lon_max = self.grid_extent.xMaximum()
-            lat_max = self.grid_extent.yMaximum()
+        utm_crs = QgsCoordinateReferenceSystem(epsg_code)
+        wgs84_crs = QgsCoordinateReferenceSystem(4326)  # WGS84
 
+        transform_context = QgsProject.instance().transformContext()
+        transformer = QgsCoordinateTransform(utm_crs, wgs84_crs, transform_context)
+        gzd_json_path = os.path.join(os.path.dirname(__file__), 'gzd.geojson')            
+        with open(gzd_json_path, 'r') as f:
+            gzd_data = json.load(f)
+        
+        gzd_features = gzd_data["features"]
+        gzd_feature = [feature for feature in gzd_features if feature["properties"].get("gzd") == self.gzd][0]
+        gzd_geom = shape(gzd_feature["geometry"])
+        
+        x_coords = np.arange(min_x, max_x, cell_size)
+        y_coords = np.arange(min_y, max_y, cell_size)
+        total_cells = len(x_coords) * len(y_coords)
+        feedback.pushInfo(f"Total cells to be processed: {total_cells}.")
 
-        # Define the grid zone bounds and step sizes
-        bands = "CDEFGHJKLMNPQRSTUVWX"
-        # bands = "C"
-        # lat = -80
-        lat = lat_min
-        for band in bands:
-            feedback.pushInfo(f"Processing band {band}")
-            height = 8 if band != 'X' else 12
-            # lon = -180
-            lon = lon_min
-            # while lon < 180:
-            while lon < lon_max:
-                # Loop through GZDs
-                gzd = f"{(int((lon + 180) / 6) + 1):02d}{band}"
-                # gzd = f"{(int((lon + lon_max) / 6) + 1):02d}{band}"
-                create_mgrs_grids(lon, lat, 6, height, gzd, self.resolution, sink, feedback)
-                lon += 6
+        current_step = 0  # Track current step
+        for x in x_coords:
+            for y in y_coords:
+                current_step += 1
+                progress = int((current_step / total_cells) * 100)
+                feedback.setProgress(progress)                
+              
+                cell_polygon_utm = Polygon([
+                    (x, y),
+                    (x + cell_size, y),
+                    (x + cell_size, y + cell_size),
+                    (x, y + cell_size),
+                    (x, y)  # Close the polygon
+                ])            
+                cell_geometry_utm = QgsGeometry.fromWkt(cell_polygon_utm.wkt) 
+                cell_geometry_utm.transform(transformer)               
+                cell_polygon = loads(cell_geometry_utm.asWkt() )
+
+                if cell_polygon.intersects(gzd_geom):
+                    centroid_lat, centroid_lon  =  cell_polygon.centroid.y, cell_polygon.centroid.x,
+                    mgrs_id = mgrs.toMgrs(centroid_lat, centroid_lon, self.resolution)
+                    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)                
+                    
+                    mgrs_feature = QgsFeature()
+                    mgrs_feature.setGeometry(cell_geometry)
+                    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)                     
+                    mgrs_feature.setAttributes([mgrs_id,self.resolution,center_lat,center_lon,cell_width, cell_height,cell_area])
+                    if not gzd_geom.contains(cell_polygon):
+                        intersected_polygon = cell_polygon.intersection(gzd_geom)  
+                        if intersected_polygon:
+                            intersected_centroid_lat, intersected_centroid_lon  =  intersected_polygon.centroid.y, intersected_polygon.centroid.x,
+                            interescted_mgrs_id = mgrs.toMgrs(intersected_centroid_lat, intersected_centroid_lon, self.resolution)            
+                            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(intersected_polygon)                     
+                            cell_geometry = QgsGeometry.fromWkt(intersected_polygon.wkt)       
+                            mgrs_feature.setGeometry(cell_geometry)
+                            mgrs_feature.setAttributes([interescted_mgrs_id,self.resolution,center_lat,center_lon,cell_width, cell_height,cell_area])
+                
+                    sink.addFeature(mgrs_feature, QgsFeatureSink.FastInsert) 
+
                 if feedback.isCanceled():
-                    break
-
-            lat += height
-
+                        break
+        
         feedback.pushInfo("MGRS grid generation completed.")
         # Apply styling (optional)
         if context.willLoadLayerOnCompletion(dest_id):
@@ -190,61 +270,6 @@ class GridMGRS(QgsProcessingAlgorithm):
             )
 
         return {self.OUTPUT: dest_id}
-
-def km_to_lon_degree(km, lat):
-    """Convert a distance in kilometers to degrees of longitude at a given latitude."""
-    return km / (111.32 * math.cos(math.radians(lat)))
-
-def create_mgrs_grids(lon_start, lat_start, lon_width, lat_height, gzd, resolution, sink, feedback):
-    """Create MGRS grids at the specified RESOLUTION."""
-    if resolution == 0:
-        # RESOLUTION 0 means 100 km x 100 km squares (100,000 meters)
-        lon_step_km = 100  # 100 km step in longitude
-        lat_step_km = 100  # 100 km step in latitude
-
-        # Convert lon_step_km and lat_step_km to degrees of longitude and latitude
-        lon_step_deg = km_to_lon_degree(lon_step_km, lat_start)  # Convert to degrees at the current latitude
-        lat_step_deg = lat_step_km / 111.32  # Convert km to degrees for latitude (constant)
-
-    else:
-        # Calculate the step size for higher RESOLUTION
-        step = 10 ** (5 - resolution)  # Step size in meters
-        lon_step_deg = km_to_lon_degree(step / 1000, lat_start)  # Convert meters to degrees
-        lat_step_deg = step / 111.32  # Convert meters to degrees for latitude
-
-    # Add logging to check the calculated steps
-    # feedback.pushInfo(f"Lon step (in degrees): {lon_step_deg}, Lat step (in degrees): {lat_step_deg}")
-
-    # Iterate over the grid to create each polygon
-    for i in range(int(lon_width / lon_step_deg)):
-        for j in range(int(lat_height / lat_step_deg)):
-            lon_min = lon_start + i * lon_step_deg
-            lon_max = lon_min + lon_step_deg
-            lat_min = lat_start + j * lat_step_deg
-            lat_max = lat_min + lat_step_deg
-
-            # Create a MGRS code for each grid square
-            mgrs_code = f"{gzd}{i:02d}{j:02d}"
-            add_polygon_to_sink(lon_min, lat_min, lon_max, lat_max, mgrs_code, sink, feedback)
-            
-def add_polygon_to_sink(lon_min, lat_min, lon_max, lat_max, mgrs_code, sink, feedback):
-    """Add a polygon representing the MGRS grid cell to the sink."""
-    try:
-        # Define the coordinates of the polygon
-        polygon = QgsGeometry.fromPolygonXY([[QgsPointXY(lon_min, lat_min),
-                                              QgsPointXY(lon_max, lat_min),
-                                              QgsPointXY(lon_max, lat_max),
-                                              QgsPointXY(lon_min, lat_max),
-                                              QgsPointXY(lon_min, lat_min)]])
-        # Create a feature and add the polygon geometry
-        feature = QgsFeature()
-        feature.setGeometry(polygon)
-        feature.setAttributes([mgrs_code])  # Set the MGRS code as an attribute
-        sink.addFeature(feature, QgsFeatureSink.FastInsert)
-        # feedback.pushInfo(f"Added MGRS cell: {mgrs_code}")
-    except Exception as e:
-        feedback.pushWarning(f"Error adding MGRS cell {mgrs_code}: {e}")
-
 
 class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
     instance = None

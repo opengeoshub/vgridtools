@@ -116,7 +116,7 @@ class GridGZD(QgsProcessingAlgorithm):
         polar = self.parameterAsBoolean(parameters, self.POLAR, context)
 
         f = QgsFields()
-        f.append(QgsField("GZD", QVariant.String))
+        f.append(QgsField("gzd", QVariant.String))
 
         (sink, dest_id) = self.parameterAsSink(
             parameters, self.OUTPUT,
@@ -166,13 +166,17 @@ class GridGZD(QgsProcessingAlgorithm):
             self.exportPolygon(sink, -180, 84, 180, 6, 'Y')
             self.exportPolygon(sink, 0, 84, 180, 6, 'Z')
 
-       
+        feedback.pushInfo("GZD generation completed.")
+        # Apply styling (optional)
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-            fontColor = QColor('#000000')
-            context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(StylePostProcessor.create(lineColor, fontColor))
-        
+            fontColor = QColor('#000000')  # Black font
+            context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
+                StylePostProcessor.create(lineColor, fontColor)
+            )
+
         return {self.OUTPUT: dest_id}
+
 
     def exportPolygon(self, sink, lon, lat, width, height, gzd):
         rect = QgsRectangle(lon, lat, lon+width, lat+height)
@@ -200,7 +204,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
         label = QgsPalLayerSettings()
-        label.fieldName = 'GZD'
+        label.fieldName = 'gzd'
         format = label.format()
         format.setColor(self.font_color)
         format.setSize(8)
@@ -214,7 +218,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         layer_node = root.findLayer(layer.id())
         if layer_node:
             layer_node.setCustomProperty("showFeatureCount", True)
-            
+        
         iface.mapCanvas().setExtent(layer.extent())
         iface.mapCanvas().refresh()
         
