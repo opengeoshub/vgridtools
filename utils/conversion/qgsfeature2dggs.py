@@ -264,11 +264,7 @@ def poly2s2(feature, resolution):
     # Get the covering cells
     covering = coverer.get_covering(region)
 
-    # Convert the covering cells to S2 cell IDs
     for cell_id in covering:
-        cell_ids.append(cell_id)
-    
-    for cell_id in cell_ids:
         cell_polygon = s2_cell_to_polygon(cell_id)
         cell_token = s2.CellId.to_token(cell_id)      
         num_edges = 4
