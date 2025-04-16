@@ -34,6 +34,8 @@ from qgis.PyQt.QtGui import QIcon
 
 from .processing_provider.conversion.dggs2qgsfeature import CellID2DGGS
 from .processing_provider.conversion.qgsfeature2dggs import Vector2DGGS
+from .processing_provider.conversion.raster2dggs import Raster2DGGS
+
 
 from .processing_provider.generator.grid_h3 import GridH3
 from .processing_provider.generator.grid_s2 import GridS2
@@ -74,6 +76,7 @@ class VgridProvider(QgsProcessingProvider):
     def loadAlgorithms(self):
         self.addAlgorithm(CellID2DGGS())
         self.addAlgorithm(Vector2DGGS())
+        self.addAlgorithm(Raster2DGGS())
 
         self.addAlgorithm(GridH3())
         self.addAlgorithm(GridS2())
