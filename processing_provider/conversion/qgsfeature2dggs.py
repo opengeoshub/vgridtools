@@ -22,6 +22,7 @@ from qgis.core import (
     QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
+    QgsProcessingParameterBoolean,
     QgsWkbTypes    
     )
 
@@ -40,9 +41,12 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     INPUT = 'INPUT'
     DGGS_TYPE = 'DGGS_TYPE'
     RESOLUTION = 'RESOLUTION'
+    COMPACT = 'COMPACT'
+    
     DGGS_TYPES = [
         'H3', 'S2','Rhealpix','EASE', 'QTM', 'OLC', 'Geohash', 
-        'GEOREF','MGRS', 'Tilecode','Quadkey']
+        # 'GEOREF',
+        'MGRS', 'Tilecode','Quadkey']
     DGGS_RESOLUTION = {
         'H3': (0, 15, 10),
         'S2': (0, 30, 16),
@@ -51,7 +55,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         'QTM':(1,24,12),
         'OLC': (2, 15, 10),
         'Geohash': (1, 30, 15),
-        'GEOREF': (0, 10, 6),
+        # 'GEOREF': (0, 10, 6),
         'MGRS': (0, 5, 4),
         'Tilecode': (0, 29, 15),
         'Quadkey': (0, 29, 15)        
@@ -130,7 +134,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     def outputWkbType(self, input_wkb_type):
         return (QgsWkbTypes.Polygon)   
     
-
     def supportInPlaceEdit(self, layer):
         return False
 
@@ -155,6 +158,12 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             10,
             minValue=0,
             maxValue=40
+        ))
+        
+        self.addParameter(QgsProcessingParameterBoolean(
+            self.COMPACT,
+            "Compact",
+            defaultValue=False  
         ))
 
 
@@ -219,6 +228,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     def prepareAlgorithm(self, parameters, context, feedback):       
         source = self.parameterAsSource(parameters, self.INPUT, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        self.compact  = self.parameterAsBool(parameters, self.COMPACT, context)
 
         self.total_features = source.featureCount()
         self.num_bad = 0
@@ -232,14 +242,14 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'qtm': qgsfeature2qtm,
             'olc': qgsfeature2olc,
             'geohash': qgsfeature2geohash, # Need to check polyline/ polygon2geohash
-            'georef': qgsfeature2georef,   
+            # 'georef': qgsfeature2georef,   
             # 'mgrs': mgrs2qgsfeature,
             'tilecode': qgsfeature2tilecode,
             'quadkey': qgsfeature2quadkey
         }
         if platform.system() == 'Windows':
-            self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t # Need to check polyline/ polygon2isea4t
-            self.DGGS_TYPE_functions['isea3h'] = qgsfeature2isea3h # Need to check polyline/ polygon2isea4t
+            self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t # Need to check polyline/ polygon2isea4t --> QGIS crashed
+            self.DGGS_TYPE_functions['isea3h'] = qgsfeature2isea3h # Need to check polyline/ polygon2isea3h --> QGIS crashed
 
         return True
 
@@ -290,13 +300,16 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 for polygon in geom.asMultiPolygon():
                     polygon_feature = QgsFeature(feature)
                     polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
-                    cell_polygons = conversion_function(polygon_feature, self.resolution)
+                    cell_polygons = conversion_function(polygon_feature, self.resolution,self.compact)
                     multi_cell_polygons.extend(cell_polygons)                
                     if feedback.isCanceled():
                         return []
                 return multi_cell_polygons
             
-            # # Handle Single Geometries
+            # Handle Single Geometries
+            elif geom.wkbType() == QgsWkbTypes.Polygon:
+                return conversion_function(feature, self.resolution,self.compact)
+            
             return conversion_function(feature, self.resolution) or []
 
         except Exception as e:

@@ -47,9 +47,11 @@ if (platform.system() == 'Windows'):
     from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
     from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
     from vgrid.utils.eaggr.enums.model import Model
-    from vgrid.generator.isea4tgrid import base_cells, isea4t_cell_to_polygon,\
+    from vgrid.generator.isea4tgrid import isea4t_cell_to_polygon,\
                                           get_isea4t_children_cells,get_isea4t_children_cells_within_bbox,\
                                           fix_isea4t_antimeridian_cells
+    from vgrid.generator.settings import isea4t_base_cells
+
     isea4t_dggs = Eaggr(Model.ISEA4T)
     
 from ...utils.imgs import Imgs
@@ -223,7 +225,7 @@ class GridISEA4T(QgsProcessingAlgorithm):
                 total_cells = 20*(4**self.resolution)
                 feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
                 
-                children = get_isea4t_children_cells(isea4t_dggs, base_cells, self.resolution)
+                children = get_isea4t_children_cells(isea4t_dggs, isea4t_base_cells, self.resolution)
                 for idx, child in enumerate(children):
                     progress = int((idx / total_cells) * 100)
                     feedback.setProgress(progress) 
