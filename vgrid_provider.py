@@ -38,6 +38,7 @@ from .processing_provider.conversion.raster2dggs import Raster2DGGS
 
 
 from .processing_provider.binning.bin_h3 import BinH3
+from .processing_provider.binning.bin_s2 import BinS2
 from .processing_provider.binning.bin_polygon import BinPolygon
 
 
@@ -83,6 +84,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(Raster2DGGS())
         
         self.addAlgorithm(BinH3())
+        self.addAlgorithm(BinS2())
         self.addAlgorithm(BinPolygon())
 
 
