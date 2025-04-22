@@ -13,7 +13,7 @@
 <details open="open">
   <summary>Vgrid DGGS Tools for QGIS</summary>
   <div align="center">
-  <img src="images/tutorial/olc.png">
+  <img src="images/readme/h3.png">
 </div>
   <ol>
       <li>  

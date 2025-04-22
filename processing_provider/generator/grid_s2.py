@@ -82,7 +82,7 @@ class GridS2(QgsProcessingAlgorithm):
         return self.tr('S2', 'S2')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
@@ -90,8 +90,8 @@ class GridS2(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, grid, S2, generator').split(',')
     
-    txt_en = 'S2 Grid Generator'
-    txt_vi = 'S2 Grid Generator'
+    txt_en = 'S2 DGGS Generator'
+    txt_vi = 'S2 DGGS Generator'
     figure = '../images/tutorial/grid_s2.png'
 
     def shortHelpString(self):

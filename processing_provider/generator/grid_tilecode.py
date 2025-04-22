@@ -81,7 +81,7 @@ class GridTilecode(QgsProcessingAlgorithm):
         return self.tr('Tilecode', 'Tilecode')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
@@ -89,8 +89,8 @@ class GridTilecode(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('Vgrid, Tilecode, generator').split(',')
     
-    txt_en = 'Tilecode Grid'
-    txt_vi = 'Tilecode Grid'
+    txt_en = 'Tilecode DGGS Generator'
+    txt_vi = 'Tilecode DGGS Generator'
     figure = '../images/tutorial/grid_tilecode.png'
 
     def shortHelpString(self):

@@ -84,7 +84,7 @@ class GridH3(QgsProcessingAlgorithm):
         return self.tr('H3', 'H3')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
@@ -92,8 +92,8 @@ class GridH3(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, grid, H3, generator').split(',')
     
-    txt_en = 'H3 Grid Generator'
-    txt_vi = 'H3 Grid Generator'
+    txt_en = 'H3 DGGS Generator'
+    txt_vi = 'H3 DGGS Generator'
     figure = '../images/tutorial/grid_h3.png'
 
     def shortHelpString(self):

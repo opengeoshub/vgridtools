@@ -82,7 +82,7 @@ class GridOLC(QgsProcessingAlgorithm):
         return self.tr('OLC', 'OLC')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
@@ -90,8 +90,8 @@ class GridOLC(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('OLC, grid, generator').split(',')
     
-    txt_en = 'OLC Grid'
-    txt_vi = 'OLC Grid'
+    txt_en = 'OLC DGGS Generator' 
+    txt_vi = 'OLC DGGS Generator'
     figure = '../images/tutorial/grid_olc.png'
 
     def shortHelpString(self):
@@ -205,7 +205,6 @@ class GridOLC(QgsProcessingAlgorithm):
             "type": "FeatureCollection",
             "features": olc_features
         }
-
 
 
     def processAlgorithm(self, parameters, context, feedback):

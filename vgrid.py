@@ -2,11 +2,11 @@
 
 """
 /***************************************************************************
- Vgrid Tools
+ vgrid DGGS
                                  A QGIS plugin
- GeoPorocessing Tools based on lftools https://github.com/LEOXINGU/lftools
+ based on Vgrid and following lftools project structure https://github.com/LEOXINGU/lftools
                               -------------------
-        Date                : 2024-11-20
+        Date                 : 2024-11-20
         copyright            : (L) 2024 by Thang Quach
         email                : quachdongthang@gmail.com
  ***************************************************************************/

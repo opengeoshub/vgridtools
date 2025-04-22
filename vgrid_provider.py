@@ -2,11 +2,11 @@
 
 """
 /***************************************************************************
- vgrid
+ vgrid DGGS
                                  A QGIS plugin
- GeoPorocessing Tools based on lftools https://github.com/LEOXINGU/lftools
+ based on Vgrid and following lftools project structure https://github.com/LEOXINGU/lftools
                               -------------------
-        Date                : 2024-11-20
+        Date                 : 2024-11-20
         copyright            : (L) 2024 by Thang Quach
         email                : quachdongthang@gmail.com
  ***************************************************************************/
@@ -35,6 +35,10 @@ from qgis.PyQt.QtGui import QIcon
 from .processing_provider.conversion.dggs2qgsfeature import CellID2DGGS
 from .processing_provider.conversion.qgsfeature2dggs import Vector2DGGS
 from .processing_provider.conversion.raster2dggs import Raster2DGGS
+
+
+from .processing_provider.binning.bin_h3 import BinH3
+from .processing_provider.binning.bin_polygon import BinPolygon
 
 
 from .processing_provider.generator.grid_h3 import GridH3
@@ -77,6 +81,10 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(CellID2DGGS())
         self.addAlgorithm(Vector2DGGS())
         self.addAlgorithm(Raster2DGGS())
+        
+        self.addAlgorithm(BinH3())
+        self.addAlgorithm(BinPolygon())
+
 
         self.addAlgorithm(GridH3())
         self.addAlgorithm(GridS2())

@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Clean __pycache__",
+      "type": "shell",
+      "command": "Get-ChildItem -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

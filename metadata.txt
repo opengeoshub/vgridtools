@@ -2,14 +2,14 @@
 name=Vgrid
 qgisMinimumVersion=3.10
 description= Vgrid DGGS and Cell-based Geocoding Tools
-about= - Encode/ decode Latlong to H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE-DGGS, DGGRID, QTM, OLC/ OpenLocationCode/ Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS, - Convert Cell ID to DGGS, - Convert Vector Layers to DGGS, - Generate DGGS grids
-version=25.03.08
+about= - Encode/ decode Latlong to H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE-DGGS, DGGRID, QTM, OLC/ OpenLocationCode/ Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS, - Convert Cell ID to DGGS, - Convert Vector to DGGS, - Convert Raster to DGGS, - Generate DGGS grids
+version=25.4.21
 author=Thang Quach
 owner=thangqd
 email=quachdongthang@gmail.com
 tracker=https://github.com/thangqd/vgridtools/issues
 repository=https://github.com/thangqd/vgridtools/
-tags=Discrete Global Grid System, DGGS, H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE-DGGS,DGGRID, QTM, OLC, OpenLocationCode, Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS
+tags=Discrete Global Grid System, DGGS, H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE-DGGS, DGGRID, QTM, OLC, OpenLocationCode, Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS
 
 homepage=https://github.com/thangqd/vgridtools/
 category=Processing

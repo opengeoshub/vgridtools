@@ -81,7 +81,7 @@ class GridQuadkey(QgsProcessingAlgorithm):
         return self.tr('Quadkey', 'Quadkey')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
@@ -89,8 +89,8 @@ class GridQuadkey(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('Vgrid, Quadkey, generator').split(',')
     
-    txt_en = 'Quadkey Grid'
-    txt_vi = 'Quadkey Grid'
+    txt_en = 'Quadkey DGGS Generator'
+    txt_vi = 'Quadkey DGGS Generator'
     figure = '../images/tutorial/grid_tilecode.png'
 
     def shortHelpString(self):

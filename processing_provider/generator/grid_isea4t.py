@@ -94,7 +94,7 @@ class GridISEA4T(QgsProcessingAlgorithm):
         return self.tr('ISEA4T', 'ISEA4T')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
@@ -102,8 +102,8 @@ class GridISEA4T(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, grid, ISEA4T, generator').split(',')
     
-    txt_en = 'ISEA4T Grid Generator'
-    txt_vi = 'ISEA4T Grid Generator'
+    txt_en = 'ISEA4T DGGS Generator'
+    txt_vi = 'ISEA4T DGGS Generator'
     figure = '../images/tutorial/grid_isea4t.png'
 
     def shortHelpString(self):

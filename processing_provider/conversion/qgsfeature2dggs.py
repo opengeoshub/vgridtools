@@ -54,7 +54,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         'EASE':(0,6,4),
         'QTM':(1,24,12),
         'OLC': (2, 15, 10),
-        'Geohash': (1, 30, 15),
+        'Geohash': (1, 10, 9),
         # 'GEOREF': (0, 10, 6),
         'MGRS': (0, 5, 4),
         'Tilecode': (0, 29, 15),

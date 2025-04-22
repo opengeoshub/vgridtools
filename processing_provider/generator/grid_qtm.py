@@ -80,7 +80,7 @@ class GridQTM(QgsProcessingAlgorithm):
         return self.tr('QTM', 'QTM')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
@@ -88,8 +88,8 @@ class GridQTM(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, grid, QTM, generator').split(',')
     
-    txt_en = 'QTM Grid Generator'
-    txt_vi = 'QTM Grid Generator'
+    txt_en = 'QTM DGGS Generator'
+    txt_vi = 'QTM DGGS Generator'
     figure = '../images/tutorial/grid_qtm.png'
 
     def shortHelpString(self):

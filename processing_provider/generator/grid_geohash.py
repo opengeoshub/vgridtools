@@ -80,7 +80,7 @@ class GridGeohash(QgsProcessingAlgorithm):
         return self.tr('Geohash', 'Geohash')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
@@ -88,8 +88,8 @@ class GridGeohash(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, grid, Geohash, generator').split(',')
     
-    txt_en = 'Geohash Grid Generator'
-    txt_vi = 'Geohash Grid Generator'
+    txt_en = 'Geohash DGGS Generator'
+    txt_vi = 'Geohash DGGS Generator'
     figure = '../images/tutorial/grid_geohash.png'
 
     def shortHelpString(self):

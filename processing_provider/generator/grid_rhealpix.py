@@ -82,19 +82,19 @@ class GridRhealpix(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)),  '../images/generator/grid_quad.svg'))
     
     def displayName(self):
-        return self.tr('Rhealpix', 'Rhealpix')
+        return self.tr('rHEALpix', 'rHEALpix')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
 
     def tags(self):
-        return self.tr('DGGS, grid, Rhealpix, generator').split(',')
+        return self.tr('DGGS, grid, rHEALpix, generator').split(',')
     
-    txt_en = 'Rhealpix Grid Generator'
-    txt_vi = 'Rhealpix Grid Generator'
+    txt_en = 'rHEALpix DGGS Generator'
+    txt_vi = 'rHEALpix DGGS Generator'
     figure = '../images/tutorial/grid_rhealpix.png'
 
     def shortHelpString(self):

@@ -72,7 +72,7 @@ class GridGZD(QgsProcessingAlgorithm):
         return self.tr('MGRS GZD', 'MGRS GZD')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'

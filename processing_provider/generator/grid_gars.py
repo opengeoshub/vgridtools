@@ -82,7 +82,7 @@ class GridGARS(QgsProcessingAlgorithm):
         return self.tr('GARS', 'GARS')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
@@ -90,8 +90,8 @@ class GridGARS(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, grid, GARS, generator').split(',')
     
-    txt_en = 'GARS Grid Generator'
-    txt_vi = 'GARS Grid Generator'
+    txt_en = 'GARS DGGS Generator'
+    txt_vi = 'GARS DGGS Generator'
     figure = '../images/tutorial/grid_gars.png'
 
     def shortHelpString(self):

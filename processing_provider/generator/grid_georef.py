@@ -74,19 +74,19 @@ class GridGeoref(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
-        return self.tr('Georef', 'Georef')
+        return self.tr('GEOREF', 'GEOREF')
 
     def group(self):
-        return self.tr('DGGS Generator', 'DGGS Generator')
+        return self.tr('Generator', 'Generator')
 
     def groupId(self):
         return 'grid'
 
     def tags(self):
-        return self.tr('Georef, grid, generator').split(',')
+        return self.tr('GEOREF, grid, generator').split(',')
     
-    txt_en = 'Georef Grid'
-    txt_vi = 'Georef Grid'
+    txt_en = 'GEOREF DGGS Generator'
+    txt_vi = 'GEOREF DGGS Generator'
     figure = '../images/tutorial/codes2cells.png'
 
     def shortHelpString(self):
