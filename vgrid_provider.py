@@ -35,6 +35,7 @@ from qgis.PyQt.QtGui import QIcon
 from .processing_provider.conversion.dggs2qgsfeature import CellID2DGGS
 from .processing_provider.conversion.qgsfeature2dggs import Vector2DGGS
 from .processing_provider.conversion.raster2dggs import Raster2DGGS
+from .processing_provider.conversion.expanddggs import ExpandDGGS
 
 
 from .processing_provider.binning.bin_h3 import BinH3
@@ -44,6 +45,9 @@ from .processing_provider.binning.bin_isea4t import BinISEA4T
 from .processing_provider.binning.bin_qtm import BinQTM
 
 from .processing_provider.binning.bin_olc import BinOLC
+from .processing_provider.binning.bin_geohash import BinGeohash
+from .processing_provider.binning.bin_tilecode import BinTilecode
+from .processing_provider.binning.bin_quadkey import BinQuadkey
 
 from .processing_provider.binning.bin_polygon import BinPolygon
 
@@ -88,7 +92,8 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(CellID2DGGS())
         self.addAlgorithm(Vector2DGGS())
         self.addAlgorithm(Raster2DGGS())
-        
+        self.addAlgorithm(ExpandDGGS())
+        ################################
         self.addAlgorithm(BinH3())
         self.addAlgorithm(BinS2())
         self.addAlgorithm(BinrHEALPix())
@@ -96,10 +101,13 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(BinQTM())
         
         self.addAlgorithm(BinOLC())
-        
+        self.addAlgorithm(BinGeohash())
+        self.addAlgorithm(BinTilecode())
+        self.addAlgorithm(BinQuadkey())
+
         self.addAlgorithm(BinPolygon())
 
-
+        ################################
         self.addAlgorithm(GridH3())
         self.addAlgorithm(GridS2())
         self.addAlgorithm(GridrHEALPix())
