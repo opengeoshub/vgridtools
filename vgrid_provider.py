@@ -42,6 +42,9 @@ from .processing_provider.binning.bin_s2 import BinS2
 from .processing_provider.binning.bin_rhealpix import BinrHEALPix
 from .processing_provider.binning.bin_isea4t import BinISEA4T
 from .processing_provider.binning.bin_qtm import BinQTM
+
+from .processing_provider.binning.bin_olc import BinOLC
+
 from .processing_provider.binning.bin_polygon import BinPolygon
 
 
@@ -91,6 +94,9 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(BinrHEALPix())
         self.addAlgorithm(BinISEA4T())
         self.addAlgorithm(BinQTM())
+        
+        self.addAlgorithm(BinOLC())
+        
         self.addAlgorithm(BinPolygon())
 
 
