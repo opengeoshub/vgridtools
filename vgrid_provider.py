@@ -39,19 +39,22 @@ from .processing_provider.conversion.raster2dggs import Raster2DGGS
 
 from .processing_provider.binning.bin_h3 import BinH3
 from .processing_provider.binning.bin_s2 import BinS2
+from .processing_provider.binning.bin_rhealpix import BinrHEALPix
+from .processing_provider.binning.bin_isea4t import BinISEA4T
+from .processing_provider.binning.bin_qtm import BinQTM
 from .processing_provider.binning.bin_polygon import BinPolygon
 
 
 from .processing_provider.generator.grid_h3 import GridH3
 from .processing_provider.generator.grid_s2 import GridS2
-from .processing_provider.generator.grid_rhealpix import GridRhealpix
+from .processing_provider.generator.grid_rhealpix import GridrHEALPix
 from .processing_provider.generator.grid_isea4t import GridISEA4T
 
 from .processing_provider.generator.grid_qtm import GridQTM
 
 from .processing_provider.generator.grid_olc import GridOLC
 from .processing_provider.generator.grid_geohash import GridGeohash
-from .processing_provider.generator.grid_georef import GridGeoref
+from .processing_provider.generator.grid_georef import GridGEOREF
 from .processing_provider.generator.grid_mgrs import GridMGRS
 from .processing_provider.generator.grid_gzd import GridGZD
 from .processing_provider.generator.grid_tilecode import GridTilecode
@@ -85,18 +88,21 @@ class VgridProvider(QgsProcessingProvider):
         
         self.addAlgorithm(BinH3())
         self.addAlgorithm(BinS2())
+        self.addAlgorithm(BinrHEALPix())
+        self.addAlgorithm(BinISEA4T())
+        self.addAlgorithm(BinQTM())
         self.addAlgorithm(BinPolygon())
 
 
         self.addAlgorithm(GridH3())
         self.addAlgorithm(GridS2())
-        self.addAlgorithm(GridRhealpix())
+        self.addAlgorithm(GridrHEALPix())
         self.addAlgorithm(GridISEA4T())
         self.addAlgorithm(GridQTM())
 
         self.addAlgorithm(GridOLC())
         self.addAlgorithm(GridGeohash())
-        # self.addAlgorithm(GridGeoref())
+        # self.addAlgorithm(GridGEOREF())
         self.addAlgorithm(GridMGRS())
         self.addAlgorithm(GridGZD())
         self.addAlgorithm(GridTilecode())

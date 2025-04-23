@@ -44,7 +44,7 @@ from vgrid.utils import georef
 from ...utils.imgs import Imgs
 
 
-class GridGeoref(QgsProcessingAlgorithm):
+class GridGEOREF(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'
     RESOLUTION = 'RESOLUTION'
     OUTPUT = 'OUTPUT'
@@ -65,7 +65,7 @@ class GridGeoref(QgsProcessingAlgorithm):
             return self.translate(string[0])
     
     def createInstance(self):
-        return GridGeoref()
+        return GridGEOREF()
 
     def name(self):
         return 'grid_georef'
@@ -121,7 +121,7 @@ class GridGeoref(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
-                'Georef')
+                'GEOREF')
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
@@ -255,7 +255,7 @@ class GridGeoref(QgsProcessingAlgorithm):
                 feedback.setProgress(int((idx / total_georefes) * 100))
                 self.expand_georef_within_extent(gh, self.RESOLUTION, sink, fields, self.grid_extent,feedback)
 
-        feedback.pushInfo("Georef grid generation completed.")
+        feedback.pushInfo("GEOREF DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')

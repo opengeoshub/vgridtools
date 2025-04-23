@@ -251,7 +251,7 @@ class GridGARS(QgsProcessingAlgorithm):
                     if feedback.isCanceled():
                         break       
         
-        feedback.pushInfo("GARS grid generation completed.")            
+        feedback.pushInfo("GARS DGGS generation completed.")            
         # Set styling if loading the layer
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))

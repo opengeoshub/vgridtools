@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-bin_h3.py
+bin_qtm.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -36,13 +36,13 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from PyQt5.QtCore import QVariant
 import os, statistics
-import h3
+from vgrid.utils import qtm
 from shapely.geometry import Point, Polygon, shape
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter    
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
 
-class BinH3(QgsProcessingAlgorithm):
+class BinQTM(QgsProcessingAlgorithm):
     INPUT = 'INPUT'
     CATEGORY_FIELD = 'CATEGORY_FIELD'
     NUMERIC_FIELD = 'NUMERIC_FIELD'
@@ -72,16 +72,16 @@ class BinH3(QgsProcessingAlgorithm):
             return self.translate(string[0])
     
     def createInstance(self):
-        return BinH3()
+        return BinQTM()
 
     def name(self):
-        return 'bin_h3'
+        return 'bin_qtm'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_h3.svg'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_triangle.svg'))
     
     def displayName(self):
-        return self.tr('H3', 'H3')
+        return self.tr('QTM', 'QTM')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -90,11 +90,11 @@ class BinH3(QgsProcessingAlgorithm):
         return 'binning'
 
     def tags(self):
-        return self.tr('DGGS, H3, Binning').split(',')
+        return self.tr('DGGS, qtm, Binning').split(',')
     
-    txt_en = 'H3 Binning'
-    txt_vi = 'H3 Binning'
-    figure = '../images/tutorial/bin_h3.png'
+    txt_en = 'QTM Binning'
+    txt_vi = 'QTM Binning'
+    figure = '../images/tutorial/bin_qtm.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -145,11 +145,11 @@ class BinH3(QgsProcessingAlgorithm):
 
         self.addParameter(QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('Resolution [0..15]'),
+                    self.tr('Resolution [1..24]'),
                     QgsProcessingParameterNumber.Integer,
-                    defaultValue=8,
-                    minValue= 0,
-                    maxValue= 15,
+                    defaultValue=14,
+                    minValue= 1,
+                    maxValue= 24,
                     optional=False)
         )
 
@@ -177,8 +177,8 @@ class BinH3(QgsProcessingAlgorithm):
         return True
 
     def processAlgorithm(self, parameters, context, feedback):        
-        h3_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
-        h3_geometries = {}
+        qtm_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
+        qtm_geometries = {}
 
         total_points = sum(1 for _ in self.point_layer.getFeatures())
         feedback.setProgress(0)  # Initial progress value
@@ -186,35 +186,36 @@ class BinH3(QgsProcessingAlgorithm):
         # Process each point and update progress
         for i, point_feature in enumerate(self.point_layer.getFeatures()):
             point = point_feature.geometry().asPoint()
-            h3_id = h3.latlng_to_cell(point.y(), point.x(), self.resolution)
+            qtm_id = qtm.latlon_to_qtm_id(point.y(), point.x(), self.resolution)
             props = point_feature.attributes()
             fields = self.point_layer.fields()
             props_dict = {fields[i].name(): props[i] for i in range(len(fields))}
 
-            append_stats_value(h3_bins, h3_id, props_dict, self.stats, self.numeric_field, self.category_field)
+            append_stats_value(qtm_bins, qtm_id, props_dict, self.stats, self.numeric_field, self.category_field)
 
             # Update progress after each point is processed
             feedback.setProgress(int((i + 1) / total_points * 100))
 
         # Provide progress feedback for the categories
-        for cat, values in h3_bins[next(iter(h3_bins))].items():
+        for cat, values in qtm_bins[next(iter(qtm_bins))].items():
             feedback.pushInfo(str(cat))
 
         # Generate geometries and update progress
-        total_h3_bins = len(h3_bins)
-        for i, h3_id in enumerate(h3_bins.keys()):
-            coords = [(lng, lat) for lat, lng in h3.cell_to_boundary(h3_id)]
-            h3_geometries[h3_id] = Polygon(coords)
+        total_qtm_bins = len(qtm_bins)
+        for i, qtm_id in enumerate(qtm_bins.keys()):
+            facet = qtm.qtm_id_to_facet(qtm_id)
+            cell_polygon = qtm.constructGeometry(facet)  
+            qtm_geometries[qtm_id] = cell_polygon
 
             # Update progress after each geometry is generated
-            feedback.setProgress(int((i + 1) / total_h3_bins * 100))
+            feedback.setProgress(int((i + 1) / total_qtm_bins * 100))
 
         # Prepare output fields
         out_fields = QgsFields()
-        out_fields.append(QgsField("h3", QVariant.String))
+        out_fields.append(QgsField("qtm", QVariant.String))
 
         all_categories = set()
-        for bin_data in h3_bins.values():
+        for bin_data in qtm_bins.values():
             all_categories.update(bin_data.keys())
 
         for cat in sorted(all_categories):
@@ -232,13 +233,13 @@ class BinH3(QgsProcessingAlgorithm):
         # Create the sink for the output
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context, out_fields, QgsWkbTypes.Polygon, self.point_layer.sourceCrs())
 
-        # Process each H3 bin and update progress
-        total_h3_geometries = len(h3_geometries)
-        for i, (h3_id, geom) in enumerate(h3_geometries.items()):
+        # Process each qtm bin and update progress
+        total_qtm_geometries = len(qtm_geometries)
+        for i, (qtm_id, geom) in enumerate(qtm_geometries.items()):
             props = {}
             for cat in sorted(all_categories):
                 prefix = '' if not self.category_field else f"{cat}_"
-                values = h3_bins[h3_id].get(cat, get_default_stats_structure())
+                values = qtm_bins[qtm_id].get(cat, get_default_stats_structure())
 
                 if self.stats == 'count':
                     props[f'{prefix}count'] = values['count']
@@ -267,12 +268,12 @@ class BinH3(QgsProcessingAlgorithm):
                 elif self.stats == 'variety':
                     props[f'{prefix}variety'] = len(set(values['values']))
 
-            h3_feature = QgsFeature(out_fields)
-            h3_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            h3_feature.setAttributes([props.get(f.name(), None) if f.name() != 'h3' else h3_id for f in out_fields])
-            sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)
+            qtm_feature = QgsFeature(out_fields)
+            qtm_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
+            qtm_feature.setAttributes([props.get(f.name(), None) if f.name() != 'qtm' else qtm_id for f in out_fields])
+            sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)
 
-            # Update progress after each H3 bin is processed
-            feedback.setProgress(int((i + 1) / total_h3_geometries * 100))
+            # Update progress after each qtm bin is processed
+            feedback.setProgress(int((i + 1) / total_qtm_geometries * 100))
 
         return {self.OUTPUT: dest_id}

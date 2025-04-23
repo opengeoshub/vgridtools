@@ -224,7 +224,7 @@ class GridS2(QgsProcessingAlgorithm):
             if feedback.isCanceled():
                 break
             
-        feedback.pushInfo("S2 grid generation completed.")
+        feedback.pushInfo("S2 DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
             # lineColor = QColor('#FF0000')
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-bin_h3.py
+bin_rhealpix.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -36,13 +36,16 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from PyQt5.QtCore import QVariant
 import os, statistics
-import h3
-from shapely.geometry import Point, Polygon, shape
-from ...utils.imgs import Imgs
 from collections import defaultdict, Counter    
+from ...utils.imgs import Imgs
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
 
-class BinH3(QgsProcessingAlgorithm):
+from vgrid.conversion.latlon2dggs import latlon2rhealpix
+from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
+from vgrid.utils.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
+ 
+class BinrHEALPix(QgsProcessingAlgorithm):
     INPUT = 'INPUT'
     CATEGORY_FIELD = 'CATEGORY_FIELD'
     NUMERIC_FIELD = 'NUMERIC_FIELD'
@@ -72,16 +75,16 @@ class BinH3(QgsProcessingAlgorithm):
             return self.translate(string[0])
     
     def createInstance(self):
-        return BinH3()
+        return BinrHEALPix()
 
     def name(self):
-        return 'bin_h3'
+        return 'bin_rhealpix'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_h3.svg'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
-        return self.tr('H3', 'H3')
+        return self.tr('rHEALPix', 'rHEALPix')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -90,11 +93,11 @@ class BinH3(QgsProcessingAlgorithm):
         return 'binning'
 
     def tags(self):
-        return self.tr('DGGS, H3, Binning').split(',')
+        return self.tr('DGGS, rHEALPix, Binning').split(',')
     
-    txt_en = 'H3 Binning'
-    txt_vi = 'H3 Binning'
-    figure = '../images/tutorial/bin_h3.png'
+    txt_en = 'rHEALPix Binning'
+    txt_vi = 'rHEALPix Binning'
+    figure = '../images/tutorial/bin_rhealpix.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -176,9 +179,12 @@ class BinH3(QgsProcessingAlgorithm):
 
         return True
 
-    def processAlgorithm(self, parameters, context, feedback):        
-        h3_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
-        h3_geometries = {}
+    def processAlgorithm(self, parameters, context, feedback):      
+        E = WGS84_ELLIPSOID
+        rhealpix_dggs = RHEALPixDGGS(ellipsoid=E, north_square=1, south_square=3, N_side=3) 
+  
+        rhealpix_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
+        rhealpix_geometries = {}
 
         total_points = sum(1 for _ in self.point_layer.getFeatures())
         feedback.setProgress(0)  # Initial progress value
@@ -186,35 +192,36 @@ class BinH3(QgsProcessingAlgorithm):
         # Process each point and update progress
         for i, point_feature in enumerate(self.point_layer.getFeatures()):
             point = point_feature.geometry().asPoint()
-            h3_id = h3.latlng_to_cell(point.y(), point.x(), self.resolution)
+            rhealpix_id = latlon2rhealpix(point.y(), point.x(), self.resolution)
             props = point_feature.attributes()
             fields = self.point_layer.fields()
             props_dict = {fields[i].name(): props[i] for i in range(len(fields))}
 
-            append_stats_value(h3_bins, h3_id, props_dict, self.stats, self.numeric_field, self.category_field)
+            append_stats_value(rhealpix_bins, rhealpix_id, props_dict, self.stats, self.numeric_field, self.category_field)
 
             # Update progress after each point is processed
             feedback.setProgress(int((i + 1) / total_points * 100))
 
         # Provide progress feedback for the categories
-        for cat, values in h3_bins[next(iter(h3_bins))].items():
+        for cat, values in rhealpix_bins[next(iter(rhealpix_bins))].items():
             feedback.pushInfo(str(cat))
 
         # Generate geometries and update progress
-        total_h3_bins = len(h3_bins)
-        for i, h3_id in enumerate(h3_bins.keys()):
-            coords = [(lng, lat) for lat, lng in h3.cell_to_boundary(h3_id)]
-            h3_geometries[h3_id] = Polygon(coords)
-
+        total_rhealpix_bins = len(rhealpix_bins)
+        for i, rhealpix_id in enumerate(rhealpix_bins.keys()):
+            rhealpix_uids = (rhealpix_id[0],) + tuple(map(int, rhealpix_id[1:]))
+            rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
+            cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
+            rhealpix_geometries[rhealpix_id] = cell_polygon
             # Update progress after each geometry is generated
-            feedback.setProgress(int((i + 1) / total_h3_bins * 100))
+            feedback.setProgress(int((i + 1) / total_rhealpix_bins * 100))
 
         # Prepare output fields
         out_fields = QgsFields()
-        out_fields.append(QgsField("h3", QVariant.String))
+        out_fields.append(QgsField("rhealpix", QVariant.String))
 
         all_categories = set()
-        for bin_data in h3_bins.values():
+        for bin_data in rhealpix_bins.values():
             all_categories.update(bin_data.keys())
 
         for cat in sorted(all_categories):
@@ -232,13 +239,13 @@ class BinH3(QgsProcessingAlgorithm):
         # Create the sink for the output
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context, out_fields, QgsWkbTypes.Polygon, self.point_layer.sourceCrs())
 
-        # Process each H3 bin and update progress
-        total_h3_geometries = len(h3_geometries)
-        for i, (h3_id, geom) in enumerate(h3_geometries.items()):
+        # Process each rhealpix bin and update progress
+        total_rhealpix_geometries = len(rhealpix_geometries)
+        for i, (rhealpix_id, geom) in enumerate(rhealpix_geometries.items()):
             props = {}
             for cat in sorted(all_categories):
                 prefix = '' if not self.category_field else f"{cat}_"
-                values = h3_bins[h3_id].get(cat, get_default_stats_structure())
+                values = rhealpix_bins[rhealpix_id].get(cat, get_default_stats_structure())
 
                 if self.stats == 'count':
                     props[f'{prefix}count'] = values['count']
@@ -267,12 +274,12 @@ class BinH3(QgsProcessingAlgorithm):
                 elif self.stats == 'variety':
                     props[f'{prefix}variety'] = len(set(values['values']))
 
-            h3_feature = QgsFeature(out_fields)
-            h3_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            h3_feature.setAttributes([props.get(f.name(), None) if f.name() != 'h3' else h3_id for f in out_fields])
-            sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)
+            rhealpix_feature = QgsFeature(out_fields)
+            rhealpix_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
+            rhealpix_feature.setAttributes([props.get(f.name(), None) if f.name() != 'rhealpix' else rhealpix_id for f in out_fields])
+            sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)
 
-            # Update progress after each H3 bin is processed
-            feedback.setProgress(int((i + 1) / total_h3_geometries * 100))
+            # Update progress after each rhealpix bin is processed
+            feedback.setProgress(int((i + 1) / total_rhealpix_geometries * 100))
 
         return {self.OUTPUT: dest_id}

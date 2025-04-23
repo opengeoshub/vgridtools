@@ -48,7 +48,7 @@ from vgrid.stats.quadkeystats import quadkey_metrics
 
 class Raster2DGGS(QgsProcessingAlgorithm):
     """
-    convert Raster Layer to H3, S2, Rhealpix, ISEA4T, QTM, OLC, Geohash, Tilecode
+    convert Raster Layer to H3, S2, rHEALPix, ISEA4T, QTM, OLC, Geohash, Tilecode
     """
     INPUT = 'INPUT'
     DGGS_TYPE = 'DGGS_TYPE'
@@ -56,12 +56,12 @@ class Raster2DGGS(QgsProcessingAlgorithm):
     OUTPUT = 'OUTPUT'
     
     DGGS_TYPES = [
-        'H3', 'S2','Rhealpix','QTM', 'OLC', 'Geohash', 
+        'H3', 'S2','rHEALPix','QTM', 'OLC', 'Geohash', 
         'Tilecode','Quadkey']
     DGGS_RESOLUTION = {
         'H3': (-1, 15, 10),
         'S2': (-1, 30, 16),
-        'Rhealpix': (-1, 15,11),      
+        'rHEALPix': (-1, 15,11),      
         'QTM':(-1,24,12),
         'OLC': (-1, 13, 10),
         'Geohash': (-1, 10, 9),
@@ -69,7 +69,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         'Quadkey': (-1, 26, 15)        
     }
     if platform.system() == 'Windows':
-        index = DGGS_TYPES.index('Rhealpix') + 1
+        index = DGGS_TYPES.index('rHEALPix') + 1
         DGGS_TYPES[index:index] = ['ISEA4T']
 
         DGGS_RESOLUTION.update({
@@ -111,7 +111,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         return 'conversion'
 
     def tags(self):
-        return self.tr('raster, S2, H3, Rhealpix, ISEA4T, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
+        return self.tr('raster, S2, H3, rHEALPix, ISEA4T, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
     
     txt_en = 'Raster to DGGS'
     txt_vi = 'Raster to DGGS'

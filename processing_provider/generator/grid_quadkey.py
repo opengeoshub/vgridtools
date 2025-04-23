@@ -205,7 +205,7 @@ class GridQuadkey(QgsProcessingAlgorithm):
             if feedback.isCanceled():
                 break
         
-        feedback.pushInfo("Quadkey grid generation completed.")
+        feedback.pushInfo("Quadkey DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')

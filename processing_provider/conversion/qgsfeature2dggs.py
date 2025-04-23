@@ -36,7 +36,7 @@ from ...utils.conversion.qgsfeature2dggs import *
 
 class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     """
-    convert Vector Layer to H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE, QTM, OLC, Geohash, GEOREF, MGRS, Tilecode, Maidenhead, GARS
+    convert Vector Layer to H3, S2, rHEALPix, ISEA4T, ISEA3H, EASE, QTM, OLC, Geohash, GEOREF, MGRS, Tilecode, Maidenhead, GARS
     """
     INPUT = 'INPUT'
     DGGS_TYPE = 'DGGS_TYPE'
@@ -44,13 +44,13 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     COMPACT = 'COMPACT'
     
     DGGS_TYPES = [
-        'H3', 'S2','Rhealpix','EASE', 'QTM', 'OLC', 'Geohash', 
+        'H3', 'S2','rHEALPix','EASE', 'QTM', 'OLC', 'Geohash', 
         # 'GEOREF',
         'MGRS', 'Tilecode','Quadkey']
     DGGS_RESOLUTION = {
         'H3': (0, 15, 10),
         'S2': (0, 30, 16),
-        'Rhealpix': (1, 15,11),      
+        'rHEALPix': (1, 15,11),      
         'EASE':(0,6,4),
         'QTM':(1,24,12),
         'OLC': (2, 15, 10),
@@ -61,7 +61,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         'Quadkey': (0, 29, 15)        
     }
     if platform.system() == 'Windows':
-        index = DGGS_TYPES.index('Rhealpix') + 1
+        index = DGGS_TYPES.index('rHEALPix') + 1
         DGGS_TYPES[index:index] = ['ISEA4T', 'ISEA3H']
 
         DGGS_RESOLUTION.update({
@@ -106,7 +106,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return 'conversion'
 
     def tags(self):
-        return self.tr('S2, H3, Rhealpix, ISEA4T, ISEA3H, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
+        return self.tr('S2, H3, rHEALPix, ISEA4T, ISEA3H, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
     
     txt_en = 'Vector to DGGS'
     txt_vi = 'Vector to DGGS'

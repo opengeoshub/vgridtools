@@ -37,17 +37,17 @@ from ...utils.conversion.dggs2qgsfeature import *
 
 class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     """
-    Algorithm to convert H3, S2, Rhealpix,EASE, QTM, OLC/ OpenLocationCode/ Google Plus Code, Geohash, 
+    Algorithm to convert H3, S2, rHEALPix,EASE, QTM, OLC/ OpenLocationCode/ Google Plus Code, Geohash, 
         GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS grid cells
     """
     INPUT = 'INPUT'
     CELL_ID = 'CELL_ID'
     DGGS_TYPE = 'DGGS_TYPE'
-    DGGS_TYPES = ['H3', 'S2','Rhealpix','EASE', 'QTM', 'OLC', 'Geohash', 
+    DGGS_TYPES = ['H3', 'S2','rHEALPix','EASE', 'QTM', 'OLC', 'Geohash', 
                   'GEOREF','MGRS', 'Tilecode','Quadkey', 'Maidenhead', 'GARS']
     
     if platform.system() == 'Windows':
-        index = DGGS_TYPES.index('Rhealpix') + 1
+        index = DGGS_TYPES.index('rHEALPix') + 1
         DGGS_TYPES[index:index] = ['ISEA4T', 'ISEA3H']
         
     OUTPUT = 'OUTPUT'
@@ -87,7 +87,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return 'conversion'
 
     def tags(self):
-        return self.tr('H3,S2,Rhealpix,ISEA4T, ISEA3H, EASE,QTM,OLC,OpenLocationCode,Google Plus Code,Geohash,\
+        return self.tr('H3,S2,rHEALPix,ISEA4T, ISEA3H, EASE,QTM,OLC,OpenLocationCode,Google Plus Code,Geohash,\
                         GEOREF,MGRS,Tilecode,Quadkey,Maidenhead,GARS').split(',')
     
     txt_en = 'Cell ID to DGGS'

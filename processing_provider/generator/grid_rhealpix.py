@@ -51,7 +51,7 @@ from vgrid.generator.settings import geodesic_dggs_metrics
 rhealpix_dggs = RHEALPixDGGS()
 
 
-class GridRhealpix(QgsProcessingAlgorithm):
+class GridrHEALPix(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'
     RESOLUTION = 'RESOLUTION'
     OUTPUT = 'OUTPUT'
@@ -73,7 +73,7 @@ class GridRhealpix(QgsProcessingAlgorithm):
             return self.translate(string[0])
     
     def createInstance(self):
-        return GridRhealpix()
+        return GridrHEALPix()
 
     def name(self):
         return 'grid_rhealpix'
@@ -82,7 +82,7 @@ class GridRhealpix(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)),  '../images/generator/grid_quad.svg'))
     
     def displayName(self):
-        return self.tr('rHEALpix', 'rHEALpix')
+        return self.tr('rHEALPix', 'rHEALPix')
 
     def group(self):
         return self.tr('Generator', 'Generator')
@@ -91,10 +91,10 @@ class GridRhealpix(QgsProcessingAlgorithm):
         return 'grid'
 
     def tags(self):
-        return self.tr('DGGS, grid, rHEALpix, generator').split(',')
+        return self.tr('DGGS, grid, rHEALPix, generator').split(',')
     
-    txt_en = 'rHEALpix DGGS Generator'
-    txt_vi = 'rHEALpix DGGS Generator'
+    txt_en = 'rHEALPix DGGS Generator'
+    txt_vi = 'rHEALPix DGGS Generator'
     figure = '../images/tutorial/grid_rhealpix.png'
 
     def shortHelpString(self):
@@ -130,7 +130,7 @@ class GridRhealpix(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
-                'Rhealpix')
+                'rHEALPix')
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
@@ -270,7 +270,7 @@ class GridRhealpix(QgsProcessingAlgorithm):
                 if feedback.isCanceled():
                     break
                 
-        feedback.pushInfo("Rhealpix grid generation completed.")        
+        feedback.pushInfo("rHEALPix DGGS generation completed.")        
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             fontColor = QColor('#000000')
