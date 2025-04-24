@@ -35,7 +35,8 @@ from qgis.PyQt.QtGui import QIcon
 from .processing_provider.conversion.dggs2qgsfeature import CellID2DGGS
 from .processing_provider.conversion.qgsfeature2dggs import Vector2DGGS
 from .processing_provider.conversion.raster2dggs import Raster2DGGS
-from .processing_provider.conversion.expanddggs import ExpandDGGS
+from .processing_provider.conversion.dggsexpand import DGGSExpand
+from .processing_provider.conversion.dggscompact import DGGSCompact
 
 
 from .processing_provider.binning.bin_h3 import BinH3
@@ -92,7 +93,8 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(CellID2DGGS())
         self.addAlgorithm(Vector2DGGS())
         self.addAlgorithm(Raster2DGGS())
-        self.addAlgorithm(ExpandDGGS())
+        self.addAlgorithm(DGGSExpand())
+        self.addAlgorithm(DGGSCompact())
         ################################
         self.addAlgorithm(BinH3())
         self.addAlgorithm(BinS2())
