@@ -43,7 +43,12 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
     DGGS_TYPE = 'DGGS_TYPE'
     OUTPUT = 'OUTPUT'
 
-    DGGS_TYPES = ['H3','S2']
+    DGGS_TYPES = ['H3','S2','rHEALPix']
+
+    if platform.system() == 'Windows':
+        index = DGGS_TYPES.index('rHEALPix') + 1
+        DGGS_TYPES[index:index] = ['ISEA4T']
+
 
     LOC = QgsApplication.locale()[:2]
 
@@ -122,7 +127,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
                 self.DGGS_FIELD,
                 "DGGS_ID field",
                 parentLayerParameterName=self.INPUT,
-                type=QgsProcessingParameterField.String  
+                type=QgsProcessingParameterField.String
             )
         )
 
@@ -131,12 +136,13 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
         self.dggs_field = self.parameterAsString(parameters, self.DGGS_FIELD, context)
-
         self.DGGS_TYPE_functions = {
             'h3': h3compact,
-            's2': s2compact
+            's2': s2compact,
+            'rhealpix': rhealpixcompact
         }
-
+        if platform.system() == 'Windows':
+            self.DGGS_TYPE_functions['isea4t'] = isea4tcompact 
         return True
 
     def processAlgorithm(self, parameters, context, feedback):

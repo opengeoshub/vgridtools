@@ -39,36 +39,36 @@ from .processing_provider.conversion.dggsexpand import DGGSExpand
 from .processing_provider.conversion.dggscompact import DGGSCompact
 
 
-from .processing_provider.binning.bin_h3 import BinH3
-from .processing_provider.binning.bin_s2 import BinS2
-from .processing_provider.binning.bin_rhealpix import BinrHEALPix
-from .processing_provider.binning.bin_isea4t import BinISEA4T
-from .processing_provider.binning.bin_qtm import BinQTM
+from .processing_provider.binning.h3_bin import H3Bin
+from .processing_provider.binning.s2_bin import S2Bin
+from .processing_provider.binning.rhealpix_bin import rHEALPixBin
+from .processing_provider.binning.isea4t_bin import ISEA4TBin
+from .processing_provider.binning.qtm_bin import QTMBin
 
-from .processing_provider.binning.bin_olc import BinOLC
-from .processing_provider.binning.bin_geohash import BinGeohash
-from .processing_provider.binning.bin_tilecode import BinTilecode
-from .processing_provider.binning.bin_quadkey import BinQuadkey
+from .processing_provider.binning.olc_bin import OLCBin
+from .processing_provider.binning.geohash_bin import GeohashBin
+from .processing_provider.binning.tilecode_bin import TilecodeBin
+from .processing_provider.binning.quadkey_bin import QuadkeyBin
 
-from .processing_provider.binning.bin_polygon import BinPolygon
+from .processing_provider.binning.polygon_bin import PolygonBin
 
 
-from .processing_provider.generator.grid_h3 import GridH3
-from .processing_provider.generator.grid_s2 import GridS2
-from .processing_provider.generator.grid_rhealpix import GridrHEALPix
-from .processing_provider.generator.grid_isea4t import GridISEA4T
+from .processing_provider.generator.h3_grid import H3Grid
+from .processing_provider.generator.s2_grid import S2Grid
+from .processing_provider.generator.rhealpix_grid import rHEALPixGrid
+from .processing_provider.generator.isea4t_grid import ISEA4TGrid
 
-from .processing_provider.generator.grid_qtm import GridQTM
+from .processing_provider.generator.qtm_grid import QTMGrid
 
-from .processing_provider.generator.grid_olc import GridOLC
-from .processing_provider.generator.grid_geohash import GridGeohash
-from .processing_provider.generator.grid_georef import GridGEOREF
-from .processing_provider.generator.grid_mgrs import GridMGRS
-from .processing_provider.generator.grid_gzd import GridGZD
-from .processing_provider.generator.grid_tilecode import GridTilecode
-from .processing_provider.generator.grid_quadkey import GridQuadkey
-from .processing_provider.generator.grid_maidenhead import GridMaidenhead
-from .processing_provider.generator.grid_gars import GridGARS
+from .processing_provider.generator.olc_grid import OLCGrid
+from .processing_provider.generator.geohash_grid import GeohashGrid
+from .processing_provider.generator.georef_grid import GEOREFGrid
+from .processing_provider.generator.mgrs_grid import MGRSGrid
+from .processing_provider.generator.gzd_grid import GZDGrid
+from .processing_provider.generator.tilecode_grid import TilecodeGrid
+from .processing_provider.generator.quadkey_grid import QuadkeyGrid
+from .processing_provider.generator.maidenhead_grid import MaidenheadGrid
+from .processing_provider.generator.gars_grid import GARSGrid
 
 
 import pathlib,sys
@@ -96,36 +96,36 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(DGGSExpand())
         self.addAlgorithm(DGGSCompact())
         ################################
-        self.addAlgorithm(BinH3())
-        self.addAlgorithm(BinS2())
-        self.addAlgorithm(BinrHEALPix())
-        self.addAlgorithm(BinISEA4T())
-        self.addAlgorithm(BinQTM())
-        
-        self.addAlgorithm(BinOLC())
-        self.addAlgorithm(BinGeohash())
-        self.addAlgorithm(BinTilecode())
-        self.addAlgorithm(BinQuadkey())
+        self.addAlgorithm(H3Bin()) 
+        self.addAlgorithm(S2Bin())
+        self.addAlgorithm(rHEALPixBin())
+        self.addAlgorithm(ISEA4TBin())
+        self.addAlgorithm(QTMBin())
 
-        self.addAlgorithm(BinPolygon())
+        self.addAlgorithm(OLCBin())
+        self.addAlgorithm(GeohashBin())
+        self.addAlgorithm(TilecodeBin())
+        self.addAlgorithm(QuadkeyBin())
+
+        self.addAlgorithm(PolygonBin())
+
 
         ################################
-        self.addAlgorithm(GridH3())
-        self.addAlgorithm(GridS2())
-        self.addAlgorithm(GridrHEALPix())
-        self.addAlgorithm(GridISEA4T())
-        self.addAlgorithm(GridQTM())
+        self.addAlgorithm(H3Grid())
+        self.addAlgorithm(S2Grid())
+        self.addAlgorithm(rHEALPixGrid())
+        self.addAlgorithm(ISEA4TGrid())
+        self.addAlgorithm(QTMGrid())
 
-        self.addAlgorithm(GridOLC())
-        self.addAlgorithm(GridGeohash())
-        # self.addAlgorithm(GridGEOREF())
-        self.addAlgorithm(GridMGRS())
-        self.addAlgorithm(GridGZD())
-        self.addAlgorithm(GridTilecode())
-        self.addAlgorithm(GridQuadkey())
-        self.addAlgorithm(GridMaidenhead())
-        self.addAlgorithm(GridGARS())
-
+        self.addAlgorithm(OLCGrid())
+        self.addAlgorithm(GeohashGrid())
+        # self.addAlgorithm(GEOREFGrid())
+        self.addAlgorithm(MGRSGrid())
+        self.addAlgorithm(GZDGrid())
+        self.addAlgorithm(TilecodeGrid())
+        self.addAlgorithm(QuadkeyGrid())
+        self.addAlgorithm(MaidenheadGrid())
+        self.addAlgorithm(GARSGrid())
 
     def id(self):
         return 'vgrid'

@@ -35,7 +35,7 @@ from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
 from vgrid.utils.easedggs.dggs.hierarchy import _parent_to_children
 from vgrid.utils.easedggs.dggs.grid_addressing import grid_ids_to_geos
 from vgrid.generator.geohashgrid import geohash_to_polygon
-
+from vgrid.conversion.dggscompact import *
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
 E = WGS84_ELLIPSOID
@@ -47,7 +47,14 @@ from qgis.core import (
 from PyQt5.QtCore import QVariant
 from shapely.geometry import Polygon
 
-def h3compact(h3_layer: QgsVectorLayer, H3ID_field,feedback=None) -> QgsVectorLayer:
+
+########################## 
+# H3
+# ########################
+def h3compact(h3_layer: QgsVectorLayer, H3ID_field=None,feedback=None) -> QgsVectorLayer:
+    if not H3ID_field:
+        H3ID_field = 'h3'
+        
     fields = QgsFields()
     fields.append(QgsField("h3", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
@@ -115,7 +122,13 @@ def h3compact(h3_layer: QgsVectorLayer, H3ID_field,feedback=None) -> QgsVectorLa
         return mem_layer
 
 
-def s2compact(s2_layer: QgsVectorLayer, S2ID_field, feedback=None) -> QgsVectorLayer:
+########################## 
+# S2
+# ########################
+def s2compact(s2_layer: QgsVectorLayer, S2ID_field=None, feedback=None) -> QgsVectorLayer:
+    if not S2ID_field:
+        S2ID_field = 's2'
+
     fields = QgsFields()
     fields.append(QgsField("s2", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
@@ -197,3 +210,160 @@ def s2compact(s2_layer: QgsVectorLayer, S2ID_field, feedback=None) -> QgsVectorL
             feedback.pushInfo("S2 Compact completed.")
                 
         return mem_layer
+
+
+########################## 
+# rHEALPix
+# ########################
+def rhealpixcompact(rhealpix_layer: QgsVectorLayer, rHEALPixID_field=None,feedback=None) -> QgsVectorLayer:
+    if not rHEALPixID_field:
+        rHEALPixID_field = 'rhealpix'
+
+    rhealpix_dggs = RHEALPixDGGS()
+    
+    fields = QgsFields()
+    fields.append(QgsField("rhealpix", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("avg_edge_len", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+
+    crs = rhealpix_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "rhealpix_compacted", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    rhealpix_ids = [
+        feature[rHEALPixID_field]
+        for feature in rhealpix_layer.getFeatures()
+        if feature[rHEALPixID_field]
+    ]
+    if rhealpix_ids:
+        try:
+            rhealpix_ids_compact = rhealpix_compact(rhealpix_dggs,rhealpix_ids)
+        except:
+            raise QgsProcessingException("Compact cells failed. Please check your rHEALPix cell Ids.")
+
+        total = len(rhealpix_ids_compact)
+
+        for i, rhealpix_id_compact in enumerate(rhealpix_ids_compact):
+            if feedback:
+                feedback.setProgress(int((i / total) * 100))
+                if feedback.isCanceled():
+                    return None
+
+            rhealpix_uids = (rhealpix_id_compact[0],) + tuple(map(int, rhealpix_id_compact[1:]))       
+            rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
+            cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
+            
+            if not cell_polygon.is_valid:
+                continue
+            
+            resolution = rhealpix_cell.resolution        
+            num_edges = 3 if rhealpix_cell.ellipsoidal_shape() == 'dart' else 4
+            
+            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            rhealpix_feature = QgsFeature(fields)
+            rhealpix_feature.setGeometry(cell_geom)
+            
+            attributes = {
+                "rhealpix": rhealpix_id_compact,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "avg_edge_len": avg_edge_len,
+                "cell_area": cell_area,
+                }
+            rhealpix_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([rhealpix_feature])
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("rHEALPix Compact completed.")
+                
+        return mem_layer
+
+########################## 
+# ISEA4T
+# ########################
+def isea4tcompact(isea4t_layer: QgsVectorLayer, ISEA4TID_field=None,feedback=None) -> QgsVectorLayer:
+    if platform.system() == 'Windows':    
+        if not ISEA4TID_field:
+            ISEA4TID_field = 'isea4t'
+
+        isea4t_dggs = Eaggr(Model.ISEA4T)
+        
+        fields = QgsFields()
+        fields.append(QgsField("isea4t", QVariant.String))
+        fields.append(QgsField("resolution", QVariant.Int))
+        fields.append(QgsField("center_lat", QVariant.Double))
+        fields.append(QgsField("center_lon", QVariant.Double))
+        fields.append(QgsField("avg_edge_len", QVariant.Double))
+        fields.append(QgsField("cell_area", QVariant.Double))
+
+        crs = isea4t_layer.crs().toWkt()
+        mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "isea4t_compacted", "memory")
+        mem_provider = mem_layer.dataProvider()
+        mem_provider.addAttributes(fields)
+        mem_layer.updateFields()
+
+        isea4t_ids = [
+            feature[ISEA4TID_field]
+            for feature in isea4t_layer.getFeatures()
+            if feature[ISEA4TID_field]
+        ]
+        if isea4t_ids:
+            try:
+                isea4t_ids_compact = isea4t_compact(isea4t_dggs,isea4t_ids)
+            except:
+                raise QgsProcessingException("Compact cells failed. Please check your ISEA4T cell Ids.")
+
+            total = len(isea4t_ids_compact)
+
+            for i, isea4t_id_compact in enumerate(isea4t_ids_compact):
+                if feedback:
+                    feedback.setProgress(int((i / total) * 100))
+                    if feedback.isCanceled():
+                        return None
+
+                isea4t_cell_compact = DggsCell(isea4t_id_compact)
+                cell_to_shape = isea4t_dggs.convert_dggs_cell_outline_to_shape_string(isea4t_cell_compact,ShapeStringFormat.WKT)
+                cell_to_shape_fixed = loads(fix_isea4t_wkt(cell_to_shape))
+                if isea4t_id_compact.startswith('00') or isea4t_id_compact.startswith('09') or isea4t_id_compact.startswith('14')\
+                    or isea4t_id_compact.startswith('04') or isea4t_id_compact.startswith('19'):
+                    cell_to_shape_fixed = fix_isea4t_antimeridian_cells(cell_to_shape_fixed)
+                
+                cell_polygon = Polygon(list(cell_to_shape_fixed.exterior.coords))
+            
+                if not cell_polygon.is_valid:
+                    continue
+                
+                resolution = len(isea4t_id_compact) -2
+                num_edges = 3
+                
+                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                
+                cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                ISEA4T_feature = QgsFeature(fields)
+                ISEA4T_feature.setGeometry(cell_geom)
+                
+                attributes = {
+                    "isea4t": isea4t_id_compact,
+                    "resolution": resolution,
+                    "center_lat": center_lat,
+                    "center_lon": center_lon,
+                    "avg_edge_len": avg_edge_len,
+                    "cell_area": cell_area,
+                    }
+                ISEA4T_feature.setAttributes([attributes[field.name()] for field in fields])
+                mem_provider.addFeatures([ISEA4T_feature])
+
+            if feedback:
+                feedback.setProgress(100)
+                feedback.pushInfo("ISEA4T Compact completed.")
+                    
+            return mem_layer
