@@ -43,11 +43,12 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
     DGGS_TYPE = 'DGGS_TYPE'
     OUTPUT = 'OUTPUT'
 
-    DGGS_TYPES = ['H3','S2','rHEALPix']
+    DGGS_TYPES = ['H3','S2','rHEALPix', 
+                  'QTM','OLC', 'Geohash', 'Tilecode', 'Quadkey']
 
     if platform.system() == 'Windows':
         index = DGGS_TYPES.index('rHEALPix') + 1
-        DGGS_TYPES[index:index] = ['ISEA4T']
+        DGGS_TYPES[index:index] = ['ISEA4T', 'ISEA3H']
 
 
     LOC = QgsApplication.locale()[:2]
@@ -139,10 +140,17 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_functions = {
             'h3': h3compact,
             's2': s2compact,
-            'rhealpix': rhealpixcompact
+            'rhealpix': rhealpixcompact,
+            'qtm': qtmcompact,
+            
+            'olc': olccompact,
+            'geohash': geohashcompact,
+            'tilecode': tilecodecompact,
+            'quadkey': quadkeycompact
         }
         if platform.system() == 'Windows':
             self.DGGS_TYPE_functions['isea4t'] = isea4tcompact 
+            self.DGGS_TYPE_functions['isea3h'] = isea3hcompact
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -172,3 +180,4 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
 
         return {self.OUTPUT: sink_id}
+    

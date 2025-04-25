@@ -21,6 +21,7 @@ import platform
 from qgis.core import (
     QgsProcessing,
     QgsProcessingParameterVectorLayer,
+    QgsProcessingParameterField,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
     QgsProcessingFeatureBasedAlgorithm,
@@ -39,14 +40,13 @@ from ...utils.conversion.dggsexpand import *
 
 class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
     INPUT = 'INPUT'
+    DGGS_FIELD = 'DGGS_FIELD'
     DGGS_TYPE = 'DGGS_TYPE'
     RESOLUTION = 'RESOLUTION'
     OUTPUT = 'OUTPUT'
 
-    DGGS_TYPES = ['H3']
-    DGGS_RESOLUTION = {
-        'H3': (0, 15, 10),
-    }
+    DGGS_TYPES = ['H3','S2', 'rHEALPix', 'ISEA4T', 'ISEA3H', 'QTM']
+    
 
     LOC = QgsApplication.locale()[:2]
 
@@ -120,32 +120,39 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
             defaultValue=0
         ))
 
+        self.addParameter(
+            QgsProcessingParameterField(
+                self.DGGS_FIELD,
+                "DGGS_ID field",
+                parentLayerParameterName=self.INPUT,
+                type=QgsProcessingParameterField.String
+            )
+        )
+        
         self.addParameter(QgsProcessingParameterNumber(
             self.RESOLUTION,
             "Resolution",
             QgsProcessingParameterNumber.Integer,
             10,
             minValue=0,
-            maxValue=15
+            maxValue=40
         ))
 
-    def checkParameterValues(self, parameters, context):
-        selected_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
-        selected_dggs = self.DGGS_TYPES[selected_index]
-        min_res, max_res, _ = self.DGGS_RESOLUTION[selected_dggs]
-        res_value = self.parameterAsInt(parameters, self.RESOLUTION, context)
-
-        if not (min_res <= res_value <= max_res):
-            return (False, f"Resolution must be between {min_res} and {max_res} for {selected_dggs}.")
-        return super().checkParameterValues(parameters, context)
-
     def prepareAlgorithm(self, parameters, context, feedback):
+        selected_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+                      
         self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
+        self.dggs_field = self.parameterAsString(parameters, self.DGGS_FIELD, context)
 
         self.DGGS_TYPE_functions = {
-            'h3': h3expand 
+            'h3': h3expand,
+            's2': s2expand,
+            'rhealpix': rhealpixexpand,
+            'isea4t': isea4texpand,
+            'isea3h': isea3hexpand,
+            'qtm': qtmexpand
         }
 
         return True
@@ -159,7 +166,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
 
         feedback.pushInfo(f"Expanding {self.dggs_type.upper()} at resolution {self.resolution}")
 
-        memory_layer = conversion_function(dggs_layer, self.resolution, feedback)
+        memory_layer = conversion_function(dggs_layer, self.resolution, self.dggs_field, feedback)
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():
             raise QgsProcessingException("Invalid output layer returned from conversion function.")
