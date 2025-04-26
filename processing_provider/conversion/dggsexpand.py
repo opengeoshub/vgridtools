@@ -45,9 +45,9 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
     RESOLUTION = 'RESOLUTION'
     OUTPUT = 'OUTPUT'
 
-    DGGS_TYPES = ['H3','S2', 'rHEALPix', 'ISEA4T', 'ISEA3H', 'QTM']
+    DGGS_TYPES = ['H3','S2', 'rHEALPix', 'ISEA4T', 'ISEA3H', 'QTM',
+                  'OLC','Geohash','Tilecode','Quadkey']
     
-
     LOC = QgsApplication.locale()[:2]
 
     def translate(self, string):
@@ -152,7 +152,13 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
             'rhealpix': rhealpixexpand,
             'isea4t': isea4texpand,
             'isea3h': isea3hexpand,
-            'qtm': qtmexpand
+            'qtm': qtmexpand,
+            
+            'olc': olcexpand,
+            'geohash': geohashexpand,
+            'tilecode': tilecodeexpand,
+            'quadkey': quadkeyexpand
+
         }
 
         return True

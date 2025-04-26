@@ -36,7 +36,8 @@ from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
 from vgrid.utils.easedggs.dggs.hierarchy import _parent_to_children
 from vgrid.utils.easedggs.dggs.grid_addressing import grid_ids_to_geos
 from vgrid.generator.geohashgrid import geohash_to_polygon
-from vgrid.conversion.dggscompact import s2_expand,rhealpix_expand, isea4t_expand, isea3h_expand, qtm_expand
+from vgrid.conversion.dggscompact import s2_expand,rhealpix_expand, isea4t_expand, isea3h_expand,\
+                                         qtm_expand, olc_expand, geohash_expand, tilecode_expand, quadkey_expand
 
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
@@ -636,3 +637,348 @@ def qtmexpand(qtm_layer: QgsVectorLayer, resolution: int,QTMID_field=None, feedb
                 
     return mem_layer
 
+
+########################## 
+# OLC
+#########################
+def olcexpand(olc_layer: QgsVectorLayer, resolution: int,OLCID_field=None, feedback=None) -> QgsVectorLayer:
+    if not OLCID_field:
+        OLCID_field = 'olc'
+
+    fields = QgsFields()
+    fields.append(QgsField("olc", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("cell_width", QVariant.Double))
+    fields.append(QgsField("cell_height", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+
+    crs = olc_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "olc_expanded", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    olc_ids = [
+        feature[OLCID_field]
+        for feature in olc_layer.getFeatures()
+        if feature[OLCID_field]
+    ]
+    
+    if olc_ids:
+        try:
+            max_res = max(len(olc_id) for olc_id in olc_ids)
+            if resolution <= max_res:
+                if feedback:
+                    feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
+                    return None
+            olc_ids_expand = olc_expand(olc_ids, resolution)
+        except:
+            raise QgsProcessingException("Expand cells failed. Please check your OLC cell Ids.")
+            
+        total = len(olc_ids_expand)
+
+        for i, olc_id_expand in enumerate(olc_ids_expand):
+            if feedback:
+                feedback.setProgress(int((i / total) * 100))
+                if feedback.isCanceled():
+                    return None
+
+            coord = olc.decode(olc_id_expand)    
+            min_lat, min_lon = coord.latitudeLo, coord.longitudeLo
+            max_lat, max_lon = coord.latitudeHi, coord.longitudeHi        
+
+            # Define the polygon based on the bounding box
+            cell_polygon = Polygon([
+                [min_lon, min_lat],  # Bottom-left corner
+                [max_lon, min_lat],  # Bottom-right corner
+                [max_lon, max_lat],  # Top-right corner
+                [min_lon, max_lat],  # Top-left corner
+                [min_lon, min_lat]   # Closing the polygon (same as the first point)
+            ])    
+            
+            if not cell_polygon.is_valid:
+                continue
+            
+            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            olc_feature = QgsFeature(fields)
+            olc_feature.setGeometry(cell_geom)
+            
+            attributes = {
+                "olc": olc_id_expand,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "cell_width": cell_width,
+                "cell_height": cell_height,
+                "cell_area": cell_area
+            }
+            olc_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([olc_feature])
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("OLC expansion completed.")
+                
+    return mem_layer
+
+########################## 
+# Geohash
+#########################
+def geohashexpand(geohash_layer: QgsVectorLayer, resolution: int,GeohashID_field=None, feedback=None) -> QgsVectorLayer:
+    if not GeohashID_field:
+        GeohashID_field = 'geohash'
+
+    fields = QgsFields()
+    fields.append(QgsField("geohash", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("cell_width", QVariant.Double))
+    fields.append(QgsField("cell_height", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+
+    crs = geohash_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "geohash_expanded", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    geohash_ids = [
+        feature[GeohashID_field]
+        for feature in geohash_layer.getFeatures()
+        if feature[GeohashID_field]
+    ]
+    
+    if geohash_ids:
+        try:
+            max_res = max(len(geohash_id) for geohash_id in geohash_ids)
+            if resolution <= max_res:
+                if feedback:
+                    feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
+                    return None
+            geohash_ids_expand = geohash_expand(geohash_ids, resolution)
+        except:
+            raise QgsProcessingException("Expand cells failed. Please check your Geohash cell Ids.")
+            
+        total = len(geohash_ids_expand)
+
+        for i, geohash_id_expand in enumerate(geohash_ids_expand):
+            if feedback:
+                feedback.setProgress(int((i / total) * 100))
+                if feedback.isCanceled():
+                    return None
+
+            cell_polygon = geohash_to_polygon(geohash_id_expand)
+            
+            if not cell_polygon.is_valid:
+                continue
+            
+            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            geohash_feature = QgsFeature(fields)
+            geohash_feature.setGeometry(cell_geom)
+            
+            attributes = {
+                "geohash": geohash_id_expand,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "cell_width": cell_width,
+                "cell_height": cell_height,
+                "cell_area": cell_area
+            }
+            geohash_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([geohash_feature])
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("Geohash expansion completed.")
+                
+    return mem_layer
+
+
+########################## 
+# Tilecode
+#########################
+def tilecodeexpand(tilecode_layer: QgsVectorLayer, resolution: int,TilecodeID_field=None, feedback=None) -> QgsVectorLayer:
+    if not TilecodeID_field:
+        TilecodeID_field = 'tilecode'
+
+    fields = QgsFields()
+    fields.append(QgsField("tilecode", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("cell_width", QVariant.Double))
+    fields.append(QgsField("cell_height", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+
+    crs = tilecode_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "tilecode_expanded", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    tilecode_ids = [
+        feature[TilecodeID_field]
+        for feature in tilecode_layer.getFeatures()
+        if feature[TilecodeID_field]
+    ]
+    
+    if tilecode_ids:
+        try:
+            max_res = max(len(tilecode_id) for tilecode_id in tilecode_ids)
+            if resolution <= max_res:
+                if feedback:
+                    feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
+                    return None
+            tilecode_ids_expand = tilecode_expand(tilecode_ids, resolution)
+        except:
+            raise QgsProcessingException("Expand cells failed. Please check your tilecode cell Ids.")
+            
+        total = len(tilecode_ids_expand)
+
+        for i, tilecode_id_expand in enumerate(tilecode_ids_expand):
+            if feedback:
+                feedback.setProgress(int((i / total) * 100))
+                if feedback.isCanceled():
+                    return None
+
+            match = re.match(r'z(\d+)x(\d+)y(\d+)', tilecode_id_expand)
+            z = int(match.group(1))
+            x = int(match.group(2))
+            y = int(match.group(3))
+
+            bounds = mercantile.bounds(x, y, z)    
+            min_lat, min_lon = bounds.south, bounds.west
+            max_lat, max_lon = bounds.north, bounds.east
+            cell_polygon = Polygon([
+                [min_lon, min_lat],  # Bottom-left corner
+                [max_lon, min_lat],  # Bottom-right corner
+                [max_lon, max_lat],  # Top-right corner
+                [min_lon, max_lat],  # Top-left corner
+                [min_lon, min_lat]   # Closing the polygon (same as the first point)
+            ])
+            
+            if not cell_polygon.is_valid:
+                continue
+            
+            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            tilecode_feature = QgsFeature(fields)
+            tilecode_feature.setGeometry(cell_geom)
+            
+            attributes = {
+                "tilecode": tilecode_id_expand,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "cell_width": cell_width,
+                "cell_height": cell_height,
+                "cell_area": cell_area
+            }
+            tilecode_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([tilecode_feature])
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("Tilecode expansion completed.")
+                
+    return mem_layer
+
+
+########################## 
+# Quadkey
+#########################
+def quadkeyexpand(quadkey_layer: QgsVectorLayer, resolution: int,QuadkeyID_field=None, feedback=None) -> QgsVectorLayer:
+    if not QuadkeyID_field:
+        QuadkeyID_field = 'quadkey'
+
+    fields = QgsFields()
+    fields.append(QgsField("quadkey", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("cell_width", QVariant.Double))
+    fields.append(QgsField("cell_height", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+
+    crs = quadkey_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "quadkey_expanded", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    quadkey_ids = [
+        feature[QuadkeyID_field]
+        for feature in quadkey_layer.getFeatures()
+        if feature[QuadkeyID_field]
+    ]
+    
+    if quadkey_ids:
+        try:
+            max_res = max(len(quadkey_id) for quadkey_id in quadkey_ids)
+            if resolution <= max_res:
+                if feedback:
+                    feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
+                    return None
+            quadkey_ids_expand = quadkey_expand(quadkey_ids, resolution)
+        except:
+            raise QgsProcessingException("Expand cells failed. Please check your quadkey cell Ids.")
+            
+        total = len(quadkey_ids_expand)
+
+        for i, quadkey_id_expand in enumerate(quadkey_ids_expand):
+            if feedback:
+                feedback.setProgress(int((i / total) * 100))
+                if feedback.isCanceled():
+                    return None
+
+            quadkey_id_expand_tile = mercantile.quadkey_to_tile(quadkey_id_expand)
+            z = quadkey_id_expand_tile.z
+            x = quadkey_id_expand_tile.x
+            y = quadkey_id_expand_tile.y
+            
+            bounds = mercantile.bounds(x, y, z)    
+            min_lat, min_lon = bounds.south, bounds.west
+            max_lat, max_lon = bounds.north, bounds.east
+            cell_polygon = Polygon([
+                [min_lon, min_lat],  # Bottom-left corner
+                [max_lon, min_lat],  # Bottom-right corner
+                [max_lon, max_lat],  # Top-right corner
+                [min_lon, max_lat],  # Top-left corner
+                [min_lon, min_lat]   # Closing the polygon (same as the first point)
+            ])
+            
+            if not cell_polygon.is_valid:
+                continue
+            
+            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            quadkey_feature = QgsFeature(fields)
+            quadkey_feature.setGeometry(cell_geom)
+            
+            attributes = {
+                "quadkey": quadkey_id_expand,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "cell_width": cell_width,
+                "cell_height": cell_height,
+                "cell_area": cell_area
+            }
+            quadkey_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([quadkey_feature])
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("Quadkey expansion completed.")
+                
+    return mem_layer
