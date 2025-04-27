@@ -123,7 +123,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         self.addParameter(
             QgsProcessingParameterField(
                 self.DGGS_FIELD,
-                "DGGS_ID field",
+                "DGGS ID",
                 parentLayerParameterName=self.INPUT,
                 type=QgsProcessingParameterField.String
             )
