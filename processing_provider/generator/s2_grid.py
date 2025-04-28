@@ -28,7 +28,6 @@ from qgis.core import (
     QgsProcessingAlgorithm,
     QgsFields,
     QgsField,
-    QgsPointXY, 
     QgsFeature,
     QgsGeometry,
     QgsWkbTypes,
@@ -47,7 +46,7 @@ from ...utils.imgs import Imgs
 from vgrid.utils.antimeridian import fix_polygon
 from shapely.geometry import Polygon, box
 import random
-from vgrid.generator.settings import max_cells,geodesic_dggs_metrics
+from vgrid.generator.settings import geodesic_dggs_metrics
 
 class S2Grid(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'

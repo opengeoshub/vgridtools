@@ -28,7 +28,6 @@ from qgis.core import (
     QgsProcessingAlgorithm,
     QgsFields,
     QgsField,
-    QgsPointXY, 
     QgsFeature,
     QgsGeometry,
     QgsWkbTypes,

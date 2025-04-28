@@ -1,10 +1,10 @@
-from vgrid.utils import s2, olc, geohash,  mercantile, tilecode
+from vgrid.utils import s2, olc, mercantile
 from vgrid.utils import qtm
 import h3
 
 from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.utils.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
-import platform
+import platform, re
 
 if (platform.system() == 'Windows'):   
     from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
@@ -20,21 +20,17 @@ if (platform.system() == 'Linux'):
     from vgrid.utils.dggrid4py.dggrid_runner import input_address_types
 
 
-from vgrid.utils.easedggs.constants import levels_specs
 from vgrid.utils.easedggs.dggs.grid_addressing import grid_ids_to_geos
 
 from shapely.wkt import loads
-from shapely.geometry import shape, Polygon,mapping
+from shapely.geometry import Polygon
 
-import json, re, os
 from vgrid.generator.h3grid import fix_h3_antimeridian_cells
 
 from vgrid.utils.antimeridian import fix_polygon
 from vgrid.generator.settings import graticule_dggs_metrics, geodesic_dggs_metrics
 
 from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
-from vgrid.utils.easedggs.dggs.hierarchy import _parent_to_children
-from vgrid.utils.easedggs.dggs.grid_addressing import grid_ids_to_geos
 from vgrid.generator.geohashgrid import geohash_to_polygon
 from vgrid.conversion.dggscompact import s2_expand,rhealpix_expand, isea4t_expand, isea3h_expand,\
                                          qtm_expand, olc_expand, geohash_expand, tilecode_expand, quadkey_expand
@@ -42,15 +38,12 @@ from vgrid.conversion.dggscompact import s2_expand,rhealpix_expand, isea4t_expan
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
 E = WGS84_ELLIPSOID
-from collections import defaultdict
 
 from qgis.core import (
     QgsVectorLayer, QgsFeature, QgsGeometry, QgsField, QgsFields,
-    QgsProcessingException,
-    QgsWkbTypes, QgsVectorFileWriter, QgsProject, QgsCoordinateReferenceSystem
+    QgsProcessingException
 )
 from PyQt5.QtCore import QVariant
-from shapely.geometry import Polygon
 
 
 ########################## 
@@ -79,6 +72,7 @@ def h3expand(h3_layer: QgsVectorLayer, resolution: int, H3ID_field=None, feedbac
         for feature in h3_layer.getFeatures()
         if feature[H3ID_field]
     ]
+    h3_ids = list(set(h3_ids))
     
     if h3_ids:
         try:
@@ -91,11 +85,11 @@ def h3expand(h3_layer: QgsVectorLayer, resolution: int, H3ID_field=None, feedbac
         except:
             raise QgsProcessingException("Expand cells failed. Please check your H3 cell Ids.")
             
-        total = len(h3_ids_expand)
+        total_cells = len(h3_ids_expand)
 
         for i, h3_id_expand in enumerate(h3_ids_expand):
             if feedback:
-                feedback.setProgress(int((i / total) * 100))
+                feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
 
@@ -160,7 +154,8 @@ def s2expand(s2_layer: QgsVectorLayer, resolution: int, S2Token_field=None, feed
     ]
              
     try:
-        s2_ids = [s2.CellId.from_token(token) for token in s2_tokens]   
+        s2_ids = [s2.CellId.from_token(token) for token in s2_tokens]  
+        s2_ids = list(set(s2_ids)) 
         if s2_ids:   
             max_res = max(s2_id.level() for s2_id in s2_ids)
             if resolution <= max_res:
@@ -173,11 +168,11 @@ def s2expand(s2_layer: QgsVectorLayer, resolution: int, S2Token_field=None, feed
     except:
         raise QgsProcessingException("Expand cells failed. Please check your S2 cell Ids.")
         
-    total = len(s2_tokens_expand)
+    total_cells = len(s2_tokens_expand)
 
     for i, s2_token_expand in enumerate(s2_tokens_expand):
         if feedback:
-            feedback.setProgress(int((i / total) * 100))
+            feedback.setProgress(int((i / total_cells) * 100))
             if feedback.isCanceled():
                 return None
 
@@ -264,6 +259,8 @@ def rhealpixexpand(rhealpix_layer: QgsVectorLayer, resolution: int, rHealPixID_f
         if feature[rHealPixID_field]
     ]
     
+    rhealpix_ids = list(set(rhealpix_ids)) 
+    
     if rhealpix_ids:
         try:
             max_res = max(get_rhealpix_resolution(rhealpix_dggs,rhealpix_id) for rhealpix_id in rhealpix_ids)
@@ -280,11 +277,11 @@ def rhealpixexpand(rhealpix_layer: QgsVectorLayer, resolution: int, rHealPixID_f
         except:
             raise QgsProcessingException("Expand cells failed. Please check your rHEALPix cell Ids.")
 
-        total = len(rhealpix_cells_expand)
+        total_cells = len(rhealpix_cells_expand)
 
         for i, rhealpix_cell_expand in enumerate(rhealpix_cells_expand):
             if feedback:
-                feedback.setProgress(int((i / total) * 100))
+                feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
 
@@ -348,6 +345,7 @@ def isea4texpand(isea4t_layer: QgsVectorLayer, resolution: int, ISEA4TID_field=N
             for feature in isea4t_layer.getFeatures()
             if feature[ISEA4TID_field]
         ]
+        isea4t_ids = list(set(isea4t_ids))
         
         if isea4t_ids:
             max_res = max(len(isea4t_id)-2 for isea4t_id in isea4t_ids)
@@ -361,11 +359,11 @@ def isea4texpand(isea4t_layer: QgsVectorLayer, resolution: int, ISEA4TID_field=N
             except:
                 raise QgsProcessingException("Expand cells failed. Please check your ISEA4T cell Ids.")
 
-            total = len(isea4t_cells_expand)
+            total_cells = len(isea4t_cells_expand)
 
             for i, isea4t_cell_expand in enumerate(isea4t_cells_expand):
                 if feedback:
-                    feedback.setProgress(int((i / total) * 100))
+                    feedback.setProgress(int((i / total_cells) * 100))
                     if feedback.isCanceled():
                         return None
 
@@ -404,7 +402,6 @@ def isea4texpand(isea4t_layer: QgsVectorLayer, resolution: int, ISEA4TID_field=N
                 feedback.pushInfo("ISEA4T DGGS expansion completed.")
                     
         return mem_layer
-
 
 
 ########################## 
@@ -475,10 +472,11 @@ def isea3hexpand(isea3h_layer: QgsVectorLayer, resolution: int, ISEA3HID_field=N
             for feature in isea3h_layer.getFeatures()
             if feature[ISEA3HID_field]
         ]
+        isea3h_ids = list(set(isea3h_ids))
         
         if isea3h_ids:
             try:
-                max_res = max(get_isea3h_resolution(isea3h_dggs,rhealpix_id) for rhealpix_id in isea3h_ids)
+                max_res = max(get_isea3h_resolution(isea3h_dggs,isea3h_id) for isea3h_id in isea3h_ids)
             except Exception as e:
                 raise QgsProcessingException(f"Error determining cell resolution from rHEALPix cell Ids: {e}")
 
@@ -492,11 +490,11 @@ def isea3hexpand(isea3h_layer: QgsVectorLayer, resolution: int, ISEA3HID_field=N
             except:
                 raise QgsProcessingException("Expand cells failed. Please check your ISEA3H cell Ids.")
 
-            total = len(isea3h_cells_expand)
+            total_cells = len(isea3h_cells_expand)
 
             for i, isea3h_cell_expand in enumerate(isea3h_cells_expand):
                 if feedback:
-                    feedback.setProgress(int((i / total) * 100))
+                    feedback.setProgress(int((i / total_cells) * 100))
                     if feedback.isCanceled():
                         return None
 
@@ -587,6 +585,7 @@ def qtmexpand(qtm_layer: QgsVectorLayer, resolution: int,QTMID_field=None, feedb
         for feature in qtm_layer.getFeatures()
         if feature[QTMID_field]
     ]
+    qtm_ids = list(set(qtm_ids))
     
     if qtm_ids:
         try:
@@ -599,11 +598,11 @@ def qtmexpand(qtm_layer: QgsVectorLayer, resolution: int,QTMID_field=None, feedb
         except:
             raise QgsProcessingException("Expand cells failed. Please check your QTM cell Ids.")
             
-        total = len(qtm_ids_expand)
+        total_cells = len(qtm_ids_expand)
 
         for i, qtm_id_expand in enumerate(qtm_ids_expand):
             if feedback:
-                feedback.setProgress(int((i / total) * 100))
+                feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
 
@@ -665,10 +664,11 @@ def olcexpand(olc_layer: QgsVectorLayer, resolution: int,OLCID_field=None, feedb
         for feature in olc_layer.getFeatures()
         if feature[OLCID_field]
     ]
+    olc_ids = list(set(olc_ids))
     
     if olc_ids:
         try:
-            max_res = max(len(olc_id) for olc_id in olc_ids)
+            max_res = max(olc.decode(olc_id).codeLength for olc_id in olc_ids)
             if resolution <= max_res:
                 if feedback:
                     feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
@@ -677,11 +677,11 @@ def olcexpand(olc_layer: QgsVectorLayer, resolution: int,OLCID_field=None, feedb
         except:
             raise QgsProcessingException("Expand cells failed. Please check your OLC cell Ids.")
             
-        total = len(olc_ids_expand)
+        total_cells = len(olc_ids_expand)
 
         for i, olc_id_expand in enumerate(olc_ids_expand):
             if feedback:
-                feedback.setProgress(int((i / total) * 100))
+                feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
 
@@ -752,6 +752,7 @@ def geohashexpand(geohash_layer: QgsVectorLayer, resolution: int,GeohashID_field
         for feature in geohash_layer.getFeatures()
         if feature[GeohashID_field]
     ]
+    geohash_ids = list(set(geohash_ids))
     
     if geohash_ids:
         try:
@@ -764,11 +765,11 @@ def geohashexpand(geohash_layer: QgsVectorLayer, resolution: int,GeohashID_field
         except:
             raise QgsProcessingException("Expand cells failed. Please check your Geohash cell Ids.")
             
-        total = len(geohash_ids_expand)
+        total_cells = len(geohash_ids_expand)
 
         for i, geohash_id_expand in enumerate(geohash_ids_expand):
             if feedback:
-                feedback.setProgress(int((i / total) * 100))
+                feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
 
@@ -829,6 +830,7 @@ def tilecodeexpand(tilecode_layer: QgsVectorLayer, resolution: int,TilecodeID_fi
         for feature in tilecode_layer.getFeatures()
         if feature[TilecodeID_field]
     ]
+    tilecode_ids = list(set(tilecode_ids))
     
     if tilecode_ids:
         try:
@@ -841,11 +843,11 @@ def tilecodeexpand(tilecode_layer: QgsVectorLayer, resolution: int,TilecodeID_fi
         except:
             raise QgsProcessingException("Expand cells failed. Please check your tilecode cell Ids.")
             
-        total = len(tilecode_ids_expand)
+        total_cells = len(tilecode_ids_expand)
 
         for i, tilecode_id_expand in enumerate(tilecode_ids_expand):
             if feedback:
-                feedback.setProgress(int((i / total) * 100))
+                feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
 
@@ -920,6 +922,7 @@ def quadkeyexpand(quadkey_layer: QgsVectorLayer, resolution: int,QuadkeyID_field
         for feature in quadkey_layer.getFeatures()
         if feature[QuadkeyID_field]
     ]
+    quadkey_ids = list(set(quadkey_ids))
     
     if quadkey_ids:
         try:
@@ -932,11 +935,11 @@ def quadkeyexpand(quadkey_layer: QgsVectorLayer, resolution: int,QuadkeyID_field
         except:
             raise QgsProcessingException("Expand cells failed. Please check your quadkey cell Ids.")
             
-        total = len(quadkey_ids_expand)
+        total_cells = len(quadkey_ids_expand)
 
         for i, quadkey_id_expand in enumerate(quadkey_ids_expand):
             if feedback:
-                feedback.setProgress(int((i / total) * 100))
+                feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
 

@@ -28,7 +28,6 @@ from qgis.core import (
     QgsProcessingException,
     QgsFields,
     QgsField,
-    QgsPointXY, 
     QgsFeature,
     QgsGeometry,
     QgsWkbTypes,

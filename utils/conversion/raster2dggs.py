@@ -11,7 +11,7 @@ from qgis.core import (
 )
 from PyQt5.QtCore import QVariant
 import math
-from shapely.geometry import Polygon, box, mapping
+from shapely.geometry import Polygon
 from shapely.wkt import loads
 
 import h3 
@@ -37,8 +37,6 @@ if (platform.system() == 'Windows'):
     isea4t_dggs = Eaggr(Model.ISEA4T)
 
 from vgrid.utils.antimeridian import fix_polygon
-
-
 
 from pyproj import Geod
 geod = Geod(ellps="WGS84")

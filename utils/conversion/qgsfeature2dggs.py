@@ -2,7 +2,6 @@ from shapely.geometry import Polygon, box, mapping
 from shapely.wkt import loads as wkt_loads
 import platform,re
 from qgis.core import QgsFeature, QgsGeometry, QgsField, QgsFields,QgsWkbTypes
-from PyQt5.QtWidgets import QMessageBox
 
 from PyQt5.QtCore import QVariant
 

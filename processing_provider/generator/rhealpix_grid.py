@@ -45,8 +45,7 @@ import os, random
 from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
 from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
 from ...utils.imgs import Imgs
-from shapely.geometry import Polygon,box
-from pyproj import Geod
+from shapely.geometry import box
 from vgrid.generator.settings import geodesic_dggs_metrics
 rhealpix_dggs = RHEALPixDGGS()
 

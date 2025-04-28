@@ -23,14 +23,13 @@ from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
-    QgsWkbTypes,
     QgsProcessing,
     QgsProcessingException
     )
 
 from qgis.core import QgsApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import QCoreApplication,QVariant
+from qgis.PyQt.QtCore import QCoreApplication
 
 import platform
 from ...utils.imgs import Imgs
