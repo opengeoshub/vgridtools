@@ -224,7 +224,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         pixel_size_x = raster_layer.rasterUnitsPerPixelX()
         pixel_size_y = raster_layer.rasterUnitsPerPixelY()
         pixel_size = abs(pixel_size_x * pixel_size_y)
-        feedback.pushInfo(f"pixel_size: {pixel_size}")
+        # feedback.pushInfo(f"pixel_size: {pixel_size}")
 
         user_res = self.parameterAsInt(parameters, self.RESOLUTION, context)
         if user_res >= 0:

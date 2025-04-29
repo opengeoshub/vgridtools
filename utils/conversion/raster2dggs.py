@@ -111,6 +111,8 @@ def raster2h3(raster_layer: QgsRasterLayer, resolution: int, feedback=None) -> Q
     mem_layer.updateFields()
 
     for i, h3_index in enumerate(h3_cells):
+        if feedback and feedback.isCanceled():
+            return None
         lat, lon = h3.cell_to_latlng(h3_index)
         point = QgsPointXY(lon, lat)
         ident = provider.identify(point, QgsRaster.IdentifyFormatValue)
