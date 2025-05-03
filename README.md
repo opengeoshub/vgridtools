@@ -7,17 +7,28 @@
     <br />
   </p>
 </p>
-
-## Descriptions
+<div align="center">
+  <img src="images/readme/dggs.png">
+</div>
 <!-- TABLE OF CONTENTS -->
 <details open="open">
-  <summary>Vgrid DGGS Tools for QGIS</summary>
-  <div align="center">
-  <img src="images/readme/h3.png">
-</div>
+  <summary>Vgrid DGGS Tools for QGIS</summary>  
   <ol>
-      <li>  
-      <a href="#expressions">Expressions</a>     
+    <li>
+      <a href="#dggs-vgrid-processing-toolbox">DGGS Vgrid Processing Toolbox</a>     
+    </li>
+    <li>
+      <a href="#dggs-conversion">DGGS Conversion</a>
+      <ul>
+        <li><a href="#cell-id-to-dggs">Cell ID to DGGS</a></li>
+        <li><a href="#vector-to-dggs">Vector to DGGS</a></li>
+        <li><a href="#raster-to-dggs">Raster to DGGS</a></li>
+        <li><a href="#dggs-compact">DGGS Compact</a></li>
+        <li><a href="#dggs-expand">DGGS Expand</a></li>
+      </ul>
+    </li>
+    <li>
+      <a href="#expressions">Expressions</a>
       <ul>
         <li><a href="#latlon2olc">latlon2olc</a></li>
         <li><a href="#latlon2mgrs">latlon2mgrs</a></li>
@@ -28,8 +39,39 @@
         <li><a href="#latlon2maidenhead">latlon2maidenhead</a></li>
         <li><a href="#latlon2gars">latlon2gars</a></li>
       </ul>
+    </li>
   </ol>
 </details>
+
+## DGGS Vgrid Processing Toolbox
+  <div align="center">
+  <img src="images/readme/vgridtools.png">
+  </div>
+
+## DGGS Conversion
+
+### Cell ID to DGGS
+
+Convert DGGS Cell ID to DGGS.
+<div align="center">
+  <img src="images/readme/cellid2dggs.png">
+</div>
+
+### Vector to DGGS
+
+Convert Vector layers to DGGS.
+<div align="center">
+  <img src="images/readme/vertor2dggs.png">
+</div>
+Uncompact:
+<div align="center">
+  <img src="images/readme/vertor2dggs_uncompact.png">
+</div>
+Compact:
+<div align="center">
+  <img src="images/readme/vertor2dggs_compact.png">
+</div>
+
 
 ## Expressions
 
