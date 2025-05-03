@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-vector2dggs.py
+qgsfeature2dggs.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -107,7 +107,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return 'conversion'
 
     def tags(self):
-        return self.tr('S2, H3, rHEALPix, ISEA4T, ISEA3H, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
+        return self.tr('vector, S2, H3, rHEALPix, ISEA4T, ISEA3H, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
     
     txt_en = 'Vector to DGGS'
     txt_vi = 'Vector to DGGS'

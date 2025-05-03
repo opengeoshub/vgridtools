@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-expanddggs.py
+dggsexpand.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -74,7 +74,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/conversion/dggsexpand.png'))
 
     def tags(self):
-        return self.tr('H3, DGGS, Hexagon, Spatial Grid').split(',')
+        return self.tr('DGGS, expand, H3,S2, rHEALPix, ISEA4T, ISEA3H, QTM,OLC,Geohash,Tilecode,Quadkey').split(',')
 
     txt_en = 'DGGS Expand'
     txt_vi = 'DGGS Expand'
@@ -109,7 +109,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
     def initParameters(self, config=None):
         self.addParameter(QgsProcessingParameterVectorLayer(
             self.INPUT,
-            self.tr('Input DGGS layer'),
+            self.tr('Input DGGS'),
             [QgsProcessing.TypeVectorPolygon]
         ))
 

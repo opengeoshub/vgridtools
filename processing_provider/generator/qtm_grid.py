@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-grid_qtm.py
+qtm_grid.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *

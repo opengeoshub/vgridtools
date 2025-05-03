@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-grid_georef.py
+georef_grid.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *

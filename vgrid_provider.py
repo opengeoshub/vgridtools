@@ -38,6 +38,7 @@ from .processing_provider.conversion.raster2dggs import Raster2DGGS
 from .processing_provider.conversion.dggsexpand import DGGSExpand
 from .processing_provider.conversion.dggscompact import DGGSCompact
 
+from .processing_provider.resampling.dggsresample import DGGSResample
 
 from .processing_provider.binning.h3_bin import H3Bin
 from .processing_provider.binning.s2_bin import S2Bin
@@ -96,6 +97,9 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(DGGSExpand())
         self.addAlgorithm(DGGSCompact())
         ################################
+        self.addAlgorithm(DGGSResample())
+        ################################
+
         self.addAlgorithm(H3Bin()) 
         self.addAlgorithm(S2Bin())
         self.addAlgorithm(rHEALPixBin())

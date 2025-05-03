@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-dggscompact.py
+dggsresample.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -21,8 +21,9 @@ import platform
 from qgis.core import (
     QgsProcessing,
     QgsProcessingParameterVectorLayer,
-    QgsProcessingParameterEnum,
     QgsProcessingParameterField,
+    QgsProcessingParameterEnum,
+    QgsProcessingParameterNumber,
     QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingException,
     QgsWkbTypes,
@@ -35,21 +36,23 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
 from ...utils.imgs import Imgs
-from ...utils.conversion.dggscompact import * 
+from ...utils.resampling.dggsresample import * 
 
-class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
+class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
     INPUT = 'INPUT'
     DGGS_FIELD = 'DGGS_FIELD'
-    DGGS_TYPE = 'DGGS_TYPE'
+    RESAMPLE_FIELD = 'RESAMPLE_FIELD'
+    DGGSTYPE_FROM = 'DGGSTYPE_FROM'
+    DGGSTYPE_TO = 'DGGSTYPE_TO'
+    RESOLUTION = 'RESOLUTION'
     OUTPUT = 'OUTPUT'
 
-    DGGS_TYPES = ['H3','S2','rHEALPix', 
-                  'QTM','OLC', 'Geohash', 'Tilecode', 'Quadkey']
-
+    DGGS_TYPES = ['H3','S2', 'rHEALPix','QTM',
+                  'OLC','Geohash','Tilecode','Quadkey']
+    
     if platform.system() == 'Windows':
         index = DGGS_TYPES.index('rHEALPix') + 1
-        DGGS_TYPES[index:index] = ['ISEA4T', 'ISEA3H']
-
+        DGGS_TYPES[index:index] = ['ISEA4T']
 
     LOC = QgsApplication.locale()[:2]
 
@@ -62,26 +65,26 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         return self.translate(string[0])
 
     def name(self):
-        return 'dggscompact'
+        return 'dggsresample'
 
     def displayName(self):
-        return self.tr('DGGS Compact', 'DGGS Compact')
+        return self.tr('DGGS Resample', 'DGGS Resample')
 
     def group(self):
-        return self.tr('Conversion', 'Conversion')
+        return self.tr('Resampling', 'Resampling')
 
     def groupId(self):
-        return 'conversion'
+        return 'resampling'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/conversion/dggscompact.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/resampling/dggsresample.svg'))
 
     def tags(self):
-        return self.tr('DGGS, compact, H3,S2, rHEALPix, ISEA4T, ISEA3H, QTM,OLC,Geohash,Tilecode,Quadkey').split(',')
+        return self.tr('DGGS, resample, H3,S2, rHEALPix, ISEA4T, QTM,OLC,Geohash,Tilecode,Quadkey').split(',')
 
-    txt_en = 'DGGS Compact'
-    txt_vi = 'DGGS Compact'
-    figure = '../images/tutorial/dggscompact.png'
+    txt_en = 'DGGS Resample'
+    txt_vi = 'DGGS Resample'
+    figure = '../images/tutorial/dggsresample.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -98,7 +101,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         return [QgsProcessing.TypeVectorPolygon]
 
     def outputName(self):
-        return self.tr('DGGS_compacted')
+        return self.tr('DGGS_resampled')
 
     def outputWkbType(self, input_wkb_type):
         return QgsWkbTypes.Polygon
@@ -107,18 +110,18 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         return False
 
     def createInstance(self):
-        return DGGSCompact()
+        return DGGSResample()
 
     def initParameters(self, config=None):
         self.addParameter(QgsProcessingParameterVectorLayer(
             self.INPUT,
             self.tr('Input DGGS'),
             [QgsProcessing.TypeVectorPolygon]
-        ))        
-        
+        ))
+
         self.addParameter(QgsProcessingParameterEnum(
-            self.DGGS_TYPE,
-            "DGGS Type",
+            self.DGGSTYPE_FROM,
+            self.tr("Input DGGS type"),
             options=self.DGGS_TYPES,
             defaultValue=0
         ))
@@ -126,46 +129,62 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         self.addParameter(
             QgsProcessingParameterField(
                 self.DGGS_FIELD,
-                "DGGS ID",
+                self.tr("Input DGGS ID field"),
                 parentLayerParameterName=self.INPUT,
                 type=QgsProcessingParameterField.String
             )
         )
+        
+        self.addParameter(
+            QgsProcessingParameterField(
+                self.RESAMPLE_FIELD,
+                self.tr("Input resample field"),
+                parentLayerParameterName=self.INPUT,
+                type=QgsProcessingParameterField.Numeric,
+                optional=True,
+                defaultValue=None
+            )
+        )
+        
+        self.addParameter(QgsProcessingParameterEnum(
+            self.DGGSTYPE_TO,
+            self.tr("Output DGGS type"),
+            options=self.DGGS_TYPES,
+            defaultValue=1
+        ))
+
+        self.addParameter(QgsProcessingParameterNumber(
+            self.RESOLUTION,
+            self.tr("Output resolution (leave -1 for automatic)"),
+            QgsProcessingParameterNumber.Integer,
+            -1,
+            minValue=-1,
+            maxValue=40
+        ))
 
 
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
-        self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
+        self.DGGSTYPE_FROM_index = self.parameterAsEnum(parameters, self.DGGSTYPE_FROM, context)
+        self.DGGSTYPE_TO_index = self.parameterAsEnum(parameters, self.DGGSTYPE_TO, context)
+        self.dggstype_from = self.DGGS_TYPES[self.DGGSTYPE_FROM_index].lower()
+        self.dggstype_to = self.DGGS_TYPES[self.DGGSTYPE_TO_index].lower()
+        
+        if (self.dggstype_from == self.dggstype_to):
+            feedback.reportError("Input DGGS Type must be different with Output DGGS Type.")
+            return False
+
         self.dggs_field = self.parameterAsString(parameters, self.DGGS_FIELD, context)
-        self.DGGS_TYPE_functions = {
-            'h3': h3compact,
-            's2': s2compact,
-            'rhealpix': rhealpixcompact,
-            'qtm': qtmcompact,
-            
-            'olc': olccompact,
-            'geohash': geohashcompact,
-            'tilecode': tilecodecompact,
-            'quadkey': quadkeycompact
-        }
-        if platform.system() == 'Windows':
-            self.DGGS_TYPE_functions['isea4t'] = isea4tcompact 
-            self.DGGS_TYPE_functions['isea3h'] = isea3hcompact
+        self.resample_field = self.parameterAsString(parameters, self.RESAMPLE_FIELD, context)
+        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)                
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
         dggs_layer = self.parameterAsVectorLayer(parameters, self.INPUT, context)
-        conversion_function = self.DGGS_TYPE_functions.get(self.dggs_type)
-
-        if conversion_function is None:
-            raise QgsProcessingException(f"No compact function for DGGS type: {self.dggs_type}")
-
-        feedback.pushInfo(f"Compacting {self.dggs_type.upper()}")
-
-        memory_layer = conversion_function(dggs_layer, self.dggs_field,feedback)
+        feedback.pushInfo(f"Resampling from {self.dggstype_from.title()} to {self.dggstype_to.title()}")
+        memory_layer = resample(dggs_layer, self.dggstype_from, self.dggstype_to, self.resolution, self.dggs_field, self.resample_field, feedback)
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():
-            raise QgsProcessingException("Invalid output layer returned from compact function.")
+            raise QgsProcessingException("Invalid output layer returned from resampling function.")
 
         (sink, sink_id) = self.parameterAsSink(
             parameters,
@@ -180,4 +199,3 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
 
         return {self.OUTPUT: sink_id}
-    

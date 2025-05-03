@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Code2Cell.py
+dggs2qgsfeaure.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -74,7 +74,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return 'cellid2dggs'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/conversion/cellid2dggs.png'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_hex.svg'))
     
     
     def displayName(self):

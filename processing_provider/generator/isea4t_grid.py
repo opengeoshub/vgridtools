@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-grid_isea4t.py
+isea4t_grid.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
