@@ -15,7 +15,7 @@
   <summary>Vgrid DGGS Tools for QGIS</summary>  
   <ol>
     <li>
-      <a href="#dggs-vgrid-processing-toolbox">DGGS Vgrid Processing Toolbox</a>     
+      <a href="#vgridtools-installation">Vgridtools installation</a>     
     </li>
     <li>
       <a href="#dggs-conversion">DGGS Conversion</a>
@@ -52,10 +52,25 @@
   </ol>
 </details>
 
-## DGGS Vgrid Processing Toolbox
-  <div align="center">
-  <img src="images/readme/vgridtools.png">
-  </div>
+## Vgridtools installation
+### After installing `vgridtools`, a dialog will appear prompting you to install `vgrid`. Copy the following commands:
+```python
+import pip  
+pip.main(['install', 'vgrid'])
+```
+<div align="center">
+  <img src="images/readme/vgriddialog.png">
+</div>
+
+### When QGIS starts, navigate to Plugins → Python Console, select Show Editor, paste the previous commands, and click Run Script.
+<div align="center">
+<img src="images/readme/vgridinstall.png">
+</div>
+
+### Restart QGIS, and you'll see DGGS Vgrid in the Processing Toolbox.
+<div align="center">
+<img src="images/readme/vgridtools.png">
+</div>
 
 ## DGGS Conversion
 
