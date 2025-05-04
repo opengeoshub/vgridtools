@@ -56,7 +56,7 @@ def latlon2h3(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to H3 cell ID.
+  Convert (lat, long) to H3 ID.
   <h4>Syntax</h4>    
     <li><span class = function>latlon2h3</span>(<span class = parameters>lat, long, resolution [0..15]</span>)</li>
   <h4>Example usage</h4>
@@ -79,9 +79,9 @@ def latlon2s2(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to S2 cell ID.
+  Convert (lat, long) to S2 ID.
   <h4>Syntax</h4>    
-    <li><span class = function>latlon2s2</span>(<span class = parameters>lat, long, resolution [0-->30]</span>)</li>
+    <li><span class = function>latlon2s2</span>(<span class = parameters>lat, long, resolution [0-..30]</span>)</li>
   <h4>Example usage</h4>
 
   <ul>
@@ -103,7 +103,7 @@ def latlon2rhealpix(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to Rhealpix cell ID.
+  Convert (lat, long) to rHEALPix ID.
   <h4>Syntax</h4>    
     <li><span class = function>latlon2rhealpix</span>(<span class = parameters>lat, long, resolution [0..15]</span>)</li>
   <h4>Example usage</h4>
@@ -127,7 +127,7 @@ def latlon2isea4t(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to OpenEAGGR ISEA4T cell ID.
+  Convert (lat, long) to OpenEAGGR ISEA4T ID.
   <h4>Syntax</h4>    
     <li><span class = function>latlon2isea4t</span>(<span class = parameters>lat, long, resolution [0..39]</span>)</li>
   <h4>Example usage</h4>
@@ -150,7 +150,7 @@ def latlon2isea3h(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to OpenEAGGR ISEA3H cell ID.
+  Convert (lat, long) to OpenEAGGR ISEA3H ID.
   <h4>Syntax</h4>    
     <li><span class = function>latlon2isea3h</span>(<span class = parameters>lat, long, resolution [0..40]</span>)</li>
   <h4>Example usage</h4>
@@ -174,7 +174,7 @@ def latlon2isea3h(latitude, longitude, resolution, feature, parent):
 #     font-style:italic
 #     }
 #   </style>
-#   Convert latlon to EASE-DGGS.
+#   Convert (lat, long) to EASE-DGGS.
 #   <h4>Syntax</h4>    
 #     <li><span class = function>latlon2ease</span>(<span class = parameters>lat, long, resolution [0..6]</span>)</li>
 #   <h4>Example usage</h4>
@@ -198,7 +198,7 @@ def latlon2qtm(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to QTM cell ID.
+  Convert (lat, long) to QTM ID.
   <h4>Syntax</h4>    
     <li><span class = function>latlon2qtm</span>(<span class = parameters>lat, long, resolution [1..24]</span>)</li>
   <h4>Example usage</h4>
@@ -222,9 +222,9 @@ def latlon2olc(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to Open Location Code (OLC)/ Google Plus Code
+  Convert (lat, long) to Open Location Code (OLC)/ Google Plus Code
   <h4>Syntax</h4>    
-    <li><span class = function>latlon2olc</span>(<span class = parameters>lat, long, codeLength [10-->15]</span>)</li>
+    <li><span class = function>latlon2olc</span>(<span class = parameters>lat, long, resolution [2,4,6,8,10,11..15]</span>)</li>
   <h4>Example usage</h4>
 
   <ul>
@@ -245,9 +245,9 @@ def latlon2mgrs(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to MGRS cell ID.
+  Convert (lat, long) to MGRS ID.
   <h4>Syntax</h4>    
-    <li><span class = function>latlon2mgrs</span>(<span class = parameters>lat, long, resolution [0-->5]</span>)</li>
+    <li><span class = function>latlon2mgrs</span>(<span class = parameters>lat, long, resolution [0..5]</span>)</li>
   <h4>Example usage</h4>
 
   <ul>
@@ -268,9 +268,9 @@ def latlon2geohash(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to Geohash.
+  Convert (lat, long) to Geohash ID.
   <h4>Syntax</h4>    
-    <li><span class = function>latlon2geohash</span>(<span class = parameters>lat, long, resolution [1-->30]</span>)</li>
+    <li><span class = function>latlon2geohash</span>(<span class = parameters>lat, long, resolution [1..30]</span>)</li>
   <h4>Example usage</h4>
 
   <ul>
@@ -291,9 +291,9 @@ def latlon2georef(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to GEOREF cell ID.
+  Convert (lat, long) to GEOREF ID.
   <h4>Syntax</h4>    
-    <li><span class = function>latlon2georef</span>(<span class = parameters>lat, long, resolution [0-->10]</span>)</li>
+    <li><span class = function>latlon2georef</span>(<span class = parameters>lat, long, resolution [0..10]</span>)</li>
   <h4>Example usage</h4>
 
   <ul>
@@ -314,9 +314,9 @@ def latlon2tilecode(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to Tilecode.
+  Convert (lat, long) to Tilecode ID.
   <h4>Syntax</h4>    
-    <li><span class = function>latlon2tilecode</span>(<span class = parameters>lat, long, resolution/ zoom level [0;25]</span>)</li>
+    <li><span class = function>latlon2tilecode</span>(<span class = parameters>lat, long, resolution [0..29]</span>)</li>
   <h4>Example usage</h4>
 
   <ul>
@@ -338,9 +338,9 @@ def latlon2quadkey(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to Quadkey.
+  Convert (lat, long) to Quadkey ID.
   <h4>Syntax</h4>    
-    <li><span class = function>latlon2quadkey</span>(<span class = parameters>lat, long, resolution/ zoom level [0;25]</span>)</li>
+    <li><span class = function>latlon2quadkey</span>(<span class = parameters>lat, long, resolution [0..29]</span>)</li>
   <h4>Example usage</h4>
 
   <ul>
@@ -361,9 +361,9 @@ def latlon2maidenhead(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to Maidenhead cell ID.
+  Convert (lat, long) to Maidenhead ID.
   <h4>Syntax</h4>    
-    <li><span class = function>latlon2maidenhead</span>(<span class = parameters>lat, long, resolution [1-->4]</span>)</li>
+    <li><span class = function>latlon2maidenhead</span>(<span class = parameters>lat, long, resolution [1..4]</span>)</li>
   <h4>Example usage</h4>
 
   <ul>
@@ -384,7 +384,7 @@ def latlon2gars(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert latlon to GARS cell ID.
+  Convert (lat, long) to GARS ID.
   <h4>Syntax</h4>    
     <li><span class = function>latlon2gars</span>(<span class = parameters>lat, long, resolution [1, 5, 15, 30 (minutes)]</span>)</li>
   <h4>Example usage</h4>

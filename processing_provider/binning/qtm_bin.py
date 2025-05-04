@@ -153,7 +153,7 @@ class QTMBin(QgsProcessingAlgorithm):
                     optional=False)
         )
 
-        self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT, 'Output'))
+        self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT, 'DGGS_binning'))
 
                    
     def prepareAlgorithm(self, parameters, context, feedback):

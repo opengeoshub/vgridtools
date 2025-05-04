@@ -137,7 +137,7 @@ class PolygonBin(QgsProcessingAlgorithm):
         ))
         self.addParameter(QgsProcessingParameterVectorDestination(
             self.OUTPUT,
-            'Output'
+            'Polygon_binning'
         ))
 
     def prepareAlgorithm(self, parameters, context, feedback):
