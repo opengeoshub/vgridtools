@@ -44,8 +44,8 @@ from PyQt5.QtGui import *
 from .vgrid_provider import VgridProvider
 from .expressions import *
 # from .vgrid_dialogs import *
-exprs =(latlon2olc,latlon2mgrs,latlon2geohash,latlon2georef,latlon2s2,latlon2tilecode,latlon2maidenhead,latlon2gars)
-
+exprs =(latlon2h3, latlon2s2, latlon2rhealpix, latlon2isea4t, latlon2isea3h, latlon2qtm,\
+        latlon2olc, latlon2geohash, latlon2georef, latlon2mgrs, latlon2tilecode, latlon2quadkey, latlon2maidenhead, latlon2gars)
     
 class VgridPlugin(object):
 

@@ -2,7 +2,7 @@
 name=Vgrid
 qgisMinimumVersion=3.10
 description= Vgrid DGGS and Cell-based Geocoding Tools
-about= - Encode/ decode Latlong to DGGS (H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE-DGGS, DGGRID, QTM, OLC/ OpenLocationCode/ Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS) - Convert Cell ID to DGGS, - Convert Vector to DGGS, - Convert Raster to DGGS, - Resample DGGS, - Generate DGGS
+about= - Encode/ decode Latlong to DGGS (H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE-DGGS, DGGRID, QTM, OLC/ OpenLocationCode/ Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS) - Convert Cell ID to DGGS, - Convert Vector to DGGS, - Convert Raster to DGGS, -DGGS Binning, - DGGS Resampling, - DGGS Generator
 version=25.5.5
 author=Thang Quach
 owner=thangqd
