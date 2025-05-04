@@ -32,11 +32,11 @@ from PyQt5.QtWidgets import QInputDialog
 # noinspection PyPep8Naming
 def classFactory(iface):  # pylint: disable=invalid-name  
   try:
-      import h3
+      import vgrid
   except ImportError:
     command = "import pip\npip.main(['install','vgrid'])"   
     text, ok = QInputDialog.getMultiLineText(None, "Vgrid DGGS - Vgrid module not found", 
-                                            "To run Vgrid Tooks, please copy and run this in the Python console to install Vgrid package and reload QGIS:", 
+                                            "To run Vgrid Tools, please copy and run this code in the Python console to install vgrid package and reload QGIS:", 
                                             command)
 
   from .vgrid import VgridPlugin
