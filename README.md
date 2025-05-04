@@ -62,7 +62,7 @@ pip.main(['install', 'vgrid'])
   <img src="images/readme/vgriddialog.png">
 </div>
 
-### When QGIS starts, navigate to Plugins → Python Console, select Show Editor, paste the previous commands, and click Run Script.
+### When QGIS starts, navigate to Plugins → Python Console, select ***Show Editor***, paste the previous commands, and click ***Run Script***.
 <div align="center">
 <img src="images/readme/vgridinstall.png">
 </div>
