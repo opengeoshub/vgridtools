@@ -263,7 +263,7 @@ Convert (lat, long) to Open Location Code (OLC)/ Google Plus Code.
 <code>latlon2olc(lat, long, resolution [2,4,6,8,10,11..15])  or latlon2olc($y, $x, resolution)</span> in WGS84 CRS</code>
 </li> 
 <h4>Example usage</h4>
-<li>s
+<li>
 <code> latlon2olc(10.775275567242561, 106.70679737574993, 11) → '7P28QPG4+4P7'</code>
 </li>
 <br/>
