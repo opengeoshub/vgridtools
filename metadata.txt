@@ -2,7 +2,7 @@
 name=Vgrid
 qgisMinimumVersion=3.40
 description= Vgrid DGGS and Cell-based Geocoding Tools. - Vgridtools Installation instruction: 1. After installing 'vgridtools', a dialog will appear prompting you to install 'vgrid' package . Copy the following commands: import pip pip.main(['install', 'vgrid']) 2. When QGIS starts, navigate to Plugins → Python Console, select Show Editor, paste the copied commands, and click Run Script 3. Restart QGIS, and you'll see DGGS Vgrid in the Processing Toolbox
-about= - Encode/ decode Latlong to DGGS (H3, S2, Rhealpix, ISEA4T, ISEA3H, EASE-DGGS, DGGRID, QTM, OLC/ OpenLocationCode/ Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS) - Convert Cell ID to DGGS, - Convert Vector to DGGS, - Convert Raster to DGGS, -DGGS Binning, - DGGS Resampling, - DGGS Generator
+about= - Expressions to convert (lat, long, resolution) to DGGS (H3, S2, rHEALPix, ISEA4T, ISEA3H, EASE-DGGS, DGGRID, QTM, OLC/ OpenLocationCode/ Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS) - Convert Cell ID to DGGS, - Convert Vector to DGGS, -DGGS Compact, - DGGS Expand - Convert Raster to DGGS, -DGGS Binning, - DGGS Resampling, - DGGS Generator
 version=25.5.5
 author=Thang Quach
 owner=thangqd
