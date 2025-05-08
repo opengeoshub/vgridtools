@@ -47,13 +47,12 @@ from ...utils.imgs import Imgs
 from shapely.geometry import Polygon
 from vgrid.generator.settings import graticule_dggs_metrics
 
-grid_params = {
-        1: (18, 18, 20, 10),
-        2: (180, 180, 2, 1),
-        3: (1800, 1800, 0.2, 0.1),
-        4: (18000, 18000, 0.02, 0.01)
-    }
-        
+grid_params = { 
+    1: (18, 18, 20, 10),                 # Fields: 20° lon, 10° lat
+    2: (180, 180, 2, 1),                 # Squares: 2° lon, 1° lat
+    3: (4320, 4320, 0.083333, 0.041666), # Subsquare: 5' lon, 2.5' lat
+    4: (43200, 43200, 0.008333, 0.004167) # Extended: 30" lon, 15" lat
+}
 
 class MaidenheadGrid(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'
@@ -181,26 +180,30 @@ class MaidenheadGrid(QgsProcessingAlgorithm):
             cell_count = 0  # Counter to track progress
             for i in range(x_cells):
                 for j in range(y_cells):
-                    min_lon = base_lon + i * lon_width
-                    max_lon = min_lon + lon_width
-                    min_lat = base_lat + j * lat_width
-                    max_lat = min_lat + lat_width
+                    cell_min_lon = base_lon + i * lon_width
+                    cell_max_lon = cell_min_lon + lon_width
+                    cell_min_lat = base_lat + j * lat_width
+                    cell_max_lat = cell_min_lat + lat_width
                     
-                    cell_polygon = Polygon( [
-                        (min_lon, min_lat),
-                        (max_lon, min_lat),
-                        (max_lon, max_lat),
-                        (min_lon, max_lat),
-                        (min_lon, min_lat)  # Closing the polygon
-                        ])
-                    
+                    cell_center_lat = (cell_min_lat + cell_max_lat) / 2
+                    cell_center_lon = (cell_min_lon + cell_max_lon) / 2
+                
+                    maidenhead_id = maidenhead.toMaiden(cell_center_lat, cell_center_lon, self.resolution)
+                    _, _, min_lat_maiden, min_lon_maiden, max_lat_maiden, max_lon_maiden, _ = maidenhead.maidenGrid(maidenhead_id)
+                    # Define the polygon based on the bounding box
+                    cell_polygon = Polygon([
+                        [min_lon_maiden, min_lat_maiden],  # Bottom-left corner
+                        [max_lon_maiden, min_lat_maiden],  # Bottom-right corner
+                        [max_lon_maiden, max_lat_maiden],  # Top-right corner
+                        [min_lon_maiden, max_lat_maiden],  # Top-left corner
+                        [min_lon_maiden, min_lat_maiden]   # Closing the polygon (same as the first point)
+                    ])
                     
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     maidenhead_feature = QgsFeature()
                     maidenhead_feature.setGeometry(cell_geometry)
                     
                     center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-                    maidenhead_id = maidenhead.toMaiden(center_lat, center_lon, self.resolution)
                     maidenhead_feature.setAttributes([maidenhead_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
                     
                     sink.addFeature(maidenhead_feature, QgsFeatureSink.FastInsert)         
@@ -225,25 +228,30 @@ class MaidenheadGrid(QgsProcessingAlgorithm):
 
             for i in range(min_x, max_x):
                 for j in range(min_y, max_y):
-                    min_lon = base_lon + i * lon_width
-                    max_lon = min_lon + lon_width
-                    min_lat = base_lat + j * lat_width
-                    max_lat = min_lat + lat_width
+                    cell_min_lon = base_lon + i * lon_width
+                    cell_max_lon = cell_min_lon + lon_width
+                    cell_min_lat = base_lat + j * lat_width
+                    cell_max_lat = cell_min_lat + lat_width
                     
-                    cell_polygon = Polygon( [
-                        (min_lon, min_lat),
-                        (max_lon, min_lat),
-                        (max_lon, max_lat),
-                        (min_lon, max_lat),
-                        (min_lon, min_lat)  # Closing the polygon
-                        ])
+                    cell_center_lat = (cell_min_lat + cell_max_lat) / 2
+                    cell_center_lon = (cell_min_lon + cell_max_lon) / 2
+                
+                    maidenhead_id = maidenhead.toMaiden(cell_center_lat, cell_center_lon, self.resolution)
+                    _, _, min_lat_maiden, min_lon_maiden, max_lat_maiden, max_lon_maiden, _ = maidenhead.maidenGrid(maidenhead_id)
+                    
+                    cell_polygon = Polygon([
+                        [min_lon_maiden, min_lat_maiden],  # Bottom-left corner
+                        [max_lon_maiden, min_lat_maiden],  # Bottom-right corner
+                        [max_lon_maiden, max_lat_maiden],  # Top-right corner
+                        [min_lon_maiden, max_lat_maiden],  # Top-left corner
+                        [min_lon_maiden, min_lat_maiden]   # Closing the polygon (same as the first point)
+                    ])
                     
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     maidenhead_feature = QgsFeature()
                     maidenhead_feature.setGeometry(cell_geometry)
                     
                     center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-                    maidenhead_id = maidenhead.toMaiden(center_lat, center_lon, self.resolution)
                     maidenhead_feature.setAttributes([maidenhead_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
                     
                     sink.addFeature(maidenhead_feature, QgsFeatureSink.FastInsert)         
