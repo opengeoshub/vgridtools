@@ -43,7 +43,7 @@ from PyQt5.QtCore import QVariant
 import os, random
 from ...utils.imgs import Imgs
 import numpy as np
-from vgrid.utils.gars.garsgrid import GARSGrid  
+from vgrid.utils.gars.garsgrid import GARSGrid as GARSGRID 
 from shapely.geometry import Polygon
 from vgrid.generator.settings import graticule_dggs_metrics
         
@@ -198,7 +198,7 @@ class GARSGrid(QgsProcessingAlgorithm):
                     gars_feature.setGeometry(cell_geometry)
                     
                     center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-                    gars_id = str(GARSGrid.from_latlon(lat, lon, res * 60))
+                    gars_id = str(GARSGRID.from_latlon(lat, lon, res * 60))
                     gars_feature.setAttributes([gars_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
                     
                     sink.addFeature(gars_feature, QgsFeatureSink.FastInsert)         
@@ -238,7 +238,7 @@ class GARSGrid(QgsProcessingAlgorithm):
                     gars_feature.setGeometry(cell_geometry)
                     
                     center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-                    gars_id = str(GARSGrid.from_latlon(lat, lon, res * 60))
+                    gars_id = str(GARSGRID.from_latlon(lat, lon, res * 60))
                     gars_feature.setAttributes([gars_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
                     
                     sink.addFeature(gars_feature, QgsFeatureSink.FastInsert)         
