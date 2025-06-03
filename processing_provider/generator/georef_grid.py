@@ -127,7 +127,7 @@ class GEOREFGrid(QgsProcessingAlgorithm):
     def prepareAlgorithm(self, parameters, context, feedback):
         self.RESOLUTION = self.parameterAsInt(parameters, self.RESOLUTION, context)  
         if self.RESOLUTION < 0 or self.RESOLUTION>5:
-            feedback.reportError('Density parameter must be in range [0,5]')
+            feedback.reportError('Resolution must be in range [0,5]')
             return False
          
          # Get the extent parameter

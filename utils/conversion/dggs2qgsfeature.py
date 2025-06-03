@@ -857,6 +857,15 @@ def gars2qgsfeature(feature, gars_id):
         # Extract the bounding box coordinates for the polygon
         x, y = wkt_polygon.exterior.xy  # Assuming exterior.xy returns lists of x and y coordinates
         resolution_minute = gars_grid.resolution
+        resolution = 1
+        if resolution_minute == 30:
+            resolution = 1
+        elif resolution_minute == 15:
+            resolution = 2
+        elif resolution_minute == 5:
+            resolution = 3
+        elif resolution_minute == 1:
+            resolution = 4
         
         # Determine min/max latitudes and longitudes
         min_lon = min(x)
@@ -901,7 +910,7 @@ def gars2qgsfeature(feature, gars_id):
         gars_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [gars_id,resolution_minute, center_lat, center_lon, cell_width, cell_height,cell_area]
+        new_attributes = [gars_id,resolution, center_lat, center_lon, cell_width, cell_height,cell_area]
         all_attributes = original_attributes + new_attributes
         
         gars_feature.setAttributes(all_attributes) 

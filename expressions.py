@@ -386,11 +386,11 @@ def latlon2gars(latitude, longitude, resolution, feature, parent):
   </style>
    Convert (lat, long) to GARS ID.
   <h4>Syntax</h4>    
-    <li><span class = function>latlon2gars</span>(<span class = parameters>lat, long, resolution [1, 5, 15, 30 (minutes)]</span>)</li>
+    <li><span class = function>latlon2gars</span>(<span class = parameters>lat, long, resolution [1..4] (30, 15, 5, 1 minutes)</span>)</li>
   <h4>Example usage</h4>
 
   <ul>
-    <li><span class = function>latlon2gars</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 1</span>)&rarr; '574JK1918'</li>
+    <li><span class = function>latlon2gars</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 4</span>)&rarr; '574JK1918'</li>
   </ul>      
   """ 
   return latlon2dggs.latlon2gars(latitude, longitude, resolution) 

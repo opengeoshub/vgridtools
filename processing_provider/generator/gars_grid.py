@@ -22,7 +22,7 @@ from qgis.core import (
     QgsFeatureSink,
     QgsProcessingLayerPostProcessorInterface,
     QgsProcessingParameterExtent,
-    QgsProcessingParameterEnum,
+    QgsProcessingParameterNumber,
     QgsProcessingException,
     QgsProcessingParameterFeatureSink,
     QgsProcessingAlgorithm,
@@ -112,15 +112,15 @@ class GARSGrid(QgsProcessingAlgorithm):
                                             )
         self.addParameter(param)
 
-        param = QgsProcessingParameterEnum(
+        param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr('Resolution in minutes [30, 15, 5, 1]'),
-            [self.tr('30 minutes'), self.tr('15 minutes'),self.tr('5 minutes'),self.tr('1 minute')],
-            defaultValue=0,  # Default to the first option (30 minutes)
+            self.tr('Resolution [1..4] (30, 15, 5, 1 minutes)'),
+            defaultValue=1,  # Default to the first option (30 minutes)
+             minValue= 0,
+            maxValue=5,
             optional=False
         )
         self.addParameter(param)
-
 
         param = QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
@@ -128,18 +128,16 @@ class GARSGrid(QgsProcessingAlgorithm):
         self.addParameter(param)
                     
     def prepareAlgorithm(self, parameters, context, feedback):
-        resolution_index = self.parameterAsEnum(parameters, self.RESOLUTION, context)
-        resolution_values = [30,15,5,1]
-        self.resolution = resolution_values[resolution_index]
-        if self.resolution not in  [30,15,5,1]:
-            feedback.reportError('Resolution must be in [30,15,5,1] minutes')
+        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        if self.resolution < 1 or self.resolution> 4:
+            feedback.reportError('Resolution must be in range [1..4]')
             return False
 
         # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
 
-        if self.resolution < 30 and (self.grid_extent is None or self.grid_extent.isEmpty()):
-            feedback.reportError('For performance reason, when resolution is smaller than 30 minutes, the grid extent must be set.')
+        if self.resolution > 1 and (self.grid_extent is None or self.grid_extent.isEmpty()):
+            feedback.reportError('For performance reason, when resolution is greater than 1, the grid extent must be set.')
             return False
         
         return True
@@ -173,9 +171,18 @@ class GARSGrid(QgsProcessingAlgorithm):
 
         lon_min, lon_max = -180.0, 180.0
         lat_min, lat_max = -90.0, 90.0
-        res = self.resolution/ 60.0      
-        longitudes = np.arange(lon_min, lon_max, res)
-        latitudes = np.arange(lat_min, lat_max, res)
+        minutes_map = {
+                1: 30,  # 30 minutes
+                2: 15,  # 15 minutes
+                3: 5,   # 5 minutes
+                4: 1    # 1 minute
+            }
+        
+        resolution_minutes = minutes_map[self.resolution]
+        resolution_degrees = resolution_minutes / 60.0
+
+        longitudes = np.arange(lon_min, lon_max, resolution_degrees)
+        latitudes = np.arange(lat_min, lat_max, resolution_degrees)
             
         if self.grid_extent is None or self.grid_extent.isEmpty():          
             # Calculate total cells for progress reporting
@@ -189,16 +196,16 @@ class GARSGrid(QgsProcessingAlgorithm):
                 for lat in latitudes:
                     cell_polygon = Polygon([
                         (lon, lat),
-                        (lon + res, lat),
-                        (lon + res, lat + res),
-                        (lon, lat + res),
+                        (lon + resolution_degrees, lat),
+                        (lon + resolution_degrees, lat + resolution_degrees),
+                        (lon, lat + resolution_degrees),
                         (lon, lat) ])
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     gars_feature = QgsFeature()
                     gars_feature.setGeometry(cell_geometry)
                     
                     center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-                    gars_id = str(GARSGRID.from_latlon(lat, lon, res * 60))
+                    gars_id = str(GARSGRID.from_latlon(lat, lon, resolution_minutes))
                     gars_feature.setAttributes([gars_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
                     
                     sink.addFeature(gars_feature, QgsFeatureSink.FastInsert)         
@@ -211,10 +218,10 @@ class GARSGrid(QgsProcessingAlgorithm):
            
         else:
             # Calculate the cell indices corresponding to the extent bounds
-            min_x = max(0, int((self.grid_extent.xMinimum() - lon_min) / res))
-            max_x = min(len(longitudes), int((self.grid_extent.xMaximum() - lon_min) / res) + 1)
-            min_y = max(0, int((self.grid_extent.yMinimum() - lat_min) / res))
-            max_y = min(len(latitudes), int((self.grid_extent.yMaximum() - lat_min) / res) + 1)
+            min_x = max(0, int((self.grid_extent.xMinimum() - lon_min) /  resolution_degrees))
+            max_x = min(len(longitudes), int((self.grid_extent.xMaximum() - lon_min) / resolution_degrees) + 1)
+            min_y = max(0, int((self.grid_extent.yMinimum() - lat_min) / resolution_degrees))
+            max_y = min(len(latitudes), int((self.grid_extent.yMaximum() - lat_min) / resolution_degrees) + 1)
 
             # Total cells to process, for progress feedback
             total_cells = (max_x - min_x) * (max_y - min_y)
@@ -228,9 +235,9 @@ class GARSGrid(QgsProcessingAlgorithm):
                     lat = latitudes[j]
                     cell_polygon = Polygon([
                         (lon, lat),
-                        (lon + res, lat),
-                        (lon + res, lat + res),
-                        (lon, lat + res),
+                        (lon + resolution_degrees, lat),
+                        (lon + resolution_degrees, lat + resolution_degrees),
+                        (lon, lat + resolution_degrees),
                         (lon, lat) ])
                    
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -238,7 +245,7 @@ class GARSGrid(QgsProcessingAlgorithm):
                     gars_feature.setGeometry(cell_geometry)
                     
                     center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-                    gars_id = str(GARSGRID.from_latlon(lat, lon, res * 60))
+                    gars_id = str(GARSGRID.from_latlon(lat, lon, resolution_minutes))
                     gars_feature.setAttributes([gars_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
                     
                     sink.addFeature(gars_feature, QgsFeatureSink.FastInsert)         

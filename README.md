@@ -56,8 +56,10 @@
 ### After installing `vgridtools`, a dialog will appear prompting you to install `vgrid`. Copy the following commands:
 ```python
 import pip  
-pip.main(['install', 'vgrid'])
+pip.main(['install', 'vgrid --upgrade'])
 ```
+### Use the same command after upgrading vgridtools
+
 <div align="center">
   <img src="images/readme/vgriddialog.png">
 </div>
@@ -372,11 +374,11 @@ Convert (lat, long) to Maidenhead ID.
 Convert (lat, long) to GARS Code.
 <h4>Syntax</h4>
 <li>
-<code>latlon2gars(lat, long, resolution [1, 5, 15, 30 (minutes)]) or latlon2gars($y, $x, resolution)</span> in WGS84 CRS</code>
+<code>latlon2gars(lat, long, resolution [1..4] (30, 15, 5, 1 minutes)) or latlon2gars($y, $x, resolution)</span> in WGS84 CRS</code>
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2gars(10.775275567242561, 106.70679737574993, 1)→ '574JK1918'</code>
+<code>latlon2gars(10.775275567242561, 106.70679737574993, 4)→ '574JK1918'</code>
 </li>
 <br/>
 <div align="center">
