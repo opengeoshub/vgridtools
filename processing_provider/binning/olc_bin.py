@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-bin_olc.py
-***************************************************************************
-*                                                                         *
-*   This program is free software; you can redistribute it and/or modify  *
-*   it under the terms of the GNU General Public License as published by  *
-*   the Free Software Foundation; either version 2 of the License, or     *
-*   (at your option) any later version.                                   *
-*                                                                         *
-***************************************************************************
-"""
 __author__ = 'Thang Quach'
 __date__ = '2024-11-20'
 __copyright__ = '(L) 2024, Thang Quach'
