@@ -1,4 +1,4 @@
-<svg enable-background="new 0 0 90 24" height="192" viewBox="0 0 90 24" width="720"
+<svg enable-background="new 0 0 50 24" height="192" viewBox="0 0 50 24" width="400"
   xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
   <defs>
     <linearGradient id="a" gradientUnits="userSpaceOnUse" x1="3.0864" x2="20.9115" y1="14.0254" y2="10.8823">
@@ -14,7 +14,7 @@
       <stop offset="1" stop-color="#bfbfbf" />
     </linearGradient>
   </defs>
-  <g transform="translate(33,0)">
+  <g transform="translate(13,0)">
     <g transform="scale(1, -1) translate(0, -24)" stroke-linecap="round">
       <g stroke="#672a5c">
         <path
