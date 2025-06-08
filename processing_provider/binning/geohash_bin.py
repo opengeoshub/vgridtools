@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 __author__ = 'Thang Quach'
 __date__ = '2024-11-20'
 __copyright__ = '(L) 2024, Thang Quach'

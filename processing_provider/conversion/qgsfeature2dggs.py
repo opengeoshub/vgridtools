@@ -1,15 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-qgsfeature2dggs.py
-***************************************************************************
-*                                                                         *
-*   This program is free software; you can redistribute it and/or modify  *
-*   it under the terms of the GNU General Public License as published by  *
-*   the Free Software Foundation; either version 2 of the License, or     *
-*   (at your option) any later version.                                   *
-*                                                                         *
-***************************************************************************
-"""
 __author__ = 'Thang Quach'
 __date__ = '2024-11-20'
 __copyright__ = '(L) 2024, Thang Quach'
@@ -33,6 +22,7 @@ from qgis.PyQt.QtCore import QCoreApplication,QVariant
 import platform
 from ...utils.imgs import Imgs
 from ...utils.conversion.qgsfeature2dggs import *
+from .dggs_settings import settings, DGGSettingsDialog
 
 class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     """
@@ -48,28 +38,10 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         # 'GEOREF',
         # 'MGRS',
          'Tilecode','Quadkey']
-    DGGS_RESOLUTION = {
-        'H3': (0, 15, 10),
-        'S2': (0, 30, 16),
-        'rHEALPix': (1, 15,11),      
-        # 'EASE':(0,6,4), # EASE crashed QGIS
-        'QTM':(1,24,12),
-        'OLC': (2, 15, 10),
-        'Geohash': (1, 10, 9),
-        # 'GEOREF': (0, 10, 6),
-        # 'MGRS': (0, 5, 4),
-        'Tilecode': (0, 29, 15),
-        'Quadkey': (0, 29, 15)        
-    }
+    
     if platform.system() == 'Windows':
         index = DGGS_TYPES.index('rHEALPix') + 1
         DGGS_TYPES[index:index] = ['ISEA4T', 'ISEA3H']
-
-        DGGS_RESOLUTION.update({
-            'ISEA4T': (0, 39, 18),
-            'ISEA3H': (0, 40, 20),
-        })
-
     
     OUTPUT = 'OUTPUT'
 
@@ -152,11 +124,15 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             defaultValue=0
         ))
 
+        # Get default resolution from settings
+        default_dggs = self.DGGS_TYPES[0]
+        _, _, default_res = settings.getResolution(default_dggs)
+
         self.addParameter(QgsProcessingParameterNumber(
             self.RESOLUTION,
             "Resolution",
             QgsProcessingParameterNumber.Integer,
-            10,
+            default_res,
             minValue=0,
             maxValue=40
         ))
@@ -167,13 +143,12 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             defaultValue=False  
         ))
 
-
     def checkParameterValues(self, parameters, context):
         """Dynamically update resolution limits before execution"""
         selected_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         selected_dggs = self.DGGS_TYPES[selected_index]
 
-        min_res, max_res, _ = self.DGGS_RESOLUTION[selected_dggs]
+        min_res, max_res, _ = settings.getResolution(selected_dggs)
         res_value = self.parameterAsInt(parameters, self.RESOLUTION, context)
 
         if not (min_res <= res_value <= max_res):
@@ -225,7 +200,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
         return output_fields
 
-
     def prepareAlgorithm(self, parameters, context, feedback):       
         source = self.parameterAsSource(parameters, self.INPUT, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
@@ -252,7 +226,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             self.DGGS_TYPE_functions['isea3h'] = qgsfeature2isea3h # Need to check polyline/ polygon2isea3h --> QGIS crashed
 
         return True
-
 
     def processFeature(self, feature, context, feedback):
         try:     

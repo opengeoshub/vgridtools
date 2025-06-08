@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RCC>
+    <qresource prefix="/plugins/vgridtools">
+        <file>images/settings.svg</file>
+    </qresource>
+</RCC> 

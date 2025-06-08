@@ -34,6 +34,7 @@ from PyQt5.QtGui import *
 
 from .vgrid_provider import VgridProvider
 from .expressions import *
+from .processing_provider.conversion.dggs_settings import DGGSettingsDialog
 # from .vgrid_dialogs import *
 exprs =(latlon2h3, latlon2s2, latlon2rhealpix, latlon2isea4t, latlon2isea3h, latlon2qtm,\
         latlon2olc, latlon2geohash, latlon2georef, latlon2mgrs, latlon2tilecode, latlon2quadkey, latlon2maidenhead, latlon2gars)
@@ -45,13 +46,12 @@ class VgridPlugin(object):
         self.plugin_dir = os.path.dirname(__file__)
         self.iface = iface
         self.Vgrid_menu = None                 
-    
+        self.settings_action = None
 
     def initProcessing(self):
         """Init Processing provider for QGIS >= 3.8."""
         self.provider = VgridProvider()
         QgsApplication.processingRegistry().addProvider(self.provider)
-
 
     def initGui(self):       
         self.initProcessing()
@@ -59,38 +59,32 @@ class VgridPlugin(object):
             if not QgsExpression.isFunctionName(expr.name()):
                 QgsExpression.registerFunction(expr)
         
-        # self.Vgrid_menu = QMenu(QCoreApplication.translate("Vgrid", "Vgrid"))
-        # self.iface.mainWindow().menuBar().insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.Vgrid_menu)
+        # Create menu
+        self.Vgrid_menu = QMenu(QCoreApplication.translate("Vgrid", "Vgrid"))
+        self.iface.mainWindow().menuBar().insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.Vgrid_menu)
         
-        # self.VgridGenerator_menu = QMenu(u'Vgrid')	
-        # icon = QIcon(os.path.dirname(__file__) + "/images/grid_generator.png")	
-        # self.Vgrid_add_submenu2(self.VgridGenerator_menu, icon)
-        
-
-        # icon = QIcon(os.path.dirname(__file__) + "/images/grid.svg")  
-        # self.VgridGZD_action = QAction(icon, u'Grid Zone Designators', self.iface.mainWindow())
-        # self.VgridGZD_action.triggered.connect(lambda: gzd.main())
-        # self.VgridGenerator_menu.addAction(self.VgridGZD_action)
-
-
-        # self.VgridHome_menu = QMenu(u'Vgrid Home')	
-        # icon = QIcon(os.path.dirname(__file__) + "/images/vgrid.svg")	
-        # self.Vgrid_add_submenu2(self.VgridHome_menu, icon)
-        # self.VgridHome_action = QAction(icon, u'Vgrid Home', self.iface.mainWindow())
-        # self.VgridHome_action.triggered.connect(self.VgridHome)
-        # self.VgridHome_menu.addAction(self.VgridHome_action)	
+        # Add settings action
+        self.settings_action = QAction(
+            QIcon(":/plugins/vgridtools/images/settings.svg"),
+            "DGGS Settings",
+            self.iface.mainWindow()
+        )
+        self.settings_action.triggered.connect(self.showSettings)
+        self.iface.addPluginToMenu("&VGridTools", self.settings_action)
 
     def unload(self):
         QgsApplication.processingRegistry().removeProvider(self.provider)
         for expr in exprs:
             if QgsExpression.isFunctionName(expr.name()):
                 QgsExpression.unregisterFunction(expr.name())
-        # if self.Vgrid_menu != None:
-        #     self.iface.mainWindow().menuBar().removeAction(self.Vgrid_menu.menuAction())
-        # else:
-        #     self.iface.removePluginMenu("&Vgrid", self.VgridHome_menu.menuAction())          
+        if self.Vgrid_menu is not None:
+            self.iface.mainWindow().menuBar().removeAction(self.Vgrid_menu.menuAction())
 
-   
+    def showSettings(self):
+        """Show the settings dialog."""
+        dialog = DGGSettingsDialog(self.iface)
+        dialog.exec_()
+
     def Vgrid_add_submenu(self, submenu):
         if self.Vgrid_menu != None:
             self.Vgrid_menu.addMenu(submenu)
@@ -104,7 +98,6 @@ class VgridPlugin(object):
         else:
             self.iface.addPluginToMenu("&Vgrid", submenu.menuAction())
 
-    
     def VgridHome(self):
         webbrowser.open("https://vgrid.vn") 
     
