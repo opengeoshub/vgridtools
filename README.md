@@ -1,3 +1,4 @@
+
 <!-- PROJECT LOGO -->
 <p align="center">
   <h3 align="center">Vgridtools</h3>
@@ -9,6 +10,9 @@
 <div align="center">
   <img src="images/readme/dggs.png">
 </div>
+
+[![image](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 <!-- TABLE OF CONTENTS -->
 <details open="open">
   <summary>Vgrid DGGS Tools for QGIS</summary>  
