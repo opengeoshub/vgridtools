@@ -1,7 +1,6 @@
 <!-- PROJECT LOGO -->
 <p align="center">
-    <img src="images/vgrid192.svg" alt="Logo">
-  <h3 align="center">Vgrid</h3>
+  <h3 align="center">Vgridtools</h3>
   <p align="center">
     <b><i>Vgrid DGGS Tools for QGIS</i><b>
     <br />
