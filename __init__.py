@@ -34,7 +34,7 @@ def classFactory(iface):  # pylint: disable=invalid-name
   try:
       import vgrid
   except ImportError:
-    command = "import pip\npip.main(['install','vgrid'])"   
+    command = "import pip\npip.main(['install','vgrid --upgrade'])"   
     text, ok = QInputDialog.getMultiLineText(None, "Vgrid DGGS - Vgrid module not found", 
                                             "To run Vgrid Tools, please copy and run this code in the Python console to install vgrid package and reload QGIS:", 
                                             command)
