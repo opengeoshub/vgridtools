@@ -157,26 +157,23 @@ class S2Bin(QgsProcessingAlgorithm):
 
         if self.stats != 'count' and not self.numeric_field:  
             raise QgsProcessingException("A numeric field is required for statistics other than 'count'.")
-
-        for point_feature in self.point_layer.getFeatures():
-            geom = point_feature.geometry()
-            if geom.isMultipart():
-                raise QgsProcessingException("The input layer must contain only single-part point geometries.")
-            if geom.type() != QgsWkbTypes.PointGeometry:
-                raise QgsProcessingException("The input layer must contain only point geometries.")
-
         return True
 
     def processAlgorithm(self, parameters, context, feedback):        
         s2_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
         s2_geometries = {}
 
-        total_points = sum(1 for _ in self.point_layer.getFeatures())
+        total_points = self.point_layer.featureCount()
         feedback.setProgress(0)  # Initial progress value
 
         # Process each point and update progress
         for i, point_feature in enumerate(self.point_layer.getFeatures()):
-            point = point_feature.geometry().asPoint()
+            try:
+                point = point_feature.geometry().asPoint()
+            except:
+                feedback.pushInfo(f"Point feature {point_feature.id()} has invalid geometry and will be skipped")
+                continue
+
             s2_token = latlon2s2(point.y(), point.x(), self.resolution)
             props = point_feature.attributes()
             fields = self.point_layer.fields()
@@ -187,10 +184,7 @@ class S2Bin(QgsProcessingAlgorithm):
             # Update progress after each point is processed
             feedback.setProgress(int((i + 1) / total_points * 100))
 
-        # Provide progress feedback for the categories
-        for cat, values in s2_bins[next(iter(s2_bins))].items():
-            feedback.pushInfo(str(cat))
-
+      
         # Generate geometries and update progress
         total_s2_bins = len(s2_bins)
         for i, s2_token in enumerate(s2_bins.keys()):
@@ -228,7 +222,7 @@ class S2Bin(QgsProcessingAlgorithm):
             prefix = '' if not self.category_field else f"{cat}_"
 
             if self.stats == 'count':
-                out_fields.append(QgsField(f"{prefix}count", QVariant.Double))
+                out_fields.append(QgsField(f"{prefix}count", QVariant.Int))
             elif self.stats in ['sum', 'mean', 'min', 'max', 'median', 'std', 'var', 'range']:
                 out_fields.append(QgsField(f"{prefix}{self.stats}", QVariant.Double))
             elif self.stats in ['minority', 'majority']:

@@ -153,7 +153,12 @@ class PolygonBin(QgsProcessingAlgorithm):
         feedback.setProgress(0)
 
         for i, polygon_feature in enumerate(self.polygon_layer.getFeatures()):
-            poly_geom = shape(json.loads(polygon_feature.geometry().asJson()))
+            try:
+                poly_geom = shape(json.loads(polygon_feature.geometry().asJson()))
+            except:
+                feedback.pushInfo(f"Polygon feature {polygon_feature.id()} has invalid geometry and will be skipped")
+                continue
+
             bin_key = polygon_feature.id()
             bin_results[bin_key] = defaultdict(get_default_stats_structure)
 
@@ -161,7 +166,12 @@ class PolygonBin(QgsProcessingAlgorithm):
             feedback.setProgress(progress)
 
             for point_feature in self.point_layer.getFeatures():
-                pt_geom = shape(json.loads(point_feature.geometry().asJson()))
+                try:
+                    pt_geom = shape(json.loads(point_feature.geometry().asJson()))
+                except:
+                    feedback.pushInfo(f"Point feature {point_feature.id()} has invalid geometry and will be skipped")
+                    continue
+
                 if poly_geom.contains(pt_geom):
                     props = point_feature.attributes()
                     props_dict = {self.point_layer.fields().at(i).name(): props[i] for i in range(len(props))}
@@ -173,7 +183,7 @@ class PolygonBin(QgsProcessingAlgorithm):
         for cat in sorted(all_categories):
             prefix = '' if not self.category_field else f"{cat}_"
             if self.stats == 'count':
-                fields.append(QgsField(f"{prefix}count", QVariant.Double))
+                fields.append(QgsField(f"{prefix}count", QVariant.Int))
             elif self.stats in ['sum', 'mean', 'min', 'max', 'median', 'std', 'var', 'range']:
                 fields.append(QgsField(f"{prefix}{self.stats}", QVariant.Double))
             elif self.stats in ['minority', 'majority']:
