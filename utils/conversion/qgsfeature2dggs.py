@@ -1,4 +1,7 @@
-from shapely.geometry import Polygon, box, mapping
+from shapely.geometry import Polygon, box, mapping, LineString
+from shapely.wkt import loads as load_wkt
+import numpy as np
+
 from shapely.wkt import loads as wkt_loads
 import platform,re
 from qgis.core import QgsFeature, QgsGeometry, QgsField, QgsFields,QgsWkbTypes
@@ -50,14 +53,14 @@ n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (-90.0, -180.0), (-90.0, -90.0), 
 #######################
 # QgsFeatures to H3
 #######################
-def qgsfeature2h3(feature, resolution, compact=None,feedback=None):
+def qgsfeature2h3(feature, resolution, predicate = None, compact=None,feedback=None):
     gfeature_geom = feature.geometry()
     if gfeature_geom.wkbType() == QgsWkbTypes.Point:
         return point2h3(feature,resolution,feedback)
     elif gfeature_geom.wkbType() == QgsWkbTypes.LineString:
-        return poly2h3(feature, resolution,None,feedback)
+        return polyline2h3(feature,resolution,None,None,feedback)
     elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
-        return poly2h3(feature, resolution,compact,feedback)
+        return polygon2h3(feature, resolution,None,compact,feedback)
 
 def point2h3(feature, resolution, feedback): 
     if feedback and feedback.isCanceled():
@@ -115,7 +118,104 @@ def point2h3(feature, resolution, feedback):
     
     return [h3_feature]
 
-def poly2h3(feature, resolution, compact, feedback):  
+
+def densify_line(line, segment_length):
+    total_length = line.length
+    if total_length == 0:
+        # Degenerate line, just return start and end twice
+        coords = list(line.coords)
+        if len(coords) == 1:
+            coords = coords * 2
+        return LineString(coords)
+    num_segments = max(1, int(np.ceil(total_length / segment_length)))
+    distances = np.linspace(0, total_length, num_segments + 1)
+    points = [line.interpolate(d) for d in distances]
+    # Ensure at least two points
+    if len(points) < 2:
+        points = [line.interpolate(0), line.interpolate(total_length)]
+    return LineString(points)
+
+
+def polyline2h3(feature, resolution, predicate, compact, feedback):
+    h3_features = []
+    feature_geometry = feature.geometry()
+    avg_edge_length = h3.average_hexagon_edge_length(resolution, unit='m')
+    meters_per_degree = 111320.0
+    segment_length_degrees = avg_edge_length / meters_per_degree
+    densified_geometry = feature_geometry.densifyByDistance(segment_length_degrees)
+    densified_points = densified_geometry.asPolyline()
+    if len(densified_points) < 2:
+        return []
+
+    # Extract (lat, lon) tuples from QgsPointXY
+    vertices = [(pt.y(), pt.x()) for pt in densified_points]  # (lat, lon)
+
+    #h3_cells = set()
+    h3_cells = []
+    for lat, lon in vertices:
+        h3_cell = h3.latlng_to_cell(lat, lon, resolution)
+        h3_cells.append(h3_cell)
+
+    if feedback:
+        feedback.pushInfo(f"Processing feature {feature.id()}")
+        feedback.setProgress(0)
+
+    total_cells = len(h3_cells)
+    for i, h3_cell in enumerate(h3_cells):
+        if feedback and feedback.isCanceled():
+            return []
+
+        cell_boundary = h3.cell_to_boundary(h3_cell)
+        filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
+        reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
+        cell_polygon = Polygon(reversed_boundary)
+
+        num_edges = 6
+        if h3.is_pentagon(h3_cell):
+            num_edges = 5
+
+        h3_id = str(h3_cell)
+        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        cell_resolution = h3.get_resolution(h3_id)
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+        h3_feature = QgsFeature()
+        h3_feature.setGeometry(cell_geometry)
+
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+
+        new_fields = QgsFields()
+        new_fields.append(QgsField("h3", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+
+        h3_feature.setFields(all_fields)
+        new_attributes = [h3_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        all_attributes = original_attributes + new_attributes
+        h3_feature.setAttributes(all_attributes)
+
+        h3_features.append(h3_feature)
+
+        if feedback and i % 100 == 0:
+            feedback.setProgress(int(100 * i / total_cells))
+
+    if feedback:
+        feedback.setProgress(100)
+
+    return h3_features
+
+
+def polyline2h3_old(feature, resolution, feedback):  
     h3_features = [] 
   
     feature_geometry = feature.geometry()
@@ -130,22 +230,18 @@ def poly2h3(feature, resolution, compact, feedback):
     buufer_distance = h3.average_hexagon_edge_length(resolution, unit='m') * 2
     bbox_buffer = geodesic_buffer(bbox, buufer_distance)
     bbox_buffer_cells = h3.geo_to_cells(bbox_buffer, resolution)
-    
-    if compact:
-        bbox_buffer_cells = h3.compact_cells(bbox_buffer_cells)
-    
-    total_cells = len(bbox_buffer_cells)
-
+        
     if feedback:
         feedback.pushInfo(f"Processing feature {feature.id()}")   
         feedback.setProgress(0)
-
+    total_cells = len(bbox_buffer_cells)
     for i, bbox_buffer_cell in enumerate(bbox_buffer_cells):
         if feedback and feedback.isCanceled():
             return []
     
         cell_boundary = h3.cell_to_boundary(bbox_buffer_cell)
-        filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
+        # filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
+        filtered_boundary = cell_boundary
         reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
         cell_polygon = Polygon(reversed_boundary)
                 
@@ -157,7 +253,8 @@ def poly2h3(feature, resolution, compact, feedback):
         center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_resolution = h3.get_resolution(h3_id) 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
-          # **Check for intersection with the input feature**
+        
+        # **Check for intersection with the input feature**
         if not cell_geometry.intersects(feature_geometry):
             continue  # Skip non-intersecting cells
       
@@ -203,20 +300,101 @@ def poly2h3(feature, resolution, compact, feedback):
             
     return h3_features
 
+def polygon2h3(feature, resolution, predicate, compact, feedback):  
+    h3_features = []   
+    try:  
+        shapely_geom = load_wkt(feature.geometry().asWkt())
+        # h3shape = h3.geo_to_h3shape(shapely_geom)
+        # h3_cells = h3.h3shape_to_cells_experimental(h3shape, resolution,'center')
+
+        h3_cells = h3.geo_to_cells(shapely_geom, resolution)
+        if compact:
+            h3_cells = h3.compact_cells(h3_cells)
+
+        total_cells = len(h3_cells)
+
+        if feedback:
+            feedback.pushInfo(f"Processing feature {feature.id()}")   
+            feedback.setProgress(0)
+
+        for i, h3_cell in enumerate(h3_cells):
+            if feedback and feedback.isCanceled():
+                return []
+
+            cell_boundary = h3.cell_to_boundary(h3_cell)
+            filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
+            reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
+            cell_polygon = Polygon(reversed_boundary)
+                    
+            num_edges = 6
+            if h3.is_pentagon(h3_cell):
+                num_edges = 5
+            
+            h3_id = str(h3_cell)
+            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            cell_resolution = h3.get_resolution(h3_id) 
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
+            # **Check for intersection with the input feature**
+            # Create a single QGIS feature
+            h3_feature = QgsFeature()
+            h3_feature.setGeometry(cell_geometry)
+            
+            # Get all attributes from the input feature
+            original_attributes = feature.attributes()
+            original_fields = feature.fields()
+            
+            # Define new H3-related attributes
+            new_fields = QgsFields()
+            new_fields.append(QgsField("h3", QVariant.String))
+            new_fields.append(QgsField("resolution", QVariant.Int))
+            new_fields.append(QgsField("center_lat", QVariant.Double))
+            new_fields.append(QgsField("center_lon", QVariant.Double))
+            new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+            new_fields.append(QgsField("cell_area", QVariant.Double))
+            
+            # Combine original fields and new fields
+            all_fields = QgsFields()
+            for field in original_fields:
+                all_fields.append(field)
+            for field in new_fields:
+                all_fields.append(field)
+            
+            h3_feature.setFields(all_fields)
+            
+            # Combine original attributes with new attributes
+            new_attributes = [h3_id,cell_resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+            all_attributes = original_attributes + new_attributes
+            
+            h3_feature.setAttributes(all_attributes)    
+
+            h3_features.append(h3_feature)
+            
+            if feedback and i % 100 == 0:
+                feedback.setProgress(int(100 * i / total_cells))
+
+        if feedback:
+            feedback.setProgress(100)
+                
+        return h3_features
+    except Exception as e:
+        feedback.pushInfo(e)
+        return []
+  
+
 
 #######################
 # QgsFeatures to S2
 #######################
-def qgsfeature2s2(feature, resolution, compact=None, feedback=None):
+def qgsfeature2s2(feature, resolution, predicate = None, compact=None, feedback=None):
     gfeature_geom = feature.geometry()
     if gfeature_geom.wkbType() == QgsWkbTypes.Point:
         return point2s2(feature, resolution,feedback)
     elif gfeature_geom.wkbType() == QgsWkbTypes.LineString: 
-        return poly2s2(feature, resolution,None,feedback)
+        return poly2s2(feature, resolution,None,None,feedback)
     elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
-        return poly2s2(feature, resolution,compact,feedback)
+        return poly2s2(feature, resolution,predicate,compact,feedback)
   
-def point2s2(feature, resolution,feedback): 
+def point2s2(feature,resolution,feedback): 
     if feedback and feedback.isCanceled():
         return []
     # Convert point to the seed cell
@@ -269,7 +447,8 @@ def point2s2(feature, resolution,feedback):
     
     return [s2_feature]
 
-def poly2s2(feature, resolution,compact,feedback):  
+def poly2s2(feature, resolution, predicate, compact, feedback):  
+    feedback.pushInfo(f'predicate: {predicate}')
     s2_features = []  
 
     feature_geometry = feature.geometry()
@@ -314,10 +493,16 @@ def poly2s2(feature, resolution,compact,feedback):
         center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
         
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
-          # **Check for intersection with the input feature**
-        if not cell_geometry.intersects(feature_geometry):
-            continue  # Skip non-intersecting cells
-      
+        # Predicate-based filtering
+        keep = cell_geometry.intersects(feature_geometry)
+        if predicate == 1:  # within
+            keep = cell_geometry.within(feature_geometry)
+        elif predicate == 2:  # centroid_within
+            keep = cell_geometry.centroid().within(feature_geometry)
+        
+        if not keep:
+            continue  # Skip non-matching cells
+              
         # Create a single QGIS feature
         s2_feature = QgsFeature()
         s2_feature.setGeometry(cell_geometry)
@@ -366,14 +551,14 @@ def poly2s2(feature, resolution,compact,feedback):
 #######################
 rhealpix_dggs = RHEALPixDGGS()
 
-def qgsfeature2rhealpix(feature, resolution,compact=None,feedback=None):
+def qgsfeature2rhealpix(feature, resolution, predicate = None, compact=None,feedback=None):
     gfeature_geom = feature.geometry()
     if gfeature_geom.wkbType() == QgsWkbTypes.Point:
         return point2rhealpix(feature, resolution,feedback)
     elif gfeature_geom.wkbType() == QgsWkbTypes.LineString: 
-        return poly2rhealpix(feature, resolution,None,feedback)
+        return poly2rhealpix(feature, resolution,None,None,feedback)
     elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
-        return poly2rhealpix(feature, resolution,compact,feedback)
+        return poly2rhealpix(feature, resolution,predicate,compact,feedback)
     
 def point2rhealpix(feature, resolution,feedback):
     if feedback and feedback.isCanceled():
@@ -430,7 +615,7 @@ def point2rhealpix(feature, resolution,feedback):
     
     return [rhealpix_feature]
     
-def poly2rhealpix(feature, resolution,compact,feedback):
+def poly2rhealpix(feature, resolution, predicate, compact,feedback):
     rhealpix_features = []     
     
     feature_geometry = feature.geometry()
@@ -512,9 +697,16 @@ def poly2rhealpix(feature, resolution,compact,feedback):
             # Convert current cell to polygon
             cell_polygon = rhealpix_cell_to_polygon(current_cell)
 
-            # Skip cells that do not intersect the bounding box
-            if not cell_polygon.intersects(bbox_polygon):
-                continue
+            # Predicate-based filtering
+            keep = cell_geometry.intersects(feature_geometry)
+            if predicate == 1:  # within
+                keep = cell_geometry.within(feature_geometry)
+            elif predicate == 2:  # centroid_within
+                keep = cell_geometry.centroid().within(feature_geometry)
+            
+            if not keep:
+                continue  # Skip non-matching cells
+              
 
             # Get neighbors and add to queue
             neighbors = current_cell.neighbors(plane=False)
@@ -594,15 +786,15 @@ def poly2rhealpix(feature, resolution,compact,feedback):
 # QgsFeatures to OpenEAGGR ISEA4T
 #######################
 
-def qgsfeature2isea4t(feature, resolution,compact=None,feedback=None):
+def qgsfeature2isea4t(feature, resolution, predicate = None, compact=None,feedback=None):
     if (platform.system() == 'Windows'):
         gfeature_geom = feature.geometry()
         if gfeature_geom.wkbType() == QgsWkbTypes.Point:
             return point2isea4t(feature, resolution,feedback)
         elif gfeature_geom.wkbType() == QgsWkbTypes.LineString:
-            return poly2isea4t(feature, resolution,None,feedback)
+            return poly2isea4t(feature, resolution,None,None,feedback)
         elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
-            return poly2isea4t(feature, resolution,compact,feedback)
+            return poly2isea4t(feature, resolution,predicate,compact,feedback)
 
 def point2isea4t(feature, resolution,feedback):    
     if feedback and feedback.isCanceled():
@@ -662,7 +854,7 @@ def point2isea4t(feature, resolution,feedback):
         
     return [isea4t_feature]
         
-def poly2isea4t(feature, resolution,compact, feedback):
+def poly2isea4t(feature, resolution, predicate, compact, feedback):
     isea4t_features = [] 
     
     feature_geometry = feature.geometry()
@@ -707,9 +899,17 @@ def poly2isea4t(feature, resolution,compact, feedback):
         center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_resolution = len(isea4t_id)-2
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-        if not cell_geometry.intersects(feature_geometry):
-            continue  # Skip non-intersecting cells      
         
+        # Predicate-based filtering
+        keep = cell_geometry.intersects(feature_geometry)
+        if predicate == 1:  # within
+            keep = cell_geometry.within(feature_geometry)
+        elif predicate == 2:  # centroid_within
+            keep = cell_geometry.centroid().within(feature_geometry)
+        
+        if not keep:
+            continue  # Skip non-matching cells
+            
         # Create a single QGIS feature
         isea4t_feature = QgsFeature()
         isea4t_feature.setGeometry(cell_geometry)
@@ -755,15 +955,15 @@ def poly2isea4t(feature, resolution,compact, feedback):
 #######################
 # QgsFeatures to OpenEAGGR ISEA3H
 #######################
-def qgsfeature2isea3h(feature, resolution,compact=None,feedback=None):
+def qgsfeature2isea3h(feature, resolution, predicate = None, compact=None,feedback=None):
     if (platform.system() == 'Windows'):
         geometry = feature.geometry()
         if geometry.wkbType() == QgsWkbTypes.Point:
             return point2isea3h(feature, resolution,feedback)
         elif geometry.wkbType() == QgsWkbTypes.LineString:
-            return poly2isea3h(feature, resolution,None,feedback)
+            return poly2isea3h(feature, resolution,None,None,feedback)
         elif geometry.wkbType() == QgsWkbTypes.Polygon:
-            return poly2isea3h(feature, resolution,compact,feedback)
+            return poly2isea3h(feature, resolution,predicate,compact,feedback)
 
 def point2isea3h(feature, resolution,feedback):  
     if feedback and feedback.isCanceled():
@@ -823,7 +1023,7 @@ def point2isea3h(feature, resolution,feedback):
     
     return [isea3h_feature]
 
-def poly2isea3h(feature, resolution,compact, feedback):
+def poly2isea3h(feature, resolution, predicate, compact, feedback):
     isea3h_features = [] 
     
     feature_geometry = feature.geometry()
@@ -867,8 +1067,16 @@ def poly2isea3h(feature, resolution,compact, feedback):
                 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
         
-        if not cell_geometry.intersects(feature_geometry):
-            continue  # Skip non-intersecting cells      
+        # Predicate-based filtering
+        keep = cell_geometry.intersects(feature_geometry)
+        if predicate == 1:  # within
+            keep = cell_geometry.within(feature_geometry)
+        elif predicate == 2:  # centroid_within
+            keep = cell_geometry.centroid().within(feature_geometry)
+        
+        if not keep:
+            continue  # Skip non-matching cells
+              
         # Create a single QGIS feature
         isea3h_feature = QgsFeature()
         isea3h_feature.setGeometry(cell_geometry)
@@ -914,14 +1122,14 @@ def poly2isea3h(feature, resolution,compact, feedback):
 #######################
 # QgsFeatures to EASE-DGGS
 #######################
-def qgsfeature2ease(feature, resolution,compact=None,feedback=None):
+def qgsfeature2ease(feature, resolution, predicate = None, compact=None,feedback=None):
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2ease(feature, resolution,feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return poly2ease(feature, resolution,None,feedback)
+        return poly2ease(feature, resolution,None,None,feedback)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return poly2ease(feature, resolution,compact,feedback)
+        return poly2ease(feature, resolution,predicate,compact,feedback)
         
 def point2ease(feature, resolution,feedback):
     if feedback and feedback.isCanceled():
@@ -996,7 +1204,7 @@ def point2ease(feature, resolution,feedback):
     return [ease_feature]
 
 
-def poly2ease(feature, resolution,compact,feedback):
+def poly2ease(feature, resolution, predicate, compact,feedback):
     return []
 
 
@@ -1004,14 +1212,14 @@ def poly2ease(feature, resolution,compact,feedback):
 # QgsFeatures to QTM
 #######################
 
-def qgsfeature2qtm(feature, resolution,compact=None,feedback=None):
+def qgsfeature2qtm(feature, resolution, predicate = None, compact=None,feedback=None):
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2qtm(feature, resolution,feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return poly2qtm(feature, resolution,None,feedback)
+        return poly2qtm(feature, resolution,None,None,feedback)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return poly2qtm(feature, resolution,compact,feedback)
+        return poly2qtm(feature, resolution,predicate,compact,feedback)
         
 def point2qtm(feature, resolution,feedback):   
     if feedback and feedback.isCanceled():
@@ -1104,7 +1312,7 @@ def qtmcompact_from_qgsfeatures(qgs_features,feedback):
 
     return qtm_features
 
-def poly2qtm(feature, resolution,compact,feedback):
+def poly2qtm(feature, resolution, predicate, compact,feedback):
     qtm_features = []
     
     feature_geometry = feature.geometry()    
@@ -1140,7 +1348,13 @@ def poly2qtm(feature, resolution,compact,feedback):
                 levelFacets[0].append(facet)
                 cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt)      
                 
-                if cell_geometry.intersects(feature_geometry) and resolution == 1 :                                         
+                keep = cell_geometry.intersects(feature_geometry)
+                if predicate == 1:  # within
+                    keep = cell_geometry.within(feature_geometry)
+                elif predicate == 2:  # centroid_within
+                    keep = cell_geometry.centroid().within(feature_geometry)
+
+                if keep and resolution == 1 :                                         
                     # Create a single QGIS feature
                     qtm_feature = QgsFeature()
                     qtm_feature.setGeometry(cell_geometry)
@@ -1187,7 +1401,13 @@ def poly2qtm(feature, resolution,compact,feedback):
                     subfacet_geom = qtm.constructGeometry(subfacet)
                     cell_geometry = QgsGeometry.fromWkt(subfacet_geom.wkt) 
                     
-                    if cell_geometry.intersects(feature_geometry):  # Only keep intersecting facets
+                    keep = cell_geometry.intersects(feature_geometry)
+                    if predicate == 1:  # within
+                        keep = cell_geometry.within(feature_geometry)
+                    elif predicate == 2:  # centroid_within
+                        keep = cell_geometry.centroid().within(feature_geometry)
+
+                    if keep:
                         new_id = QTMID[lvl - 1][i] + str(j)
                         QTMID[lvl].append(new_id)
                         levelFacets[lvl].append(subfacet)
@@ -1242,14 +1462,14 @@ def poly2qtm(feature, resolution,compact,feedback):
 #######################
 # QgsFeatures to OLC
 #######################
-def qgsfeature2olc(feature, resolution,compact=None,feedback=None):
+def qgsfeature2olc(feature, resolution, predicate = None, compact=None,feedback=None):
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2olc(feature, resolution,feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return poly2olc(feature, resolution,None,feedback)
+        return poly2olc(feature, resolution,None,None,feedback)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return poly2olc(feature, resolution,compact,feedback)
+        return poly2olc(feature, resolution,predicate,compact,feedback)
 
 def point2olc(feature, resolution,feedback):
     if feedback and feedback.isCanceled():
@@ -1478,7 +1698,7 @@ def olccompact_from_qgsfeatures(qgs_features, feedback):
    
     return olc_features
 
-def poly2olc(feature, resolution,compact,feedback):
+def poly2olc(feature, resolution, predicate, compact,feedback):
     olc_features = []
     
     feature_geometry = feature.geometry()
@@ -1583,14 +1803,14 @@ def poly2olc(feature, resolution,compact,feedback):
 #######################
 # QgsFeatures to Geohash
 #######################
-def qgsfeature2geohash(feature, resolution,compact=None,feedback=None):
+def qgsfeature2geohash(feature, resolution, predicate = None, compact=None,feedback=None):
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2geohash(feature, resolution,feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return poly2geohash(feature, resolution,None,feedback)
+        return poly2geohash(feature, resolution,None,None,feedback)  
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return poly2geohash(feature, resolution,compact,feedback)
+        return poly2geohash(feature, resolution,predicate,compact,feedback)
 
 
 def point2geohash(feature, resolution,feedback):
@@ -1697,7 +1917,7 @@ def geohashcompact_from_qgsfeatures(qgs_features, feedback):
     return geohash_features
 
 
-def poly2geohash(feature, resolution,compact, feedback):
+def poly2geohash(feature, resolution, predicate, compact, feedback):    
     geohash_features = []
     feature_geometry = feature.geometry()    
     feature_shapely = wkt_loads(feature_geometry.asWkt())
@@ -1723,9 +1943,15 @@ def poly2geohash(feature, resolution,compact, feedback):
         cell_polygon = geohash_to_polygon(gh)
         # if cell_polygon.intersects(feature):
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
-            # **Check for intersection with the input feature**
-        if not cell_geometry.intersects(feature_geometry):
-            continue  # Skip non-intersecting cells
+        # Predicate-based filtering
+        keep = cell_geometry.intersects(feature_geometry)
+        if predicate == 1:  # within
+            keep = cell_geometry.within(feature_geometry)
+        elif predicate == 2:  # centroid_within
+            keep = cell_geometry.centroid().within(feature_geometry)
+        
+        if not keep:
+            continue  # Skip non-matching cells
         
         # Create a single QGIS feature
         geohash_feature = QgsFeature()
@@ -1780,14 +2006,14 @@ def poly2geohash(feature, resolution,compact, feedback):
 #######################
 # QgsFeatures to GEOREF
 #######################
-def qgsfeature2georef(feature, resolution,compact=None,feedback=None):
+def qgsfeature2georef(feature, resolution, predicate = None, compact=None,feedback=None):
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2georef(feature, resolution,feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return poly2georef(feature, resolution,None,feedback)
+        return poly2georef(feature, resolution,None,None,feedback)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return poly2georef(feature, resolution,compact,feedback)
+        return poly2georef(feature, resolution,predicate,compact,feedback)
 
 def georef_to_polygon(georef_id):
     center_lat, center_lon, min_lat, min_lon, max_lat, max_lon, resolution = georef.georefcell(georef_id)
@@ -1853,7 +2079,7 @@ def point2georef(feature, resolution,feedback):
     return [georef_feature]
     
    
-def poly2georef(feature, resolution,compact,feedback):
+def poly2georef(feature, resolution, predicate, compact,feedback):
     georef_features = []
     feature_geometry = feature.geometry()
     feature_rect = feature_geometry.boundingBox()
@@ -1914,9 +2140,15 @@ def poly2georef(feature, resolution,compact,feedback):
         cell_polygon = georef_to_polygon(gr)
         # if cell_polygon.intersects(feature):
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
-            # **Check for intersection with the input feature**
-        if not cell_geometry.intersects(feature_geometry):
-            continue  # Skip non-intersecting cells
+        # Predicate-based filtering
+        keep = cell_geometry.intersects(feature_geometry)
+        if predicate == 1:  # within
+            keep = cell_geometry.within(feature_geometry)
+        elif predicate == 2:  # centroid_within
+            keep = cell_geometry.centroid().within(feature_geometry)
+        
+        if not keep:
+            continue  # Skip non-matching cells
         
         # Create a single QGIS feature
         georef_feature = QgsFeature()
@@ -1968,14 +2200,14 @@ def poly2georef(feature, resolution,compact,feedback):
 #######################
 # QgsFeatures to Tilecode
 #######################
-def qgsfeature2tilecode(feature, resolution,compact=None,feedback=None):
+def qgsfeature2tilecode(feature, resolution, predicate = None, compact=None,feedback=None):
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2tilecode(feature, resolution,feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return poly2tilecode(feature, resolution,None,feedback)
+        return poly2tilecode(feature, resolution,None,None,feedback)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return poly2tilecode(feature, resolution,compact,feedback)
+        return poly2tilecode(feature, resolution,predicate,compact,feedback)
 
 def point2tilecode(feature, resolution,feedback):
     if feedback and feedback.isCanceled():
@@ -2108,7 +2340,7 @@ def tilecodecompact_from_qgsfeatures(qgs_features, feedback):
 
     return tilecode_features
 
-def poly2tilecode(feature, resolution,compact,feedback):
+def poly2tilecode(feature, resolution, predicate, compact,feedback):
     tilecode_features = []    
     feature_geometry = feature.geometry()
     feature_rect = feature_geometry.boundingBox()
@@ -2145,8 +2377,14 @@ def poly2tilecode(feature, resolution,compact,feedback):
         # if cell_polygon.intersects(feature):
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
             # **Check for intersection with the input feature**
-        if not cell_geometry.intersects(feature_geometry):
-            continue  # Skip non-intersecting cells
+        keep = cell_geometry.intersects(feature_geometry)
+        if predicate == 1:  # within
+            keep = cell_geometry.within(feature_geometry)
+        elif predicate == 2:  # centroid_within
+            keep = cell_geometry.centroid().within(feature_geometry)
+        
+        if not keep:
+            continue  # Skip non-matching cells
         
         # Create a single QGIS feature
         tilecode_feature = QgsFeature()
@@ -2200,14 +2438,14 @@ def poly2tilecode(feature, resolution,compact,feedback):
 #######################
 # QgsFeatures to Quadkey
 #######################
-def qgsfeature2quadkey(feature, resolution,compact=None,feedback=None):
+def qgsfeature2quadkey(feature, resolution, predicate = None, compact=None,feedback=None):
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
-        return point2quadkey(feature, resolution,None,feedback)
+        return point2quadkey(feature, resolution,feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return poly2quadkey(feature, resolution,None,feedback)
+        return poly2quadkey(feature, resolution,None,None,feedback)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return poly2quadkey(feature, resolution,compact,feedback)
+        return poly2quadkey(feature, resolution,predicate,compact,feedback)
 
 def point2quadkey(feature, resolution, feedback):
     if feedback and feedback.isCanceled():
@@ -2333,7 +2571,7 @@ def quadkeycompact_from_qgsfeatures(qgs_features, feedback):
     return quadkey_features
 
 
-def poly2quadkey(feature, resolution,compact, feedback):
+def poly2quadkey(feature, resolution, predicate, compact, feedback):
     quadkey_features = []
     feature_geometry = feature.geometry()
     feature_rect = feature_geometry.boundingBox()
@@ -2365,11 +2603,18 @@ def poly2quadkey(feature, resolution,compact, feedback):
             [max_lon, max_lat],  # Top-right corner
             [min_lon, max_lat],  # Top-left corner
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
-        ])
+        ])  
                 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
-        if not cell_geometry.intersects(feature_geometry):
-            continue  # Skip non-intersecting cells
+        # Predicate-based filtering
+        keep = cell_geometry.intersects(feature_geometry)
+        if predicate == 1:  # within
+            keep = cell_geometry.within(feature_geometry)
+        elif predicate == 2:  # centroid_within
+            keep = cell_geometry.centroid().within(feature_geometry)
+        
+        if not keep:
+            continue  # Skip non-matching cells
         
         quadkey_feature = QgsFeature()
         quadkey_feature.setGeometry(cell_geometry)

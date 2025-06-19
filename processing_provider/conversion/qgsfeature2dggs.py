@@ -32,7 +32,8 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     DGGS_TYPE = 'DGGS_TYPE'
     RESOLUTION = 'RESOLUTION'
     COMPACT = 'COMPACT'
-    
+    PREDICATE = 'PREDICATE'
+    PREDICATES = ['intersects', 'within', 'centroid_within']
     DGGS_TYPES = [
         'H3', 'S2','rHEALPix','QTM', 'OLC', 'Geohash', 
         # 'GEOREF',
@@ -137,16 +138,24 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             maxValue=40
         ))
         
+        self.addParameter(QgsProcessingParameterEnum(
+            self.PREDICATE,
+            "Spatial predicate",
+            options=self.PREDICATES,
+            defaultValue=0
+        ))
+
         self.addParameter(QgsProcessingParameterBoolean(
             self.COMPACT,
             "Compact",
             defaultValue=False  
         ))
 
+
     def checkParameterValues(self, parameters, context):
         """Dynamically update resolution limits before execution"""
-        selected_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
-        selected_dggs = self.DGGS_TYPES[selected_index]
+        selected_dggs_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
+        selected_dggs = self.DGGS_TYPES[selected_dggs_index]
 
         min_res, max_res, _ = settings.getResolution(selected_dggs)
         res_value = self.parameterAsInt(parameters, self.RESOLUTION, context)
@@ -202,8 +211,15 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
     def prepareAlgorithm(self, parameters, context, feedback):       
         source = self.parameterAsSource(parameters, self.INPUT, context)
+        # Check CRS
+        crs = source.sourceCrs() if hasattr(source, 'sourceCrs') else None
+        if crs is not None and not crs.isGeographic():
+            feedback.reportError('Input layer CRS must be a geographic coordinate system (degrees).')
+            return False
+     
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         self.compact  = self.parameterAsBool(parameters, self.COMPACT, context)
+        self.predicate = self.parameterAsEnum(parameters, self.PREDICATE, context)
 
         self.total_features = source.featureCount()
         self.num_bad = 0
@@ -245,7 +261,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 for point in feature_geom.asMultiPoint():
                     point_feature = QgsFeature(feature)  # Copy original feature
                     point_feature.setGeometry(QgsGeometry.fromPointXY(point))  # Set individual point geometry
-                    cell_polygons = conversion_function(point_feature, self.resolution, self.compact, feedback)
+                    cell_polygons = conversion_function(point_feature, self.resolution, self.predicate,self.compact, feedback)
                     multi_cell_polygons.extend(cell_polygons)          
                 return multi_cell_polygons
             
@@ -255,7 +271,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 for line in feature_geom.asMultiPolyline():
                     line_feature = QgsFeature(feature)
                     line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
-                    cell_polygons = conversion_function(line_feature, self.resolution,self.compact, feedback)
+                    cell_polygons = conversion_function(line_feature, self.resolution,self.predicate, self.compact,feedback)
                     multi_cell_polygons.extend(cell_polygons)
                 return multi_cell_polygons
             
@@ -264,12 +280,12 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 for polygon in feature_geom.asMultiPolygon():
                     polygon_feature = QgsFeature(feature)
                     polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
-                    cell_polygons = conversion_function(polygon_feature, self.resolution,self.compact, feedback)
+                    cell_polygons = conversion_function(polygon_feature, self.resolution,self.predicate, self.compact, feedback)
                     multi_cell_polygons.extend(cell_polygons)                
                 return multi_cell_polygons
             
             else: # Single part features
-                return conversion_function(feature, self.resolution,self.compact, feedback)
+                return conversion_function(feature, self.resolution,self.predicate, self.compact, feedback)
             
         except Exception as e:
             self.num_bad += 1
