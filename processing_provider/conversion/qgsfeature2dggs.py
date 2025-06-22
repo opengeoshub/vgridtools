@@ -33,7 +33,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     RESOLUTION = 'RESOLUTION'
     COMPACT = 'COMPACT'
     PREDICATE = 'PREDICATE'
-    PREDICATES = ['intersects', 'within', 'centroid_within']
+    PREDICATES = ['intersects', 'within', 'centroid_within','largest_overlap']
     DGGS_TYPES = [
         'H3', 'S2','rHEALPix','QTM', 'OLC', 'Geohash', 
         # 'GEOREF',

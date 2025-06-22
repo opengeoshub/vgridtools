@@ -306,7 +306,7 @@ def polygon2h3(feature, resolution, predicate, compact, feedback):
         shapely_geom = load_wkt(feature.geometry().asWkt())
         # h3shape = h3.geo_to_h3shape(shapely_geom)
         # h3_cells = h3.h3shape_to_cells_experimental(h3shape, resolution,'center')
-
+        # default is 'center' is within the feature
         h3_cells = h3.geo_to_cells(shapely_geom, resolution)
         if compact:
             h3_cells = h3.compact_cells(h3_cells)
@@ -448,7 +448,6 @@ def point2s2(feature,resolution,feedback):
     return [s2_feature]
 
 def poly2s2(feature, resolution, predicate, compact, feedback):  
-    feedback.pushInfo(f'predicate: {predicate}')
     s2_features = []  
 
     feature_geometry = feature.geometry()
@@ -457,7 +456,6 @@ def poly2s2(feature, resolution, predicate, compact, feedback):
     min_y = feature_rect.yMinimum()
     max_x = feature_rect.xMaximum()
     max_y = feature_rect.yMaximum()
-
     level = resolution
     coverer = s2.RegionCoverer()
     coverer.min_level = level
@@ -499,7 +497,15 @@ def poly2s2(feature, resolution, predicate, compact, feedback):
             keep = cell_geometry.within(feature_geometry)
         elif predicate == 2:  # centroid_within
             keep = cell_geometry.centroid().within(feature_geometry)
-        
+        elif predicate == 3:  # intersection >= 50% of cell area
+            if keep:  # Only check if they intersect
+                intersection_geom = cell_geometry.intersection(feature_geometry)
+                if intersection_geom and intersection_geom.area() > 0:
+                    intersection_area = intersection_geom.area()
+                    cell_area_qgis = cell_geometry.area()
+                    keep = (intersection_area / cell_area_qgis) >= 0.5
+                else:
+                    keep = False
         if not keep:
             continue  # Skip non-matching cells
               
@@ -703,7 +709,15 @@ def poly2rhealpix(feature, resolution, predicate, compact,feedback):
                 keep = cell_geometry.within(feature_geometry)
             elif predicate == 2:  # centroid_within
                 keep = cell_geometry.centroid().within(feature_geometry)
-            
+            elif predicate == 3:  # intersection >= 50% of cell area
+                if keep:  # Only check if they intersect
+                    intersection_geom = cell_geometry.intersection(feature_geometry)
+                    if intersection_geom and intersection_geom.area() > 0:
+                        intersection_area = intersection_geom.area()
+                        cell_area_qgis = cell_geometry.area()
+                        keep = (intersection_area / cell_area_qgis) >= 0.5
+                    else:
+                        keep = False
             if not keep:
                 continue  # Skip non-matching cells
               
@@ -906,7 +920,15 @@ def poly2isea4t(feature, resolution, predicate, compact, feedback):
             keep = cell_geometry.within(feature_geometry)
         elif predicate == 2:  # centroid_within
             keep = cell_geometry.centroid().within(feature_geometry)
-        
+        elif predicate == 3:  # intersection >= 50% of cell area
+            if keep:  # Only check if they intersect
+                intersection_geom = cell_geometry.intersection(feature_geometry)
+                if intersection_geom and intersection_geom.area() > 0:
+                    intersection_area = intersection_geom.area()
+                    cell_area_qgis = cell_geometry.area()
+                    keep = (intersection_area / cell_area_qgis) >= 0.5
+                else:
+                    keep = False
         if not keep:
             continue  # Skip non-matching cells
             
@@ -1073,7 +1095,15 @@ def poly2isea3h(feature, resolution, predicate, compact, feedback):
             keep = cell_geometry.within(feature_geometry)
         elif predicate == 2:  # centroid_within
             keep = cell_geometry.centroid().within(feature_geometry)
-        
+        elif predicate == 3:  # intersection >= 50% of cell area
+            if keep:  # Only check if they intersect
+                intersection_geom = cell_geometry.intersection(feature_geometry)
+                if intersection_geom and intersection_geom.area() > 0:
+                    intersection_area = intersection_geom.area()
+                    cell_area_qgis = cell_geometry.area()
+                    keep = (intersection_area / cell_area_qgis) >= 0.5
+                else:
+                    keep = False
         if not keep:
             continue  # Skip non-matching cells
               
@@ -1353,7 +1383,15 @@ def poly2qtm(feature, resolution, predicate, compact,feedback):
                     keep = cell_geometry.within(feature_geometry)
                 elif predicate == 2:  # centroid_within
                     keep = cell_geometry.centroid().within(feature_geometry)
-
+                elif predicate == 3:  # intersection >= 50% of cell area
+                    if keep:  # Only check if they intersect
+                        intersection_geom = cell_geometry.intersection(feature_geometry)
+                        if intersection_geom and intersection_geom.area() > 0:
+                            intersection_area = intersection_geom.area()
+                            cell_area_qgis = cell_geometry.area()
+                            keep = (intersection_area / cell_area_qgis) >= 0.5
+                        else:
+                            keep = False
                 if keep and resolution == 1 :                                         
                     # Create a single QGIS feature
                     qtm_feature = QgsFeature()
@@ -1406,7 +1444,13 @@ def poly2qtm(feature, resolution, predicate, compact,feedback):
                         keep = cell_geometry.within(feature_geometry)
                     elif predicate == 2:  # centroid_within
                         keep = cell_geometry.centroid().within(feature_geometry)
-
+                    elif predicate == 3:  # intersection >= 50% of cell area
+                        if keep:  # Only check if they intersect
+                            intersection_geom = cell_geometry.intersection(feature_geometry)
+                            if intersection_geom and intersection_geom.area() > 0:
+                                intersection_area = intersection_geom.area()
+                                cell_area_qgis = cell_geometry.area()
+                                keep = (intersection_area / cell_area_qgis) >= 0.5
                     if keep:
                         new_id = QTMID[lvl - 1][i] + str(j)
                         QTMID[lvl].append(new_id)
@@ -1748,9 +1792,28 @@ def poly2olc(feature, resolution, predicate, compact,feedback):
             olc_id = resolution_feature["properties"]["olc"]
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
+            # Predicate-based filtering
+            keep = cell_geometry.intersects(feature_geometry)
+            if predicate == 1:  # within
+                keep = cell_geometry.within(feature_geometry)
+            elif predicate == 2:  # centroid_within
+                keep = cell_geometry.centroid().within(feature_geometry)
+            elif predicate == 3:  # intersection >= 50% of cell area
+                if keep:  # Only check if they intersect
+                    intersection_geom = cell_geometry.intersection(feature_geometry)
+                    if intersection_geom and intersection_geom.area() > 0:
+                        intersection_area = intersection_geom.area()
+                        cell_area_qgis = cell_geometry.area()
+                        keep = (intersection_area / cell_area_qgis) >= 0.5
+                    else:
+                        keep = False
+            
+            if not keep:
+                continue  # Skip non-matching cells
+
             # Compute additional attributes
             cell_resolution = resolution
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)  
+            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
 
             olc_feature = QgsFeature()
             olc_feature.setGeometry(cell_geometry)
@@ -1949,6 +2012,15 @@ def poly2geohash(feature, resolution, predicate, compact, feedback):
             keep = cell_geometry.within(feature_geometry)
         elif predicate == 2:  # centroid_within
             keep = cell_geometry.centroid().within(feature_geometry)
+        elif predicate == 3:  # intersection >= 50% of cell area
+            if keep:  # Only check if they intersect
+                intersection_geom = cell_geometry.intersection(feature_geometry)
+                if intersection_geom and intersection_geom.area() > 0:
+                    intersection_area = intersection_geom.area()
+                    cell_area_qgis = cell_geometry.area()
+                    keep = (intersection_area / cell_area_qgis) >= 0.5
+                else:
+                    keep = False
         
         if not keep:
             continue  # Skip non-matching cells
@@ -2079,7 +2151,7 @@ def point2georef(feature, resolution,feedback):
     return [georef_feature]
     
    
-def poly2georef(feature, resolution, predicate, compact,feedback):
+def poly2georef(feature, resolution, predicate, compact, feedback):
     georef_features = []
     feature_geometry = feature.geometry()
     feature_rect = feature_geometry.boundingBox()
@@ -2146,6 +2218,15 @@ def poly2georef(feature, resolution, predicate, compact,feedback):
             keep = cell_geometry.within(feature_geometry)
         elif predicate == 2:  # centroid_within
             keep = cell_geometry.centroid().within(feature_geometry)
+        elif predicate == 3:  # intersection >= 50% of cell area
+            if keep:  # Only check if they intersect
+                intersection_geom = cell_geometry.intersection(feature_geometry)
+                if intersection_geom and intersection_geom.area() > 0:
+                    intersection_area = intersection_geom.area()
+                    cell_area_qgis = cell_geometry.area()
+                    keep = (intersection_area / cell_area_qgis) >= 0.5
+                else:
+                    keep = False
         
         if not keep:
             continue  # Skip non-matching cells
@@ -2382,6 +2463,15 @@ def poly2tilecode(feature, resolution, predicate, compact,feedback):
             keep = cell_geometry.within(feature_geometry)
         elif predicate == 2:  # centroid_within
             keep = cell_geometry.centroid().within(feature_geometry)
+        elif predicate == 3:  # intersection >= 50% of cell area
+            if keep:  # Only check if they intersect
+                intersection_geom = cell_geometry.intersection(feature_geometry)
+                if intersection_geom and intersection_geom.area() > 0:
+                    intersection_area = intersection_geom.area()
+                    cell_area_qgis = cell_geometry.area()
+                    keep = (intersection_area / cell_area_qgis) >= 0.5
+                else:
+                    keep = False
         
         if not keep:
             continue  # Skip non-matching cells
@@ -2612,6 +2702,15 @@ def poly2quadkey(feature, resolution, predicate, compact, feedback):
             keep = cell_geometry.within(feature_geometry)
         elif predicate == 2:  # centroid_within
             keep = cell_geometry.centroid().within(feature_geometry)
+        elif predicate == 3:  # intersection >= 50% of cell area
+            if keep:  # Only check if they intersect
+                intersection_geom = cell_geometry.intersection(feature_geometry)
+                if intersection_geom and intersection_geom.area() > 0:
+                    intersection_area = intersection_geom.area()
+                    cell_area_qgis = cell_geometry.area()
+                    keep = (intersection_area / cell_area_qgis) >= 0.5
+                else:
+                    keep = False
         
         if not keep:
             continue  # Skip non-matching cells
