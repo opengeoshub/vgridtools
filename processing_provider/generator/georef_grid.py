@@ -40,7 +40,7 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
 
-from vgrid.utils import georef
+from vgrid.dggs import georef
 from ...utils.imgs import Imgs
 
 

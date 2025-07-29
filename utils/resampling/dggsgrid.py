@@ -6,26 +6,24 @@ from qgis.core import (
 )
 from PyQt5.QtCore import QVariant
 import h3
-from vgrid.utils import s2, qtm, olc, mercantile
-from vgrid.generator.h3grid import geodesic_buffer, fix_h3_antimeridian_cells
-from vgrid.generator.settings import geodesic_dggs_metrics, graticule_dggs_metrics
-from vgrid.generator.s2grid import s2_cell_to_polygon
-from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.generator.rhealpixgrid import rhealpix_cell_to_polygon
+from vgrid.dggs import s2, qtm, olc, mercantile
+from vgrid.utils.geometry import geodesic_buffer, fix_h3_antimeridian_cells, geodesic_dggs_metrics, graticule_dggs_metrics,s2_cell_to_polygon, rhealpix_cell_to_polygon
+from vgrid.utils.antimeridian import fix_polygon
 import platform
 if (platform.system() == 'Windows'):
-    from vgrid.utils.eaggr.eaggr import Eaggr
-    from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
-    from vgrid.utils.eaggr.enums.model import Model
-    from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
-    from vgrid.generator.settings import isea4t_res_accuracy_dict
-    from vgrid.generator.isea4tgrid import fix_polygon, fix_isea4t_antimeridian_cells, isea4t_cell_to_polygon, get_isea4t_children_cells_within_bbox
+    from vgrid.dggs.eaggr.enums.model import Model
+    from vgrid.dggs.eaggr.eaggr import Eaggr
+    from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
+    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
+    from vgrid.utils.geometry import isea4t_cell_to_polygon,fix_isea4t_antimeridian_cells
+    from vgrid.generator.settings import ISEA4T_RES_ACCURACY_DICT
+    from vgrid.generator.isea4tgrid import get_isea4t_children_cells_within_bbox
+    isea4t_dggs = Eaggr(Model.ISEA4T)
+    isea3h_dggs = Eaggr(Model.ISEA3H)
 
 p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (90.0, -180.0), (90.0, -90.0), (90.0, 0.0), (90.0, 90.0), (90.0, 180.0)
 p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (0.0, -180.0), (0.0, -90.0), (0.0, 0.0), (0.0, 90.0), (0.0, 180.0)
 n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (-90.0, -180.0), (-90.0, -90.0), (-90.0, 0.0), (-90.0, 90.0), (-90.0, 180.0)
-
-from vgrid.generator import olcgrid, geohashgrid
 
 
 #########################
@@ -250,11 +248,11 @@ def generate_rhealpix_grid(rhealpix_dggs, resolution, qgs_features, feedback=Non
 #########################
 # ISEA4T
 #########################
-def generate_isea4t_grid(isea4t_dggs, resolution, qgs_features, feedback=None):
+def generate_isea4t_grid(resolution, qgs_features, feedback=None):
     if not qgs_features:
         raise ValueError("No features provided for ISEA4T grid generation.")
     
-    accuracy = isea4t_res_accuracy_dict.get(resolution)
+    accuracy = ISEA4T_RES_ACCURACY_DICT.get(resolution)
 
     geometries = [load_wkt(f.geometry().asWkt()) for f in qgs_features.getFeatures()]
     unified_geom = unary_union(geometries)
@@ -265,9 +263,7 @@ def generate_isea4t_grid(isea4t_dggs, resolution, qgs_features, feedback=None):
     bbox_cells = isea4t_shape.get_shape().get_outer_ring().get_cells()
     bounding_cell = isea4t_dggs.get_bounding_dggs_cell(bbox_cells)
 
-    bounding_children = get_isea4t_children_cells_within_bbox(
-        isea4t_dggs, bounding_cell.get_cell_id(), unified_geom, resolution
-    )
+    bounding_children = get_isea4t_children_cells_within_bbox(bounding_cell.get_cell_id(), unified_geom, resolution)
 
     isea4t_features = []
 
@@ -276,7 +272,7 @@ def generate_isea4t_grid(isea4t_dggs, resolution, qgs_features, feedback=None):
             return None
 
         isea4t_cell = DggsCell(child)
-        cell_polygon = isea4t_cell_to_polygon(isea4t_dggs, isea4t_cell)
+        cell_polygon = isea4t_cell_to_polygon(isea4t_cell)
         isea4t_id = isea4t_cell.get_cell_id()
 
         if resolution == 0:
@@ -607,7 +603,7 @@ def generate_geohash_grid(resolution, qgs_features, feedback=None):
 
     qgis_features = []
     for i, gh in enumerate(geohashes_geom):
-        cell_polygon = geohashgrid.geohash_to_polygon(gh)
+        cell_polygon = geohash2geo(gh)
         center_lat, center_lon, cell_width, cell_width, cell_area = graticule_dggs_metrics(cell_polygon)
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
         feat = QgsFeature()

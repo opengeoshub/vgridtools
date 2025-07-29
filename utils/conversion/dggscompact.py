@@ -1,42 +1,35 @@
-from vgrid.utils import s2, olc, mercantile
-from vgrid.utils import qtm
-import h3
-
-from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.utils.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
-import platform,re
-if (platform.system() == 'Windows'):   
-    from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
-    from vgrid.utils.eaggr.eaggr import Eaggr
-    from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
-    from vgrid.utils.eaggr.enums.model import Model
-    from vgrid.generator.isea4tgrid import fix_isea4t_wkt, fix_isea4t_antimeridian_cells
-
-
-if (platform.system() == 'Linux'):
-    from vgrid.utils.dggrid4py import DGGRIDv7, dggs_types
-    from vgrid.utils.dggrid4py.dggrid_runner import input_address_types
-
-
-
 from shapely.wkt import loads
 from shapely.geometry import Polygon
+from vgrid.dggs import qtm, s2, olc, mercantile
+import h3
 
-from vgrid.generator.h3grid import fix_h3_antimeridian_cells
+from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+import platform,re
+if (platform.system() == 'Windows'):   
+    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
+    from vgrid.dggs.eaggr.eaggr import Eaggr
+    from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
+    from vgrid.dggs.eaggr.enums.model import Model
+    from vgrid.conversion.dggscompact.isea4tcompact import isea4t_compact
+    isea3h_dggs = Eaggr(Model.ISEA3H)
+    isea4t_dggs = Eaggr(Model.ISEA4T)
+
 
 from vgrid.utils.antimeridian import fix_polygon
-from vgrid.generator.settings import graticule_dggs_metrics, geodesic_dggs_metrics
+from vgrid.utils.geometry import (
+    fix_h3_antimeridian_cells, rhealpix_cell_to_polygon, graticule_dggs_metrics, geodesic_dggs_metrics,
+    fix_isea4t_antimeridian_cells, fix_isea4t_wkt
+)
 
-from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
-from vgrid.generator.geohashgrid import geohash_to_polygon
+
 from vgrid.conversion.dggscompact import *
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
 E = WGS84_ELLIPSOID
 
 from qgis.core import (
-    QgsVectorLayer, QgsFeature, QgsGeometry, QgsField, QgsFields, QgsProcessingException,
-    QgsWkbTypes, QgsVectorFileWriter, QgsProject, QgsCoordinateReferenceSystem
+    QgsVectorLayer, QgsFeature, QgsGeometry, QgsField, QgsFields, QgsProcessingException
 )
 from PyQt5.QtCore import QVariant
 from shapely.geometry import Polygon
@@ -291,8 +284,6 @@ def isea4tcompact(isea4t_layer: QgsVectorLayer, ISEA4TID_field=None,feedback=Non
     if platform.system() == 'Windows':    
         if not ISEA4TID_field:
             ISEA4TID_field = 'isea4t'
-
-        isea4t_dggs = Eaggr(Model.ISEA4T)
         
         fields = QgsFields()
         fields.append(QgsField("isea4t", QVariant.String))
@@ -316,7 +307,7 @@ def isea4tcompact(isea4t_layer: QgsVectorLayer, ISEA4TID_field=None,feedback=Non
 
         if isea4t_ids:
             try:
-                isea4t_ids_compact = isea4t_compact(isea4t_dggs,isea4t_ids)
+                isea4t_ids_compact = isea4t_compact(isea4t_ids)
             except:
                 raise QgsProcessingException("Compact cells failed. Please check your ISEA4T ID field.")
         
@@ -370,9 +361,7 @@ def isea4tcompact(isea4t_layer: QgsVectorLayer, ISEA4TID_field=None,feedback=Non
 def isea3hcompact(isea3h_layer: QgsVectorLayer, ISEA3HID_field=None,feedback=None) -> QgsVectorLayer:
     if platform.system() == 'Windows':    
         if not ISEA3HID_field:
-            ISEA3HID_field = 'isea3h'
-
-        isea3h_dggs = Eaggr(Model.ISEA3H)
+            ISEA3HID_field = 'isea3h'       
         
         fields = QgsFields()
         fields.append(QgsField("isea3h", QVariant.String))
@@ -396,7 +385,7 @@ def isea3hcompact(isea3h_layer: QgsVectorLayer, ISEA3HID_field=None,feedback=Non
         
         if isea3h_ids:
             try:
-                isea3h_ids_compact = isea3h_compact(isea3h_dggs,isea3h_ids)
+                isea3h_ids_compact = isea3h_compact(isea3h_ids)
             except:
                 raise QgsProcessingException("Compact cells failed. Please check your ISEA3H ID field.")
         
@@ -409,7 +398,7 @@ def isea3hcompact(isea3h_layer: QgsVectorLayer, ISEA3HID_field=None,feedback=Non
                         return None
                 try:
                     isea3h_cell = DggsCell(isea3h_id_compact)            
-                    cell_polygon = isea3h_cell_to_polygon(isea3h_dggs,isea3h_cell)
+                    cell_polygon = isea3h_cell_to_polygon(isea3h_cell)
                 except:
                     raise QgsProcessingException("Compact cells failed. Please check your ISEA3H ID field.")
                             

@@ -33,13 +33,13 @@ from shapely.wkt import loads
 
 import platform
 if (platform.system() == 'Windows'):
-    from vgrid.utils.eaggr.eaggr import Eaggr
-    from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
-    from vgrid.utils.eaggr.enums.model import Model
-    from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
-    from vgrid.generator.isea4tgrid import  fix_isea4t_antimeridian_cells
+    from vgrid.dggs.eaggr.eaggr import Eaggr
+    from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
+    from vgrid.dggs.eaggr.enums.model import Model
+    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
     from vgrid.conversion.latlon2dggs import latlon2isea4t
-    from vgrid.generator.isea4tgrid import  fix_isea4t_wkt
+    from vgrid.utils.geometry import fix_isea4t_antimeridian_cells,fix_isea4t_wkt
+    isea4t_dggs = Eaggr(Model.ISEA4T)
     
 class ISEA4TBin(QgsProcessingAlgorithm):
     INPUT = 'INPUT'
@@ -80,7 +80,7 @@ class ISEA4TBin(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_triangle.svg'))
     
     def displayName(self):
-        return self.tr('ISEA4T', 'ISEA4T')
+        return self.tr('ISEA4T Bin', 'ISEA4T Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -91,8 +91,8 @@ class ISEA4TBin(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, ISEA4T, Binning').split(',')
     
-    txt_en = 'ISEA4T Binning'
-    txt_vi = 'ISEA4T Binning'
+    txt_en = 'ISEA4T Bin'
+    txt_vi = 'ISEA4T Bin'
     figure = '../images/tutorial/bin_isea4t.png'
 
     def shortHelpString(self):
@@ -169,8 +169,7 @@ class ISEA4TBin(QgsProcessingAlgorithm):
         return True
 
     def processAlgorithm(self, parameters, context, feedback):   
-        if (platform.system() == 'Windows'):
-            isea4t_dggs = Eaggr(Model.ISEA4T)
+        if (platform.system() == 'Windows'):            
     
             isea4t_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
             isea4t_geometries = {}

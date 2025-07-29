@@ -65,7 +65,7 @@ class PolygonBin(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/binning/bin_polygon.svg'))
 
     def displayName(self):
-        return self.tr('Polygon', 'Polygon')
+        return self.tr('Polygon Bin', 'Polygon Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -76,8 +76,8 @@ class PolygonBin(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, Polygon, Binning').split(',')
 
-    txt_en = 'Polygon Binning'
-    txt_vi = 'Polygon Binning'
+    txt_en = 'Polygon Bin'
+    txt_vi = 'Polygon Bin'
     figure = '../images/tutorial/bin_h3.png'
 
     def shortHelpString(self):

@@ -41,8 +41,8 @@ from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
-from vgrid.utils import qtm   
-from vgrid.generator.settings import geodesic_dggs_metrics  
+from vgrid.dggs import qtm   
+from vgrid.utils.geometry import geodesic_dggs_metrics  
 from shapely.geometry import box
 from ...utils.imgs import Imgs
 

@@ -42,11 +42,10 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
 
-from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
-from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
+from vgrid.utils.geometry import rhealpix_cell_to_polygon,geodesic_dggs_metrics
+from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from ...utils.imgs import Imgs
 from shapely.geometry import box
-from vgrid.generator.settings import geodesic_dggs_metrics
 rhealpix_dggs = RHEALPixDGGS()
 
 

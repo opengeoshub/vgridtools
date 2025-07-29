@@ -45,14 +45,14 @@ from qgis.core import QgsApplication
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
-from vgrid.utils import mgrs
+from vgrid.dggs import mgrs
 from ...utils.imgs import Imgs
 from vgrid.generator.mgrsgrid import is_valid_gzd
 import json
 from shapely.geometry import shape, Polygon
 from shapely.wkt import loads
 import numpy as np
-from vgrid.generator.settings import graticule_dggs_metrics
+from vgrid.utils.geometry import graticule_dggs_metrics
 
 class MGRSGrid(QgsProcessingAlgorithm):
     GZD = 'GZD'   

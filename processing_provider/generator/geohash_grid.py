@@ -39,11 +39,10 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
 
-from vgrid.utils import geohash
 from ...utils.imgs import Imgs
-from vgrid.generator.settings import graticule_dggs_metrics
+from vgrid.utils.geometry import graticule_dggs_metrics
 from shapely.geometry import box
-from vgrid.generator.geohashgrid import geohash_to_polygon
+from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 
 
 class GeohashGrid(QgsProcessingAlgorithm):
@@ -152,7 +151,7 @@ class GeohashGrid(QgsProcessingAlgorithm):
     def expand_geohash(self, gh, target_length, writer, fields, feedback):
         """Recursive function to expand geohashes to target RESOLUTION and write them."""
         if len(gh) == target_length:
-            cell_polygon = geohash_to_polygon(gh)
+            cell_polygon = geohash2geo(gh)
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             geohash_feature = QgsFeature(fields)
             geohash_feature.setGeometry(cell_geometry)
@@ -171,7 +170,7 @@ class GeohashGrid(QgsProcessingAlgorithm):
 
 
     def expand_geohash_within_extent(self, gh, target_length, writer, fields, extent, feedback):
-        cell_polygon = geohash_to_polygon(gh)
+        cell_polygon = geohash2geo(gh)
         extent_bbox = box(self.grid_extent.xMinimum(), self.grid_extent.yMinimum(), 
                             self.grid_extent.xMaximum(), self.grid_extent.yMaximum())       
         if not cell_polygon.intersects(extent_bbox):
@@ -226,7 +225,7 @@ class GeohashGrid(QgsProcessingAlgorithm):
         else: 
             intersected_geohashes = []
             for gh in initial_geohashes:
-                cell_polygon = geohash_to_polygon(gh)  
+                cell_polygon = geohash2geo(gh)  
                 extent_bbox = box(self.grid_extent.xMinimum(), self.grid_extent.yMinimum(), 
                                 self.grid_extent.xMaximum(), self.grid_extent.yMaximum())       
                 if cell_polygon.intersects(extent_bbox):

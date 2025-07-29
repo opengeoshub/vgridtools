@@ -41,9 +41,9 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
 
-from vgrid.utils import olc
+from vgrid.dggs import olc
 from vgrid.generator.olcgrid import refine_cell
-from vgrid.generator.settings import graticule_dggs_metrics, graticule_dggs_to_feature
+from vgrid.utils.geometry import graticule_dggs_metrics, graticule_dggs_to_feature
 
 from ...utils.imgs import Imgs
 from shapely.geometry import Polygon,box

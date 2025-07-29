@@ -60,8 +60,8 @@ class VgridPlugin(object):
                 QgsExpression.registerFunction(expr)
         
         # Create menu
-        self.Vgrid_menu = QMenu(QCoreApplication.translate("Vgrid", "Vgrid"))
-        self.iface.mainWindow().menuBar().insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.Vgrid_menu)
+        # self.Vgrid_menu = QMenu(QCoreApplication.translate("Vgrid", "Vgrid"))
+        # self.iface.mainWindow().menuBar().insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.Vgrid_menu)
         
         # Add settings action
         self.settings_action = QAction(

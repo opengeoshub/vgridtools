@@ -162,9 +162,8 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             resolutions = range(16)
             get_area = lambda res: rhealpix_metrics(res)[2]  # avg_area
         elif dggs_type == 'isea4t':
-            isea4t_dggs = Eaggr(Model.ISEA4T) 
             resolutions = range(24)
-            get_area = lambda res: isea4t_metrics(isea4t_dggs, res)[2]  # avg_area
+            get_area = lambda res: isea4t_metrics(res)[2]  # avg_area
         elif dggs_type == 'qtm':
             resolutions = range(2,25)
             get_area = lambda res: qtm_metrics(res)[2]  # avg_area

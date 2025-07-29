@@ -29,7 +29,7 @@ from shapely.geometry import  Polygon
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter    
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
-from vgrid.utils import mercantile
+from vgrid.dggs import mercantile
 from vgrid.conversion.latlon2dggs import latlon2quadkey
 
 class QuadkeyBin(QgsProcessingAlgorithm):
@@ -71,7 +71,7 @@ class QuadkeyBin(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
-        return self.tr('Quadkey', 'Quadkey')
+        return self.tr('Quadkey Bin', 'Quadkey Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -82,8 +82,8 @@ class QuadkeyBin(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, Quadkey, Binning').split(',')
     
-    txt_en = 'Quadkey Binning'
-    txt_vi = 'Quadkey Binning'
+    txt_en = 'Quadkey Bin'
+    txt_vi = 'Quadkey Bin'
     figure = '../images/tutorial/bin_quadkey.png'
 
     def shortHelpString(self):

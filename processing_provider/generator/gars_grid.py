@@ -43,9 +43,9 @@ from PyQt5.QtCore import QVariant
 import os, random
 from ...utils.imgs import Imgs
 import numpy as np
-from vgrid.utils.gars.garsgrid import GARSGrid as GARSGRID 
+from vgrid.dggs.gars.garsgrid import GARSGrid as GARSGRID 
 from shapely.geometry import Polygon
-from vgrid.generator.settings import graticule_dggs_metrics
+from vgrid.utils.geometry import graticule_dggs_metrics
         
 class GARSGrid(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'

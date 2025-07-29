@@ -29,7 +29,7 @@ from shapely.geometry import  Polygon
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter    
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
-from vgrid.utils import mercantile
+from vgrid.dggs import mercantile
 from vgrid.conversion.latlon2dggs import latlon2tilecode
 
 class TilecodeBin(QgsProcessingAlgorithm):
@@ -71,7 +71,7 @@ class TilecodeBin(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
-        return self.tr('Tilecode', 'Tilecode')
+        return self.tr('Tilecode Bin', 'Tilecode Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -82,8 +82,8 @@ class TilecodeBin(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, Tilecode, Binning').split(',')
     
-    txt_en = 'Tilecode Binning'
-    txt_vi = 'Tilecode Binning'
+    txt_en = 'Tilecode Bin'
+    txt_vi = 'Tilecode Bin'
     figure = '../images/tutorial/bin_tilecode.png'
 
     def shortHelpString(self):

@@ -29,7 +29,7 @@ from shapely.geometry import  Polygon
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter    
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
-from vgrid.utils import olc
+from vgrid.dggs import olc
 from vgrid.conversion.latlon2dggs import latlon2olc
 
 class OLCBin(QgsProcessingAlgorithm):
@@ -71,7 +71,7 @@ class OLCBin(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
-        return self.tr('OLC', 'OLC')
+        return self.tr('OLC Bin', 'OLC Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -82,8 +82,8 @@ class OLCBin(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, OLC, Binning').split(',')
     
-    txt_en = 'OLC Binning'
-    txt_vi = 'OLC Binning'
+    txt_en = 'OLC Bin'
+    txt_vi = 'OLC Bin'
     figure = '../images/tutorial/bin_olc.png'
 
     def shortHelpString(self):

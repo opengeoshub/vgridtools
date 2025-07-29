@@ -1,4 +1,6 @@
 import platform,re
+from shapely.wkt import loads
+from shapely.geometry import Polygon
 from qgis.core import (
     QgsRasterLayer,
     QgsRaster,
@@ -11,32 +13,30 @@ from qgis.core import (
 )
 from PyQt5.QtCore import QVariant
 import math
-from shapely.geometry import Polygon
-from shapely.wkt import loads
-
 import h3 
-from vgrid.utils import s2, qtm, olc, geohash, tilecode
-from vgrid.conversion.latlon2dggs import *
-from vgrid.utils import mercantile
-from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.generator.h3grid import fix_h3_antimeridian_cells
-from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
-from vgrid.generator.settings import graticule_dggs_metrics, geodesic_dggs_metrics
 
-from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.utils.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+
+from vgrid.dggs import s2, qtm, olc, geohash, tilecode
+from vgrid.conversion.latlon2dggs import *
+from vgrid.dggs import mercantile
+from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+from vgrid.utils.geometry import (
+    fix_isea4t_wkt, fix_h3_antimeridian_cells, graticule_dggs_metrics, geodesic_dggs_metrics,
+    rhealpix_cell_to_polygon, fix_isea4t_antimeridian_cells
+)
+from vgrid.utils.antimeridian import fix_polygon
+from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 
 E = WGS84_ELLIPSOID
 
 if (platform.system() == 'Windows'):
-    from vgrid.utils.eaggr.eaggr import Eaggr
-    from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
-    from vgrid.utils.eaggr.enums.model import Model
-    from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
-    from vgrid.generator.isea4tgrid import fix_isea4t_wkt, fix_isea4t_antimeridian_cells
+    from vgrid.dggs.eaggr.eaggr import Eaggr
+    from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
+    from vgrid.dggs.eaggr.enums.model import Model
+    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
+    from vgrid.conversion.dggscompact.isea4tcompact import isea4t_compact
     isea4t_dggs = Eaggr(Model.ISEA4T)
-
-from vgrid.utils.antimeridian import fix_polygon
+    isea3h_dggs = Eaggr(Model.ISEA3H)
 
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
@@ -367,8 +367,7 @@ def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
 # ISEA4T
 # ########################
 def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
-    if (platform.system() == 'Windows'): 
-        isea4t_dggs = Eaggr(Model.ISEA4T)
+    if (platform.system() == 'Windows'):        
 
         if not raster_layer.isValid():
             raise ValueError("Invalid raster layer.")

@@ -43,20 +43,19 @@ from PyQt5.QtCore import QVariant
 import os, random, platform
 
 if (platform.system() == 'Windows'):
-    from vgrid.utils.eaggr.eaggr import Eaggr
-    from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
-    from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
-    from vgrid.utils.eaggr.enums.model import Model
-    from vgrid.generator.isea4tgrid import isea4t_cell_to_polygon,\
-                                          get_isea4t_children_cells,get_isea4t_children_cells_within_bbox,\
-                                          fix_isea4t_antimeridian_cells
-    from vgrid.generator.settings import isea4t_base_cells
-
+    from vgrid.dggs.eaggr.eaggr import Eaggr
+    from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
+    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
+    from vgrid.dggs.eaggr.enums.model import Model
+    from vgrid.generator.isea4tgrid import get_isea4t_children_cells,get_isea4t_children_cells_within_bbox                                          
+    from vgrid.utils.geometry import isea4t_cell_to_polygon,fix_isea4t_antimeridian_cells
+    from vgrid.generator.settings import ISEA4T_BASE_CELLS
     isea4t_dggs = Eaggr(Model.ISEA4T)
     
 from ...utils.imgs import Imgs
 from shapely.geometry import box
-from vgrid.generator.settings import isea4t_res_accuracy_dict, geodesic_dggs_metrics
+from vgrid.generator.settings import ISEA4T_RES_ACCURACY_DICT
+from vgrid.utils.geometry import geodesic_dggs_metrics
 from vgrid.utils.antimeridian import fix_polygon
 
 
@@ -185,13 +184,13 @@ class ISEA4TGrid(QgsProcessingAlgorithm):
        
         if (platform.system() == 'Windows'): 
             if extent_bbox:
-                accuracy = isea4t_res_accuracy_dict.get(self.resolution)                
+                accuracy = ISEA4T_RES_ACCURACY_DICT.get(self.resolution)                
                 extent_bbox_wkt = extent_bbox.wkt  # Create a bounding box polygon
                 shapes = isea4t_dggs.convert_shape_string_to_dggs_shapes(extent_bbox_wkt, ShapeStringFormat.WKT, accuracy)
                 shape = shapes[0]
                 bbox_cells = shape.get_shape().get_outer_ring().get_cells()
                 bounding_cell = isea4t_dggs.get_bounding_dggs_cell(bbox_cells)
-                bounding_children = get_isea4t_children_cells_within_bbox(isea4t_dggs, bounding_cell.get_cell_id(), extent_bbox,self.resolution)
+                bounding_children = get_isea4t_children_cells_within_bbox(bounding_cell.get_cell_id(), extent_bbox,self.resolution)
                 total_bounding_children = len(bounding_children)
                 feedback.pushInfo(f"Total cells to be generated: {total_bounding_children}.")
                 
@@ -201,7 +200,7 @@ class ISEA4TGrid(QgsProcessingAlgorithm):
                     
                     isea4t_cell = DggsCell(child)
                     isea4t_id = isea4t_cell.get_cell_id()
-                    cell_polygon = isea4t_cell_to_polygon(isea4t_dggs,isea4t_cell)
+                    cell_polygon = isea4t_cell_to_polygon(isea4t_cell)
                     
                     if self.resolution == 0:
                         cell_polygon = fix_polygon(cell_polygon)
@@ -225,14 +224,14 @@ class ISEA4TGrid(QgsProcessingAlgorithm):
                 total_cells = 20*(4**self.resolution)
                 feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
                 
-                children = get_isea4t_children_cells(isea4t_dggs, isea4t_base_cells, self.resolution)
+                children = get_isea4t_children_cells(ISEA4T_BASE_CELLS, self.resolution)   
                 for idx, child in enumerate(children):
                     progress = int((idx / total_cells) * 100)
                     feedback.setProgress(progress) 
                      
                     isea4t_cell = DggsCell(child)
                     isea4t_id = isea4t_cell.get_cell_id()
-                    cell_polygon = isea4t_cell_to_polygon(isea4t_dggs, isea4t_cell)
+                    cell_polygon = isea4t_cell_to_polygon(isea4t_cell)
                     
                     if self.resolution == 0:
                         cell_polygon = fix_polygon(cell_polygon)

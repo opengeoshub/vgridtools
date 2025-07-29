@@ -1,39 +1,33 @@
-from vgrid.utils import s2, olc, mercantile
-from vgrid.utils import qtm
-import h3
-
-from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.utils.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 import platform, re
-
-if (platform.system() == 'Windows'):   
-    from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
-    from vgrid.utils.eaggr.eaggr import Eaggr
-    from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
-    from vgrid.utils.eaggr.enums.model import Model
-    from vgrid.generator.isea4tgrid import fix_isea4t_wkt, fix_isea4t_antimeridian_cells
-    from vgrid.generator.isea3hgrid import isea3h_cell_to_polygon
-    from vgrid.generator.settings import isea3h_accuracy_res_dict
-
-if (platform.system() == 'Linux'):
-    from vgrid.utils.dggrid4py import DGGRIDv7, dggs_types
-    from vgrid.utils.dggrid4py.dggrid_runner import input_address_types
-
-
-from vgrid.utils.easedggs.dggs.grid_addressing import grid_ids_to_geos
-
 from shapely.wkt import loads
 from shapely.geometry import Polygon
+from vgrid.dggs import s2, olc, mercantile, qtm
+import h3
+from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 
-from vgrid.generator.h3grid import fix_h3_antimeridian_cells
+if (platform.system() == 'Windows'):   
+    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
+    from vgrid.dggs.eaggr.eaggr import Eaggr
+    from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
+    from vgrid.dggs.eaggr.enums.model import Model
+    from vgrid.utils.geometry import fix_isea4t_wkt, fix_isea4t_antimeridian_cells, isea3h_cell_to_polygon
+    isea3h_dggs = Eaggr(Model.ISEA3H)
+    isea4t_dggs = Eaggr(Model.ISEA4T)
 
+from vgrid.generator.settings import ISEA3H_ACCURACY_RES_DICT
 from vgrid.utils.antimeridian import fix_polygon
-from vgrid.generator.settings import graticule_dggs_metrics, geodesic_dggs_metrics
+from vgrid.utils.geometry import fix_h3_antimeridian_cells, graticule_dggs_metrics, geodesic_dggs_metrics, rhealpix_cell_to_polygon, fix_isea4t_antimeridian_cells
 
-from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
-from vgrid.generator.geohashgrid import geohash_to_polygon
-from vgrid.conversion.dggscompact import s2_expand,rhealpix_expand, isea4t_expand, isea3h_expand,\
-                                         qtm_expand, olc_expand, geohash_expand, tilecode_expand, quadkey_expand
+from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
+from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_expand
+from vgrid.conversion.dggscompact.isea4tcompact import isea4t_expand
+from vgrid.conversion.dggscompact.isea3hcompact import isea3h_expand
+from vgrid.conversion.dggscompact.qtmcompact import qtm_expand
+from vgrid.conversion.dggscompact.olccompact import olc_expand
+from vgrid.conversion.dggscompact.geohashcompact import geohash_expand
+from vgrid.conversion.dggscompact.tilecodecompact import tilecode_expand
+from vgrid.conversion.dggscompact.quadkeycompact import quadkey_expand
 
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
@@ -162,8 +156,15 @@ def s2expand(s2_layer: QgsVectorLayer, resolution: int, S2Token_field=None, feed
                 if feedback:
                     feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
                     return None
-            s2_ids_expand = s2_expand(s2_ids, resolution)
-            s2_tokens_expand = [s2_id_expand.to_token() for s2_id_expand in s2_ids_expand]
+            # s2_ids_expand = s2_expand(s2_ids, resolution)
+            # s2_tokens_expand = [s2_id_expand.to_token() for s2_id_expand in s2_ids_expand]
+            expanded_cells = []
+            for s2_id in s2_ids:
+                if s2_id.level() >= resolution:
+                    expanded_cells.append(s2_id)
+                else:
+                    expanded_cells.extend(s2_id.children(resolution))
+            s2_tokens_expand = [cell_id.to_token() for cell_id in expanded_cells]
     
     except:
         raise QgsProcessingException("Expand cells failed. Please check your S2 cell Ids.")
@@ -320,8 +321,7 @@ def rhealpixexpand(rhealpix_layer: QgsVectorLayer, resolution: int, rHealPixID_f
 # ISEA4T
 #########################
 def isea4texpand(isea4t_layer: QgsVectorLayer, resolution: int, ISEA4TID_field=None, feedback=None) -> QgsVectorLayer:
-    if (platform.system() == 'Windows'):  
-        isea4t_dggs = Eaggr(Model.ISEA4T)
+    if (platform.system() == 'Windows'):        
         
         if not ISEA4TID_field:
             ISEA4TID_field = 'isea4t'
@@ -355,7 +355,7 @@ def isea4texpand(isea4t_layer: QgsVectorLayer, resolution: int, ISEA4TID_field=N
                 return None
 
             try:
-                isea4t_cells_expand = isea4t_expand(isea4t_dggs, isea4t_ids, resolution)
+                isea4t_cells_expand = isea4t_expand(isea4t_ids, resolution)
             except:
                 raise QgsProcessingException("Expand cells failed. Please check your ISEA4T cell Ids.")
 
@@ -407,17 +407,17 @@ def isea4texpand(isea4t_layer: QgsVectorLayer, resolution: int, ISEA4TID_field=N
 ########################## 
 # ISEA3H
 #########################
-def get_isea3h_resolution(isea3h_dggs, isea3h_id):
+def get_isea3h_resolution(isea3h_id):
     try:
         isea3h_cell = DggsCell(isea3h_id)
-        cell_polygon = isea3h_cell_to_polygon(isea3h_dggs,isea3h_cell)    
+        cell_polygon = isea3h_cell_to_polygon(isea3h_cell)    
         cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
         
         isea3h2point = isea3h_dggs.convert_dggs_cell_to_point(isea3h_cell)      
         cell_accuracy = isea3h2point._accuracy
             
         avg_edge_len = cell_perimeter / 6
-        cell_resolution  = isea3h_accuracy_res_dict.get(cell_accuracy)
+        cell_resolution  = ISEA3H_ACCURACY_RES_DICT.get(cell_accuracy)
         
         if (cell_resolution == 0): # icosahedron faces at resolution = 0
             avg_edge_len = cell_perimeter / 3
@@ -446,9 +446,7 @@ def get_isea3h_resolution(isea3h_dggs, isea3h_id):
         raise ValueError(f"Invalid cell ID '{isea3h_id}': {e}")
 
 
-def isea3hexpand(isea3h_layer: QgsVectorLayer, resolution: int, ISEA3HID_field=None, feedback=None) -> QgsVectorLayer:
-    if (platform.system() == 'Windows'):  
-        isea3h_dggs = Eaggr(Model.ISEA3H)
+def isea3hexpand(isea3h_layer: QgsVectorLayer, resolution: int, ISEA3HID_field=None, feedback=None) -> QgsVectorLayer:  
         
         if not ISEA3HID_field:
             ISEA3HID_field = 'isea3h'
@@ -476,7 +474,7 @@ def isea3hexpand(isea3h_layer: QgsVectorLayer, resolution: int, ISEA3HID_field=N
         
         if isea3h_ids:
             try:
-                max_res = max(get_isea3h_resolution(isea3h_dggs,isea3h_id) for isea3h_id in isea3h_ids)
+                max_res = max(get_isea3h_resolution(isea3h_id) for isea3h_id in isea3h_ids)
             except Exception as e:
                 raise QgsProcessingException(f"Error determining cell resolution from rHEALPix cell Ids: {e}")
 
@@ -486,7 +484,7 @@ def isea3hexpand(isea3h_layer: QgsVectorLayer, resolution: int, ISEA3HID_field=N
                 return None
             
             try:
-                isea3h_cells_expand = isea3h_expand(isea3h_dggs, isea3h_ids, resolution)
+                isea3h_cells_expand = isea3h_expand(isea3h_ids, resolution)
             except:
                 raise QgsProcessingException("Expand cells failed. Please check your ISEA3H cell Ids.")
 
@@ -498,7 +496,7 @@ def isea3hexpand(isea3h_layer: QgsVectorLayer, resolution: int, ISEA3HID_field=N
                     if feedback.isCanceled():
                         return None
 
-                cell_polygon = isea3h_cell_to_polygon(isea3h_dggs,isea3h_cell_expand)                
+                cell_polygon = isea3h_cell_to_polygon(isea3h_cell_expand)                
                 if not cell_polygon.is_valid:
                     continue
                 
@@ -513,7 +511,7 @@ def isea3hexpand(isea3h_layer: QgsVectorLayer, resolution: int, ISEA3HID_field=N
                 cell_accuracy = isea3h2point._accuracy
                     
                 avg_edge_len = cell_perimeter / 6
-                cell_resolution  = isea3h_accuracy_res_dict.get(cell_accuracy)
+                cell_resolution  = ISEA3H_ACCURACY_RES_DICT.get(cell_accuracy)
                 
                 if (cell_resolution == 0): # icosahedron faces at resolution = 0
                     avg_edge_len = cell_perimeter / 3
@@ -773,7 +771,7 @@ def geohashexpand(geohash_layer: QgsVectorLayer, resolution: int,GeohashID_field
                 if feedback.isCanceled():
                     return None
 
-            cell_polygon = geohash_to_polygon(geohash_id_expand)
+            cell_polygon = geohash2geo(geohash_id_expand)
             
             if not cell_polygon.is_valid:
                 continue

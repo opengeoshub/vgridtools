@@ -70,7 +70,7 @@ class H3Bin(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_h3.svg'))
     
     def displayName(self):
-        return self.tr('H3', 'H3')
+        return self.tr('H3 Bin', 'H3 Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -81,8 +81,8 @@ class H3Bin(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, H3, Binning').split(',')
     
-    txt_en = 'H3 Binning'
-    txt_vi = 'H3 Binning'
+    txt_en = 'H3 Bin'
+    txt_vi = 'H3 Bin'
     figure = '../images/tutorial/bin_h3.png'
 
     def shortHelpString(self):

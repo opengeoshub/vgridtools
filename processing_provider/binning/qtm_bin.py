@@ -25,7 +25,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from PyQt5.QtCore import QVariant
 import os, statistics
-from vgrid.utils import qtm
+from vgrid.dggs import qtm
 from shapely.geometry import Point, Polygon, shape
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter    
@@ -70,7 +70,7 @@ class QTMBin(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_triangle.svg'))
     
     def displayName(self):
-        return self.tr('QTM', 'QTM')
+        return self.tr('QTM Bin', 'QTM Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -81,8 +81,8 @@ class QTMBin(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, qtm, Binning').split(',')
     
-    txt_en = 'QTM Binning'
-    txt_vi = 'QTM Binning'
+    txt_en = 'QTM Bin'
+    txt_vi = 'QTM Bin'
     figure = '../images/tutorial/bin_qtm.png'
 
     def shortHelpString(self):

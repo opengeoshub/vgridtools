@@ -29,7 +29,7 @@ from shapely.geometry import  Polygon
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter    
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
-from vgrid.utils import geohash
+from vgrid.dggs import geohash
 from vgrid.conversion.latlon2dggs import latlon2geohash
 
 class GeohashBin(QgsProcessingAlgorithm):
@@ -71,7 +71,7 @@ class GeohashBin(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
-        return self.tr('Geohash', 'Geohash')
+        return self.tr('Geohash Bin', 'Geohash Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -82,8 +82,8 @@ class GeohashBin(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, Geohash, Binning').split(',')
     
-    txt_en = 'Geohash Binning'
-    txt_vi = 'Geohash Binning'
+    txt_en = 'Geohash Bin'
+    txt_vi = 'Geohash Bin'
     figure = '../images/tutorial/bin_geohash.png'
 
     def shortHelpString(self):

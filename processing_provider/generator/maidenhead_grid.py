@@ -42,10 +42,10 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
 
-from vgrid.utils import maidenhead
+from vgrid.dggs import maidenhead
 from ...utils.imgs import Imgs
 from shapely.geometry import Polygon
-from vgrid.generator.settings import graticule_dggs_metrics
+from vgrid.utils.geometry import graticule_dggs_metrics
 
 grid_params = { 
     1: (18, 18, 20, 10),                 # Fields: 20° lon, 10° lat

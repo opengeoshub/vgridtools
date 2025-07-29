@@ -25,7 +25,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from PyQt5.QtCore import QVariant
 import os, statistics
-from vgrid.utils import s2
+from vgrid.dggs import s2
 from vgrid.conversion.latlon2dggs import latlon2s2
 from shapely.geometry import Point, Polygon, shape
 from ...utils.imgs import Imgs
@@ -72,7 +72,7 @@ class S2Bin(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_s2.svg'))
     
     def displayName(self):
-        return self.tr('S2', 'S2')
+        return self.tr('S2 Bin', 'S2 Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -83,8 +83,8 @@ class S2Bin(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, S2, Binning').split(',')
     
-    txt_en = 'S2 Binning'
-    txt_vi = 'S2 Binning'
+    txt_en = 'S2 Bin'
+    txt_vi = 'S2 Bin'
     figure = '../images/tutorial/bin_s2.png'
 
     def shortHelpString(self):

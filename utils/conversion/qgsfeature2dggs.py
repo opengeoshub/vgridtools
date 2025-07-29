@@ -9,37 +9,43 @@ from qgis.core import QgsFeature, QgsGeometry, QgsField, QgsFields,QgsWkbTypes
 from PyQt5.QtCore import QVariant
 
 import h3 
-from vgrid.utils import s2, qtm, olc, geohash, georef, tilecode
-from vgrid.generator.s2grid import s2_cell_to_polygon
-from vgrid.utils import mercantile
-from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.conversion.dggscompact import rhealpix_compact 
+from vgrid.dggs import s2, qtm, olc, geohash, georef, tilecode
+from vgrid.utils.geometry import s2_cell_to_polygon
+from vgrid.dggs import mercantile
+from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_compact 
 
-from vgrid.generator.h3grid import fix_h3_antimeridian_cells, geodesic_buffer
-from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
-from vgrid.generator.geohashgrid import geohash_to_polygon
-from vgrid.generator.settings import graticule_dggs_metrics, geodesic_dggs_metrics
+from vgrid.generator.h3grid import geodesic_buffer
+from vgrid.utils.geometry import rhealpix_cell_to_polygon, graticule_dggs_metrics, geodesic_dggs_metrics,check_predicate
+from vgrid.conversion.dggs2geo.h32geo import h32geo
+from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 
-from vgrid.utils.easedggs.constants import levels_specs
-from vgrid.utils.easedggs.dggs.grid_addressing import grid_ids_to_geos,geos_to_grid_ids
+from vgrid.dggs.easedggs.constants import levels_specs
+from vgrid.dggs.easedggs.dggs.grid_addressing import grid_ids_to_geos,geos_to_grid_ids
 
 if (platform.system() == 'Windows'):
-    from vgrid.utils.eaggr.eaggr import Eaggr
-    from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
-    from vgrid.utils.eaggr.enums.model import Model
-    from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
-    from vgrid.utils.eaggr.shapes.lat_long_point import LatLongPoint
-    from vgrid.generator.isea4tgrid import isea4t_cell_to_polygon, isea4t_res_accuracy_dict,\
-                                                fix_isea4t_antimeridian_cells, get_isea4t_children_cells_within_bbox
-    from vgrid.conversion.dggscompact import isea4t_compact, isea3h_compact
+    from vgrid.dggs.eaggr.eaggr import Eaggr
+    from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
+    from vgrid.dggs.eaggr.enums.model import Model
+    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
+    from vgrid.dggs.eaggr.shapes.lat_long_point import LatLongPoint
+    from vgrid.generator.isea4tgrid import get_isea4t_children_cells_within_bbox
+    from vgrid.utils.geometry import isea4t_cell_to_polygon, isea3h_cell_to_polygon, fix_isea4t_antimeridian_cells
+    from vgrid.conversion.dggscompact.isea4tcompact import isea4t_compact
+    from vgrid.conversion.dggscompact.isea3hcompact import isea3h_compact
+    from vgrid.generator.isea3hgrid import get_isea3h_children_cells_within_bbox                                   
+    from vgrid.generator.settings import ISEA3H_ACCURACY_RES_DICT
     isea4t_dggs = Eaggr(Model.ISEA4T)
-
-    from vgrid.generator.isea3hgrid import isea3h_cell_to_polygon, isea3h_accuracy_res_dict, isea3h_res_accuracy_dict,get_isea3h_children_cells_within_bbox                                   
     isea3h_dggs = Eaggr(Model.ISEA3H)
 
-from vgrid.conversion.dggscompact import qtm_compact,olc_compact,geohash_compact,tilecode_compact,quadkey_compact
+from vgrid.conversion.dggscompact.qtmcompact import qtm_compact
+from vgrid.conversion.dggscompact.olccompact import olc_compact
+from vgrid.conversion.dggscompact.geohashcompact import geohash_compact
+from vgrid.conversion.dggscompact.tilecodecompact import tilecode_compact
+from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
 
-from vgrid.generator.geohashgrid import initial_geohashes, geohash_to_polygon, expand_geohash_bbox
+from vgrid.generator.geohashgrid import expand_geohash_bbox
+from vgrid.generator.settings import INITIAL_GEOHASHES, ISEA4T_RES_ACCURACY_DICT,ISEA3H_ACCURACY_RES_DICT
 
 from vgrid.conversion import latlon2dggs
 
@@ -71,17 +77,11 @@ def point2h3(feature, resolution, feedback):
     latitude = point.y()
     longitude = point.x()
     
-    h3_cell = h3.latlng_to_cell(latitude, longitude, resolution)
-    cell_boundary = h3.cell_to_boundary(h3_cell)
-    
-    # Ensure correct orientation for QGIS compatibility
-    filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
-    # Reverse lat/lon to lon/lat for GeoJSON compatibility
-    reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
-    cell_polygon = Polygon(reversed_boundary)
+    h3_id = h3.latlng_to_cell(latitude, longitude, resolution)
+    cell_polygon = h32geo(h3_id)
       
     num_edges = 6
-    if h3.is_pentagon(h3_cell):
+    if h3.is_pentagon(h3_id):
         num_edges = 5
     
     center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
@@ -111,7 +111,7 @@ def point2h3(feature, resolution, feedback):
     h3_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [str(h3_cell), resolution, center_lat, center_lon, avg_edge_len, cell_area]
+    new_attributes = [str(h3_id), resolution, center_lat, center_lon, avg_edge_len, cell_area]
     all_attributes = original_attributes + new_attributes
     
     h3_feature.setAttributes(all_attributes)
@@ -119,103 +119,7 @@ def point2h3(feature, resolution, feedback):
     return [h3_feature]
 
 
-def densify_line(line, segment_length):
-    total_length = line.length
-    if total_length == 0:
-        # Degenerate line, just return start and end twice
-        coords = list(line.coords)
-        if len(coords) == 1:
-            coords = coords * 2
-        return LineString(coords)
-    num_segments = max(1, int(np.ceil(total_length / segment_length)))
-    distances = np.linspace(0, total_length, num_segments + 1)
-    points = [line.interpolate(d) for d in distances]
-    # Ensure at least two points
-    if len(points) < 2:
-        points = [line.interpolate(0), line.interpolate(total_length)]
-    return LineString(points)
-
-
-def polyline2h3(feature, resolution, predicate, compact, feedback):
-    h3_features = []
-    feature_geometry = feature.geometry()
-    avg_edge_length = h3.average_hexagon_edge_length(resolution, unit='m')
-    meters_per_degree = 111320.0
-    segment_length_degrees = avg_edge_length / meters_per_degree
-    densified_geometry = feature_geometry.densifyByDistance(segment_length_degrees)
-    densified_points = densified_geometry.asPolyline()
-    if len(densified_points) < 2:
-        return []
-
-    # Extract (lat, lon) tuples from QgsPointXY
-    vertices = [(pt.y(), pt.x()) for pt in densified_points]  # (lat, lon)
-
-    #h3_cells = set()
-    h3_cells = []
-    for lat, lon in vertices:
-        h3_cell = h3.latlng_to_cell(lat, lon, resolution)
-        h3_cells.append(h3_cell)
-
-    if feedback:
-        feedback.pushInfo(f"Processing feature {feature.id()}")
-        feedback.setProgress(0)
-
-    total_cells = len(h3_cells)
-    for i, h3_cell in enumerate(h3_cells):
-        if feedback and feedback.isCanceled():
-            return []
-
-        cell_boundary = h3.cell_to_boundary(h3_cell)
-        filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
-        reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
-        cell_polygon = Polygon(reversed_boundary)
-
-        num_edges = 6
-        if h3.is_pentagon(h3_cell):
-            num_edges = 5
-
-        h3_id = str(h3_cell)
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-        cell_resolution = h3.get_resolution(h3_id)
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-        h3_feature = QgsFeature()
-        h3_feature.setGeometry(cell_geometry)
-
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        new_fields = QgsFields()
-        new_fields.append(QgsField("h3", QVariant.String))
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
-        h3_feature.setFields(all_fields)
-        new_attributes = [h3_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
-        all_attributes = original_attributes + new_attributes
-        h3_feature.setAttributes(all_attributes)
-
-        h3_features.append(h3_feature)
-
-        if feedback and i % 100 == 0:
-            feedback.setProgress(int(100 * i / total_cells))
-
-    if feedback:
-        feedback.setProgress(100)
-
-    return h3_features
-
-
-def polyline2h3_old(feature, resolution, feedback):  
+def polyline2h3(feature, resolution, predicate = None, compact=None, feedback=None):  
     h3_features = [] 
   
     feature_geometry = feature.geometry()
@@ -237,14 +141,8 @@ def polyline2h3_old(feature, resolution, feedback):
     total_cells = len(bbox_buffer_cells)
     for i, bbox_buffer_cell in enumerate(bbox_buffer_cells):
         if feedback and feedback.isCanceled():
-            return []
-    
-        cell_boundary = h3.cell_to_boundary(bbox_buffer_cell)
-        # filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
-        filtered_boundary = cell_boundary
-        reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
-        cell_polygon = Polygon(reversed_boundary)
-                
+            return []    
+        cell_polygon = h32geo(bbox_buffer_cell)                
         num_edges = 6
         if h3.is_pentagon(bbox_buffer_cell):
             num_edges = 5
@@ -300,13 +198,11 @@ def polyline2h3_old(feature, resolution, feedback):
             
     return h3_features
 
-def polygon2h3(feature, resolution, predicate, compact, feedback):  
-    h3_features = []   
+def polygon2h3(feature, resolution, predicate = None, compact=None, feedback=None):  
+    h3_features = []  
+    feature_geometry = feature.geometry() 
     try:  
         shapely_geom = load_wkt(feature.geometry().asWkt())
-        # h3shape = h3.geo_to_h3shape(shapely_geom)
-        # h3_cells = h3.h3shape_to_cells_experimental(h3shape, resolution,'center')
-        # default is 'center' is within the feature
         h3_cells = h3.geo_to_cells(shapely_geom, resolution)
         if compact:
             h3_cells = h3.compact_cells(h3_cells)
@@ -321,10 +217,7 @@ def polygon2h3(feature, resolution, predicate, compact, feedback):
             if feedback and feedback.isCanceled():
                 return []
 
-            cell_boundary = h3.cell_to_boundary(h3_cell)
-            filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
-            reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
-            cell_polygon = Polygon(reversed_boundary)
+            cell_polygon = h32geo(h3_cell)
                     
             num_edges = 6
             if h3.is_pentagon(h3_cell):
@@ -335,6 +228,9 @@ def polygon2h3(feature, resolution, predicate, compact, feedback):
             cell_resolution = h3.get_resolution(h3_id) 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
             # **Check for intersection with the input feature**
+            if not check_predicate(cell_geometry, feature_geometry, "intersects"):
+                continue
+            
             # Create a single QGIS feature
             h3_feature = QgsFeature()
             h3_feature.setGeometry(cell_geometry)
@@ -818,13 +714,13 @@ def point2isea4t(feature, resolution,feedback):
     point = feature_geometry.asPoint()
     longitude = point.x()
     latitude = point.y()    
-    accuracy = isea4t_res_accuracy_dict.get(resolution)
+    accuracy = ISEA4T_RES_ACCURACY_DICT.get(resolution)
     lat_long_point = LatLongPoint(latitude, longitude,accuracy)
 
     isea4t_cell = isea4t_dggs.convert_point_to_dggs_cell(lat_long_point)
 
     isea4t_id = isea4t_cell.get_cell_id() # Unique identifier for the current cell
-    cell_polygon = isea4t_cell_to_polygon(isea4t_dggs,isea4t_cell)
+    cell_polygon = isea4t_cell_to_polygon(isea4t_cell)
     
     if isea4t_id.startswith('00') or isea4t_id.startswith('09') or isea4t_id.startswith('14') or isea4t_id.startswith('04') or isea4t_id.startswith('19'):
             cell_polygon = fix_isea4t_antimeridian_cells(cell_polygon)
@@ -881,16 +777,16 @@ def poly2isea4t(feature, resolution, predicate, compact, feedback):
     # Create a bounding box polygon
     bounding_box = box(min_x, min_y, max_x, max_y)
     bounding_box_wkt = bounding_box.wkt  # Create a bounding box polygon
-    accuracy = isea4t_res_accuracy_dict.get(resolution)
+    accuracy = ISEA4T_RES_ACCURACY_DICT.get(resolution)
     shapes = isea4t_dggs.convert_shape_string_to_dggs_shapes(bounding_box_wkt, ShapeStringFormat.WKT, accuracy)
     shape = shapes[0]
     # for shape in shapes:
     bbox_cells = shape.get_shape().get_outer_ring().get_cells()
     bounding_cell = isea4t_dggs.get_bounding_dggs_cell(bbox_cells)
-    bounding_child_cells = get_isea4t_children_cells_within_bbox(isea4t_dggs,bounding_cell.get_cell_id(), bounding_box,resolution)
+    bounding_child_cells = get_isea4t_children_cells_within_bbox(bounding_cell.get_cell_id(), bounding_box,resolution)
    
     if compact:
-        bounding_child_cells = isea4t_compact(isea4t_dggs,bounding_child_cells)
+        bounding_child_cells = isea4t_compact(bounding_child_cells)
     
     total_cells = len(bounding_child_cells)
 
@@ -903,7 +799,7 @@ def poly2isea4t(feature, resolution, predicate, compact, feedback):
             return []
         
         isea4t_cell = DggsCell(child)
-        cell_polygon = isea4t_cell_to_polygon(isea4t_dggs,isea4t_cell)
+        cell_polygon = isea4t_cell_to_polygon(isea4t_cell)
         isea4t_id = isea4t_cell.get_cell_id()
 
         if isea4t_id.startswith('00') or isea4t_id.startswith('09') or isea4t_id.startswith('14') or isea4t_id.startswith('04') or isea4t_id.startswith('19'):
@@ -994,14 +890,14 @@ def point2isea3h(feature, resolution,feedback):
     point = feature_geometry.asPoint()
     longitude = point.x()
     latitude = point.y()    
-    accuracy = isea3h_res_accuracy_dict.get(resolution)
+    accuracy = ISEA3H_ACCURACY_RES_DICT.get(resolution)
 
     lat_long_point = LatLongPoint(latitude, longitude, accuracy)
 
     isea3h_cell = isea3h_dggs.convert_point_to_dggs_cell(lat_long_point)
 
     isea3h_id = isea3h_cell.get_cell_id() # Unique identifier for the current cell
-    cell_polygon = isea3h_cell_to_polygon(isea3h_dggs,isea3h_cell)
+    cell_polygon = isea3h_cell_to_polygon(isea3h_cell)
     
     num_edges = 6  
     cell_resolution = resolution  
@@ -1064,10 +960,10 @@ def poly2isea3h(feature, resolution, predicate, compact, feedback):
     # for shape in shapes:
     bbox_cells = shape.get_shape().get_outer_ring().get_cells()
     bounding_cell = isea3h_dggs.get_bounding_dggs_cell(bbox_cells)
-    bounding_child_cells = get_isea3h_children_cells_within_bbox(isea3h_dggs,bounding_cell.get_cell_id(), bounding_box,resolution)
+    bounding_child_cells = get_isea3h_children_cells_within_bbox(bounding_cell.get_cell_id(), bounding_box,resolution)
     
     if compact:
-        bounding_child_cells = isea3h_compact(isea3h_dggs,bounding_child_cells)
+        bounding_child_cells = isea3h_compact(bounding_child_cells)
     
     total_cells = len(bounding_child_cells)
 
@@ -1079,11 +975,11 @@ def poly2isea3h(feature, resolution, predicate, compact, feedback):
         if feedback and feedback.isCanceled():
             return []
         isea3h_cell = DggsCell(child)
-        cell_polygon = isea3h_cell_to_polygon(isea3h_dggs,isea3h_cell)
+        cell_polygon = isea3h_cell_to_polygon(isea3h_cell)
         isea3h_id = isea3h_cell.get_cell_id()        
         isea3h2point = isea3h_dggs.convert_dggs_cell_to_point(isea3h_cell)      
         cell_accuracy = isea3h2point._accuracy        
-        cell_resolution  = isea3h_accuracy_res_dict.get(cell_accuracy)
+        cell_resolution  = ISEA3H_ACCURACY_RES_DICT.get(cell_accuracy)
         num_edges = 3 if cell_resolution == 0 else 6  
         center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
                 
@@ -1951,7 +1847,7 @@ def geohashcompact_from_qgsfeatures(qgs_features, feedback):
     for i, geohash_id_compact in enumerate(geohash_ids_compact):  
         if feedback and feedback.isCanceled():
             return []      
-        cell_polygon = geohash_to_polygon(geohash_id_compact)
+        cell_polygon = geohash2geo(geohash_id_compact)
         cell_resolution =  len(geohash_id_compact)
         
         center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon) 
@@ -1985,7 +1881,7 @@ def poly2geohash(feature, resolution, predicate, compact, feedback):
     feature_geometry = feature.geometry()    
     feature_shapely = wkt_loads(feature_geometry.asWkt())
 
-    intersected_geohashes = {gh for gh in initial_geohashes if geohash_to_polygon(gh).intersects(feature_shapely)}
+    intersected_geohashes = {gh for gh in INITIAL_GEOHASHES if geohash2geo(gh).intersects(feature_shapely)}
         # Expand geohash bounding box
    
     geohashes = set()
@@ -2003,7 +1899,7 @@ def poly2geohash(feature, resolution, predicate, compact, feedback):
         if feedback and feedback.isCanceled():
             return []
         
-        cell_polygon = geohash_to_polygon(gh)
+        cell_polygon = geohash2geo(gh)
         # if cell_polygon.intersects(feature):
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
         # Predicate-based filtering

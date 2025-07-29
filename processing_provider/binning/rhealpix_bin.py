@@ -30,9 +30,9 @@ from ...utils.imgs import Imgs
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
 
 from vgrid.conversion.latlon2dggs import latlon2rhealpix
-from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.utils.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
-from vgrid.conversion.dggs2geojson import rhealpix_cell_to_polygon
+from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+from vgrid.utils.geometry import rhealpix_cell_to_polygon
  
 class rHEALPixBin(QgsProcessingAlgorithm):
     INPUT = 'INPUT'
@@ -73,7 +73,7 @@ class rHEALPixBin(QgsProcessingAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
     
     def displayName(self):
-        return self.tr('rHEALPix', 'rHEALPix')
+        return self.tr('rHEALPix Bin', 'rHEALPix Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -84,8 +84,8 @@ class rHEALPixBin(QgsProcessingAlgorithm):
     def tags(self):
         return self.tr('DGGS, rHEALPix, Binning').split(',')
     
-    txt_en = 'rHEALPix Binning'
-    txt_vi = 'rHEALPix Binning'
+    txt_en = 'rHEALPix Bin'
+    txt_vi = 'rHEALPix Bin'
     figure = '../images/tutorial/bin_rhealpix.png'
 
     def shortHelpString(self):

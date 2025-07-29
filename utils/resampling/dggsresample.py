@@ -1,4 +1,4 @@
-from vgrid.utils import s2, olc, geohash, mercantile
+from vgrid.dggs import s2, olc, mercantile
 from ...utils.resampling import dggsgrid
 
 import h3
@@ -13,19 +13,16 @@ from vgrid.stats.tilecodestats import tilecode_metrics
 from vgrid.stats.quadkeystats import quadkey_metrics
 from shapely.wkt import loads as load_wkt
 
-from shapely.geometry import shape
-from vgrid.generator import h3grid, s2grid, rhealpixgrid, isea4tgrid, qtmgrid, olcgrid, geohashgrid, tilecodegrid, quadkeygrid
 from numbers import Number
-from vgrid.utils.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.utils.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 from pyproj import Geod
 import platform
 if (platform.system() == 'Windows'):
-    from vgrid.utils.eaggr.eaggr import Eaggr
-    from vgrid.utils.eaggr.shapes.dggs_cell import DggsCell
-    from vgrid.utils.eaggr.enums.model import Model
-    from vgrid.utils.eaggr.enums.shape_string_format import ShapeStringFormat
-    from vgrid.generator.settings import isea4t_res_accuracy_dict
+    from vgrid.dggs.eaggr.eaggr import Eaggr
+    from vgrid.dggs.eaggr.enums.model import Model
+    isea4t_dggs = Eaggr(Model.ISEA4T)
+    isea3h_dggs = Eaggr(Model.ISEA3H)
 
 from qgis.core import (
     QgsFeature,
@@ -78,8 +75,7 @@ def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, fe
         elif from_dggs == 'isea4t':
             if platform.system() == 'Windows':
                 from_resolution = len(from_dggs_id) - 2
-                isea4t_dggs = Eaggr(Model.ISEA4T)
-                _, _, from_area, _ = isea4t_metrics(isea4t_dggs, from_resolution)
+                _, _, from_area, _ = isea4t_metrics(from_resolution)
 
         elif from_dggs == 'qtm':
             from_resolution = len(from_dggs_id)
@@ -138,10 +134,9 @@ def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, fe
                     nearest_resolution = res
 
         elif to_dggs == 'isea4t':
-            if platform.system() == 'Windows':
-                isea4t_dggs = Eaggr(Model.ISEA4T)
+            if platform.system() == 'Windows':                
                 for res in range(26):
-                    _, _, avg_area, _ = isea4t_metrics(isea4t_dggs, res)
+                    _, _, avg_area, _ = isea4t_metrics(res)
                     diff = abs(avg_area - from_area)
                     if diff < min_diff:
                         min_diff = diff
@@ -203,12 +198,10 @@ def generate_grid(qgs_features, to_dggs, resolution, feedback=None):
     elif to_dggs == 's2':
         dggs_grid = dggsgrid.generate_s2_grid(resolution, qgs_features,feedback)
     elif to_dggs == 'rhealpix':
-        rhealpix_dggs = RHEALPixDGGS()
-        dggs_grid = dggsgrid.generate_rhealpix_grid(rhealpix_dggs,resolution, qgs_features,feedback)
+        dggs_grid = dggsgrid.generate_rhealpix_grid(resolution, qgs_features,feedback)
     elif to_dggs == 'isea4t':
         if (platform.system() == 'Windows'): 
-            isea4t_dggs = Eaggr(Model.ISEA4T)
-            dggs_grid = dggsgrid.generate_isea4t_grid(isea4t_dggs,resolution, qgs_features,feedback)
+            dggs_grid = dggsgrid.generate_isea4t_grid(resolution, qgs_features,feedback)
     elif to_dggs == 'qtm':
         dggs_grid = dggsgrid.generate_qtm_grid(resolution, qgs_features,feedback)
     elif to_dggs == 'olc':

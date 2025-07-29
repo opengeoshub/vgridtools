@@ -41,10 +41,10 @@ from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
-from vgrid.utils import mercantile
 from ...utils.imgs import Imgs
-from vgrid.generator.settings import graticule_dggs_metrics
 from shapely.geometry import Polygon
+from vgrid.dggs import mercantile
+from vgrid.utils.geometry import graticule_dggs_metrics
 
 
 class QuadkeyGrid(QgsProcessingAlgorithm):
@@ -116,7 +116,7 @@ class QuadkeyGrid(QgsProcessingAlgorithm):
                     self.RESOLUTION,
                     self.tr('Resolution/ zoom level [0.24]'),
                     QgsProcessingParameterNumber.Integer,
-                    defaultValue = 6,
+                    defaultValue = 1,
                     minValue= 0,
                     maxValue= 24,
                     optional=False)

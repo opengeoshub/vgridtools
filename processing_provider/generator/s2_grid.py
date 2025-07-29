@@ -41,12 +41,12 @@ from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
-from vgrid.utils import s2 
+from vgrid.dggs import s2 
 from ...utils.imgs import Imgs
 from vgrid.utils.antimeridian import fix_polygon
 from shapely.geometry import Polygon, box
 import random
-from vgrid.generator.settings import geodesic_dggs_metrics
+from vgrid.utils.geometry import geodesic_dggs_metrics
 
 class S2Grid(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'

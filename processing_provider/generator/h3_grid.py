@@ -45,9 +45,8 @@ import os, random
 import h3    
     
 from ...utils.imgs import Imgs
-from vgrid.generator.h3grid import fix_h3_antimeridian_cells
 from shapely.geometry import Polygon,box
-from vgrid.generator.settings import geodesic_dggs_metrics
+from vgrid.utils.geometry import geodesic_dggs_metrics,fix_h3_antimeridian_cells
 
 
 class H3Grid(QgsProcessingAlgorithm):
