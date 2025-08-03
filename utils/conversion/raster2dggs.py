@@ -18,6 +18,7 @@ import h3
 
 from vgrid.dggs import s2, qtm, olc, geohash, tilecode
 from vgrid.conversion.latlon2dggs import *
+from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.dggs import mercantile
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.utils.geometry import (
@@ -254,6 +255,99 @@ def raster2s2(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
     
 
     return mem_layer
+
+
+########################## 
+# A5
+# ########################
+def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
+    if not raster_layer.isValid():
+        raise ValueError("Invalid raster layer.")
+
+    provider = raster_layer.dataProvider()
+    extent = raster_layer.extent()
+    width, height = raster_layer.width(), raster_layer.height()
+    crs = raster_layer.crs()
+    band_count = provider.bandCount()
+
+    pixel_size_x = extent.width() / width
+    pixel_size_y = extent.height() / height
+
+    a5_hexes = set()
+
+    for row in range(height):
+        if feedback and feedback.isCanceled():
+            return None
+        for col in range(width):
+            x = extent.xMinimum() + col * pixel_size_x
+            y = extent.yMaximum() - row * pixel_size_y
+            a5_hex = latlon2a5(y, x, resolution)
+            a5_hexes.add(a5_hex)
+        if feedback:
+            feedback.setProgress(int(row / height * 100))
+
+    if feedback:
+        feedback.pushInfo(f"{len(a5_hexes)} pixels processed.")
+        feedback.setProgress(0)
+        feedback.pushInfo("Generating A5 DGGS...")
+
+    mem_layer = QgsVectorLayer(f"Polygon?crs={crs.authid()}", "A5 Grid", "memory")
+    mem_provider = mem_layer.dataProvider()
+
+    fields = QgsFields()
+    fields.append(QgsField("a5", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("avg_edge_len", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+    for i in range(band_count):
+        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    for i, a5_hex in enumerate(a5_hexes):
+        if feedback and feedback.isCanceled():
+            return None
+
+        cell_polygon = a52geo(a5_hex)
+        center_point = QgsPointXY(cell_polygon.centroid.x, cell_polygon.centroid.y)
+
+        ident = provider.identify(center_point, QgsRaster.IdentifyFormatValue)
+        if not ident.isValid():
+            continue
+        results = ident.results()
+        if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+            continue
+                
+        qgs_polygon = QgsGeometry.fromPolygonXY([[QgsPointXY(lon, lat) for lon, lat in cell_polygon.exterior.coords]])
+        
+        num_edges = 5 
+        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+
+        feature = QgsFeature()
+        feature.setGeometry(qgs_polygon)
+        attr_values = [
+            a5_hex,
+            resolution,
+            center_lat,
+            center_lon,
+            avg_edge_len,
+            cell_area,
+        ]
+        attr_values.extend(results.get(i + 1, None) for i in range(band_count))
+        feature.setAttributes(attr_values)
+        mem_provider.addFeatures([feature])
+        if feedback and i % 100 == 0:
+            feedback.setProgress(int(100 * i / len(a5_hexes)))
+
+    if feedback:
+        feedback.setProgress(100)
+        feedback.pushInfo("S2 DGGS generation completed.")
+    
+
+    return mem_layer
+
 
 ########################## 
 # rHEALpix

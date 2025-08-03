@@ -2,6 +2,7 @@ from shapely.wkt import loads
 from shapely.geometry import Polygon
 from vgrid.dggs import qtm, s2, olc, mercantile
 import h3
+import a5
 
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
@@ -21,7 +22,8 @@ from vgrid.utils.geometry import (
     fix_h3_antimeridian_cells, rhealpix_cell_to_polygon, graticule_dggs_metrics, geodesic_dggs_metrics,
     fix_isea4t_antimeridian_cells, fix_isea4t_wkt
 )
-
+from vgrid.conversion.dggs2geo.a52geo import a52geo
+from vgrid.conversion.dggscompact.a5compact import a5_compact
 
 from vgrid.conversion.dggscompact import *
 from pyproj import Geod
@@ -457,6 +459,82 @@ def isea3hcompact(isea3h_layer: QgsVectorLayer, ISEA3HID_field=None,feedback=Non
                 feedback.pushInfo("ISEA3H Compact completed.")
                     
             return mem_layer
+
+
+########################## 
+# A5
+# ########################
+def a5compact(a5_layer: QgsVectorLayer, A5ID_field=None, feedback=None) -> QgsVectorLayer:
+    if not A5ID_field:
+        A5ID_field = 'a5'
+        
+    fields = QgsFields()
+    fields.append(QgsField("a5", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("avg_edge_len", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+
+    crs = a5_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "a5_compacted", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    a5_ids = [
+        feature[A5ID_field]
+        for feature in a5_layer.getFeatures()
+        if feature[A5ID_field]
+    ]
+    a5_ids = list(set(a5_ids))
+    
+    if a5_ids:
+        try:
+            a5_ids_compact = a5_compact(a5_ids)
+        except:
+            raise QgsProcessingException("Compact cells failed. Please check your A5 ID field.")
+
+        total_cells = len(a5_ids_compact)
+
+        for i, a5_id_compact in enumerate(a5_ids_compact):
+            if feedback:
+                feedback.setProgress(int((i / total_cells) * 100))
+                if feedback.isCanceled():
+                    return None
+
+            try:
+                cell_polygon = a52geo(a5_id_compact)
+            except:
+                raise QgsProcessingException("Compact cells failed. Please check your A5 ID field.")
+            
+            if not cell_polygon.is_valid:
+                continue
+            
+            resolution = a5.get_resolution(a5.hex_to_bigint(a5_id_compact))
+            num_edges = 5  # A5 cells are pentagons
+            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            a5_feature = QgsFeature(fields)
+            a5_feature.setGeometry(cell_geom)
+            
+            attributes = {
+                "a5": a5_id_compact,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "avg_edge_len": avg_edge_len,
+                "cell_area": cell_area,
+                }
+            a5_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([a5_feature])
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("A5 Compact completed.")
+                
+        return mem_layer
 
 
 ########################## 

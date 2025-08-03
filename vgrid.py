@@ -36,7 +36,7 @@ from .vgrid_provider import VgridProvider
 from .expressions import *
 from .processing_provider.conversion.dggs_settings import DGGSettingsDialog
 # from .vgrid_dialogs import *
-exprs =(latlon2h3, latlon2s2, latlon2rhealpix, latlon2isea4t, latlon2isea3h, latlon2qtm,\
+exprs =(latlon2h3, latlon2s2, latlon2a5, latlon2rhealpix, latlon2isea4t, latlon2isea3h, latlon2qtm,\
         latlon2olc, latlon2geohash, latlon2georef, latlon2mgrs, latlon2tilecode, latlon2quadkey, latlon2maidenhead, latlon2gars)
     
 class VgridPlugin(object):

@@ -33,7 +33,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
     RESOLUTION = 'RESOLUTION'
     OUTPUT = 'OUTPUT'
 
-    DGGS_TYPES = ['H3','S2', 'rHEALPix', 'ISEA4T', 'ISEA3H', 'QTM',
+    DGGS_TYPES = ['H3','S2', 'A5', 'rHEALPix', 'ISEA4T', 'ISEA3H', 'QTM',
                   'OLC','Geohash','Tilecode','Quadkey']
     
     LOC = QgsApplication.locale()[:2]
@@ -62,7 +62,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/conversion/dggsexpand.png'))
 
     def tags(self):
-        return self.tr('DGGS, expand, H3,S2, rHEALPix, ISEA4T, ISEA3H, QTM,OLC,Geohash,Tilecode,Quadkey').split(',')
+        return self.tr('DGGS, expand, H3,S2, A5, rHEALPix, ISEA4T, ISEA3H, QTM,OLC,Geohash,Tilecode,Quadkey').split(',')
 
     txt_en = 'DGGS Expand'
     txt_vi = 'DGGS Expand'
@@ -137,7 +137,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_functions = {
             'h3': h3expand,
             's2': s2expand,
-            # 'a5': a5expand,
+            'a5': a5expand,
             'rhealpix': rhealpixexpand,
             'isea4t': isea4texpand,
             'isea3h': isea3hexpand,

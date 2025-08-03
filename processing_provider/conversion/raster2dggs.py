@@ -24,9 +24,9 @@ import platform
 from ...utils.imgs import Imgs
 from ...utils.conversion.raster2dggs import *
 from vgrid.stats.s2stats import s2_metrics
+from vgrid.stats.a5stats import a5_metrics
 from vgrid.stats.rhealpixstats import rhealpix_metrics
 from vgrid.stats.isea4tstats import isea4t_metrics
-
 from vgrid.stats.qtmstats import qtm_metrics
 from vgrid.stats.olcstats import olc_metrics
 from vgrid.stats.geohashstats import geohash_metrics
@@ -100,7 +100,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         return 'conversion'
 
     def tags(self):
-        return self.tr('raster, S2, H3, rHEALPix, ISEA4T, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
+        return self.tr('raster, H3, S2, A5, rHEALPix, ISEA4T, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
     
     txt_en = 'Raster to DGGS'
     txt_vi = 'Raster to DGGS'
@@ -159,6 +159,9 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         elif dggs_type == 's2':
             resolutions = range(25)
             get_area = lambda res: s2_metrics(res)[2]  # avg_area
+        elif dggs_type == 'a5':
+            resolutions = range(30)
+            get_area = lambda res: a5_metrics(res)[2]  # avg_area
         elif dggs_type == 'rhealpix':
             resolutions = range(16)
             get_area = lambda res: rhealpix_metrics(res)[2]  # avg_area
@@ -237,7 +240,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         self.DGGS_TYPE_functions = {
             'h3': raster2h3,
             's2': raster2s2,
-            # 'a5': raster2a5,
+            'a5': raster2a5,
             'rhealpix': raster2rhealpix,            
             'qtm': raster2qtm,
             'olc': raster2olc,

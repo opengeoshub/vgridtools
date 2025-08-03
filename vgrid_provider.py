@@ -33,6 +33,7 @@ from .processing_provider.resampling.dggsresample import DGGSResample
 
 from .processing_provider.binning.h3_bin import H3Bin
 from .processing_provider.binning.s2_bin import S2Bin
+from .processing_provider.binning.a5_bin import A5Bin
 from .processing_provider.binning.rhealpix_bin import rHEALPixBin
 from .processing_provider.binning.isea4t_bin import ISEA4TBin
 from .processing_provider.binning.qtm_bin import QTMBin
@@ -47,6 +48,7 @@ from .processing_provider.binning.polygon_bin import PolygonBin
 
 from .processing_provider.generator.h3_grid import H3Grid
 from .processing_provider.generator.s2_grid import S2Grid
+from .processing_provider.generator.a5_grid import A5Grid
 from .processing_provider.generator.rhealpix_grid import rHEALPixGrid
 from .processing_provider.generator.isea4t_grid import ISEA4TGrid
 
@@ -93,6 +95,7 @@ class VgridProvider(QgsProcessingProvider):
 
         self.addAlgorithm(H3Bin()) 
         self.addAlgorithm(S2Bin())
+        self.addAlgorithm(A5Bin())
         self.addAlgorithm(rHEALPixBin())
         self.addAlgorithm(ISEA4TBin())
         self.addAlgorithm(QTMBin())
@@ -108,6 +111,7 @@ class VgridProvider(QgsProcessingProvider):
         ################################
         self.addAlgorithm(H3Grid())
         self.addAlgorithm(S2Grid())
+        self.addAlgorithm(A5Grid())
         self.addAlgorithm(rHEALPixGrid())
         self.addAlgorithm(ISEA4TGrid())
         self.addAlgorithm(QTMGrid())

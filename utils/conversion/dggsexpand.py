@@ -3,6 +3,7 @@ from shapely.wkt import loads
 from shapely.geometry import Polygon
 from vgrid.dggs import s2, olc, mercantile, qtm
 import h3
+import a5
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 
@@ -20,6 +21,7 @@ from vgrid.utils.antimeridian import fix_polygon
 from vgrid.utils.geometry import fix_h3_antimeridian_cells, graticule_dggs_metrics, geodesic_dggs_metrics, rhealpix_cell_to_polygon, fix_isea4t_antimeridian_cells
 
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
+from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_expand
 from vgrid.conversion.dggscompact.isea4tcompact import isea4t_expand
 from vgrid.conversion.dggscompact.isea3hcompact import isea3h_expand
@@ -28,6 +30,7 @@ from vgrid.conversion.dggscompact.olccompact import olc_expand
 from vgrid.conversion.dggscompact.geohashcompact import geohash_expand
 from vgrid.conversion.dggscompact.tilecodecompact import tilecode_expand
 from vgrid.conversion.dggscompact.quadkeycompact import quadkey_expand
+from vgrid.conversion.dggscompact.a5compact import a5_expand
 
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
@@ -631,6 +634,86 @@ def qtmexpand(qtm_layer: QgsVectorLayer, resolution: int,QTMID_field=None, feedb
         if feedback:
             feedback.setProgress(100)
             feedback.pushInfo("QTM expansion completed.")
+                
+    return mem_layer
+
+
+########################## 
+# A5
+#########################
+def a5expand(a5_layer: QgsVectorLayer, resolution: int, A5ID_field=None, feedback=None) -> QgsVectorLayer:
+    if not A5ID_field:
+        A5ID_field = 'a5'
+
+    fields = QgsFields()
+    fields.append(QgsField("a5", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("avg_edge_len", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+
+    crs = a5_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "a5_expanded", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    a5_ids = [
+        feature[A5ID_field]
+        for feature in a5_layer.getFeatures()
+        if feature[A5ID_field]
+    ]
+    a5_ids = list(set(a5_ids))
+    
+    if a5_ids:
+        try:
+            max_res = max(a5.get_resolution(a5.hex_to_bigint(a5_id)) for a5_id in a5_ids)
+            if resolution <= max_res:
+                if feedback:
+                    feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
+                    return None
+            a5_ids_expand = a5_expand(a5_ids, resolution)
+        except:
+            raise QgsProcessingException("Expand cells failed. Please check your A5 cell Ids.")
+            
+        total_cells = len(a5_ids_expand)
+
+        for i, a5_id_expand in enumerate(a5_ids_expand):
+            if feedback:
+                feedback.setProgress(int((i / total_cells) * 100))
+                if feedback.isCanceled():
+                    return None
+
+            try:
+                cell_polygon = a52geo(a5_id_expand)
+            except:
+                raise QgsProcessingException("Convert to A5 polygon failed.")
+            
+            if not cell_polygon.is_valid:
+                continue
+            
+            num_edges = 5  # A5 cells are pentagons
+            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            a5_feature = QgsFeature(fields)
+            a5_feature.setGeometry(cell_geom)
+            
+            attributes = {
+                "a5": a5_id_expand,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "avg_edge_len": avg_edge_len,
+                "cell_area": cell_area,
+            }
+            a5_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([a5_feature])
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("A5 expansion completed.")
                 
     return mem_layer
 
