@@ -71,7 +71,7 @@ def latlon2s2(latitude, longitude, resolution, feature, parent):
     font-style:italic
     }
   </style>
-  Convert (lat, long) to S2 ID.
+  Convert (lat, long) to S2 Token.
   <h4>Syntax</h4>    
     <li><span class = function>latlon2s2</span>(<span class = parameters>lat, long, resolution [0-..30]</span>)</li>
   <h4>Example usage</h4>
@@ -82,6 +82,28 @@ def latlon2s2(latitude, longitude, resolution, feature, parent):
   """ 
   return latlon2dggs.latlon2s2(latitude, longitude, resolution)
 
+@qgsfunction(args='auto', group=group_name)
+def latlon2a5(latitude, longitude, resolution, feature, parent):
+  """<style type="text/css">
+    .function {
+    color: #05688f;
+    font-weight: bold;
+    }
+    .parameters {
+    color: red;
+    font-style:italic
+    }
+  </style>
+  Convert (lat, long) to A5 Hex Code.
+  <h4>Syntax</h4>    
+    <li><span class = function>latlon2a5</span>(<span class = parameters>lat, long, resolution [0..29]</span>)</li>
+  <h4>Example usage</h4>
+
+  <ul>
+    <li><span class = function>latlon2a5</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 16</span>)&rarr; '7a9408e938000000'</li>
+  </ul>    
+  """ 
+  return latlon2dggs.latlon2a5(latitude, longitude, resolution)
 
 @qgsfunction(args='auto', group=group_name)
 def latlon2rhealpix(latitude, longitude, resolution, feature, parent):

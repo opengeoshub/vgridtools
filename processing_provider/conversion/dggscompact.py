@@ -43,7 +43,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
     DGGS_TYPE = 'DGGS_TYPE'
     OUTPUT = 'OUTPUT'
 
-    DGGS_TYPES = ['H3','S2','rHEALPix', 
+    DGGS_TYPES = ['H3','S2','A5','rHEALPix', 
                   'QTM','OLC', 'Geohash', 'Tilecode', 'Quadkey']
 
     if platform.system() == 'Windows':
@@ -140,6 +140,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_functions = {
             'h3': h3compact,
             's2': s2compact,
+            'a5': a5compact,
             'rhealpix': rhealpixcompact,
             'qtm': qtmcompact,
             

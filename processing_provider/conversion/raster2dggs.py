@@ -44,11 +44,12 @@ class Raster2DGGS(QgsProcessingAlgorithm):
     OUTPUT = 'OUTPUT'
     
     DGGS_TYPES = [
-        'H3', 'S2','rHEALPix','QTM', 'OLC', 'Geohash', 
+        'H3', 'S2','A5','rHEALPix','QTM', 'OLC', 'Geohash', 
         'Tilecode','Quadkey']
     DGGS_RESOLUTION = {
         'H3': (-1, 15, 10),
         'S2': (-1, 30, 16),
+        'A5': (-1, 29, 15),
         'rHEALPix': (-1, 15,11),      
         'QTM':(-1,24,12),
         'OLC': (-1, 13, 10),
@@ -236,6 +237,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         self.DGGS_TYPE_functions = {
             'h3': raster2h3,
             's2': raster2s2,
+            # 'a5': raster2a5,
             'rhealpix': raster2rhealpix,            
             'qtm': raster2qtm,
             'olc': raster2olc,

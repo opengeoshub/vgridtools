@@ -16,7 +16,8 @@ if (platform.system() == 'Windows'):
     isea3h_dggs = Eaggr(Model.ISEA3H)   
     
 from vgrid.dggs import mercantile
-import h3 
+import h3
+import a5
 from vgrid.utils.geometry import (
     graticule_dggs_metrics, geodesic_dggs_metrics,rhealpix_cell_to_polygon,
     isea3h_cell_to_polygon
@@ -24,6 +25,7 @@ from vgrid.utils.geometry import (
 from vgrid.generator.settings import ISEA3H_ACCURACY_RES_DICT
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
+from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
 from vgrid.conversion.dggs2geo.ease2geo import ease2geo
 from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
@@ -130,6 +132,53 @@ def s22qgsfeature(feature, s2_token):
     
     s2_feature.setAttributes(all_attributes)    
     return s2_feature
+
+def a52qgsfeature(feature, a5_id):
+    cell_polygon = a52geo(a5_id)
+    num_edges = 5    
+    # Handle both hex strings and bigint values for resolution calculation
+    a5_hex = a5_id
+    if isinstance(a5_id, str):
+        resolution = a5.get_resolution(a5.hex_to_bigint(a5_id))        
+    elif isinstance(a5_id, int):
+        resolution = a5.get_resolution(a5_id)
+        a5_hex = a5.bigint_to_hex(a5_id)
+    
+    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
+    
+    a5_feature = QgsFeature()
+    a5_feature.setGeometry(cell_geometry)
+    
+    # Get all attributes from the input feature
+    original_attributes = feature.attributes()
+    original_fields = feature.fields()
+    
+    # Define new H3-related attributes
+    new_fields = QgsFields()
+    new_fields.append(QgsField("a5", QVariant.String))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    
+    # Combine original fields and new fields
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+    
+    a5_feature.setFields(all_fields)
+    
+    # Combine original attributes with new attributes
+    new_attributes = [a5_hex,resolution, center_lat, center_lon, avg_edge_len,cell_area]
+    all_attributes = original_attributes + new_attributes
+    
+    a5_feature.setAttributes(all_attributes)    
+    return a5_feature
+
 
 def rhealpix2qgsfeature(feature, rhealpix_id):
     rhealpix_id = str(rhealpix_id)

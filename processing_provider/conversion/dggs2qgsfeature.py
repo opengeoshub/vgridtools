@@ -37,13 +37,13 @@ from ...utils.conversion.dggs2qgsfeature import *
 
 class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     """
-    Algorithm to convert H3, S2, rHEALPix,QTM, OLC/ OpenLocationCode/ Google Plus Code, Geohash, 
+    Algorithm to convert H3, S2, A5, rHEALPix,QTM, OLC/ OpenLocationCode/ Google Plus Code, Geohash, 
         GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS grid cells
     """
     INPUT = 'INPUT'
     CELL_ID = 'CELL_ID'
     DGGS_TYPE = 'DGGS_TYPE'
-    DGGS_TYPES = ['H3', 'S2','rHEALPix','QTM', 'OLC', 'Geohash', 
+    DGGS_TYPES = ['H3', 'S2','A5','rHEALPix','QTM', 'OLC', 'Geohash', 
                   'GEOREF','MGRS', 'Tilecode','Quadkey', 'Maidenhead', 'GARS']
     
     if platform.system() == 'Windows':
@@ -87,7 +87,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return 'conversion'
 
     def tags(self):
-        return self.tr('H3,S2,rHEALPix,ISEA4T, ISEA3H, QTM,OLC,OpenLocationCode,Google Plus Code,Geohash,\
+        return self.tr('H3,S2,A5,rHEALPix,ISEA4T, ISEA3H, QTM,OLC,OpenLocationCode,Google Plus Code,Geohash,\
                         GEOREF,MGRS,Tilecode,Quadkey,Maidenhead,GARS').split(',')
     
     txt_en = 'Cell ID to DGGS'
@@ -160,6 +160,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_functions = {
             'h3': h32qgsfeature,
             's2': s22qgsfeature,
+            'a5': a52qgsfeature,
             'rhealpix': rhealpix2qgsfeature,
             # 'ease': ease2qgsfeature, # prone to unexpected errors
             'qtm': qtm2qgsfeature,
@@ -205,8 +206,8 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             QgsField(get_unique_name("resolution"), QVariant.Int),
             QgsField(get_unique_name("center_lat"), QVariant.Double),
             QgsField(get_unique_name("center_lon"), QVariant.Double),
-            QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'rhealpix', 'isea4t', 'isea3h', 'qtm') else "cell_width"), QVariant.Double),
-            QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'rhealpix', 'isea4t', 'isea3h', 'qtm') else None,
+            QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'qtm') else "cell_width"), QVariant.Double),
+            QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'qtm') else None,
             QgsField(get_unique_name("cell_area"), QVariant.Double)
         ]
 

@@ -18,12 +18,15 @@ class DGGSettings:
         self.default_resolutions = {
             'H3': (0, 15, 10),
             'S2': (0, 30, 16),
+            'A5': (0, 29, 15),
             'rHEALPix': (1, 15, 11),
             'QTM': (1, 24, 12),
             'OLC': (2, 15, 10),
             'Geohash': (1, 10, 9),
             'Tilecode': (0, 29, 15),
-            'Quadkey': (0, 29, 15)
+            'Quadkey': (0, 29, 15),
+            'ISEA4T': (0, 25, 17),
+            'ISEA3H': (0, 32, 17)
         }
 
         # Load settings for each DGGS type

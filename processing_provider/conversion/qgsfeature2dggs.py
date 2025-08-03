@@ -35,7 +35,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     PREDICATE = 'PREDICATE'
     PREDICATES = ['intersects', 'within', 'centroid_within','largest_overlap']
     DGGS_TYPES = [
-        'H3', 'S2','rHEALPix','QTM', 'OLC', 'Geohash', 
+        'H3', 'S2','A5','rHEALPix','QTM', 'OLC', 'Geohash', 
         # 'GEOREF',
         # 'MGRS',
          'Tilecode','Quadkey']
@@ -127,7 +127,11 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
         # Get default resolution from settings
         default_dggs = self.DGGS_TYPES[0]
-        _, _, default_res = settings.getResolution(default_dggs)
+        resolution_settings = settings.getResolution(default_dggs)
+        if resolution_settings is None:
+            default_res = 10  # Fallback default resolution
+        else:
+            _, _, default_res = resolution_settings
 
         self.addParameter(QgsProcessingParameterNumber(
             self.RESOLUTION,
@@ -157,7 +161,11 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         selected_dggs_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         selected_dggs = self.DGGS_TYPES[selected_dggs_index]
 
-        min_res, max_res, _ = settings.getResolution(selected_dggs)
+        resolution_settings = settings.getResolution(selected_dggs)
+        if resolution_settings is None:
+            return (False, f"No resolution settings found for {selected_dggs}.")
+        
+        min_res, max_res, _ = resolution_settings
         res_value = self.parameterAsInt(parameters, self.RESOLUTION, context)
 
         if not (min_res <= res_value <= max_res):
@@ -197,8 +205,8 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             QgsField(get_unique_name("resolution"), QVariant.Int),
             QgsField(get_unique_name("center_lat"), QVariant.Double),
             QgsField(get_unique_name("center_lon"), QVariant.Double),
-            QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') else "cell_width"), QVariant.Double),
-            QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') else None,
+            QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') else "cell_width"), QVariant.Double),
+            QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') else None,
             QgsField(get_unique_name("cell_area"), QVariant.Double)
         ]
 
@@ -228,7 +236,10 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_functions = {
             'h3': qgsfeature2h3,
             's2': qgsfeature2s2,
-            'rhealpix': qgsfeature2rhealpix,
+            'a5': qgsfeature2a5,
+            'rhealpix': qgsfeature2rhealpix,   
+            'isea4t': qgsfeature2isea4t,
+            'isea3h': qgsfeature2isea3h,       
             # 'ease': qgsfeature2ease,
             'qtm': qgsfeature2qtm,
             'olc': qgsfeature2olc,
@@ -237,10 +248,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'tilecode': qgsfeature2tilecode,
             'quadkey': qgsfeature2quadkey
         }
-        if platform.system() == 'Windows':
-            self.DGGS_TYPE_functions['isea4t'] = qgsfeature2isea4t # Need to check polyline/ polygon2isea4t --> QGIS crashed
-            self.DGGS_TYPE_functions['isea3h'] = qgsfeature2isea3h # Need to check polyline/ polygon2isea3h --> QGIS crashed
-
         return True
 
     def processFeature(self, feature, context, feedback):

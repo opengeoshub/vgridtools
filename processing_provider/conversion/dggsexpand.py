@@ -137,6 +137,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_functions = {
             'h3': h3expand,
             's2': s2expand,
+            # 'a5': a5expand,
             'rhealpix': rhealpixexpand,
             'isea4t': isea4texpand,
             'isea3h': isea3hexpand,
