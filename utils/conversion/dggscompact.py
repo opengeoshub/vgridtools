@@ -1,6 +1,6 @@
 from shapely.wkt import loads
 from shapely.geometry import Polygon
-from vgrid.dggs import qtm, s2, olc, mercantile
+from vgrid.dggs import s2, olc, mercantile
 import h3
 import a5
 
@@ -8,22 +8,36 @@ from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 import platform,re
 if (platform.system() == 'Windows'):   
-    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
     from vgrid.dggs.eaggr.eaggr import Eaggr
-    from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
     from vgrid.dggs.eaggr.enums.model import Model
     from vgrid.conversion.dggscompact.isea4tcompact import isea4t_compact
+    from vgrid.conversion.dggscompact.isea4tcompact import get_isea4t_resolution
+    from vgrid.conversion.dggscompact.isea3hcompact import isea3h_compact
+    from vgrid.conversion.dggscompact.isea3hcompact import get_isea3h_resolution
+    from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
+    from vgrid.conversion.dggs2geo.isea3h2geo import isea3h2geo
     isea3h_dggs = Eaggr(Model.ISEA3H)
     isea4t_dggs = Eaggr(Model.ISEA4T)
 
-
-from vgrid.utils.antimeridian import fix_polygon
 from vgrid.utils.geometry import (
-    fix_h3_antimeridian_cells, rhealpix_cell_to_polygon, graticule_dggs_metrics, geodesic_dggs_metrics,
-    fix_isea4t_antimeridian_cells, fix_isea4t_wkt
+     rhealpix_cell_to_polygon, graticule_dggs_metrics, geodesic_dggs_metrics     
 )
+from vgrid.conversion.dggs2geo.h32geo import h32geo 
+from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggscompact.a5compact import a5_compact
+from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_compact
+from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
+from vgrid.conversion.dggscompact.qtmcompact import qtm_compact,get_qtm_resolution
+from vgrid.conversion.dggs2geo.olc2geo import olc2geo
+from vgrid.conversion.dggscompact.olccompact import olc_compact, get_olc_resolution
+from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
+from vgrid.conversion.dggscompact.geohashcompact import geohash_compact,get_geohash_resolution
+from vgrid.conversion.dggscompact.tilecodecompact import tilecode_compact
+from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
+from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
+from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
+from vgrid.dggs.tilecode import tilecode_resolution, quadkey_resolution
 
 from vgrid.conversion.dggscompact import *
 from pyproj import Geod
@@ -79,10 +93,7 @@ def h3compact(h3_layer: QgsVectorLayer, H3ID_field=None,feedback=None) -> QgsVec
                 if feedback.isCanceled():
                     return None
 
-            cell_boundary = h3.cell_to_boundary(h3_id_compact)
-            filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
-            reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
-            cell_polygon = Polygon(reversed_boundary)
+            cell_polygon = h32geo(h3_id_compact)
             
             if not cell_polygon.is_valid:
                 continue
@@ -158,27 +169,12 @@ def s2compact(s2_layer: QgsVectorLayer, S2ID_field=None, feedback=None) -> QgsVe
             if feedback.isCanceled():
                 return None
 
-        s2_id_compact = s2.CellId.from_token(s2_token_compact)
-        s2_cell = s2.Cell(s2_id_compact)    
-        # Get the vertices of the cell (4 vertices for a rectangular cell)
-        vertices = [s2_cell.get_vertex(i) for i in range(4)]
-        # Prepare vertices in (longitude, latitude) format for Shapely
-        shapely_vertices = []
-        for vertex in vertices:
-            lat_lng = s2.LatLng.from_point(vertex)  # Convert Point to LatLng
-            longitude = lat_lng.lng().degrees  # Access longitude in degrees
-            latitude = lat_lng.lat().degrees   # Access latitude in degrees
-            shapely_vertices.append((longitude, latitude))
-
-        # Close the polygon by adding the first vertex again
-        shapely_vertices.append(shapely_vertices[0])  # Closing the polygon
-        # Create a Shapely Polygon
-        cell_polygon = fix_polygon(Polygon(shapely_vertices)) # Fix antimeridian
+        cell_polygon = s22geo(s2_token_compact)
             
         if not cell_polygon.is_valid:
             continue
         
-        resolution = s2_id_compact.level() 
+        resolution = s2.CellId.from_token(s2_token_compact).level() 
         num_edges = 4
         center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
         
@@ -203,6 +199,81 @@ def s2compact(s2_layer: QgsVectorLayer, S2ID_field=None, feedback=None) -> QgsVe
             
     return mem_layer
 
+
+########################## 
+# A5
+# ########################
+def a5compact(a5_layer: QgsVectorLayer, A5ID_field=None, feedback=None) -> QgsVectorLayer:
+    if not A5ID_field:
+        A5ID_field = 'a5'
+        
+    fields = QgsFields()
+    fields.append(QgsField("a5", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("avg_edge_len", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+
+    crs = a5_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "a5_compacted", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    a5_ids = [
+        feature[A5ID_field]
+        for feature in a5_layer.getFeatures()
+        if feature[A5ID_field]
+    ]
+    a5_ids = list(set(a5_ids))
+    
+    if a5_ids:
+        try:
+            a5_ids_compact = a5_compact(a5_ids)
+        except:
+            raise QgsProcessingException("Compact cells failed. Please check your A5 ID field.")
+
+        total_cells = len(a5_ids_compact)
+
+        for i, a5_id_compact in enumerate(a5_ids_compact):
+            if feedback:
+                feedback.setProgress(int((i / total_cells) * 100))
+                if feedback.isCanceled():
+                    return None
+
+            try:
+                cell_polygon = a52geo(a5_id_compact)
+            except:
+                raise QgsProcessingException("Compact cells failed. Please check your A5 ID field.")
+            
+            if not cell_polygon.is_valid:
+                continue
+            
+            resolution = a5.get_resolution(a5.hex_to_bigint(a5_id_compact))
+            num_edges = 5  # A5 cells are pentagons
+            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            a5_feature = QgsFeature(fields)
+            a5_feature.setGeometry(cell_geom)
+            
+            attributes = {
+                "a5": a5_id_compact,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "avg_edge_len": avg_edge_len,
+                "cell_area": cell_area,
+                }
+            a5_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([a5_feature])
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("A5 Compact completed.")
+                
+        return mem_layer
 
 ########################## 
 # rHEALPix
@@ -320,18 +391,10 @@ def isea4tcompact(isea4t_layer: QgsVectorLayer, ISEA4TID_field=None,feedback=Non
                     feedback.setProgress(int((i / total_cells) * 100))
                     if feedback.isCanceled():
                         return None
-                try:
-                    isea4t_cell_compact = DggsCell(isea4t_id_compact)
-                    cell_to_shape = isea4t_dggs.convert_dggs_cell_outline_to_shape_string(isea4t_cell_compact,ShapeStringFormat.WKT)
-                    cell_to_shape_fixed = loads(fix_isea4t_wkt(cell_to_shape))
-                    if isea4t_id_compact.startswith('00') or isea4t_id_compact.startswith('09') or isea4t_id_compact.startswith('14')\
-                        or isea4t_id_compact.startswith('04') or isea4t_id_compact.startswith('19'):
-                        cell_to_shape_fixed = fix_isea4t_antimeridian_cells(cell_to_shape_fixed)                    
-                    cell_polygon = Polygon(list(cell_to_shape_fixed.exterior.coords))                
-                except:
-                    raise QgsProcessingException("Compact cells failed. Please check your ISEA4T ID field.")
                 
-                resolution = len(isea4t_id_compact) -2
+                cell_polygon = isea4t2geo(isea4t_id_compact)    
+                
+                resolution = get_isea4t_resolution(isea4t_id_compact)
                 num_edges = 3
                 
                 center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
@@ -398,47 +461,13 @@ def isea3hcompact(isea3h_layer: QgsVectorLayer, ISEA3HID_field=None,feedback=Non
                     feedback.setProgress(int((i / total_cells) * 100))
                     if feedback.isCanceled():
                         return None
-                try:
-                    isea3h_cell = DggsCell(isea3h_id_compact)            
-                    cell_polygon = isea3h_cell_to_polygon(isea3h_cell)
-                except:
-                    raise QgsProcessingException("Compact cells failed. Please check your ISEA3H ID field.")
-                            
                 
-                cell_centroid = cell_polygon.centroid
-                center_lat =  round(cell_centroid.y, 7)
-                center_lon = round(cell_centroid.x, 7)
-                cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),3)
-                cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
+                cell_polygon = isea3h2geo(isea3h_id_compact)               
+                cell_resolution = get_isea3h_resolution(isea3h_id_compact)
+                num_edges = 6
                 
-                isea3h2point = isea3h_dggs.convert_dggs_cell_to_point(isea3h_cell)      
-                cell_accuracy = isea3h2point._accuracy
-                    
-                avg_edge_len = cell_perimeter / 6
-                cell_resolution  = isea3h_accuracy_res_dict.get(cell_accuracy)
-                
-                if (cell_resolution == 0): # icosahedron faces at resolution = 0
-                    avg_edge_len = cell_perimeter / 3
-                
-                if cell_accuracy == 0.0:
-                    if round(avg_edge_len,2) == 0.06:
-                        cell_resolution = 33
-                    elif round(avg_edge_len,2) == 0.03:
-                        cell_resolution = 34
-                    elif round(avg_edge_len,2) == 0.02:
-                        cell_resolution = 35
-                    elif round(avg_edge_len,2) == 0.01:
-                        cell_resolution = 36
-                    
-                    elif round(avg_edge_len,3) == 0.007:
-                        cell_resolution = 37
-                    elif round(avg_edge_len,3) == 0.004:
-                        cell_resolution = 38
-                    elif round(avg_edge_len,3) == 0.002:
-                        cell_resolution = 39
-                    elif round(avg_edge_len,3) <= 0.001:
-                        cell_resolution = 40
-                
+                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 isea3h_feature = QgsFeature(fields)
                 isea3h_feature.setGeometry(cell_geom)
@@ -451,6 +480,7 @@ def isea3hcompact(isea3h_layer: QgsVectorLayer, ISEA3HID_field=None,feedback=Non
                     "avg_edge_len": avg_edge_len,
                     "cell_area": cell_area,
                     }
+
                 isea3h_feature.setAttributes([attributes[field.name()] for field in fields])
                 mem_provider.addFeatures([isea3h_feature])
 
@@ -459,82 +489,6 @@ def isea3hcompact(isea3h_layer: QgsVectorLayer, ISEA3HID_field=None,feedback=Non
                 feedback.pushInfo("ISEA3H Compact completed.")
                     
             return mem_layer
-
-
-########################## 
-# A5
-# ########################
-def a5compact(a5_layer: QgsVectorLayer, A5ID_field=None, feedback=None) -> QgsVectorLayer:
-    if not A5ID_field:
-        A5ID_field = 'a5'
-        
-    fields = QgsFields()
-    fields.append(QgsField("a5", QVariant.String))
-    fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-
-    crs = a5_layer.crs().toWkt()
-    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "a5_compacted", "memory")
-    mem_provider = mem_layer.dataProvider()
-    mem_provider.addAttributes(fields)
-    mem_layer.updateFields()
-
-    a5_ids = [
-        feature[A5ID_field]
-        for feature in a5_layer.getFeatures()
-        if feature[A5ID_field]
-    ]
-    a5_ids = list(set(a5_ids))
-    
-    if a5_ids:
-        try:
-            a5_ids_compact = a5_compact(a5_ids)
-        except:
-            raise QgsProcessingException("Compact cells failed. Please check your A5 ID field.")
-
-        total_cells = len(a5_ids_compact)
-
-        for i, a5_id_compact in enumerate(a5_ids_compact):
-            if feedback:
-                feedback.setProgress(int((i / total_cells) * 100))
-                if feedback.isCanceled():
-                    return None
-
-            try:
-                cell_polygon = a52geo(a5_id_compact)
-            except:
-                raise QgsProcessingException("Compact cells failed. Please check your A5 ID field.")
-            
-            if not cell_polygon.is_valid:
-                continue
-            
-            resolution = a5.get_resolution(a5.hex_to_bigint(a5_id_compact))
-            num_edges = 5  # A5 cells are pentagons
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-            
-            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
-            a5_feature = QgsFeature(fields)
-            a5_feature.setGeometry(cell_geom)
-            
-            attributes = {
-                "a5": a5_id_compact,
-                "resolution": resolution,
-                "center_lat": center_lat,
-                "center_lon": center_lon,
-                "avg_edge_len": avg_edge_len,
-                "cell_area": cell_area,
-                }
-            a5_feature.setAttributes([attributes[field.name()] for field in fields])
-            mem_provider.addFeatures([a5_feature])
-
-        if feedback:
-            feedback.setProgress(100)
-            feedback.pushInfo("A5 Compact completed.")
-                
-        return mem_layer
 
 
 ########################## 
@@ -577,14 +531,8 @@ def qtmcompact(qtm_layer: QgsVectorLayer, QTMID_field=None,feedback=None) -> Qgs
                 feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
-            try:
-                facet = qtm.qtm_id_to_facet(qtm_id_compact)
-                cell_polygon = qtm.constructGeometry(facet)    
-            except:
-                raise QgsProcessingException("Compact cells failed. Please check your QTM ID field.")
-                            
-           
-            resolution = len(qtm_id_compact)
+            cell_polygon = qtm2geo(qtm_id_compact)
+            resolution = get_qtm_resolution(qtm_id_compact)
             num_edges = 3
             center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
             
@@ -651,30 +599,14 @@ def olccompact(olc_layer: QgsVectorLayer, OLCID_field=None,feedback=None) -> Qgs
                 feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
-            try:
-                coord = olc.decode(olc_id_compact)    
-                min_lat, min_lon = coord.latitudeLo, coord.longitudeLo
-                max_lat, max_lon = coord.latitudeHi, coord.longitudeHi        
-                cell_resolution = coord.codeLength 
-
-                # Define the polygon based on the bounding box
-                cell_polygon = Polygon([
-                    [min_lon, min_lat],  # Bottom-left corner
-                    [max_lon, min_lat],  # Bottom-right corner
-                    [max_lon, max_lat],  # Top-right corner
-                    [min_lon, max_lat],  # Top-left corner
-                    [min_lon, min_lat]   # Closing the polygon (same as the first point)
-                ])
-            except:
-                raise QgsProcessingException("Compact cells failed. Please check your OLC ID field.")
-                            
-           
+            cell_polygon = olc2geo(olc_id_compact)
+            cell_resolution = get_olc_resolution(olc_id_compact)
+            num_edges = 4
             center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-            
+
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             olc_feature = QgsFeature(fields)
-            olc_feature.setGeometry(cell_geom)
-            
+            olc_feature.setGeometry(cell_geom)            
             attributes = {
                 "olc": olc_id_compact,
                 "resolution": cell_resolution,
@@ -735,12 +667,8 @@ def geohashcompact(geohash_layer: QgsVectorLayer, GeohashID_field=None,feedback=
                 feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
-            try:
-                cell_polygon = geohash_to_polygon(geohash_id_compact)                
-            except:
-                raise QgsProcessingException("Compact cells failed. Please check your geohash ID field.")
-                            
-            resolution =  len(geohash_id_compact)
+            cell_polygon = geohash2geo(geohash_id_compact)
+            resolution = get_geohash_resolution(geohash_id_compact)
             center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
             
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -807,28 +735,9 @@ def tilecodecompact(tilecode_layer: QgsVectorLayer, TilecodeID_field=None,feedba
                 feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
-            try:
-                match = re.match(r'z(\d+)x(\d+)y(\d+)', tilecode_id_compact)
-                # Convert matched groups to integers
-                z = int(match.group(1))
-                x = int(match.group(2))
-                y = int(match.group(3))
-
-                bounds = mercantile.bounds(x, y, z)    
-                min_lat, min_lon = bounds.south, bounds.west
-                max_lat, max_lon = bounds.north, bounds.east
-                cell_polygon = Polygon([
-                    [min_lon, min_lat],  # Bottom-left corner
-                    [max_lon, min_lat],  # Bottom-right corner
-                    [max_lon, max_lat],  # Top-right corner
-                    [min_lon, max_lat],  # Top-left corner
-                    [min_lon, min_lat]   # Closing the polygon (same as the first point)
-                ])
-                
-                resolution = z               
-            except:
-                raise QgsProcessingException("Compact cells failed. Please check your Tilecode ID field.")
-                            
+            cell_polygon = tilecode2geo(tilecode_id_compact)
+            resolution = tilecode_resolution(tilecode_id_compact)
+            num_edges = 4
             center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
             
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -895,29 +804,9 @@ def quadkeycompact(quadkey_layer: QgsVectorLayer, QuadkeyID_field=None,feedback=
                 feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
-            try:
-                quadkey_id_compact_tile = mercantile.quadkey_to_tile(quadkey_id_compact)
-                z = quadkey_id_compact_tile.z
-                x = quadkey_id_compact_tile.x
-                y = quadkey_id_compact_tile.y
-
-                bounds = mercantile.bounds(x, y, z)    
-                min_lat, min_lon = bounds.south, bounds.west
-                max_lat, max_lon = bounds.north, bounds.east
-                cell_polygon = Polygon([
-                    [min_lon, min_lat],  # Bottom-left corner
-                    [max_lon, min_lat],  # Bottom-right corner
-                    [max_lon, max_lat],  # Top-right corner
-                    [min_lon, max_lat],  # Top-left corner
-                    [min_lon, min_lat]   # Closing the polygon (same as the first point)
-                ])                    
-                resolution = z
-                            
-            except:
-                raise QgsProcessingException("Compact cells failed. Please check your Quadkey ID field.")
-                            
+            cell_polygon = quadkey2geo(quadkey_id_compact)
+            resolution = quadkey_resolution(quadkey_id_compact)
             center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-            
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             quadkey_feature = QgsFeature(fields)
             quadkey_feature.setGeometry(cell_geom)

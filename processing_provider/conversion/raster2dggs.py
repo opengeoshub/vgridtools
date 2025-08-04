@@ -21,6 +21,8 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
 import platform
+from pyproj import Geod
+geod = Geod(ellps="WGS84")
 from ...utils.imgs import Imgs
 from ...utils.conversion.raster2dggs import *
 from vgrid.stats.s2stats import s2_metrics
@@ -32,7 +34,6 @@ from vgrid.stats.olcstats import olc_metrics
 from vgrid.stats.geohashstats import geohash_metrics
 from vgrid.stats.tilecodestats import tilecode_metrics
 from vgrid.stats.quadkeystats import quadkey_metrics
-
 
 class Raster2DGGS(QgsProcessingAlgorithm):
     """
@@ -155,34 +156,34 @@ class Raster2DGGS(QgsProcessingAlgorithm):
     def get_nearest_resolution(self, dggs_type, pixel_size):        
         if dggs_type == 'h3':
             resolutions = range(16)
-            get_area = lambda res: h3.average_hexagon_area(res, unit='m^2')
+            cell_area = lambda res: h3.average_hexagon_area(res, unit='m^2')
         elif dggs_type == 's2':
             resolutions = range(25)
-            get_area = lambda res: s2_metrics(res)[2]  # avg_area
+            cell_area = lambda res: s2_metrics(res)[2]  # avg_area
         elif dggs_type == 'a5':
             resolutions = range(30)
-            get_area = lambda res: a5_metrics(res)[2]  # avg_area
+            cell_area = lambda res: a5_metrics(res)[2]  # avg_area
         elif dggs_type == 'rhealpix':
             resolutions = range(16)
-            get_area = lambda res: rhealpix_metrics(res)[2]  # avg_area
+            cell_area = lambda res: rhealpix_metrics(res)[2]  # avg_area
         elif dggs_type == 'isea4t':
             resolutions = range(24)
-            get_area = lambda res: isea4t_metrics(res)[2]  # avg_area
+            cell_area = lambda res: isea4t_metrics(res)[2]  # avg_area
         elif dggs_type == 'qtm':
             resolutions = range(2,25)
-            get_area = lambda res: qtm_metrics(res)[2]  # avg_area
+            cell_area = lambda res: qtm_metrics(res)[2]  # avg_area
         elif dggs_type == 'olc':
             resolutions = [2, 4, 6, 8, 10, 11, 12]
-            get_area = lambda res: olc_metrics(res)[2]  # avg_area
+            cell_area = lambda res: olc_metrics(res)[2]  # avg_area
         elif dggs_type == 'geohash':
             resolutions = range(1,11)
-            get_area = lambda res: geohash_metrics(res)[2]  # avg_area
+            cell_area = lambda res: geohash_metrics(res)[2]  # avg_area
         elif dggs_type == 'tilecode':
             resolutions = range(27)
-            get_area = lambda res: tilecode_metrics(res)[2]  # avg_area
+            cell_area = lambda res: tilecode_metrics(res)[2]  # avg_area
         elif dggs_type == 'quadkey':
             resolutions = range(27)
-            get_area = lambda res: quadkey_metrics(res)[2]  # avg_area
+            cell_area = lambda res: quadkey_metrics(res)[2]  # avg_area
             
         else:
             raise ValueError(f"Unsupported DGGS type: {dggs_type}")
@@ -190,7 +191,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         nearest_res = None
         min_diff = float('inf')
         for res in resolutions:
-            area = get_area(res)
+            area = cell_area(res)
             diff = abs(area - pixel_size)
             if diff < min_diff:
                 min_diff = diff
@@ -215,8 +216,19 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         # Get pixel size of raster layer (in map units)
         pixel_size_x = raster_layer.rasterUnitsPerPixelX()
         pixel_size_y = raster_layer.rasterUnitsPerPixelY()
-        pixel_size = abs(pixel_size_x * pixel_size_y)
-        # feedback.pushInfo(f"pixel_size: {pixel_size}")
+        
+        # Convert pixel area from square degrees to square meters
+        # Get the center of the raster for latitude-dependent conversion
+        extent = raster_layer.extent()
+        center_lat = (extent.yMinimum() + extent.yMaximum()) / 2
+        center_lon = (extent.xMinimum() + extent.xMaximum()) / 2
+        
+              
+        # Calculate the width and height in meters
+        pixel_width_m = geod.line_length([center_lon, center_lon + pixel_size_x], [center_lat, center_lat])
+        pixel_height_m = geod.line_length([center_lon, center_lon], [center_lat, center_lat + pixel_size_y])
+        
+        pixel_size = abs(pixel_width_m * pixel_height_m)
 
         user_res = self.parameterAsInt(parameters, self.RESOLUTION, context)
         if user_res >= 0:

@@ -1,17 +1,16 @@
 import re, os
 from shapely.geometry import Polygon,shape
-from shapely.wkt import loads
 import json
 
-from vgrid.dggs import s2, qtm, olc, geohash, georef, mgrs, maidenhead
+from vgrid.dggs import s2, olc, georef, mgrs
 from vgrid.dggs.gars.garsgrid import GARSGrid  
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+rhealpix_dggs = RHEALPixDGGS(ellipsoid= WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3) 
 import platform
 if (platform.system() == 'Windows'):
     from vgrid.dggs.eaggr.eaggr import Eaggr
     from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
-    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
     from vgrid.dggs.eaggr.enums.model import Model
     isea3h_dggs = Eaggr(Model.ISEA3H)   
     
@@ -136,13 +135,19 @@ def s22qgsfeature(feature, s2_token):
 def a52qgsfeature(feature, a5_id):
     cell_polygon = a52geo(a5_id)
     num_edges = 5    
-    # Handle both hex strings and bigint values for resolution calculation
-    a5_hex = a5_id
     if isinstance(a5_id, str):
-        resolution = a5.get_resolution(a5.hex_to_bigint(a5_id))        
+        # Try to convert string to int first (for numeric strings)
+        try:
+            cell_bigint = int(a5_id)
+        except ValueError:
+            # If it's not a numeric string, treat as hex string
+            cell_bigint = a5.hex_to_bigint(a5_id)
     elif isinstance(a5_id, int):
-        resolution = a5.get_resolution(a5_id)
-        a5_hex = a5.bigint_to_hex(a5_id)
+        # Assume it's already a bigint
+        cell_bigint = a5_id
+    
+    resolution = a5.get_resolution(cell_bigint)
+    a5_hex = a5.bigint_to_hex(cell_bigint)
     
     center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
@@ -183,7 +188,6 @@ def a52qgsfeature(feature, a5_id):
 def rhealpix2qgsfeature(feature, rhealpix_id):
     rhealpix_id = str(rhealpix_id)
     rhealpix_uids = (rhealpix_id[0],) + tuple(map(int, rhealpix_id[1:]))
-    rhealpix_dggs = RHEALPixDGGS(ellipsoid= WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3) 
     rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)      
     resolution = rhealpix_cell.resolution        
     cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
@@ -487,11 +491,6 @@ def mgrs2qgsfeature(feature, mgrs_id):
     transform_context = QgsProject.instance().transformContext()
     transformer = QgsCoordinateTransform(utm_crs, wgs84_crs, transform_context)
 
-    # utm_crs = CRS.from_epsg(epsg_code)
-    # wgs84_crs = CRS.from_epsg(4326)
-    # # # Create transformer from UTM to WGS84
-    # transformer = Transformer.from_crs(utm_crs, wgs84_crs, always_xy=True)
-
     # Convert all four corners
     min_lon, min_lat = transformer.transform(min_x, min_y)
     max_lon, max_lat = transformer.transform(max_x, max_y)
@@ -559,7 +558,7 @@ def mgrs2qgsfeature(feature, mgrs_id):
     mgrs_feature.setAttributes(all_attributes)   
     
     return mgrs_feature
-    return None
+
    
 def geohash2qgsfeature(feature, geohash_id):
     cell_polygon = geohash2geo(geohash_id)
@@ -812,7 +811,7 @@ def gars2qgsfeature(feature, gars_id):
 
     if wkt_polygon:
         # Extract the bounding box coordinates for the polygon
-        x, y = wkt_polygon.exterior.xy  # Assuming exterior.xy returns lists of x and y coordinates
+        x, y = wkt_polygon.exterior.xy  
         resolution_minute = gars_grid.resolution
         resolution = 1
         if resolution_minute == 30:

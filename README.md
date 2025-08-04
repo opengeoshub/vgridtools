@@ -38,6 +38,7 @@
       <ul>
         <li><a href="#latlon2h3">latlon2h3</a></li>
         <li><a href="#latlon2s2">latlon2s2</a></li>
+        <li><a href="#latlon2a5">latlon2a5</a></li>
         <li><a href="#latlon2rhealpix">latlon2rhealpix</a></li>
         <li><a href="#latlon2isea4t">latlon2isea4t</a></li>
         <li><a href="#latlon2isea3h">latlon2isea3h</a></li>
@@ -195,6 +196,24 @@ Convert (lat, long) to S2 Token.
 <div align="center">
   <img src="images/readme/latlon2s2.png">
 </div>
+
+
+### latlon2a5
+
+Convert (lat, long) to A5 Hex.
+<h4>Syntax</h4>
+<li>
+<code>latlon2a5(lat, long, resolution [0-->29]) or latlon2a5($y, $x, resolution)</span> in WGS84 CRS</code>
+</li> 
+<h4>Example usage</h4>
+<li>
+<code>latlon2a5(10.775275567242561, 106.70679737574993, 16)→ '7a9408e938000000'</code> 
+</li>
+<br/>
+<div align="center">
+  <img src="images/readme/latlon2a5.png">
+</div>
+
 
 ### latlon2rhealpix
 

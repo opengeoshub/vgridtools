@@ -26,7 +26,7 @@ from .dggs_settings import settings, DGGSettingsDialog
 
 class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     """
-    convert Vector Layer to H3, S2, rHEALPix, ISEA4T, ISEA3H, QTM, OLC, Geohash, GEOREF, MGRS, Tilecode, Maidenhead, GARS
+    convert Vector Layer to H3, S2, rHEALPix, ISEA4T, ISEA3H, QTM, OLC, Geohash, MGRS, Tilecode, Maidenhead, GARS
     """
     INPUT = 'INPUT'
     DGGS_TYPE = 'DGGS_TYPE'
@@ -36,8 +36,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     PREDICATES = ['intersects', 'within', 'centroid_within','largest_overlap']
     DGGS_TYPES = [
         'H3', 'S2','A5','rHEALPix','QTM', 'OLC', 'Geohash', 
-        # 'GEOREF',
-        # 'MGRS',
          'Tilecode','Quadkey']
     
     if platform.system() == 'Windows':
@@ -240,11 +238,9 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'rhealpix': qgsfeature2rhealpix,   
             'isea4t': qgsfeature2isea4t,
             'isea3h': qgsfeature2isea3h,       
-            # 'ease': qgsfeature2ease,
             'qtm': qgsfeature2qtm,
             'olc': qgsfeature2olc,
             'geohash': qgsfeature2geohash, # Need to check polyline/ polygon2geohash
-            # 'georef': qgsfeature2georef,   
             'tilecode': qgsfeature2tilecode,
             'quadkey': qgsfeature2quadkey
         }

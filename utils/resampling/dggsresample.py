@@ -4,6 +4,7 @@ from ...utils.resampling import dggsgrid
 import h3
 import os, re
 from vgrid.stats.s2stats import s2_metrics
+from vgrid.stats.a5stats import a5_metrics
 from vgrid.stats.rhealpixstats import rhealpix_metrics
 from vgrid.stats.isea4tstats import isea4t_metrics
 from vgrid.stats.qtmstats import qtm_metrics
@@ -64,6 +65,10 @@ def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, fe
             s2_id = s2.CellId.from_token(from_dggs_id)
             from_resolution = s2_id.level()
             _, _, from_area = s2_metrics(from_resolution)
+
+        elif from_dggs == 'a5':
+            from_resolution = len(from_dggs_id)
+            _, _, from_area = a5_metrics(from_resolution)
 
         elif from_dggs == 'rhealpix':
             rhealpix_uids = (from_dggs_id[0],) + tuple(map(int, from_dggs_id[1:]))
@@ -197,6 +202,8 @@ def generate_grid(qgs_features, to_dggs, resolution, feedback=None):
         dggs_grid = dggsgrid.generate_h3_grid(resolution, qgs_features, feedback)
     elif to_dggs == 's2':
         dggs_grid = dggsgrid.generate_s2_grid(resolution, qgs_features,feedback)
+    elif to_dggs == 'a5':
+        dggs_grid = dggsgrid.generate_a5_grid(resolution, qgs_features,feedback)
     elif to_dggs == 'rhealpix':
         dggs_grid = dggsgrid.generate_rhealpix_grid(resolution, qgs_features,feedback)
     elif to_dggs == 'isea4t':

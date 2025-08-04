@@ -47,7 +47,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
     RESOLUTION = 'RESOLUTION'
     OUTPUT = 'OUTPUT'
 
-    DGGS_TYPES = ['H3','S2', 'rHEALPix','QTM',
+    DGGS_TYPES = ['H3','S2', 'A5', 'rHEALPix','QTM',
                   'OLC','Geohash','Tilecode','Quadkey']
     
     if platform.system() == 'Windows':
@@ -80,7 +80,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/resampling/dggsresample.svg'))
 
     def tags(self):
-        return self.tr('DGGS, resample, H3,S2, rHEALPix, ISEA4T, QTM,OLC,Geohash,Tilecode,Quadkey').split(',')
+        return self.tr('DGGS, resample, H3,S2, A5, rHEALPix, ISEA4T, QTM,OLC,Geohash,Tilecode,Quadkey').split(',')
 
     txt_en = 'DGGS Resample'
     txt_vi = 'DGGS Resample'

@@ -8,29 +8,33 @@ from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 
 if (platform.system() == 'Windows'):   
-    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
     from vgrid.dggs.eaggr.eaggr import Eaggr
-    from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
     from vgrid.dggs.eaggr.enums.model import Model
-    from vgrid.utils.geometry import fix_isea4t_wkt, fix_isea4t_antimeridian_cells, isea3h_cell_to_polygon
+    from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
+    from vgrid.conversion.dggs2geo.isea3h2geo import isea3h2geo
+    from vgrid.conversion.dggscompact.isea3hcompact import get_isea3h_resolution
     isea3h_dggs = Eaggr(Model.ISEA3H)
     isea4t_dggs = Eaggr(Model.ISEA4T)
 
-from vgrid.generator.settings import ISEA3H_ACCURACY_RES_DICT
-from vgrid.utils.antimeridian import fix_polygon
-from vgrid.utils.geometry import fix_h3_antimeridian_cells, graticule_dggs_metrics, geodesic_dggs_metrics, rhealpix_cell_to_polygon, fix_isea4t_antimeridian_cells
+from vgrid.utils.geometry import  graticule_dggs_metrics, geodesic_dggs_metrics, rhealpix_cell_to_polygon
 
-from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
+from vgrid.conversion.dggs2geo.h32geo import h32geo
+from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
-from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_expand
+from vgrid.conversion.dggscompact.a5compact import a5_expand
+from vgrid.conversion.dggscompact.rhealpixcompact import get_rhealpix_resolution, rhealpix_expand
 from vgrid.conversion.dggscompact.isea4tcompact import isea4t_expand
 from vgrid.conversion.dggscompact.isea3hcompact import isea3h_expand
 from vgrid.conversion.dggscompact.qtmcompact import qtm_expand
+from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
 from vgrid.conversion.dggscompact.olccompact import olc_expand
+from vgrid.conversion.dggs2geo.olc2geo import olc2geo
 from vgrid.conversion.dggscompact.geohashcompact import geohash_expand
+from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.conversion.dggscompact.tilecodecompact import tilecode_expand
+from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
 from vgrid.conversion.dggscompact.quadkeycompact import quadkey_expand
-from vgrid.conversion.dggscompact.a5compact import a5_expand
+from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
 
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
@@ -90,10 +94,7 @@ def h3expand(h3_layer: QgsVectorLayer, resolution: int, H3ID_field=None, feedbac
                 if feedback.isCanceled():
                     return None
 
-            cell_boundary = h3.cell_to_boundary(h3_id_expand)
-            filtered_boundary = fix_h3_antimeridian_cells(cell_boundary)
-            reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
-            cell_polygon = Polygon(reversed_boundary)
+            cell_polygon = h32geo(h3_id_expand)
 
             if not cell_polygon.is_valid:
                 continue
@@ -159,8 +160,6 @@ def s2expand(s2_layer: QgsVectorLayer, resolution: int, S2Token_field=None, feed
                 if feedback:
                     feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
                     return None
-            # s2_ids_expand = s2_expand(s2_ids, resolution)
-            # s2_tokens_expand = [s2_id_expand.to_token() for s2_id_expand in s2_ids_expand]
             expanded_cells = []
             for s2_id in s2_ids:
                 if s2_id.level() >= resolution:
@@ -170,7 +169,7 @@ def s2expand(s2_layer: QgsVectorLayer, resolution: int, S2Token_field=None, feed
             s2_tokens_expand = [cell_id.to_token() for cell_id in expanded_cells]
     
     except:
-        raise QgsProcessingException("Expand cells failed. Please check your S2 cell Ids.")
+        raise QgsProcessingException("Expand cells failed. Please check your S2 Tokens.")
         
     total_cells = len(s2_tokens_expand)
 
@@ -180,27 +179,11 @@ def s2expand(s2_layer: QgsVectorLayer, resolution: int, S2Token_field=None, feed
             if feedback.isCanceled():
                 return None
 
-        s2_id_expand = s2.CellId.from_token(s2_token_expand)
-        s2_cell_expand = s2.Cell(s2_id_expand)    
-        # Get the vertices of the cell (4 vertices for a rectangular cell)
-        vertices = [s2_cell_expand.get_vertex(i) for i in range(4)]
-        # Prepare vertices in (longitude, latitude) format for Shapely
-        shapely_vertices = []
-        for vertex in vertices:
-            lat_lng = s2.LatLng.from_point(vertex)  # Convert Point to LatLng
-            longitude = lat_lng.lng().degrees  # Access longitude in degrees
-            latitude = lat_lng.lat().degrees   # Access latitude in degrees
-            shapely_vertices.append((longitude, latitude))
+        cell_polygon = s22geo(s2_token_expand)
 
-        # Close the polygon by adding the first vertex again
-        shapely_vertices.append(shapely_vertices[0])  # Closing the polygon
-        # Create a Shapely Polygon
-        cell_polygon = fix_polygon(Polygon(shapely_vertices)) # Fix antimeridian
-                    
         if not cell_polygon.is_valid:
             continue
         
-        resolution = s2_id_expand.level()
         num_edges = 4
         center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
         
@@ -221,7 +204,84 @@ def s2expand(s2_layer: QgsVectorLayer, resolution: int, S2Token_field=None, feed
 
     if feedback:
         feedback.setProgress(100)
-        feedback.pushInfo("s2 DGGS expansion completed.")
+        feedback.pushInfo("S2 DGGS expansion completed.")
+                
+    return mem_layer
+
+
+########################## 
+# A5
+#########################
+def a5expand(a5_layer: QgsVectorLayer, resolution: int, A5ID_field=None, feedback=None) -> QgsVectorLayer:
+    if not A5ID_field:
+        A5ID_field = 'a5'
+
+    fields = QgsFields()
+    fields.append(QgsField("a5", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("avg_edge_len", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+
+    crs = a5_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "a5_expanded", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    a5_ids = [
+        feature[A5ID_field]
+        for feature in a5_layer.getFeatures()
+        if feature[A5ID_field]
+    ]
+    a5_ids = list(set(a5_ids))
+    
+    if a5_ids:
+        try:
+            max_res = max(a5.get_resolution(a5.hex_to_bigint(a5_id)) for a5_id in a5_ids)
+            if resolution <= max_res:
+                if feedback:
+                    feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
+                    return None
+            a5_ids_expand = a5_expand(a5_ids, resolution)
+        except:
+            raise QgsProcessingException("Expand cells failed. Please check your A5 cell Ids.")
+            
+        total_cells = len(a5_ids_expand)
+
+        for i, a5_id_expand in enumerate(a5_ids_expand):
+            if feedback:
+                feedback.setProgress(int((i / total_cells) * 100))
+                if feedback.isCanceled():
+                    return None
+
+            cell_polygon = a52geo(a5_id_expand)
+            
+            if not cell_polygon.is_valid:
+                continue
+            
+            num_edges = 5
+            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            a5_feature = QgsFeature(fields)
+            a5_feature.setGeometry(cell_geom)
+            
+            attributes = {
+                "a5": a5_id_expand,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "avg_edge_len": avg_edge_len,
+                "cell_area": cell_area,
+            }
+            a5_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([a5_feature])
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("A5 expansion completed.")
                 
     return mem_layer
 
@@ -229,14 +289,6 @@ def s2expand(s2_layer: QgsVectorLayer, resolution: int, S2Token_field=None, feed
 ########################## 
 # rHEALPix
 #########################
-def get_rhealpix_resolution(rhealpix_dggs, rhealpix_id):
-    try:
-        rhealpix_uids = (rhealpix_id[0],) + tuple(map(int, rhealpix_id[1:]))
-        rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
-        return rhealpix_cell.resolution
-    except Exception as e:
-        raise ValueError(f"Invalid cell ID '{rhealpix_id}': {e}")
-
 def rhealpixexpand(rhealpix_layer: QgsVectorLayer, resolution: int, rHealPixID_field=None, feedback=None) -> QgsVectorLayer:
     rhealpix_dggs = RHEALPixDGGS()
     
@@ -361,27 +413,19 @@ def isea4texpand(isea4t_layer: QgsVectorLayer, resolution: int, ISEA4TID_field=N
                 isea4t_cells_expand = isea4t_expand(isea4t_ids, resolution)
             except:
                 raise QgsProcessingException("Expand cells failed. Please check your ISEA4T cell Ids.")
+            
+            isea4t_ids_expand = [c.get_cell_id() for c in isea4t_cells_expand]
+            total_cells = len(isea4t_ids_expand)
 
-            total_cells = len(isea4t_cells_expand)
-
-            for i, isea4t_cell_expand in enumerate(isea4t_cells_expand):
+            for i, isea4t_id_expand in enumerate(isea4t_ids_expand):
                 if feedback:
                     feedback.setProgress(int((i / total_cells) * 100))
                     if feedback.isCanceled():
                         return None
 
-                cell_to_shape = isea4t_dggs.convert_dggs_cell_outline_to_shape_string(isea4t_cell_expand,ShapeStringFormat.WKT)
-                cell_to_shape_fixed = loads(fix_isea4t_wkt(cell_to_shape))
-                isea4t_id_expand = isea4t_cell_expand.get_cell_id()
-                if isea4t_id_expand.startswith('00') or isea4t_id_expand.startswith('09') or isea4t_id_expand.startswith('14')\
-                    or isea4t_id_expand.startswith('04') or isea4t_id_expand.startswith('19'):
-                    cell_to_shape_fixed = fix_isea4t_antimeridian_cells(cell_to_shape_fixed)
-                    
-                cell_polygon = Polygon(list(cell_to_shape_fixed.exterior.coords))
-                
+                cell_polygon = isea4t2geo(isea4t_id_expand)
                 if not cell_polygon.is_valid:
                     continue
-                
                 num_edges = 3
                 center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
                 
@@ -410,45 +454,6 @@ def isea4texpand(isea4t_layer: QgsVectorLayer, resolution: int, ISEA4TID_field=N
 ########################## 
 # ISEA3H
 #########################
-def get_isea3h_resolution(isea3h_id):
-    try:
-        isea3h_cell = DggsCell(isea3h_id)
-        cell_polygon = isea3h_cell_to_polygon(isea3h_cell)    
-        cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
-        
-        isea3h2point = isea3h_dggs.convert_dggs_cell_to_point(isea3h_cell)      
-        cell_accuracy = isea3h2point._accuracy
-            
-        avg_edge_len = cell_perimeter / 6
-        cell_resolution  = ISEA3H_ACCURACY_RES_DICT.get(cell_accuracy)
-        
-        if (cell_resolution == 0): # icosahedron faces at resolution = 0
-            avg_edge_len = cell_perimeter / 3
-        
-        if cell_accuracy == 0.0:
-            if round(avg_edge_len,2) == 0.06:
-                cell_resolution = 33
-            elif round(avg_edge_len,2) == 0.03:
-                cell_resolution = 34
-            elif round(avg_edge_len,2) == 0.02:
-                cell_resolution = 35
-            elif round(avg_edge_len,2) == 0.01:
-                cell_resolution = 36
-            
-            elif round(avg_edge_len,3) == 0.007:
-                cell_resolution = 37
-            elif round(avg_edge_len,3) == 0.004:
-                cell_resolution = 38
-            elif round(avg_edge_len,3) == 0.002:
-                cell_resolution = 39
-            elif round(avg_edge_len,3) <= 0.001:
-                cell_resolution = 40
-                
-        return cell_resolution
-    except Exception as e:
-        raise ValueError(f"Invalid cell ID '{isea3h_id}': {e}")
-
-
 def isea3hexpand(isea3h_layer: QgsVectorLayer, resolution: int, ISEA3HID_field=None, feedback=None) -> QgsVectorLayer:  
         
         if not ISEA3HID_field:
@@ -491,60 +496,29 @@ def isea3hexpand(isea3h_layer: QgsVectorLayer, resolution: int, ISEA3HID_field=N
             except:
                 raise QgsProcessingException("Expand cells failed. Please check your ISEA3H cell Ids.")
 
-            total_cells = len(isea3h_cells_expand)
+            isea3h_ids_expand = [c.get_cell_id() for c in isea3h_cells_expand]
+            total_cells = len(isea3h_ids_expand)
 
-            for i, isea3h_cell_expand in enumerate(isea3h_cells_expand):
+            for i, isea3h_id_expand in enumerate(isea3h_ids_expand):
                 if feedback:
                     feedback.setProgress(int((i / total_cells) * 100))
                     if feedback.isCanceled():
                         return None
 
-                cell_polygon = isea3h_cell_to_polygon(isea3h_cell_expand)                
+                cell_polygon = isea3h2geo(isea3h_id_expand)               
                 if not cell_polygon.is_valid:
                     continue
                 
-                isea3h_id = isea3h_cell_expand.get_cell_id()
-                cell_centroid = cell_polygon.centroid
-                center_lat =  round(cell_centroid.y, 7)
-                center_lon = round(cell_centroid.x, 7)
-                cell_area = round(abs(geod.geometry_area_perimeter(cell_polygon)[0]),3)
-                cell_perimeter = abs(geod.geometry_area_perimeter(cell_polygon)[1])
+                num_edges = 6
+                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
                 
-                isea3h2point = isea3h_dggs.convert_dggs_cell_to_point(isea3h_cell_expand)      
-                cell_accuracy = isea3h2point._accuracy
-                    
-                avg_edge_len = cell_perimeter / 6
-                cell_resolution  = ISEA3H_ACCURACY_RES_DICT.get(cell_accuracy)
-                
-                if (cell_resolution == 0): # icosahedron faces at resolution = 0
-                    avg_edge_len = cell_perimeter / 3
-                
-                if cell_accuracy == 0.0:
-                    if round(avg_edge_len,2) == 0.06:
-                        cell_resolution = 33
-                    elif round(avg_edge_len,2) == 0.03:
-                        cell_resolution = 34
-                    elif round(avg_edge_len,2) == 0.02:
-                        cell_resolution = 35
-                    elif round(avg_edge_len,2) == 0.01:
-                        cell_resolution = 36
-                    
-                    elif round(avg_edge_len,3) == 0.007:
-                        cell_resolution = 37
-                    elif round(avg_edge_len,3) == 0.004:
-                        cell_resolution = 38
-                    elif round(avg_edge_len,3) == 0.002:
-                        cell_resolution = 39
-                    elif round(avg_edge_len,3) <= 0.001:
-                        cell_resolution = 40
-            
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 isea3h_feature = QgsFeature(fields)
                 isea3h_feature.setGeometry(cell_geom)
                 
                 attributes = {
-                    "isea3h": isea3h_id,
-                    "resolution": cell_resolution,
+                    "isea3h": isea3h_id_expand,
+                    "resolution": resolution,
                     "center_lat": center_lat,
                     "center_lon": center_lon,
                     "avg_edge_len": round(avg_edge_len,3),
@@ -607,9 +581,7 @@ def qtmexpand(qtm_layer: QgsVectorLayer, resolution: int,QTMID_field=None, feedb
                 if feedback.isCanceled():
                     return None
 
-            facet = qtm.qtm_id_to_facet(qtm_id_expand)
-            cell_polygon = qtm.constructGeometry(facet)    
-            
+            cell_polygon = qtm2geo(qtm_id_expand)            
             if not cell_polygon.is_valid:
                 continue
             
@@ -634,86 +606,6 @@ def qtmexpand(qtm_layer: QgsVectorLayer, resolution: int,QTMID_field=None, feedb
         if feedback:
             feedback.setProgress(100)
             feedback.pushInfo("QTM expansion completed.")
-                
-    return mem_layer
-
-
-########################## 
-# A5
-#########################
-def a5expand(a5_layer: QgsVectorLayer, resolution: int, A5ID_field=None, feedback=None) -> QgsVectorLayer:
-    if not A5ID_field:
-        A5ID_field = 'a5'
-
-    fields = QgsFields()
-    fields.append(QgsField("a5", QVariant.String))
-    fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-
-    crs = a5_layer.crs().toWkt()
-    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "a5_expanded", "memory")
-    mem_provider = mem_layer.dataProvider()
-    mem_provider.addAttributes(fields)
-    mem_layer.updateFields()
-
-    a5_ids = [
-        feature[A5ID_field]
-        for feature in a5_layer.getFeatures()
-        if feature[A5ID_field]
-    ]
-    a5_ids = list(set(a5_ids))
-    
-    if a5_ids:
-        try:
-            max_res = max(a5.get_resolution(a5.hex_to_bigint(a5_id)) for a5_id in a5_ids)
-            if resolution <= max_res:
-                if feedback:
-                    feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
-                    return None
-            a5_ids_expand = a5_expand(a5_ids, resolution)
-        except:
-            raise QgsProcessingException("Expand cells failed. Please check your A5 cell Ids.")
-            
-        total_cells = len(a5_ids_expand)
-
-        for i, a5_id_expand in enumerate(a5_ids_expand):
-            if feedback:
-                feedback.setProgress(int((i / total_cells) * 100))
-                if feedback.isCanceled():
-                    return None
-
-            try:
-                cell_polygon = a52geo(a5_id_expand)
-            except:
-                raise QgsProcessingException("Convert to A5 polygon failed.")
-            
-            if not cell_polygon.is_valid:
-                continue
-            
-            num_edges = 5  # A5 cells are pentagons
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-            
-            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
-            a5_feature = QgsFeature(fields)
-            a5_feature.setGeometry(cell_geom)
-            
-            attributes = {
-                "a5": a5_id_expand,
-                "resolution": resolution,
-                "center_lat": center_lat,
-                "center_lon": center_lon,
-                "avg_edge_len": avg_edge_len,
-                "cell_area": cell_area,
-            }
-            a5_feature.setAttributes([attributes[field.name()] for field in fields])
-            mem_provider.addFeatures([a5_feature])
-
-        if feedback:
-            feedback.setProgress(100)
-            feedback.pushInfo("A5 expansion completed.")
                 
     return mem_layer
 
@@ -766,19 +658,7 @@ def olcexpand(olc_layer: QgsVectorLayer, resolution: int,OLCID_field=None, feedb
                 if feedback.isCanceled():
                     return None
 
-            coord = olc.decode(olc_id_expand)    
-            min_lat, min_lon = coord.latitudeLo, coord.longitudeLo
-            max_lat, max_lon = coord.latitudeHi, coord.longitudeHi        
-
-            # Define the polygon based on the bounding box
-            cell_polygon = Polygon([
-                [min_lon, min_lat],  # Bottom-left corner
-                [max_lon, min_lat],  # Bottom-right corner
-                [max_lon, max_lat],  # Top-right corner
-                [min_lon, max_lat],  # Top-left corner
-                [min_lon, min_lat]   # Closing the polygon (same as the first point)
-            ])    
-            
+            cell_polygon = olc2geo(olc_id_expand)
             if not cell_polygon.is_valid:
                 continue
             
@@ -932,21 +812,7 @@ def tilecodeexpand(tilecode_layer: QgsVectorLayer, resolution: int,TilecodeID_fi
                 if feedback.isCanceled():
                     return None
 
-            match = re.match(r'z(\d+)x(\d+)y(\d+)', tilecode_id_expand)
-            z = int(match.group(1))
-            x = int(match.group(2))
-            y = int(match.group(3))
-
-            bounds = mercantile.bounds(x, y, z)    
-            min_lat, min_lon = bounds.south, bounds.west
-            max_lat, max_lon = bounds.north, bounds.east
-            cell_polygon = Polygon([
-                [min_lon, min_lat],  # Bottom-left corner
-                [max_lon, min_lat],  # Bottom-right corner
-                [max_lon, max_lat],  # Top-right corner
-                [min_lon, max_lat],  # Top-left corner
-                [min_lon, min_lat]   # Closing the polygon (same as the first point)
-            ])
+            cell_polygon = tilecode2geo(tilecode_id_expand)
             
             if not cell_polygon.is_valid:
                 continue
@@ -1024,22 +890,8 @@ def quadkeyexpand(quadkey_layer: QgsVectorLayer, resolution: int,QuadkeyID_field
                 if feedback.isCanceled():
                     return None
 
-            quadkey_id_expand_tile = mercantile.quadkey_to_tile(quadkey_id_expand)
-            z = quadkey_id_expand_tile.z
-            x = quadkey_id_expand_tile.x
-            y = quadkey_id_expand_tile.y
-            
-            bounds = mercantile.bounds(x, y, z)    
-            min_lat, min_lon = bounds.south, bounds.west
-            max_lat, max_lon = bounds.north, bounds.east
-            cell_polygon = Polygon([
-                [min_lon, min_lat],  # Bottom-left corner
-                [max_lon, min_lat],  # Bottom-right corner
-                [max_lon, max_lat],  # Top-right corner
-                [min_lon, max_lat],  # Top-left corner
-                [min_lon, min_lat]   # Closing the polygon (same as the first point)
-            ])
-            
+            cell_polygon = quadkey2geo(quadkey_id_expand)            
+
             if not cell_polygon.is_valid:
                 continue
             

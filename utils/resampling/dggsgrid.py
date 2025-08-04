@@ -2,12 +2,15 @@ from shapely.wkt import loads as load_wkt
 from shapely.geometry import Polygon,shape
 from shapely.ops import unary_union
 from qgis.core import (
-    QgsVectorLayer, QgsFields, QgsField, QgsFeature, QgsGeometry, QgsWkbTypes
+    QgsVectorLayer, QgsFields, QgsField, QgsFeature, QgsGeometry, 
 )
 from PyQt5.QtCore import QVariant
 import h3
 from vgrid.dggs import s2, qtm, olc, mercantile
+from vgrid.generator.olcgrid import olc_refine_cell
 from vgrid.utils.geometry import geodesic_buffer, fix_h3_antimeridian_cells, geodesic_dggs_metrics, graticule_dggs_metrics,s2_cell_to_polygon, rhealpix_cell_to_polygon
+import a5
+from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.utils.antimeridian import fix_polygon
 import platform
 if (platform.system() == 'Windows'):
@@ -511,7 +514,7 @@ def generate_olc_grid(resolution, qgs_features, feedback=None):
             refined_features.append(seed_cell)
         else:
             refined_features.extend(
-                olcgrid.refine_cell(seed_cell_poly.bounds, base_resolution, resolution, unified_geom)
+                olc_refine_cell(seed_cell_poly.bounds, base_resolution, resolution, unified_geom)
             )
 
         if feedback:
@@ -751,4 +754,129 @@ def generate_quadkey_grid(resolution, qgs_features, feedback=None):
         feedback.pushInfo(f"Generated {len(qgis_features)} Quadkey cells.")
         feedback.setProgress(100)
 
+    return layer
+
+#########################
+# A5
+#########################
+def generate_a5_grid(resolution, qgs_features, feedback=None):
+    if not qgs_features:
+        raise ValueError("No features provided for A5 grid generation.")
+
+    geometries = [load_wkt(f.geometry().asWkt()) for f in qgs_features.getFeatures()]
+    unified_geom = unary_union(geometries)
+    
+    min_lon, min_lat, max_lon, max_lat = unified_geom.bounds
+    
+    # Calculate longitude and latitude width based on resolution
+    if resolution == 0:
+        lon_width = 35
+        lat_width = 35
+    elif resolution == 1:
+        lon_width = 18
+        lat_width = 18
+    elif resolution == 2:
+        lon_width = 10
+        lat_width = 10
+    elif resolution == 3:
+        lon_width = 5
+        lat_width = 5
+    elif resolution > 3:
+        base_width = 5  # at resolution 3
+        factor = 0.5 ** (resolution - 3)
+        lon_width = base_width * factor
+        lat_width = base_width * factor
+    
+    # Generate longitude and latitude arrays
+    longitudes = []
+    latitudes = []
+    
+    lon = min_lon
+    while lon < max_lon:
+        longitudes.append(lon)
+        lon += lon_width
+    
+    lat = min_lat
+    while lat < max_lat:
+        latitudes.append(lat)
+        lat += lat_width
+    
+    # Create fields for the output layer
+    fields = QgsFields()
+    fields.append(QgsField("a5", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("avg_edge_len", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+    
+    a5_features = []
+    num_edges = 5
+    seen_a5_hex = set()  # Track unique A5 hex codes
+    total_cells = len(longitudes) * len(latitudes)
+    cell_count = 0
+    
+    if feedback:
+        feedback.pushInfo(f"Generating A5 grid at resolution {resolution}...")
+    
+    # Generate features for each grid cell
+    for lon in longitudes:
+        for lat in latitudes:
+            if feedback:
+                if feedback.isCanceled():
+                    return None
+                feedback.setProgress(int((cell_count / total_cells) * 100))
+            
+            min_lon_cell = lon
+            min_lat_cell = lat
+            max_lon_cell = lon + lon_width
+            max_lat_cell = lat + lat_width
+            
+            # Calculate centroid
+            centroid_lat = (min_lat_cell + max_lat_cell) / 2
+            centroid_lon = (min_lon_cell + max_lon_cell) / 2
+            
+            try:
+                # Convert centroid to A5 cell ID using direct A5 functions
+                cell_id = a5.lonlat_to_cell([centroid_lon, centroid_lat], resolution)
+                cell_polygon = a52geo(cell_id)
+                
+                if cell_polygon is not None:
+                    a5_hex = a5.bigint_to_hex(cell_id)
+                    
+                    # Only add if this A5 hex code hasn't been seen before
+                    if a5_hex not in seen_a5_hex:
+                        seen_a5_hex.add(a5_hex)
+                        
+                        # Check if the cell intersects with the input geometry
+                        if cell_polygon.intersects(unified_geom):
+                            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                            
+                            qgs_feature = QgsFeature()
+                            qgs_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+                            qgs_feature.setAttributes([a5_hex, resolution, center_lat, center_lon, avg_edge_len, cell_area])
+                            a5_features.append(qgs_feature)
+                    
+            except Exception as e:
+                # Skip cells that can't be processed
+                if feedback:
+                    feedback.pushInfo(f"Error processing A5 cell at ({centroid_lon}, {centroid_lat}): {e}")
+                continue
+            
+            cell_count += 1
+    
+    if not a5_features:
+        raise ValueError("No A5 cells were generated. Check the input parameters and A5 library functions.")
+    
+    layer = QgsVectorLayer("Polygon?crs=EPSG:4326", f"a5_grid_{resolution}", "memory")
+    layer.startEditing()
+    layer.dataProvider().addAttributes(fields)
+    layer.updateFields()
+    layer.dataProvider().addFeatures(a5_features)
+    layer.commitChanges()
+    
+    if feedback:
+        feedback.pushInfo(f"Generated {len(a5_features)} A5 cells.")
+        feedback.setProgress(100)
+    
     return layer

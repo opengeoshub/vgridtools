@@ -42,7 +42,7 @@ from PyQt5.QtCore import QVariant
 import os, random
 
 from vgrid.dggs import olc
-from vgrid.generator.olcgrid import refine_cell
+from vgrid.generator.olcgrid import olc_refine_cell
 from vgrid.utils.geometry import graticule_dggs_metrics, graticule_dggs_to_feature
 
 from ...utils.imgs import Imgs
@@ -158,7 +158,7 @@ class OLCGrid(QgsProcessingAlgorithm):
 
         return output_fields
     
-    def generate_grid(self, resolution):
+    def generate_olc_grid(self, resolution):
         """
         Generate a global grid of Open Location Codes (Plus Codes) at the specified precision
         as a GeoJSON-like feature collection.
@@ -227,7 +227,7 @@ class OLCGrid(QgsProcessingAlgorithm):
         if extent_bbox: 
             # Step 1: Generate base cells at the lowest resolution (e.g., resolution 2)
             base_resolution = 2
-            base_cells = self.generate_grid(base_resolution)
+            base_cells = self.generate_olc_grid(base_resolution)
 
             # Step 2: Identify seed cells that intersect with the bounding box
             seed_cells = []
@@ -248,7 +248,7 @@ class OLCGrid(QgsProcessingAlgorithm):
                 else:
                     # Refine the seed cell to the output resolution and add it to the output
                     refined_features.extend(
-                        refine_cell(seed_cell_poly.bounds, base_resolution, self.resolution, extent_bbox)
+                        olc_refine_cell(seed_cell_poly.bounds, base_resolution, self.resolution, extent_bbox)
                     )
                 if feedback.isCanceled():
                     break

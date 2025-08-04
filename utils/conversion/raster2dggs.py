@@ -1,6 +1,4 @@
-import platform,re
-from shapely.wkt import loads
-from shapely.geometry import Polygon
+import platform
 from qgis.core import (
     QgsRasterLayer,
     QgsRaster,
@@ -18,14 +16,20 @@ import h3
 
 from vgrid.dggs import s2, qtm, olc, geohash, tilecode
 from vgrid.conversion.latlon2dggs import *
+from vgrid.conversion.dggs2geo.h32geo import h32geo
+from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
-from vgrid.dggs import mercantile
+from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
+from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
+from vgrid.conversion.dggs2geo.olc2geo import olc2geo
+from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
+from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
+from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.utils.geometry import (
-    fix_isea4t_wkt, fix_h3_antimeridian_cells, graticule_dggs_metrics, geodesic_dggs_metrics,
-    rhealpix_cell_to_polygon, fix_isea4t_antimeridian_cells
+    graticule_dggs_metrics, geodesic_dggs_metrics,
+    rhealpix_cell_to_polygon
 )
-from vgrid.utils.antimeridian import fix_polygon
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 
 E = WGS84_ELLIPSOID
@@ -34,8 +38,6 @@ if (platform.system() == 'Windows'):
     from vgrid.dggs.eaggr.eaggr import Eaggr
     from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
     from vgrid.dggs.eaggr.enums.model import Model
-    from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
-    from vgrid.conversion.dggscompact.isea4tcompact import isea4t_compact
     isea4t_dggs = Eaggr(Model.ISEA4T)
     isea3h_dggs = Eaggr(Model.ISEA3H)
 
@@ -44,23 +46,6 @@ geod = Geod(ellps="WGS84")
 p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (90.0, -180.0), (90.0, -90.0), (90.0, 0.0), (90.0, 90.0), (90.0, 180.0)
 p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (0.0, -180.0), (0.0, -90.0), (0.0, 0.0), (0.0, 90.0), (0.0, 180.0)
 n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (-90.0, -180.0), (-90.0, -90.0), (-90.0, 0.0), (-90.0, 90.0), (-90.0, 180.0)
-
-def qgsgeometry_to_shapely(qgs_geom: QgsGeometry) -> Polygon:
-    if not qgs_geom:
-        return None
-
-    if qgs_geom.isMultipart():
-        rings = qgs_geom.asMultiPolygon()
-    else:
-        rings = [qgs_geom.asPolygon()]
-
-    if not rings or not rings[0]:
-        return None
-
-    exterior = [(pt.x(), pt.y()) for pt in rings[0][0]]
-    interiors = [[(pt.x(), pt.y()) for pt in ring] for ring in rings[0][1:]]
-
-    return Polygon(exterior, interiors)
 
 ########################## 
 # H3
@@ -123,18 +108,14 @@ def raster2h3(raster_layer: QgsRasterLayer, resolution: int, feedback=None) -> Q
         if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float('nan'))) for i in range(band_count)):
             continue
 
-        boundary = h3.cell_to_boundary(h3_index)
-        if not boundary:
-            continue
-        fixed_boundary = fix_h3_antimeridian_cells(boundary)
-        ring = [(lon, lat) for lat, lon in fixed_boundary]
-        qgs_ring = [QgsPointXY(lon, lat) for lon, lat in ring]
-        cell_geom = QgsGeometry.fromPolygonXY([qgs_ring])
-        shapely_poly = qgsgeometry_to_shapely(cell_geom)
+        # Use h32geo to get the cell polygon with proper antimeridian handling
+        cell_polygon = h32geo(h3_index)
+        if not cell_polygon:
+            continue        
 
         num_edges = 5 if h3.is_pentagon(h3_index) else 6
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(shapely_poly, num_edges)
-
+        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
         feature = QgsFeature()
         feature.setGeometry(cell_geom)
         attributes = {
@@ -154,7 +135,7 @@ def raster2h3(raster_layer: QgsRasterLayer, resolution: int, feedback=None) -> Q
 
     if feedback:
         feedback.setProgress(100)
-        feedback.pushInfo("H3 DGGS generation completed.")
+        feedback.pushInfo("Raster to H3 DGGS completed.")
             
     return mem_layer
 
@@ -223,18 +204,13 @@ def raster2s2(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
         results = ident.results()
         if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
             continue
-
-        vertices = [s2_cell.get_vertex(i) for i in range(4)]
-        coords = [(s2.LatLng.from_point(v).lng().degrees, s2.LatLng.from_point(v).lat().degrees) for v in vertices]
-        coords.append(coords[0])  # close ring
-        polygon = fix_polygon(Polygon(coords))
-        qgs_polygon = QgsGeometry.fromPolygonXY([[QgsPointXY(lon, lat) for lon, lat in polygon.exterior.coords]])
-        
+        cell_polygon = s22geo(s2_token)
         num_edges = 4
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
-        feature.setGeometry(qgs_polygon)
+        feature.setGeometry(cell_geom)
         attr_values = [
             s2_token,
             resolution,
@@ -251,7 +227,7 @@ def raster2s2(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
 
     if feedback:
         feedback.setProgress(100)
-        feedback.pushInfo("S2 DGGS generation completed.")
+        feedback.pushInfo("Raster to S2 DGGS completed.")
     
 
     return mem_layer
@@ -311,6 +287,9 @@ def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
             return None
 
         cell_polygon = a52geo(a5_hex)
+        if not cell_polygon:
+            continue
+        
         center_point = QgsPointXY(cell_polygon.centroid.x, cell_polygon.centroid.y)
 
         ident = provider.identify(center_point, QgsRaster.IdentifyFormatValue)
@@ -319,14 +298,14 @@ def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
         results = ident.results()
         if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
             continue
-                
-        qgs_polygon = QgsGeometry.fromPolygonXY([[QgsPointXY(lon, lat) for lon, lat in cell_polygon.exterior.coords]])
         
+        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)   
+                
         num_edges = 5 
         center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
 
         feature = QgsFeature()
-        feature.setGeometry(qgs_polygon)
+        feature.setGeometry(cell_geom)
         attr_values = [
             a5_hex,
             resolution,
@@ -343,7 +322,7 @@ def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
 
     if feedback:
         feedback.setProgress(100)
-        feedback.pushInfo("S2 DGGS generation completed.")
+        feedback.pushInfo("Raster to A5 DGGS completed.")
     
 
     return mem_layer
@@ -425,15 +404,14 @@ def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
             continue
 
         cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
+        if not cell_polygon:
+            continue    
         num_edges = 3 if rhealpix_cell.ellipsoidal_shape() == 'dart' else 4
         center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-
-        qgs_polygon = QgsGeometry.fromPolygonXY(
-            [[QgsPointXY(lon, lat) for lon, lat in cell_polygon.exterior.coords]]
-        )
+        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
-        feature.setGeometry(qgs_polygon)
+        feature.setGeometry(cell_geom)
         attr_values = [
             rhealpix_id,
             resolution,
@@ -452,7 +430,7 @@ def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
 
     if feedback:
         feedback.setProgress(100)
-        feedback.pushInfo("rHEALpix DGGS generation completed.")
+        feedback.pushInfo("Raster to rHEALpix DGGS completed.")
 
     return mem_layer
 
@@ -531,23 +509,18 @@ def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Qg
             if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
                 continue
 
-            cell_to_shape = isea4t_dggs.convert_dggs_cell_outline_to_shape_string(DggsCell(isea4t_id),ShapeStringFormat.WKT)
-            cell_to_shape_fixed = loads(fix_isea4t_wkt(cell_to_shape))
-            if isea4t_id.startswith('00') or isea4t_id.startswith('09') or isea4t_id.startswith('14')\
-                or isea4t_id.startswith('04') or isea4t_id.startswith('19'):
-                cell_to_shape_fixed = fix_isea4t_antimeridian_cells(cell_to_shape_fixed)
+            cell_polygon = isea4t2geo(isea4t_id)
+            if not cell_polygon:
+                continue
             
             num_edges = 3
-            cell_polygon = Polygon(list(cell_to_shape_fixed.exterior.coords))
             
             center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
 
-            qgs_polygon = QgsGeometry.fromPolygonXY(
-                [[QgsPointXY(lon, lat) for lon, lat in cell_polygon.exterior.coords]]
-            )
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             feature = QgsFeature()
-            feature.setGeometry(qgs_polygon)
+            feature.setGeometry(cell_geom)
             attr_values = [
                 isea4t_id,
                 resolution,
@@ -566,7 +539,7 @@ def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Qg
 
         if feedback:
             feedback.setProgress(100)
-            feedback.pushInfo("ISEA4T DGGS generation completed.")
+            feedback.pushInfo("Raster to ISEA4T DGGS completed.")
 
         return mem_layer
 
@@ -640,18 +613,16 @@ def raster2qtm(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
         if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
             continue
         
-        facet = qtm.qtm_id_to_facet(qtm_id)
-        cell_polygon = qtm.constructGeometry(facet)    
-        resolution = len(qtm_id)
+        cell_polygon = qtm2geo(qtm_id)
+        if not cell_polygon:
+            continue
         num_edges = 3
         center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
 
-        qgs_polygon = QgsGeometry.fromPolygonXY(
-            [[QgsPointXY(lon, lat) for lon, lat in cell_polygon.exterior.coords]]
-        )
+        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
-        feature.setGeometry(qgs_polygon)
+        feature.setGeometry(cell_geom)
         attr_values = [
             qtm_id,
             resolution,
@@ -670,7 +641,7 @@ def raster2qtm(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
 
     if feedback:
         feedback.setProgress(100)
-        feedback.pushInfo("QTM DGGS generation completed.")
+        feedback.pushInfo("Raster to QTM DGGS completed.")
 
     return mem_layer
 
@@ -745,27 +716,16 @@ def raster2olc(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
         if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
             continue
 
-        coord = olc.decode(olc_id)    
-        # Create the bounding box coordinates for the polygon
-        min_lat, min_lon = coord.latitudeLo, coord.longitudeLo
-        max_lat, max_lon = coord.latitudeHi, coord.longitudeHi        
-        # Define the polygon based on the bounding box
-        cell_polygon = Polygon([
-            [min_lon, min_lat],  # Bottom-left corner
-            [max_lon, min_lat],  # Bottom-right corner
-            [max_lon, max_lat],  # Top-right corner
-            [min_lon, max_lat],  # Top-left corner
-            [min_lon, min_lat]   # Closing the polygon (same as the first point)
-        ])
+        cell_polygon = olc2geo(olc_id)
+        if not cell_polygon:
+            continue       
         
         center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
 
-        qgs_polygon = QgsGeometry.fromPolygonXY(
-            [[QgsPointXY(lon, lat) for lon, lat in cell_polygon.exterior.coords]]
-        )
+        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
-        feature.setGeometry(qgs_polygon)
+        feature.setGeometry(cell_geom)
         attr_values = [
             olc_id,
             resolution,
@@ -785,7 +745,7 @@ def raster2olc(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
 
     if feedback:
         feedback.setProgress(100)
-        feedback.pushInfo("OLC DGGS generation completed.")
+        feedback.pushInfo("Raster to OLC DGGS completed.")
 
     return mem_layer
 
@@ -827,7 +787,7 @@ def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
     if feedback:
         feedback.pushInfo(f"{len(geohash_ids)} pixels processed.")
         feedback.setProgress(0)
-        feedback.pushInfo("Generating Geohash DGGS...")
+        feedback.pushInfo("Raster to Geohash DGGS...")
 
     mem_layer = QgsVectorLayer(f"Polygon?crs={crs.authid()}", "Geohash Grid", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -860,27 +820,18 @@ def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
         if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
             continue
         
-        bbox =  geohash.bbox(geohash_id)
-        min_lat, min_lon = bbox['s'], bbox['w']  # Southwest corner
-        max_lat, max_lon = bbox['n'], bbox['e']  # Northeast corner        
+        cell_polygon = geohash2geo(geohash_id)
+        if not cell_polygon:
+            continue
 
-        # Define the polygon based on the bounding box
-        cell_polygon = Polygon([
-            [min_lon, min_lat],  # Bottom-left corner
-            [max_lon, min_lat],  # Bottom-right corner
-            [max_lon, max_lat],  # Top-right corner
-            [min_lon, max_lat],  # Top-left corner
-            [min_lon, min_lat]   # Closing the polygon (same as the first point)
-        ])
+        
         
         center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
 
-        qgs_polygon = QgsGeometry.fromPolygonXY(
-            [[QgsPointXY(lon, lat) for lon, lat in cell_polygon.exterior.coords]]
-        )
+        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
-        feature.setGeometry(qgs_polygon)
+        feature.setGeometry(cell_geom)
         attr_values = [
             geohash_id,
             resolution,
@@ -900,7 +851,7 @@ def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
 
     if feedback:
         feedback.setProgress(100)
-        feedback.pushInfo("geohash DGGS generation completed.")
+        feedback.pushInfo("Raster to Geohash DGGS completed.")
 
     return mem_layer
 
@@ -941,7 +892,7 @@ def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
     if feedback:
         feedback.pushInfo(f"{len(tilecode_ids)} pixels processed.")
         feedback.setProgress(0)
-        feedback.pushInfo("Generating Tilecode DGGS...")
+        feedback.pushInfo("Raster to Tilecode DGGS...")
 
     mem_layer = QgsVectorLayer(f"Polygon?crs={crs.authid()}", "tilecode Grid", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -973,31 +924,17 @@ def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
         results = ident.results()
         if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
             continue
-        
-        match = re.match(r'z(\d+)x(\d+)y(\d+)', tilecode_id)
-        z = int(match.group(1))
-        x = int(match.group(2))
-        y = int(match.group(3))
-
-        bounds = mercantile.bounds(x, y, z)    
-        min_lat, min_lon = bounds.south, bounds.west
-        max_lat, max_lon = bounds.north, bounds.east
-        cell_polygon = Polygon([
-            [min_lon, min_lat],  # Bottom-left corner
-            [max_lon, min_lat],  # Bottom-right corner
-            [max_lon, max_lat],  # Top-right corner
-            [min_lon, max_lat],  # Top-left corner
-            [min_lon, min_lat]   # Closing the polygon (same as the first point)
-        ])        
+                
+        cell_polygon = tilecode2geo(tilecode_id)
+        if not cell_polygon:
+            continue
 
         center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
 
-        qgs_polygon = QgsGeometry.fromPolygonXY(
-            [[QgsPointXY(lon, lat) for lon, lat in cell_polygon.exterior.coords]]
-        )
+        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
-        feature.setGeometry(qgs_polygon)
+        feature.setGeometry(cell_geom)
         attr_values = [
             tilecode_id,
             resolution,
@@ -1017,7 +954,7 @@ def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
 
     if feedback:
         feedback.setProgress(100)
-        feedback.pushInfo("Tilecode DGGS generation completed.")
+        feedback.pushInfo("Raster to Tilecode DGGS completed.")
 
     return mem_layer
 
@@ -1058,7 +995,7 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
     if feedback:
         feedback.pushInfo(f"{len(quadkey_ids)} pixels processed.")
         feedback.setProgress(0)
-        feedback.pushInfo("Generating Quadkey DGGS...")
+    feedback.pushInfo("Raster to Quadkey DGGS...")
 
     mem_layer = QgsVectorLayer(f"Polygon?crs={crs.authid()}", "Quadkey Grid", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -1091,31 +1028,17 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
         if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
             continue
         
-        tile = mercantile.quadkey_to_tile(quadkey_id)    
-        # Format as tilecode_id
-        z = tile.z
-        x = tile.x
-        y = tile.y
+        cell_polygon = quadkey2geo(quadkey_id)
+        if not cell_polygon:
+            continue
         
-        bounds = mercantile.bounds(x, y, z)    
-        min_lat, min_lon = bounds.south, bounds.west
-        max_lat, max_lon = bounds.north, bounds.east
-        cell_polygon = Polygon([
-            [min_lon, min_lat],  # Bottom-left corner
-            [max_lon, min_lat],  # Bottom-right corner
-            [max_lon, max_lat],  # Top-right corner
-            [min_lon, max_lat],  # Top-left corner
-            [min_lon, min_lat]   # Closing the polygon (same as the first point)
-        ])        
-
+        
         center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
 
-        qgs_polygon = QgsGeometry.fromPolygonXY(
-            [[QgsPointXY(lon, lat) for lon, lat in cell_polygon.exterior.coords]]
-        )
+        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
-        feature.setGeometry(qgs_polygon)
+        feature.setGeometry(cell_geom)
         attr_values = [
             quadkey_id,
             resolution,
@@ -1135,7 +1058,7 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
 
     if feedback:
         feedback.setProgress(100)
-        feedback.pushInfo("Quadkey DGGS generation completed.")
+        feedback.pushInfo("Raster to Quadkey DGGS completed.")
 
     return mem_layer
 
