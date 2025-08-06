@@ -54,7 +54,7 @@ if (platform.system() == 'Windows'):
     
 from ...utils.imgs import Imgs
 from shapely.geometry import box
-from vgrid.generator.settings import ISEA4T_RES_ACCURACY_DICT
+from vgrid.utils.constants import ISEA4T_RES_ACCURACY_DICT
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from vgrid.utils.antimeridian import fix_polygon
 

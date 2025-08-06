@@ -21,7 +21,7 @@ from vgrid.utils.geometry import (
     graticule_dggs_metrics, geodesic_dggs_metrics,rhealpix_cell_to_polygon,
     isea3h_cell_to_polygon
 )
-from vgrid.generator.settings import ISEA3H_ACCURACY_RES_DICT
+from vgrid.utils.constants import ISEA3H_ACCURACY_RES_DICT
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
@@ -132,22 +132,11 @@ def s22qgsfeature(feature, s2_token):
     s2_feature.setAttributes(all_attributes)    
     return s2_feature
 
-def a52qgsfeature(feature, a5_id):
-    cell_polygon = a52geo(a5_id)
+def a52qgsfeature(feature, a5_hex):
+    cell_polygon = a52geo(a5_hex)
     num_edges = 5    
-    if isinstance(a5_id, str):
-        # Try to convert string to int first (for numeric strings)
-        try:
-            cell_bigint = int(a5_id)
-        except ValueError:
-            # If it's not a numeric string, treat as hex string
-            cell_bigint = a5.hex_to_bigint(a5_id)
-    elif isinstance(a5_id, int):
-        # Assume it's already a bigint
-        cell_bigint = a5_id
-    
+    cell_bigint = a5.hex_to_bigint(a5_hex)    
     resolution = a5.get_resolution(cell_bigint)
-    a5_hex = a5.bigint_to_hex(cell_bigint)
     
     center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 

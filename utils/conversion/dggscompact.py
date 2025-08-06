@@ -221,36 +221,36 @@ def a5compact(a5_layer: QgsVectorLayer, A5ID_field=None, feedback=None) -> QgsVe
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    a5_ids = [
+    a5_hexes = [
         feature[A5ID_field]
         for feature in a5_layer.getFeatures()
         if feature[A5ID_field]
     ]
-    a5_ids = list(set(a5_ids))
+    a5_hexes = list(set(a5_hexes))
     
-    if a5_ids:
+    if a5_hexes:
         try:
-            a5_ids_compact = a5_compact(a5_ids)
+            a5_hexes_compact = a5_compact(a5_hexes)
         except:
             raise QgsProcessingException("Compact cells failed. Please check your A5 ID field.")
 
-        total_cells = len(a5_ids_compact)
+        total_cells = len(a5_hexes_compact)
 
-        for i, a5_id_compact in enumerate(a5_ids_compact):
+        for i, a5_hex_compact in enumerate(a5_hexes_compact):
             if feedback:
                 feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
 
             try:
-                cell_polygon = a52geo(a5_id_compact)
+                cell_polygon = a52geo(a5_hex_compact)
             except:
                 raise QgsProcessingException("Compact cells failed. Please check your A5 ID field.")
             
             if not cell_polygon.is_valid:
                 continue
             
-            resolution = a5.get_resolution(a5.hex_to_bigint(a5_id_compact))
+            resolution = a5.get_resolution(a5.hex_to_bigint(a5_hex_compact))
             num_edges = 5  # A5 cells are pentagons
             center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
             
@@ -259,7 +259,7 @@ def a5compact(a5_layer: QgsVectorLayer, A5ID_field=None, feedback=None) -> QgsVe
             a5_feature.setGeometry(cell_geom)
             
             attributes = {
-                "a5": a5_id_compact,
+                "a5": a5_hex_compact,
                 "resolution": resolution,
                 "center_lat": center_lat,
                 "center_lon": center_lon,

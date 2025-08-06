@@ -2,7 +2,8 @@ from vgrid.dggs import s2, olc, mercantile
 from ...utils.resampling import dggsgrid
 
 import h3
-import os, re
+import a5
+import re
 from vgrid.stats.s2stats import s2_metrics
 from vgrid.stats.a5stats import a5_metrics
 from vgrid.stats.rhealpixstats import rhealpix_metrics
@@ -67,7 +68,7 @@ def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, fe
             _, _, from_area = s2_metrics(from_resolution)
 
         elif from_dggs == 'a5':
-            from_resolution = len(from_dggs_id)
+            from_resolution = a5.get_resolution(a5.hex_to_bigint(from_dggs_id))
             _, _, from_area = a5_metrics(from_resolution)
 
         elif from_dggs == 'rhealpix':
@@ -125,6 +126,14 @@ def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, fe
         elif to_dggs == 's2':
             for res in range(31):
                 _, _, avg_area = s2_metrics(res)
+                diff = abs(avg_area - from_area)
+                if diff < min_diff:
+                    min_diff = diff
+                    nearest_resolution = res
+        
+        elif to_dggs == 'a5':
+            for res in range(30):
+                _, _, avg_area = a5_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff

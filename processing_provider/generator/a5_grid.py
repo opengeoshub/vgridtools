@@ -46,6 +46,7 @@ from ...utils.imgs import Imgs
 import random
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from vgrid.conversion.dggs2geo.a52geo import a52geo
+from vgrid.conversion.latlon2dggs import latlon2a5
 
 class A5Grid(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'
@@ -235,16 +236,13 @@ class A5Grid(QgsProcessingAlgorithm):
                 
                 try:
                     # Convert centroid to A5 cell ID using direct A5 functions
-                    cell_id = a5.lonlat_to_cell([centroid_lon, centroid_lat], self.resolution)
-                    cell_polygon = a52geo(cell_id)
+                    a5_hex = latlon2a5(centroid_lat, centroid_lon, self.resolution)
+                    cell_polygon = a52geo(a5_hex)
                     
-                    if cell_polygon is not None:
-                        a5_hex = a5.bigint_to_hex(cell_id)
-                        
+                    if cell_polygon is not None:                        
                         # Only add if this A5 hex code hasn't been seen before
                         if a5_hex not in seen_a5_hex:
-                            seen_a5_hex.add(a5_hex)
-                            
+                            seen_a5_hex.add(a5_hex)                             
                             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                             a5_feature = QgsFeature()
                             a5_feature.setGeometry(cell_geometry)

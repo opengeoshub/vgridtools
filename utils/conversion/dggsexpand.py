@@ -230,33 +230,33 @@ def a5expand(a5_layer: QgsVectorLayer, resolution: int, A5ID_field=None, feedbac
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    a5_ids = [
+    a5_hexes = [
         feature[A5ID_field]
         for feature in a5_layer.getFeatures()
         if feature[A5ID_field]
     ]
-    a5_ids = list(set(a5_ids))
+    a5_hexes = list(set(a5_hexes))
     
-    if a5_ids:
+    if a5_hexes:
         try:
-            max_res = max(a5.get_resolution(a5.hex_to_bigint(a5_id)) for a5_id in a5_ids)
+            max_res = max(a5.get_resolution(a5.hex_to_bigint(a5_hex)) for a5_hex in a5_hexes)
             if resolution <= max_res:
                 if feedback:
                     feedback.reportError(f"Target expand resolution ({resolution}) must > {max_res}.")
                     return None
-            a5_ids_expand = a5_expand(a5_ids, resolution)
+            a5_hexes_expand = a5_expand(a5_hexes, resolution)
         except:
             raise QgsProcessingException("Expand cells failed. Please check your A5 cell Ids.")
             
-        total_cells = len(a5_ids_expand)
+        total_cells = len(a5_hexes_expand)
 
-        for i, a5_id_expand in enumerate(a5_ids_expand):
+        for i, a5_hex_expand in enumerate(a5_hexes_expand):
             if feedback:
                 feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
 
-            cell_polygon = a52geo(a5_id_expand)
+            cell_polygon = a52geo(a5_hex_expand)
             
             if not cell_polygon.is_valid:
                 continue
@@ -269,7 +269,7 @@ def a5expand(a5_layer: QgsVectorLayer, resolution: int, A5ID_field=None, feedbac
             a5_feature.setGeometry(cell_geom)
             
             attributes = {
-                "a5": a5_id_expand,
+                "a5": a5_hex_expand,
                 "resolution": resolution,
                 "center_lat": center_lat,
                 "center_lon": center_lon,

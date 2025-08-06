@@ -69,7 +69,7 @@ class GeohashBin(QgsProcessingAlgorithm):
 
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_quad.svg'))
-    
+
     def displayName(self):
         return self.tr('Geohash Bin', 'Geohash Bin')
 

@@ -55,8 +55,9 @@ from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
 from vgrid.conversion.dggscompact.a5compact import a5_compact
 from vgrid.dggs import qtm
 from vgrid.generator.geohashgrid import expand_geohash_bbox
-from vgrid.generator.settings import INITIAL_GEOHASHES, ISEA4T_RES_ACCURACY_DICT,ISEA3H_ACCURACY_RES_DICT
-
+from vgrid.generator.settings import INITIAL_GEOHASHES
+from vgrid.utils.constants import ISEA4T_RES_ACCURACY_DICT,ISEA3H_RES_ACCURACY_DICT
+    
 if (platform.system() == 'Windows'):
     from vgrid.dggs.eaggr.eaggr import Eaggr
     from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
@@ -67,7 +68,7 @@ if (platform.system() == 'Windows'):
     from vgrid.conversion.dggscompact.isea4tcompact import isea4t_compact
     from vgrid.conversion.dggscompact.isea3hcompact import isea3h_compact
     from vgrid.generator.isea3hgrid import get_isea3h_children_cells_within_bbox                                   
-    from vgrid.generator.settings import ISEA3H_RES_ACCURACY_DICT,ISEA3H_ACCURACY_RES_DICT
+    from vgrid.utils.constants import ISEA3H_RES_ACCURACY_DICT,ISEA3H_ACCURACY_RES_DICT
     isea4t_dggs = Eaggr(Model.ISEA4T)
     isea3h_dggs = Eaggr(Model.ISEA3H)
 
@@ -873,20 +874,20 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
         if i not in a5_field_indices:
             preserved_attributes.append(attr)
 
-    a5_ids = [f["a5"] for f in qgs_features if f["a5"]]
+    a5_hexes = [f["a5"] for f in qgs_features if f["a5"]]
 
-    a5_ids_compact = a5_compact(a5_ids)
+    a5_hexes_compact = a5_compact(a5_hexes)
     a5_features = []
-    total_cells = len(a5_ids_compact)
+    total_cells = len(a5_hexes_compact)
     if feedback:
         feedback.pushInfo(f"Compacting cells")   
         feedback.setProgress(0)
         
-    for i, a5_id_compact in enumerate(a5_ids_compact):
+    for i, a5_hex_compact in enumerate(a5_hexes_compact):
         if feedback and feedback.isCanceled():
             return []
-        cell_polygon = a52geo(a5_id_compact)
-        cell_resolution = a5.get_resolution(a5.hex_to_bigint(a5_id_compact))
+        cell_polygon = a52geo(a5_hex_compact)
+        cell_resolution = a5.get_resolution(a5.hex_to_bigint(a5_hex_compact))
         num_edges = 5  # A5 cells are pentagons
         center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -903,7 +904,7 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
                 attr_index += 1
 
         # Overwrite A5-specific attributes
-        a5_feature['a5'] = a5_id_compact
+        a5_feature['a5'] = a5_hex_compact
         a5_feature['resolution'] = cell_resolution
         a5_feature['center_lat'] = center_lat
         a5_feature['center_lon'] = center_lon

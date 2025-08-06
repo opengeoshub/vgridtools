@@ -8,7 +8,7 @@
   </p>
 </p>
 <div align="center">
-  <img src="images/readme/dggs.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggs.png">
 </div>
 
 [![image](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -65,17 +65,17 @@ pip.main(['install', 'vgrid --upgrade'])
 ### Use the same command after upgrading vgridtools
 
 <div align="center">
-  <img src="images/readme/vgriddialog.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/vgriddialog.png">
 </div>
 
 ### When QGIS starts, navigate to Plugins → Python Console, select ***Show Editor***, paste the copied commands, and click ***Run Script***.
 <div align="center">
-<img src="images/readme/vgridinstall.png">
+<img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/vgridinstall.png">
 </div>
 
 ### Restart QGIS, and you'll see DGGS Vgrid in the Processing Toolbox.
 <div align="center">
-<img src="images/readme/vgridtools.png">
+<img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/vgridtools.png">
 </div>
 
 ## DGGS Conversion
@@ -84,82 +84,82 @@ pip.main(['install', 'vgrid --upgrade'])
 
 Convert DGGS Cell ID to DGGS.
 <div align="center">
-  <img src="images/readme/cellid2dggs.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/cellid2dggs.png">
 </div>
 
 ### Vector to DGGS
 
 Convert Vector layers to DGGS.
 <div align="center">
-  <img src="images/readme/vertor2dggs.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/vertor2dggs.png">
 </div>
 Uncompact:
 <div align="center">
-  <img src="images/readme/vertor2dggs_uncompact.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/vertor2dggs_uncompact.png">
 </div>
 Compact:
 <div align="center">
-  <img src="images/readme/vertor2dggs_compact.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/vertor2dggs_compact.png">
 </div>
 
 ### Raster to DGGS
 
 Convert raster layers in geographic CRS to DGGS.
 <div align="center">
-  <img src="images/readme/raster2dggs.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/raster2dggs.png">
 </div>
 
 <div align="center">
-  <img src="images/readme/raster2dggs_h3.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/raster2dggs_h3.png">
 </div>
 
 
 ### DGGS Compact
 
 <div align="center">
-  <img src="images/readme/dggscompact.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggscompact.png">
 </div>
 
 <div align="center">
-  <img src="images/readme/dggscompact_isea4t.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggscompact_isea4t.png">
 </div>
 
 ### DGGS Expand
 
 <div align="center">
-  <img src="images/readme/dggsexpand.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsexpand.png">
 </div>
 
 <div align="center">
-  <img src="images/readme/dggsexpand_isea4t.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsexpand_isea4t.png">
 </div>
 
 ## DGGS Binning
 ### Binning point layer to DGGS.
 <div align="center">
-  <img src="images/readme/dggsbinning.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsbinning.png">
 </div>
 
 <div align="center">
-  <img src="images/readme/dggsbinning_h3.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsbinning_h3.png">
 </div>
 
 ## DGGS Resampling
 <div align="center">
-  <img src="images/readme/dggsresampling.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsresampling.png">
 </div>
 
 <div align="center">
-  <img src="images/readme/dggsresampling_h32s2.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsresampling_h32s2.png">
 </div>
 
 ## DGGS Generator
 <div align="center">
-  <img src="images/readme/dggsgenerator.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsgenerator.png">
 </div>
 
 <div align="center">
-  <img src="images/readme/dggsgenerator_h3.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsgenerator_h3.png">
 </div>
 
 
@@ -178,7 +178,7 @@ Convert (lat, long) to H3 ID.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2h3.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2h3.png">
 </div>
 
 ### latlon2s2
@@ -194,7 +194,7 @@ Convert (lat, long) to S2 Token.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2s2.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2s2.png">
 </div>
 
 
@@ -211,7 +211,7 @@ Convert (lat, long) to A5 Hex.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2a5.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2a5.png">
 </div>
 
 
@@ -228,7 +228,7 @@ Convert (lat, long) to rHEALPix ID.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2rhealpix.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2rhealpix.png">
 </div>
 
 ### latlon2isea4t
@@ -244,7 +244,7 @@ Convert (lat, long) to OpenEAGGR ISEA4T ID (Windows only).
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2isea4t.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2isea4t.png">
 </div>
 
 ### latlon2isea3h
@@ -260,7 +260,7 @@ Convert (lat, long) to OpenEAGGR ISEA3H ID (Windows only).
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2isea3h.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2isea3h.png">
 </div>
 
 ### latlon2qtm
@@ -276,7 +276,7 @@ Convert (lat, long) to QTM.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2qtm.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2qtm.png">
 </div>
 
 ### latlon2olc
@@ -292,7 +292,7 @@ Convert (lat, long) to Open Location Code (OLC)/ Google Plus Code.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2olc.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2olc.png">
 </div>
 
 ### latlon2geohash
@@ -308,7 +308,7 @@ Convert (lat, long) to Geohash ID.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2geohash.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2geohash.png">
 </div>
 
 ### latlon2georef
@@ -324,7 +324,7 @@ Convert (lat, long) to GEOREF ID.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2georef.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2georef.png">
 </div>
 
 ### latlon2mgrs
@@ -340,7 +340,7 @@ Convert (lat, long) to MGRS ID.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2mgrs.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2mgrs.png">
 </div>
 
 ### latlon2tilecode
@@ -356,7 +356,7 @@ Convert (lat, long) to Tilecode ID.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2tilecode.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2tilecode.png">
 </div>
 
 ### latlon2quadkey
@@ -372,7 +372,7 @@ Convert (lat, long) to Quadkey ID.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2quadkey.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2quadkey.png">
 </div>
 
 ### latlon2maidenhead
@@ -388,7 +388,7 @@ Convert (lat, long) to Maidenhead ID.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2maidenhead.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2maidenhead.png">
 </div>
 
 ### latlon2gars
@@ -404,5 +404,5 @@ Convert (lat, long) to GARS Code.
 </li>
 <br/>
 <div align="center">
-  <img src="images/readme/latlon2gars.png">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2gars.png">
 </div>

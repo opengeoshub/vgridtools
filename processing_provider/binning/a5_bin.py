@@ -68,7 +68,7 @@ class A5Bin(QgsProcessingAlgorithm):
 
     def icon(self):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_a5.svg'))
-    
+
     def displayName(self):
         return self.tr('A5 Bin', 'A5 Bin')
 
@@ -83,7 +83,7 @@ class A5Bin(QgsProcessingAlgorithm):
     
     txt_en = 'A5 Bin'
     txt_vi = 'A5 Bin'
-    figure = '../images/tutorial/bin_a5.png'
+    figure = 'https://raw.githubusercontent.com/opengeoshub/vgridtools/main/ges/bin_a5.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW

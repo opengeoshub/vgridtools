@@ -10,6 +10,7 @@ from vgrid.dggs import s2, qtm, olc, mercantile
 from vgrid.generator.olcgrid import olc_refine_cell
 from vgrid.utils.geometry import geodesic_buffer, fix_h3_antimeridian_cells, geodesic_dggs_metrics, graticule_dggs_metrics,s2_cell_to_polygon, rhealpix_cell_to_polygon
 import a5
+from vgrid.conversion.latlon2dggs import latlon2a5
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.utils.antimeridian import fix_polygon
 import platform
@@ -19,7 +20,7 @@ if (platform.system() == 'Windows'):
     from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
     from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
     from vgrid.utils.geometry import isea4t_cell_to_polygon,fix_isea4t_antimeridian_cells
-    from vgrid.generator.settings import ISEA4T_RES_ACCURACY_DICT
+    from vgrid.utils.constants import ISEA4T_RES_ACCURACY_DICT
     from vgrid.generator.isea4tgrid import get_isea4t_children_cells_within_bbox
     isea4t_dggs = Eaggr(Model.ISEA4T)
     isea3h_dggs = Eaggr(Model.ISEA3H)
@@ -838,12 +839,10 @@ def generate_a5_grid(resolution, qgs_features, feedback=None):
             
             try:
                 # Convert centroid to A5 cell ID using direct A5 functions
-                cell_id = a5.lonlat_to_cell([centroid_lon, centroid_lat], resolution)
-                cell_polygon = a52geo(cell_id)
+                a5_hex = latlon2a5(centroid_lat, centroid_lon, resolution)
+                cell_polygon = a52geo(a5_hex)
                 
-                if cell_polygon is not None:
-                    a5_hex = a5.bigint_to_hex(cell_id)
-                    
+                if cell_polygon is not None:        
                     # Only add if this A5 hex code hasn't been seen before
                     if a5_hex not in seen_a5_hex:
                         seen_a5_hex.add(a5_hex)
