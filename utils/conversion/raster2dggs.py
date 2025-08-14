@@ -91,6 +91,7 @@ def raster2h3(raster_layer: QgsRasterLayer, resolution: int, feedback=None) -> Q
     fields.append(QgsField("center_lon", QVariant.Double))
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
         fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
     mem_provider.addAttributes(fields)
@@ -114,7 +115,7 @@ def raster2h3(raster_layer: QgsRasterLayer, resolution: int, feedback=None) -> Q
             continue        
 
         num_edges = 5 if h3.is_pentagon(h3_index) else 6
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
         feature = QgsFeature()
         feature.setGeometry(cell_geom)
@@ -125,6 +126,7 @@ def raster2h3(raster_layer: QgsRasterLayer, resolution: int, feedback=None) -> Q
             "center_lon": center_lon,
             "avg_edge_len": avg_edge_len,
             "cell_area": cell_area,
+            "cell_perimeter": cell_perimeter,
         }
         for i in range(band_count):
             attributes[f"band_{i + 1}"] = results.get(i + 1, None)
@@ -183,6 +185,7 @@ def raster2s2(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
     fields.append(QgsField("center_lon", QVariant.Double))
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
         fields.append(QgsField(f"band_{i+1}", QVariant.Double))
     mem_provider.addAttributes(fields)
@@ -206,7 +209,7 @@ def raster2s2(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
             continue
         cell_polygon = s22geo(s2_token)
         num_edges = 4
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
@@ -218,6 +221,7 @@ def raster2s2(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
             center_lon,
             avg_edge_len,
             cell_area,
+            cell_perimeter,
         ]
         attr_values.extend(results.get(i + 1, None) for i in range(band_count))
         feature.setAttributes(attr_values)
@@ -277,6 +281,7 @@ def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
     fields.append(QgsField("center_lon", QVariant.Double))
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
         fields.append(QgsField(f"band_{i+1}", QVariant.Double))
     mem_provider.addAttributes(fields)
@@ -302,7 +307,7 @@ def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)   
                 
         num_edges = 5 
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
 
         feature = QgsFeature()
         feature.setGeometry(cell_geom)
@@ -313,6 +318,7 @@ def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
             center_lon,
             avg_edge_len,
             cell_area,
+            cell_perimeter,
         ]
         attr_values.extend(results.get(i + 1, None) for i in range(band_count))
         feature.setAttributes(attr_values)
@@ -379,6 +385,7 @@ def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
     fields.append(QgsField("center_lon", QVariant.Double))
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
         fields.append(QgsField(f"band_{i+1}", QVariant.Double))
 
@@ -407,7 +414,7 @@ def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
         if not cell_polygon:
             continue    
         num_edges = 3 if rhealpix_cell.ellipsoidal_shape() == 'dart' else 4
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
@@ -419,7 +426,8 @@ def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
             center_lon,
             avg_edge_len,
             cell_area,
-        ]
+            cell_perimeter,
+            ]
         attr_values.extend(results.get(i + 1, None) for i in range(band_count))
         feature.setAttributes(attr_values)
 
@@ -486,6 +494,7 @@ def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Qg
         fields.append(QgsField("center_lon", QVariant.Double))
         fields.append(QgsField("avg_edge_len", QVariant.Double))
         fields.append(QgsField("cell_area", QVariant.Double))
+        fields.append(QgsField("cell_perimeter", QVariant.Double))
         for i in range(band_count):
             fields.append(QgsField(f"band_{i+1}", QVariant.Double))
 
@@ -515,7 +524,7 @@ def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Qg
             
             num_edges = 3
             
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -528,6 +537,7 @@ def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Qg
                 center_lon,
                 avg_edge_len,
                 cell_area,
+                cell_perimeter,
             ]
             attr_values.extend(results.get(i + 1, None) for i in range(band_count))
             feature.setAttributes(attr_values)
@@ -593,6 +603,7 @@ def raster2qtm(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
     fields.append(QgsField("center_lon", QVariant.Double))
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
         fields.append(QgsField(f"band_{i+1}", QVariant.Double))
 
@@ -617,7 +628,7 @@ def raster2qtm(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
         if not cell_polygon:
             continue
         num_edges = 3
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -630,6 +641,7 @@ def raster2qtm(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
             center_lon,
             avg_edge_len,
             cell_area,
+            cell_perimeter,
         ]
         attr_values.extend(results.get(i + 1, None) for i in range(band_count))
         feature.setAttributes(attr_values)
@@ -695,6 +707,7 @@ def raster2olc(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
     fields.append(QgsField("cell_width", QVariant.Double))
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
         fields.append(QgsField(f"band_{i+1}", QVariant.Double))
 
@@ -720,7 +733,7 @@ def raster2olc(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
         if not cell_polygon:
             continue       
         
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -733,7 +746,8 @@ def raster2olc(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
             center_lon,
             cell_width,
             cell_height,
-            cell_area
+            cell_area,
+            cell_perimeter,
         ]
         attr_values.extend(results.get(i + 1, None) for i in range(band_count))
         feature.setAttributes(attr_values)
@@ -800,6 +814,7 @@ def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
     fields.append(QgsField("cell_width", QVariant.Double))
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
         fields.append(QgsField(f"band_{i+1}", QVariant.Double))
 
@@ -826,7 +841,7 @@ def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
 
         
         
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -839,7 +854,8 @@ def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
             center_lon,
             cell_width,
             cell_height,
-            cell_area
+            cell_area,
+            cell_perimeter,
         ]
         attr_values.extend(results.get(i + 1, None) for i in range(band_count))
         feature.setAttributes(attr_values)
@@ -905,6 +921,7 @@ def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
     fields.append(QgsField("cell_width", QVariant.Double))
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
         fields.append(QgsField(f"band_{i+1}", QVariant.Double))
 
@@ -929,7 +946,7 @@ def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
         if not cell_polygon:
             continue
 
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -942,7 +959,8 @@ def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
             center_lon,
             cell_width,
             cell_height,
-            cell_area
+            cell_area,
+            cell_perimeter,
         ]
         attr_values.extend(results.get(i + 1, None) for i in range(band_count))
         feature.setAttributes(attr_values)
@@ -1008,6 +1026,7 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
     fields.append(QgsField("cell_width", QVariant.Double))
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
         fields.append(QgsField(f"band_{i+1}", QVariant.Double))
 
@@ -1033,7 +1052,7 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
             continue
         
         
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -1046,14 +1065,15 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
             center_lon,
             cell_width,
             cell_height,
-            cell_area
+            cell_area,
+            cell_perimeter,
         ]
         attr_values.extend(results.get(i + 1, None) for i in range(band_count))
         feature.setAttributes(attr_values)
 
         mem_provider.addFeatures([feature])
 
-        if feedback and i % 100 == 0:
+        if feedback and i % 100 == 0:   
             feedback.setProgress(int(100 * i / len(quadkey_ids)))
 
     if feedback:

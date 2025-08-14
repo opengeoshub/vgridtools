@@ -147,7 +147,7 @@ class S2Grid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -216,8 +216,8 @@ class S2Grid(QgsProcessingAlgorithm):
             s2_feature.setGeometry(cell_geometry)
             
             num_edges = 4
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-            s2_feature.setAttributes([s2_token, self.resolution,center_lat, center_lon, avg_edge_len, cell_area])                    
+            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+            s2_feature.setAttributes([s2_token, self.resolution,center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter])                    
             sink.addFeature(s2_feature, QgsFeatureSink.FastInsert)                    
 
             if feedback.isCanceled():

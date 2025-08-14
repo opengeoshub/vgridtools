@@ -155,7 +155,7 @@ class OLCGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('cell_width', QVariant.Double))
         output_fields.append(QgsField('cell_height', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
     
     def generate_olc_grid(self, resolution):
@@ -276,8 +276,8 @@ class OLCGrid(QgsProcessingAlgorithm):
                 
                 olc_feature = QgsFeature()
                 olc_feature.setGeometry(cell_geometry)
-                center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)                     
-                olc_feature.setAttributes([olc_id,self.resolution,center_lat,center_lon,cell_width, cell_height,cell_area])
+                center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)                     
+                olc_feature.setAttributes([olc_id,self.resolution,center_lat,center_lon,cell_width, cell_height,cell_area,cell_perimeter])
                 sink.addFeature(olc_feature, QgsFeatureSink.FastInsert) 
                 # sink.addFeature(qgs_feature, QgsFeatureSink.FastInsert)
                 if feedback.isCanceled():

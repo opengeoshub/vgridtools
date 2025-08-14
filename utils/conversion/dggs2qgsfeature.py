@@ -72,6 +72,7 @@ def h32qgsfeature(feature, h3_id):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     
     # Combine original fields and new fields
     all_fields = QgsFields()
@@ -83,9 +84,9 @@ def h32qgsfeature(feature, h3_id):
     h3_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     
-    new_attributes = [h3_id,resolution, center_lat, center_lon, avg_edge_len,cell_area]
+    new_attributes = [h3_id,resolution, center_lat, center_lon, avg_edge_len,cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     h3_feature.setAttributes(all_attributes)    
@@ -96,7 +97,7 @@ def s22qgsfeature(feature, s2_token):
     cell_polygon = s22geo(s2_token)
     resolution = cell_id.level()
     num_edges = 4
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
     
@@ -115,7 +116,7 @@ def s22qgsfeature(feature, s2_token):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -126,7 +127,7 @@ def s22qgsfeature(feature, s2_token):
     s2_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [s2_token,resolution, center_lat, center_lon, avg_edge_len,cell_area]
+    new_attributes = [s2_token,resolution, center_lat, center_lon, avg_edge_len,cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     s2_feature.setAttributes(all_attributes)    
@@ -138,7 +139,7 @@ def a52qgsfeature(feature, a5_hex):
     cell_bigint = a5.hex_to_bigint(a5_hex)    
     resolution = a5.get_resolution(cell_bigint)
     
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
     
     a5_feature = QgsFeature()
@@ -156,7 +157,7 @@ def a52qgsfeature(feature, a5_hex):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -167,7 +168,7 @@ def a52qgsfeature(feature, a5_hex):
     a5_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [a5_hex,resolution, center_lat, center_lon, avg_edge_len,cell_area]
+    new_attributes = [a5_hex,resolution, center_lat, center_lon, avg_edge_len,cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     a5_feature.setAttributes(all_attributes)    
@@ -185,7 +186,7 @@ def rhealpix2qgsfeature(feature, rhealpix_id):
     if rhealpix_cell.ellipsoidal_shape() == 'dart':
         num_edges = 3
     
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
     
@@ -205,7 +206,7 @@ def rhealpix2qgsfeature(feature, rhealpix_id):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -216,7 +217,7 @@ def rhealpix2qgsfeature(feature, rhealpix_id):
     rhealpix_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [rhealpix_id, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+    new_attributes = [rhealpix_id, resolution, center_lat, center_lon, avg_edge_len,cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     rhealpix_feature.setAttributes(all_attributes)    
@@ -229,7 +230,7 @@ def isea4t2qgsfeature(feature, isea4t_id):
         cell_polygon = isea4t2geo(isea4t_id)
 
         num_edges = 3              
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
         isea4t_feature = QgsFeature()
@@ -247,7 +248,7 @@ def isea4t2qgsfeature(feature, isea4t_id):
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -257,7 +258,7 @@ def isea4t2qgsfeature(feature, isea4t_id):
         
         isea4t_feature.setFields(all_fields)        
         # Combine original attributes with new attributes
-        new_attributes = [isea4t_id, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+        new_attributes = [isea4t_id, resolution, center_lat, center_lon, avg_edge_len,cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         isea4t_feature.setAttributes(all_attributes)    
@@ -320,7 +321,7 @@ def isea3h2qgsfeature(feature, isea3h_id):
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -331,7 +332,7 @@ def isea3h2qgsfeature(feature, isea3h_id):
         isea3h_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [isea3h_id, resolution, center_lat, center_lon, round(avg_edge_len,3),round(cell_area,3)]
+        new_attributes = [isea3h_id, resolution, center_lat, center_lon, round(avg_edge_len,3),round(cell_area,3),round(cell_perimeter,3)]
         all_attributes = original_attributes + new_attributes
         
         isea3h_feature.setAttributes(all_attributes)    
@@ -343,7 +344,7 @@ def ease2qgsfeature(feature, ease_id):
     cell_polygon = ease2geo(ease_id)
     
     num_edges = 4        
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
     ease_feature = QgsFeature()
@@ -361,7 +362,7 @@ def ease2qgsfeature(feature, ease_id):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -372,7 +373,7 @@ def ease2qgsfeature(feature, ease_id):
     ease_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [ease_id, resolution, center_lat, center_lon, avg_edge_len,cell_area]
+    new_attributes = [ease_id, resolution, center_lat, center_lon, avg_edge_len,cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     ease_feature.setAttributes(all_attributes)    
@@ -384,7 +385,7 @@ def qtm2qgsfeature(feature, qtm_id):
     cell_polygon = qtm2geo(qtm_id)
     resolution = len(qtm_id)
     num_edges = 3              
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
         
     qtm_feature = QgsFeature()
@@ -402,7 +403,7 @@ def qtm2qgsfeature(feature, qtm_id):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -413,7 +414,7 @@ def qtm2qgsfeature(feature, qtm_id):
     qtm_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [qtm_id, resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+    new_attributes = [qtm_id, resolution, center_lat, center_lon,  avg_edge_len, cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     qtm_feature.setAttributes(all_attributes)
@@ -424,7 +425,7 @@ def olc2qgsfeature(feature, olc_id):
     cell_polygon = olc2geo(olc_id)
     coord = olc.decode(olc_id)         
     resolution = coord.codeLength 
-    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
 
     # Get all attributes from the input feature
     original_attributes = feature.attributes()
@@ -439,7 +440,7 @@ def olc2qgsfeature(feature, olc_id):
     new_fields.append(QgsField("cell_width", QVariant.Double))
     new_fields.append(QgsField("cell_height", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -453,7 +454,7 @@ def olc2qgsfeature(feature, olc_id):
     olc_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [olc_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area]
+    new_attributes = [olc_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     olc_feature.setAttributes(all_attributes)    
@@ -494,7 +495,7 @@ def mgrs2qgsfeature(feature, mgrs_id):
     ])
     
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt) 
-    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
     
     try:
         gzd_json_path = os.path.join(os.path.dirname(__file__), 'gzd.geojson')    
@@ -511,7 +512,7 @@ def mgrs2qgsfeature(feature, mgrs_id):
                 intersected_polygon = cell_polygon.intersection(gzd_geom)  
                 if intersected_polygon:
                     cell_geometry = QgsGeometry.fromWkt(intersected_polygon.wkt) 
-                    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(intersected_polygon)
+                    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(intersected_polygon)
     except:
         pass    
     
@@ -528,7 +529,7 @@ def mgrs2qgsfeature(feature, mgrs_id):
     new_fields.append(QgsField("cell_width", QVariant.Double))
     new_fields.append(QgsField("cell_height", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -541,7 +542,7 @@ def mgrs2qgsfeature(feature, mgrs_id):
     mgrs_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [mgrs_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area]
+    new_attributes = [mgrs_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     mgrs_feature.setAttributes(all_attributes)   
@@ -552,7 +553,7 @@ def mgrs2qgsfeature(feature, mgrs_id):
 def geohash2qgsfeature(feature, geohash_id):
     cell_polygon = geohash2geo(geohash_id)
     resolution = len(geohash_id)
-    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
         
     # Get all attributes from the input feature
     original_attributes = feature.attributes()
@@ -567,7 +568,7 @@ def geohash2qgsfeature(feature, geohash_id):
     new_fields.append(QgsField("cell_width", QVariant.Double))
     new_fields.append(QgsField("cell_height", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -581,7 +582,7 @@ def geohash2qgsfeature(feature, geohash_id):
     geohash_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [geohash_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area]
+    new_attributes = [geohash_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     geohash_feature.setAttributes(all_attributes) 
@@ -599,7 +600,7 @@ def georef2qgsfeature(feature, georef_id):
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ])
 
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
             
         # Get all attributes from the input feature
         original_attributes = feature.attributes()
@@ -614,7 +615,7 @@ def georef2qgsfeature(feature, georef_id):
         new_fields.append(QgsField("cell_width", QVariant.Double))
         new_fields.append(QgsField("cell_height", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -628,7 +629,7 @@ def georef2qgsfeature(feature, georef_id):
         georef_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [georef_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area]
+        new_attributes = [georef_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         georef_feature.setAttributes(all_attributes) 
@@ -661,7 +662,7 @@ def tilecode2qgsfeature(feature, tilecode_id):
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ])
         
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
             
         # Get all attributes from the input feature
         original_attributes = feature.attributes()
@@ -676,7 +677,7 @@ def tilecode2qgsfeature(feature, tilecode_id):
         new_fields.append(QgsField("cell_width", QVariant.Double))
         new_fields.append(QgsField("cell_height", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -690,7 +691,7 @@ def tilecode2qgsfeature(feature, tilecode_id):
         tilecode_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [tilecode_id, z, center_lat, center_lon, cell_width, cell_height,cell_area]
+        new_attributes = [tilecode_id, z, center_lat, center_lon, cell_width, cell_height,cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         tilecode_feature.setAttributes(all_attributes) 
@@ -716,7 +717,7 @@ def quadkey2qgsfeature(feature, quadkey_id):
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ])
 
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
             
         # Get all attributes from the input feature
         original_attributes = feature.attributes()
@@ -731,7 +732,7 @@ def quadkey2qgsfeature(feature, quadkey_id):
         new_fields.append(QgsField("cell_width", QVariant.Double))
         new_fields.append(QgsField("cell_height", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -745,7 +746,7 @@ def quadkey2qgsfeature(feature, quadkey_id):
         quadkey_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [quadkey_id, z, center_lat, center_lon, cell_width, cell_height,cell_area]
+        new_attributes = [quadkey_id, z, center_lat, center_lon, cell_width, cell_height,cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         quadkey_feature.setAttributes(all_attributes) 
@@ -757,7 +758,7 @@ def maidenhead2qgsfeature(feature, maidenhead_id):
     cell_polygon = maidenhead2geo(maidenhead_id)
     resolution = int(len(maidenhead_id) / 2)    
 
-    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
         
     # Get all attributes from the input feature
     original_attributes = feature.attributes()
@@ -772,7 +773,7 @@ def maidenhead2qgsfeature(feature, maidenhead_id):
     new_fields.append(QgsField("cell_width", QVariant.Double))
     new_fields.append(QgsField("cell_height", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -786,7 +787,7 @@ def maidenhead2qgsfeature(feature, maidenhead_id):
     maidenhead_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [maidenhead_id,resolution, center_lat, center_lon, cell_width, cell_height,cell_area]
+    new_attributes = [maidenhead_id,resolution, center_lat, center_lon, cell_width, cell_height,cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     maidenhead_feature.setAttributes(all_attributes) 
@@ -826,7 +827,7 @@ def gars2qgsfeature(feature, gars_id):
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ])
 
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
             
         # Get all attributes from the input feature
         original_attributes = feature.attributes()
@@ -841,7 +842,7 @@ def gars2qgsfeature(feature, gars_id):
         new_fields.append(QgsField("cell_width", QVariant.Double))
         new_fields.append(QgsField("cell_height", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -855,7 +856,7 @@ def gars2qgsfeature(feature, gars_id):
         gars_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [gars_id,resolution, center_lat, center_lon, cell_width, cell_height,cell_area]
+        new_attributes = [gars_id,resolution, center_lat, center_lon, cell_width, cell_height,cell_area,cell_perimeter ]
         all_attributes = original_attributes + new_attributes
         
         gars_feature.setAttributes(all_attributes) 

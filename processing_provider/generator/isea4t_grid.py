@@ -37,7 +37,7 @@ from qgis.core import (
     QgsVectorLayerSimpleLabeling
 )
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
+from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt  
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random, platform
@@ -49,7 +49,7 @@ if (platform.system() == 'Windows'):
     from vgrid.dggs.eaggr.enums.model import Model
     from vgrid.generator.isea4tgrid import get_isea4t_children_cells,get_isea4t_children_cells_within_bbox                                          
     from vgrid.utils.geometry import isea4t_cell_to_polygon,fix_isea4t_antimeridian_cells
-    from vgrid.generator.settings import ISEA4T_BASE_CELLS
+    from vgrid.utils.constants import ISEA4T_BASE_CELLS
     isea4t_dggs = Eaggr(Model.ISEA4T)
     
 from ...utils.imgs import Imgs
@@ -158,7 +158,7 @@ class ISEA4TGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):        
@@ -214,8 +214,8 @@ class ISEA4TGrid(QgsProcessingAlgorithm):
                     isea4t_feature.setGeometry(cell_geometry)                     
                     
                     num_edges = 3
-                    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-                    isea4t_feature.setAttributes([isea4t_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area])                    
+                    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+                    isea4t_feature.setAttributes([isea4t_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter])                    
                     sink.addFeature(isea4t_feature, QgsFeatureSink.FastInsert)       
         
                     if feedback.isCanceled():
@@ -245,8 +245,8 @@ class ISEA4TGrid(QgsProcessingAlgorithm):
                         
                     
                     num_edges = 3
-                    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-                    isea4t_feature.setAttributes([isea4t_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area])                    
+                    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+                    isea4t_feature.setAttributes([isea4t_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter])                    
                     sink.addFeature(isea4t_feature, QgsFeatureSink.FastInsert)       
         
                     if feedback.isCanceled():

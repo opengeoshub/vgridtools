@@ -153,7 +153,7 @@ class MaidenheadGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('cell_width', QVariant.Double))
         output_fields.append(QgsField('cell_height', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -203,8 +203,8 @@ class MaidenheadGrid(QgsProcessingAlgorithm):
                     maidenhead_feature = QgsFeature()
                     maidenhead_feature.setGeometry(cell_geometry)
                     
-                    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-                    maidenhead_feature.setAttributes([maidenhead_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+                    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
+                    maidenhead_feature.setAttributes([maidenhead_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter])                    
                     
                     sink.addFeature(maidenhead_feature, QgsFeatureSink.FastInsert)         
 
@@ -251,8 +251,8 @@ class MaidenheadGrid(QgsProcessingAlgorithm):
                     maidenhead_feature = QgsFeature()
                     maidenhead_feature.setGeometry(cell_geometry)
                     
-                    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-                    maidenhead_feature.setAttributes([maidenhead_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+                    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
+                    maidenhead_feature.setAttributes([maidenhead_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter])                    
                     
                     sink.addFeature(maidenhead_feature, QgsFeatureSink.FastInsert)         
 

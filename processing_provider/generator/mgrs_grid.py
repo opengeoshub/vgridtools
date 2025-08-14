@@ -161,7 +161,7 @@ class MGRSGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -242,17 +242,17 @@ class MGRSGrid(QgsProcessingAlgorithm):
                     
                     mgrs_feature = QgsFeature()
                     mgrs_feature.setGeometry(cell_geometry)
-                    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)                     
-                    mgrs_feature.setAttributes([mgrs_id,self.resolution,center_lat,center_lon,cell_width, cell_height,cell_area])
+                    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)                     
+                    mgrs_feature.setAttributes([mgrs_id,self.resolution,center_lat,center_lon,cell_width, cell_height,cell_area,cell_perimeter])
                     if not gzd_geom.contains(cell_polygon):
                         intersected_polygon = cell_polygon.intersection(gzd_geom)  
                         if intersected_polygon:
                             intersected_centroid_lat, intersected_centroid_lon  =  intersected_polygon.centroid.y, intersected_polygon.centroid.x,
                             interescted_mgrs_id = mgrs.toMgrs(intersected_centroid_lat, intersected_centroid_lon, self.resolution)            
-                            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(intersected_polygon)                     
+                            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(intersected_polygon)                     
                             cell_geometry = QgsGeometry.fromWkt(intersected_polygon.wkt)       
                             mgrs_feature.setGeometry(cell_geometry)
-                            mgrs_feature.setAttributes([interescted_mgrs_id,self.resolution,center_lat,center_lon,cell_width, cell_height,cell_area])
+                            mgrs_feature.setAttributes([interescted_mgrs_id,self.resolution,center_lat,center_lon,cell_width, cell_height,cell_area,cell_perimeter])
                 
                     sink.addFeature(mgrs_feature, QgsFeatureSink.FastInsert) 
 

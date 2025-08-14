@@ -65,6 +65,7 @@ def h3compact(h3_layer: QgsVectorLayer, H3ID_field=None,feedback=None) -> QgsVec
     fields.append(QgsField("center_lon", QVariant.Double))
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
 
     crs = h3_layer.crs().toWkt()
     mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "h3_compacted", "memory")
@@ -100,7 +101,7 @@ def h3compact(h3_layer: QgsVectorLayer, H3ID_field=None,feedback=None) -> QgsVec
             
             resolution = h3.get_resolution(h3_id_compact)
             num_edges = 5 if h3.is_pentagon(h3_id_compact) else 6
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
             
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             h3_feature = QgsFeature(fields)
@@ -113,6 +114,7 @@ def h3compact(h3_layer: QgsVectorLayer, H3ID_field=None,feedback=None) -> QgsVec
                 "center_lon": center_lon,
                 "avg_edge_len": avg_edge_len,
                 "cell_area": cell_area,
+                "cell_perimeter": cell_perimeter,
                 }
             h3_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([h3_feature])
@@ -138,7 +140,7 @@ def s2compact(s2_layer: QgsVectorLayer, S2ID_field=None, feedback=None) -> QgsVe
     fields.append(QgsField("center_lon", QVariant.Double))
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
-
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     crs = s2_layer.crs().toWkt()
     mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "s2_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -176,7 +178,7 @@ def s2compact(s2_layer: QgsVectorLayer, S2ID_field=None, feedback=None) -> QgsVe
         
         resolution = s2.CellId.from_token(s2_token_compact).level() 
         num_edges = 4
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
         s2_feature = QgsFeature(fields)
@@ -189,6 +191,7 @@ def s2compact(s2_layer: QgsVectorLayer, S2ID_field=None, feedback=None) -> QgsVe
             "center_lon": center_lon,
             "avg_edge_len": avg_edge_len,
             "cell_area": cell_area,
+            "cell_perimeter": cell_perimeter,
             }
         s2_feature.setAttributes([attributes[field.name()] for field in fields])
         mem_provider.addFeatures([s2_feature])
@@ -214,7 +217,7 @@ def a5compact(a5_layer: QgsVectorLayer, A5ID_field=None, feedback=None) -> QgsVe
     fields.append(QgsField("center_lon", QVariant.Double))
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
-
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     crs = a5_layer.crs().toWkt()
     mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "a5_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -252,7 +255,7 @@ def a5compact(a5_layer: QgsVectorLayer, A5ID_field=None, feedback=None) -> QgsVe
             
             resolution = a5.get_resolution(a5.hex_to_bigint(a5_hex_compact))
             num_edges = 5  # A5 cells are pentagons
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
             
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             a5_feature = QgsFeature(fields)
@@ -265,6 +268,7 @@ def a5compact(a5_layer: QgsVectorLayer, A5ID_field=None, feedback=None) -> QgsVe
                 "center_lon": center_lon,
                 "avg_edge_len": avg_edge_len,
                 "cell_area": cell_area,
+                "cell_perimeter": cell_perimeter,
                 }
             a5_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([a5_feature])
@@ -291,7 +295,7 @@ def rhealpixcompact(rhealpix_layer: QgsVectorLayer, rHEALPixID_field=None,feedba
     fields.append(QgsField("center_lon", QVariant.Double))
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
-
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     crs = rhealpix_layer.crs().toWkt()
     mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "rhealpix_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -327,7 +331,7 @@ def rhealpixcompact(rhealpix_layer: QgsVectorLayer, rHEALPixID_field=None,feedba
             resolution = rhealpix_cell.resolution        
             num_edges = 3 if rhealpix_cell.ellipsoidal_shape() == 'dart' else 4
             
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
             
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             rhealpix_feature = QgsFeature(fields)
@@ -340,6 +344,7 @@ def rhealpixcompact(rhealpix_layer: QgsVectorLayer, rHEALPixID_field=None,feedba
                 "center_lon": center_lon,
                 "avg_edge_len": avg_edge_len,
                 "cell_area": cell_area,
+                "cell_perimeter": cell_perimeter,
                 }
             rhealpix_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([rhealpix_feature])
@@ -365,7 +370,7 @@ def isea4tcompact(isea4t_layer: QgsVectorLayer, ISEA4TID_field=None,feedback=Non
         fields.append(QgsField("center_lon", QVariant.Double))
         fields.append(QgsField("avg_edge_len", QVariant.Double))
         fields.append(QgsField("cell_area", QVariant.Double))
-
+        fields.append(QgsField("cell_perimeter", QVariant.Double))
         crs = isea4t_layer.crs().toWkt()
         mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "isea4t_compacted", "memory")
         mem_provider = mem_layer.dataProvider()
@@ -397,7 +402,7 @@ def isea4tcompact(isea4t_layer: QgsVectorLayer, ISEA4TID_field=None,feedback=Non
                 resolution = get_isea4t_resolution(isea4t_id_compact)
                 num_edges = 3
                 
-                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
                 
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 ISEA4T_feature = QgsFeature(fields)
@@ -410,6 +415,7 @@ def isea4tcompact(isea4t_layer: QgsVectorLayer, ISEA4TID_field=None,feedback=Non
                     "center_lon": center_lon,
                     "avg_edge_len": avg_edge_len,
                     "cell_area": cell_area,
+                    "cell_perimeter": cell_perimeter,
                     }
                 ISEA4T_feature.setAttributes([attributes[field.name()] for field in fields])
                 mem_provider.addFeatures([ISEA4T_feature])
@@ -435,7 +441,7 @@ def isea3hcompact(isea3h_layer: QgsVectorLayer, ISEA3HID_field=None,feedback=Non
         fields.append(QgsField("center_lon", QVariant.Double))
         fields.append(QgsField("avg_edge_len", QVariant.Double))
         fields.append(QgsField("cell_area", QVariant.Double))
-
+        fields.append(QgsField("cell_perimeter", QVariant.Double))
         crs = isea3h_layer.crs().toWkt()
         mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "isea3h_compacted", "memory")
         mem_provider = mem_layer.dataProvider()
@@ -466,7 +472,7 @@ def isea3hcompact(isea3h_layer: QgsVectorLayer, ISEA3HID_field=None,feedback=Non
                 cell_resolution = get_isea3h_resolution(isea3h_id_compact)
                 num_edges = 6
                 
-                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
 
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 isea3h_feature = QgsFeature(fields)
@@ -479,7 +485,8 @@ def isea3hcompact(isea3h_layer: QgsVectorLayer, ISEA3HID_field=None,feedback=Non
                     "center_lon": center_lon,
                     "avg_edge_len": avg_edge_len,
                     "cell_area": cell_area,
-                    }
+                    "cell_perimeter": cell_perimeter,
+                    }       
 
                 isea3h_feature.setAttributes([attributes[field.name()] for field in fields])
                 mem_provider.addFeatures([isea3h_feature])
@@ -505,7 +512,7 @@ def qtmcompact(qtm_layer: QgsVectorLayer, QTMID_field=None,feedback=None) -> Qgs
     fields.append(QgsField("center_lon", QVariant.Double))
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
-
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     crs = qtm_layer.crs().toWkt()
     mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "qtm_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -534,7 +541,7 @@ def qtmcompact(qtm_layer: QgsVectorLayer, QTMID_field=None,feedback=None) -> Qgs
             cell_polygon = qtm2geo(qtm_id_compact)
             resolution = get_qtm_resolution(qtm_id_compact)
             num_edges = 3
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
             
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             qtm_feature = QgsFeature(fields)
@@ -547,6 +554,7 @@ def qtmcompact(qtm_layer: QgsVectorLayer, QTMID_field=None,feedback=None) -> Qgs
                 "center_lon": center_lon,
                 "avg_edge_len": avg_edge_len,
                 "cell_area": cell_area,
+                "cell_perimeter": cell_perimeter,
                 }
             qtm_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([qtm_feature])
@@ -573,7 +581,7 @@ def olccompact(olc_layer: QgsVectorLayer, OLCID_field=None,feedback=None) -> Qgs
     fields.append(QgsField("cell_width", QVariant.Double))
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
-
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     crs = olc_layer.crs().toWkt()
     mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "olc_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -602,7 +610,7 @@ def olccompact(olc_layer: QgsVectorLayer, OLCID_field=None,feedback=None) -> Qgs
             cell_polygon = olc2geo(olc_id_compact)
             cell_resolution = get_olc_resolution(olc_id_compact)
             num_edges = 4
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             olc_feature = QgsFeature(fields)
@@ -614,7 +622,8 @@ def olccompact(olc_layer: QgsVectorLayer, OLCID_field=None,feedback=None) -> Qgs
                 "center_lon": center_lon,
                 "cell_width": cell_width,
                 "cell_height": cell_height,
-                "cell_area": cell_area
+                "cell_area": cell_area,
+                "cell_perimeter": cell_perimeter,
                 }
             olc_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([olc_feature])
@@ -641,7 +650,7 @@ def geohashcompact(geohash_layer: QgsVectorLayer, GeohashID_field=None,feedback=
     fields.append(QgsField("cell_width", QVariant.Double))
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
-
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     crs = geohash_layer.crs().toWkt()
     mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "geohash_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -669,7 +678,7 @@ def geohashcompact(geohash_layer: QgsVectorLayer, GeohashID_field=None,feedback=
                     return None
             cell_polygon = geohash2geo(geohash_id_compact)
             resolution = get_geohash_resolution(geohash_id_compact)
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
             
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             geohash_feature = QgsFeature(fields)
@@ -682,7 +691,8 @@ def geohashcompact(geohash_layer: QgsVectorLayer, GeohashID_field=None,feedback=
                 "center_lon": center_lon,
                 "cell_width": cell_width,
                 "cell_height": cell_height,
-                "cell_area": cell_area
+                "cell_area": cell_area,
+                "cell_perimeter": cell_perimeter,
                 }
             geohash_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([geohash_feature])
@@ -709,7 +719,7 @@ def tilecodecompact(tilecode_layer: QgsVectorLayer, TilecodeID_field=None,feedba
     fields.append(QgsField("cell_width", QVariant.Double))
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
-
+    fields.append(QgsField("cell_perimeter", QVariant.Double))      
     crs = tilecode_layer.crs().toWkt()
     mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "tilecode_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -738,7 +748,7 @@ def tilecodecompact(tilecode_layer: QgsVectorLayer, TilecodeID_field=None,feedba
             cell_polygon = tilecode2geo(tilecode_id_compact)
             resolution = tilecode_resolution(tilecode_id_compact)
             num_edges = 4
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
             
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             tilecode_feature = QgsFeature(fields)
@@ -751,7 +761,8 @@ def tilecodecompact(tilecode_layer: QgsVectorLayer, TilecodeID_field=None,feedba
                 "center_lon": center_lon,
                 "cell_width": cell_width,
                 "cell_height": cell_height,
-                "cell_area": cell_area
+                "cell_area": cell_area,
+                "cell_perimeter": cell_perimeter,
                 }
             tilecode_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([tilecode_feature])
@@ -778,7 +789,7 @@ def quadkeycompact(quadkey_layer: QgsVectorLayer, QuadkeyID_field=None,feedback=
     fields.append(QgsField("cell_width", QVariant.Double))
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
-
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
     crs = quadkey_layer.crs().toWkt()
     mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "quadkey_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -806,7 +817,7 @@ def quadkeycompact(quadkey_layer: QgsVectorLayer, QuadkeyID_field=None,feedback=
                     return None
             cell_polygon = quadkey2geo(quadkey_id_compact)
             resolution = quadkey_resolution(quadkey_id_compact)
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             quadkey_feature = QgsFeature(fields)
             quadkey_feature.setGeometry(cell_geom)
@@ -818,12 +829,13 @@ def quadkeycompact(quadkey_layer: QgsVectorLayer, QuadkeyID_field=None,feedback=
                 "center_lon": center_lon,
                 "cell_width": cell_width,
                 "cell_height": cell_height,
-                "cell_area": cell_area
+                "cell_area": cell_area,
+                "cell_perimeter": cell_perimeter,
                 }
             quadkey_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([quadkey_feature])
 
-        if feedback:
+        if feedback:    
             feedback.setProgress(100)
             feedback.pushInfo("Quadkey Compact completed.")
                 

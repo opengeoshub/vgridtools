@@ -145,7 +145,7 @@ class GeohashGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('cell_width', QVariant.Double))
         output_fields.append(QgsField('cell_height', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
     
     def expand_geohash(self, gh, target_length, writer, fields, feedback):
@@ -156,8 +156,8 @@ class GeohashGrid(QgsProcessingAlgorithm):
             geohash_feature = QgsFeature(fields)
             geohash_feature.setGeometry(cell_geometry)
             
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)            
-            geohash_feature.setAttributes([gh, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)            
+            geohash_feature.setAttributes([gh, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter])                    
 
             writer.addFeature(geohash_feature)
             return
@@ -181,8 +181,8 @@ class GeohashGrid(QgsProcessingAlgorithm):
             geohash_feature = QgsFeature(fields)
             geohash_feature.setGeometry(cell_geometry)
             
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)            
-            geohash_feature.setAttributes([gh, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)            
+            geohash_feature.setAttributes([gh, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter])                    
 
             writer.addFeature(geohash_feature)
             return
@@ -260,7 +260,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         if not isinstance(layer, QgsVectorLayer):
             return
         sym = layer.renderer().symbol().symbolLayer(0)
-        sym.setBrushStyle(Qt.NoBrush)
+        sym.setBrushStyle(Qt.NoBrush)   
         sym.setStrokeColor(self.line_color)
         label = QgsPalLayerSettings()
         label.fieldName = 'geohash'

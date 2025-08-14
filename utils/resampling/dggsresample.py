@@ -70,7 +70,7 @@ def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, fe
         elif from_dggs == 'a5':
             from_resolution = a5.get_resolution(a5.hex_to_bigint(from_dggs_id))
             _, _, from_area = a5_metrics(from_resolution)
-
+    
         elif from_dggs == 'rhealpix':
             rhealpix_uids = (from_dggs_id[0],) + tuple(map(int, from_dggs_id[1:]))
             rhealpix_dggs = RHEALPixDGGS(ellipsoid=E, north_square=1, south_square=3, N_side=3)

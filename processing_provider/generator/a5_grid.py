@@ -147,6 +147,7 @@ class A5Grid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
 
         return output_fields
 
@@ -248,8 +249,8 @@ class A5Grid(QgsProcessingAlgorithm):
                             a5_feature.setGeometry(cell_geometry)
                             
                             num_edges = 5 
-                            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-                            a5_feature.setAttributes([a5_hex, self.resolution, center_lat, center_lon, avg_edge_len, cell_area])                    
+                            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+                            a5_feature.setAttributes([a5_hex, self.resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter])                    
                             sink.addFeature(a5_feature, QgsFeatureSink.FastInsert)
                             cell_count += 1
                         

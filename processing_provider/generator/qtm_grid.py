@@ -147,7 +147,7 @@ class QTMGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
 
 
@@ -205,8 +205,8 @@ class QTMGrid(QgsProcessingAlgorithm):
                             qtm_feature.setGeometry(cell_geometry)
                             qtm_id = QTMID[0][i]
                             num_edges = 3
-                            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(facet_geom, num_edges)
-                            qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
+                            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(facet_geom, num_edges)
+                            qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area,cell_perimeter])
                             sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)      
                         if feedback.isCanceled():
                                 break
@@ -225,8 +225,8 @@ class QTMGrid(QgsProcessingAlgorithm):
                                     qtm_feature.setGeometry(cell_geometry)
                                     qtm_id = new_id
                                     num_edges = 3
-                                    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(subfacet_geom, num_edges)
-                                    qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
+                                    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(subfacet_geom, num_edges)
+                                    qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area,cell_perimeter])
                                     sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)   
                             if feedback.isCanceled():
                                 break
@@ -258,11 +258,11 @@ class QTMGrid(QgsProcessingAlgorithm):
                         if (self.resolution ==1):
                             qtm_id = QTMID[0][i]
                             num_edges = 3
-                            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(facet_geom, num_edges)                       
+                            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(facet_geom, num_edges)                       
                             cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt) 
                             qtm_feature = QgsFeature()
                             qtm_feature.setGeometry(cell_geometry)
-                            qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
+                            qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area,cell_perimeter])
                             sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)  
                             # Update progress
                             processed_cells += 1
@@ -280,12 +280,12 @@ class QTMGrid(QgsProcessingAlgorithm):
                                 subfacet_geom= qtm.constructGeometry(subfacet)
                                 qtm_id = new_id
                                 num_edges = 3
-                                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(subfacet_geom, num_edges)
+                                center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(subfacet_geom, num_edges)
                             
                                 cell_geometry = QgsGeometry.fromWkt(subfacet_geom.wkt) 
                                 qtm_feature = QgsFeature()
                                 qtm_feature.setGeometry(cell_geometry)
-                                qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area])
+                                qtm_feature.setAttributes([qtm_id,self.resolution,center_lat,center_lon,avg_edge_len,cell_area,cell_perimeter ])
                                 sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)           
                                  # Update progress
                                 processed_cells += 1

@@ -55,8 +55,7 @@ from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
 from vgrid.conversion.dggscompact.a5compact import a5_compact
 from vgrid.dggs import qtm
 from vgrid.generator.geohashgrid import expand_geohash_bbox
-from vgrid.generator.settings import INITIAL_GEOHASHES
-from vgrid.utils.constants import ISEA4T_RES_ACCURACY_DICT,ISEA3H_RES_ACCURACY_DICT
+from vgrid.utils.constants import ISEA4T_RES_ACCURACY_DICT,ISEA3H_RES_ACCURACY_DICT, INITIAL_GEOHASHES
     
 if (platform.system() == 'Windows'):
     from vgrid.dggs.eaggr.eaggr import Eaggr
@@ -105,7 +104,7 @@ def point2h3(feature, resolution, feedback):
     if h3.is_pentagon(h3_id):
         num_edges = 5
     
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
     h3_feature = QgsFeature()
@@ -121,7 +120,7 @@ def point2h3(feature, resolution, feedback):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))  
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -132,7 +131,7 @@ def point2h3(feature, resolution, feedback):
     h3_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [str(h3_id), resolution, center_lat, center_lon, avg_edge_len, cell_area]
+    new_attributes = [str(h3_id), resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     h3_feature.setAttributes(all_attributes)
@@ -169,7 +168,7 @@ def polyline2h3(feature, resolution, predicate = None, compact=None, feedback=No
             num_edges = 5
         
         h3_id = str(bbox_buffer_cell)
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_resolution = h3.get_resolution(h3_id) 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
         
@@ -191,7 +190,7 @@ def polyline2h3(feature, resolution, predicate = None, compact=None, feedback=No
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -202,7 +201,7 @@ def polyline2h3(feature, resolution, predicate = None, compact=None, feedback=No
         h3_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [h3_id,cell_resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+        new_attributes = [h3_id,cell_resolution, center_lat, center_lon,  avg_edge_len, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         h3_feature.setAttributes(all_attributes)    
@@ -255,7 +254,7 @@ def polygon2h3(feature, resolution, predicate = None, compact=None, feedback=Non
             num_edges = 5
         
         h3_id = str(bbox_buffer_cell)
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_resolution = h3.get_resolution(h3_id) 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
 
@@ -274,7 +273,7 @@ def polygon2h3(feature, resolution, predicate = None, compact=None, feedback=Non
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -285,7 +284,7 @@ def polygon2h3(feature, resolution, predicate = None, compact=None, feedback=Non
         h3_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [h3_id,cell_resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+        new_attributes = [h3_id,cell_resolution, center_lat, center_lon,  avg_edge_len, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         h3_feature.setAttributes(all_attributes)    
@@ -323,7 +322,7 @@ def point2s2(feature,resolution,feedback):
     s2_token = latlon2s2(point.y(), point.x(), resolution)
     cell_polygon = s22geo(s2_token)         
     num_edges = 4
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)        
     # Create a single QGIS feature
@@ -342,7 +341,7 @@ def point2s2(feature,resolution,feedback):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -353,7 +352,7 @@ def point2s2(feature,resolution,feedback):
     s2_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [s2_token, resolution, center_lat, center_lon, avg_edge_len, cell_area]
+    new_attributes = [s2_token, resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     s2_feature.setAttributes(all_attributes)
@@ -405,7 +404,7 @@ def polyline2s2(feature, resolution, predicate=None, compact=None, feedback=None
         cell_resolution = cell_id.level()
   
         num_edges = 4
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
               
@@ -424,7 +423,7 @@ def polyline2s2(feature, resolution, predicate=None, compact=None, feedback=None
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -435,7 +434,7 @@ def polyline2s2(feature, resolution, predicate=None, compact=None, feedback=None
         s2_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [cell_token, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        new_attributes = [cell_token, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         s2_feature.setAttributes(all_attributes)    
@@ -496,7 +495,7 @@ def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None)
         cell_resolution = cell_id.level()
   
         num_edges = 4
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
 
@@ -516,7 +515,7 @@ def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None)
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -527,7 +526,7 @@ def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None)
         s2_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [cell_token, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        new_attributes = [cell_token, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         s2_feature.setAttributes(all_attributes)    
@@ -566,7 +565,7 @@ def point2a5(feature,resolution,feedback):
     a5_hex = latlon2a5(point.y(), point.x(), resolution)
     cell_polygon = a52geo(a5_hex)
     num_edges = 5
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)        
     # Create a single QGIS feature
@@ -585,7 +584,7 @@ def point2a5(feature,resolution,feedback):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -596,7 +595,7 @@ def point2a5(feature,resolution,feedback):
     a5_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [a5_hex, resolution, center_lat, center_lon, avg_edge_len, cell_area]
+    new_attributes = [a5_hex, resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     a5_feature.setAttributes(all_attributes)
@@ -680,7 +679,7 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
          
                     cell_resolution = a5.get_resolution(a5.hex_to_bigint(a5_hex))            
                     num_edges = 5
-                    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
                     
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
                         
@@ -699,7 +698,7 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
                     new_fields.append(QgsField("center_lon", QVariant.Double))
                     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
                     new_fields.append(QgsField("cell_area", QVariant.Double))
-
+                    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
                     # Combine original fields and new fields
                     all_fields = QgsFields()
                     for field in original_fields:
@@ -710,7 +709,7 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
                     a5_feature.setFields(all_fields)
                     
                     # Combine original attributes with new attributes
-                    new_attributes = [a5_hex, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+                    new_attributes = [a5_hex, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
                     all_attributes = original_attributes + new_attributes
                     
                     a5_feature.setAttributes(all_attributes)    
@@ -805,7 +804,7 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None)
          
                     cell_resolution = a5.get_resolution(a5.hex_to_bigint(a5_hex))            
                     num_edges = 5
-                    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+                    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
                     
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
                         
@@ -824,7 +823,7 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None)
                     new_fields.append(QgsField("center_lon", QVariant.Double))
                     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
                     new_fields.append(QgsField("cell_area", QVariant.Double))
-
+                    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
                     # Combine original fields and new fields
                     all_fields = QgsFields()
                     for field in original_fields:
@@ -835,7 +834,7 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None)
                     a5_feature.setFields(all_fields)
                     
                     # Combine original attributes with new attributes
-                    new_attributes = [a5_hex, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+                    new_attributes = [a5_hex, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter               ]
                     all_attributes = original_attributes + new_attributes
                     
                     a5_feature.setAttributes(all_attributes)    
@@ -889,7 +888,7 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
         cell_polygon = a52geo(a5_hex_compact)
         cell_resolution = a5.get_resolution(a5.hex_to_bigint(a5_hex_compact))
         num_edges = 5  # A5 cells are pentagons
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         a5_feature = QgsFeature()
@@ -910,7 +909,7 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
         a5_feature['center_lon'] = center_lon
         a5_feature['avg_edge_len'] = avg_edge_len
         a5_feature['cell_area'] = cell_area
-
+        a5_feature['cell_perimeter'] = cell_perimeter   
         a5_features.append(a5_feature)
         if feedback and i % 100 == 0:
             feedback.setProgress(int(100 * i / total_cells))
@@ -952,7 +951,7 @@ def point2rhealpix(feature, resolution,feedback):
     num_edges = 4
     if seed_cell.ellipsoidal_shape() == 'dart':
         num_edges = 3 
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(seed_cell_polygon, num_edges)
         
     cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
     
@@ -972,7 +971,7 @@ def point2rhealpix(feature, resolution,feedback):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -983,7 +982,7 @@ def point2rhealpix(feature, resolution,feedback):
     rhealpix_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [seed_cell_id,resolution, center_lat, center_lon, avg_edge_len, cell_area]
+    new_attributes = [seed_cell_id,resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     rhealpix_feature.setAttributes(all_attributes)
@@ -1017,7 +1016,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
         num_edges = 4
         if seed_cell.ellipsoidal_shape() == 'dart':
             num_edges = 3 
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(seed_cell_polygon, num_edges)
         cell_resolution = resolution
         cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
           # Create a single QGIS feature
@@ -1036,7 +1035,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -1047,7 +1046,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
         rhealpix_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [seed_cell_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        new_attributes = [seed_cell_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         rhealpix_feature.setAttributes(all_attributes)    
@@ -1097,7 +1096,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
             num_edges = 4
             if seed_cell.ellipsoidal_shape() == 'dart':
                 num_edges = 3 
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
             cell_resolution = rhelpix_cell.resolution
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             if not check_predicate(cell_polygon, shapely_geom, "intersects"):
@@ -1118,7 +1117,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
             new_fields.append(QgsField("center_lon", QVariant.Double))
             new_fields.append(QgsField("avg_edge_len", QVariant.Double))
             new_fields.append(QgsField("cell_area", QVariant.Double))
-            
+            new_fields.append(QgsField("cell_perimeter", QVariant.Double))
             # Combine original fields and new fields
             all_fields = QgsFields()
             for field in original_fields:
@@ -1129,7 +1128,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
             rhealpix_feature.setFields(all_fields)
             
             # Combine original attributes with new attributes
-            new_attributes = [cell_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+            new_attributes = [cell_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
             all_attributes = original_attributes + new_attributes
             
             rhealpix_feature.setAttributes(all_attributes)    
@@ -1171,7 +1170,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
         num_edges = 4
         if seed_cell.ellipsoidal_shape() == 'dart':
             num_edges = 3 
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(seed_cell_polygon, num_edges)
         cell_resolution = resolution
         cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
           # Create a single QGIS feature
@@ -1190,7 +1189,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -1201,7 +1200,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
         rhealpix_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [seed_cell_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        new_attributes = [seed_cell_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         rhealpix_feature.setAttributes(all_attributes)    
@@ -1257,7 +1256,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
             num_edges = 4
             if seed_cell.ellipsoidal_shape() == 'dart':
                 num_edges = 3 
-            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
             cell_resolution = rhelpix_cell.resolution
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             # Create a single QGIS feature
@@ -1276,7 +1275,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
             new_fields.append(QgsField("center_lon", QVariant.Double))
             new_fields.append(QgsField("avg_edge_len", QVariant.Double))
             new_fields.append(QgsField("cell_area", QVariant.Double))
-            
+            new_fields.append(QgsField("cell_perimeter", QVariant.Double))
             # Combine original fields and new fields
             all_fields = QgsFields()
             for field in original_fields:
@@ -1287,7 +1286,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
             rhealpix_feature.setFields(all_fields)
             
             # Combine original attributes with new attributes
-            new_attributes = [cell_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+            new_attributes = [cell_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
             all_attributes = original_attributes + new_attributes
             
             rhealpix_feature.setAttributes(all_attributes)    
@@ -1328,7 +1327,7 @@ def point2isea4t(feature, resolution, feedback):
     cell_polygon = isea4t2geo(isea4t_id)
     
     num_edges = 3
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
    
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
     
@@ -1348,7 +1347,7 @@ def point2isea4t(feature, resolution, feedback):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -1359,7 +1358,7 @@ def point2isea4t(feature, resolution, feedback):
     isea4t_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [isea4t_id, resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+    new_attributes = [isea4t_id, resolution, center_lat, center_lon,  avg_edge_len, cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     isea4t_feature.setAttributes(all_attributes)
@@ -1406,7 +1405,7 @@ def polyline2isea4t(feature, resolution, predicate=None, compact=None, feedback=
             continue
 
         num_edges = 3
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_resolution = len(isea4t_id)-2
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)        
             
@@ -1426,7 +1425,7 @@ def polyline2isea4t(feature, resolution, predicate=None, compact=None, feedback=
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -1437,7 +1436,7 @@ def polyline2isea4t(feature, resolution, predicate=None, compact=None, feedback=
         isea4t_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [isea4t_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        new_attributes = [isea4t_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         isea4t_feature.setAttributes(all_attributes)    
@@ -1493,7 +1492,7 @@ def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=N
             continue
 
         num_edges = 3
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_resolution = len(isea4t_id)-2
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)        
             
@@ -1513,7 +1512,7 @@ def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=N
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -1524,7 +1523,7 @@ def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=N
         isea4t_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [isea4t_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        new_attributes = [isea4t_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         isea4t_feature.setAttributes(all_attributes)    
@@ -1566,7 +1565,7 @@ def point2isea3h(feature, resolution,feedback):
     cell_resolution = resolution  
     if cell_resolution == 0:
         num_edges = 3 # icosahedron faces
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
     
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
     
@@ -1586,7 +1585,7 @@ def point2isea3h(feature, resolution,feedback):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -1597,7 +1596,7 @@ def point2isea3h(feature, resolution,feedback):
     isea3h_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [isea3h_id, cell_resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+    new_attributes = [isea3h_id, cell_resolution, center_lat, center_lon,  avg_edge_len, cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     isea3h_feature.setAttributes(all_attributes)
@@ -1644,7 +1643,7 @@ def polyline2isea3h(feature, resolution, predicate=None, compact=None, feedback=
         cell_accuracy = isea3h2point._accuracy        
         cell_resolution  = ISEA3H_ACCURACY_RES_DICT.get(cell_accuracy)
         num_edges = 3 if cell_resolution == 0 else 6  
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
                 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
         # Create a single QGIS feature
@@ -1663,7 +1662,7 @@ def polyline2isea3h(feature, resolution, predicate=None, compact=None, feedback=
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -1674,7 +1673,7 @@ def polyline2isea3h(feature, resolution, predicate=None, compact=None, feedback=
         isea3h_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [isea3h_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        new_attributes = [isea3h_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         isea3h_feature.setAttributes(all_attributes)    
@@ -1734,7 +1733,7 @@ def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=N
         cell_resolution  = ISEA3H_ACCURACY_RES_DICT.get(cell_accuracy)
        
         num_edges = 3 if cell_resolution == 0 else 6  
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
                 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
         # Create a single QGIS feature
@@ -1753,7 +1752,7 @@ def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=N
         new_fields.append(QgsField("center_lon", QVariant.Double))
         new_fields.append(QgsField("avg_edge_len", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -1764,7 +1763,7 @@ def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=N
         isea3h_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [isea3h_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area]
+        new_attributes = [isea3h_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         isea3h_feature.setAttributes(all_attributes)    
@@ -1800,7 +1799,7 @@ def point2qtm(feature, resolution,feedback):
     qtm_id = latlon2qtm(point.y(), point.x(), resolution) 
     cell_polygon = qtm2geo(qtm_id)   
     num_edges = 3
-    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)    
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)    
     cell_resolution = resolution
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
    
@@ -1819,7 +1818,7 @@ def point2qtm(feature, resolution,feedback):
     new_fields.append(QgsField("center_lon", QVariant.Double))
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -1830,7 +1829,7 @@ def point2qtm(feature, resolution,feedback):
     qtm_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [qtm_id, cell_resolution, center_lat, center_lon,  avg_edge_len, cell_area]
+    new_attributes = [qtm_id, cell_resolution, center_lat, center_lon,  avg_edge_len, cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     qtm_feature.setAttributes(all_attributes)
@@ -1855,7 +1854,7 @@ def qtmcompact_from_qgsfeatures(qgs_features,feedback):
         cell_polygon = qtm2geo(qtm_id_compact)
         cell_resolution = len(qtm_id_compact)
         num_edges = 3
-        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         qtm_feature = QgsFeature()
@@ -1868,7 +1867,7 @@ def qtmcompact_from_qgsfeatures(qgs_features,feedback):
         qtm_feature['center_lon'] = center_lon
         qtm_feature['avg_edge_len'] = avg_edge_len
         qtm_feature['cell_area'] = cell_area
-
+        qtm_feature['cell_perimeter'] = cell_perimeter
         qtm_features.append(qtm_feature)
         if feedback and i % 100 == 0:
             feedback.setProgress(int(100 * i / total_cells))
@@ -1909,7 +1908,7 @@ def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=Non
                 QTMID[0].append(str(i + 1))
                 facet_geom = qtm.constructGeometry(facet)
                 num_edges = 3
-                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(facet_geom, num_edges)    
+                center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(facet_geom, num_edges)    
                 
                 levelFacets[0].append(facet)
                 cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt)      
@@ -1932,7 +1931,7 @@ def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=Non
                     new_fields.append(QgsField("center_lon", QVariant.Double))
                     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
                     new_fields.append(QgsField("cell_area", QVariant.Double))
-                    
+                    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
                     # Combine original fields and new fields
                     all_fields = QgsFields()
                     for field in original_fields:
@@ -1943,7 +1942,7 @@ def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=Non
                     qtm_feature.setFields(all_fields)
                     
                     # Combine original attributes with new attributes
-                    new_attributes = [QTMID[0][i], resolution, center_lat, center_lon, avg_edge_len, cell_area]
+                    new_attributes = [QTMID[0][i], resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
                     all_attributes = original_attributes + new_attributes
                     
                     qtm_feature.setAttributes(all_attributes)   
@@ -1968,7 +1967,7 @@ def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=Non
                         levelFacets[lvl].append(subfacet)
                         if lvl == resolution - 1:  # Only store final resolution   
                             num_edges = 3
-                            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(subfacet_geom, num_edges)    
+                            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(subfacet_geom, num_edges)    
                                          
                             # Create a single QGIS feature
                             qtm_feature = QgsFeature()
@@ -1986,7 +1985,7 @@ def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=Non
                             new_fields.append(QgsField("center_lon", QVariant.Double))
                             new_fields.append(QgsField("avg_edge_len", QVariant.Double))
                             new_fields.append(QgsField("cell_area", QVariant.Double))
-                            
+                            new_fields.append(QgsField("cell_perimeter", QVariant.Double))                            
                             # Combine original fields and new fields
                             all_fields = QgsFields()
                             for field in original_fields:
@@ -1997,7 +1996,7 @@ def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=Non
                             qtm_feature.setFields(all_fields)
                             
                             # Combine original attributes with new attributes
-                            new_attributes = [new_id, resolution, center_lat, center_lon, avg_edge_len, cell_area]
+                            new_attributes = [new_id, resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
                             all_attributes = original_attributes + new_attributes
                             
                             qtm_feature.setAttributes(all_attributes)    
@@ -2045,7 +2044,7 @@ def polygon2qtm(feature, resolution, predicate, compact,feedback):
                 QTMID[0].append(str(i + 1))
                 facet_geom = qtm.constructGeometry(facet)
                 num_edges = 3
-                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(facet_geom, num_edges)    
+                center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(facet_geom, num_edges)    
                 
                 levelFacets[0].append(facet)
                 cell_geometry = QgsGeometry.fromWkt(facet_geom.wkt)      
@@ -2068,7 +2067,7 @@ def polygon2qtm(feature, resolution, predicate, compact,feedback):
                     new_fields.append(QgsField("center_lon", QVariant.Double))
                     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
                     new_fields.append(QgsField("cell_area", QVariant.Double))
-                    
+                    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
                     # Combine original fields and new fields
                     all_fields = QgsFields()
                     for field in original_fields:
@@ -2079,7 +2078,7 @@ def polygon2qtm(feature, resolution, predicate, compact,feedback):
                     qtm_feature.setFields(all_fields)
                     
                     # Combine original attributes with new attributes
-                    new_attributes = [QTMID[0][i], resolution, center_lat, center_lon, avg_edge_len, cell_area]
+                    new_attributes = [QTMID[0][i], resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
                     all_attributes = original_attributes + new_attributes
                     
                     qtm_feature.setAttributes(all_attributes)   
@@ -2105,7 +2104,7 @@ def polygon2qtm(feature, resolution, predicate, compact,feedback):
                         levelFacets[lvl].append(subfacet)
                         if lvl == resolution - 1:  # Only store final resolution   
                             num_edges = 3
-                            center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(subfacet_geom, num_edges)    
+                            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(subfacet_geom, num_edges)    
                                          
                             # Create a single QGIS feature
                             qtm_feature = QgsFeature()
@@ -2123,7 +2122,7 @@ def polygon2qtm(feature, resolution, predicate, compact,feedback):
                             new_fields.append(QgsField("center_lon", QVariant.Double))
                             new_fields.append(QgsField("avg_edge_len", QVariant.Double))
                             new_fields.append(QgsField("cell_area", QVariant.Double))
-                            
+                            new_fields.append(QgsField("cell_perimeter", QVariant.Double))
                             # Combine original fields and new fields
                             all_fields = QgsFields()
                             for field in original_fields:
@@ -2134,7 +2133,7 @@ def polygon2qtm(feature, resolution, predicate, compact,feedback):
                             qtm_feature.setFields(all_fields)
                             
                             # Combine original attributes with new attributes
-                            new_attributes = [new_id, resolution, center_lat, center_lon, avg_edge_len, cell_area]
+                            new_attributes = [new_id, resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
                             all_attributes = original_attributes + new_attributes
                             
                             qtm_feature.setAttributes(all_attributes)    
@@ -2173,7 +2172,7 @@ def point2olc(feature, resolution,feedback):
     olc_id = latlon2olc(point.y(), point.x(), resolution) 
     cell_polygon = olc2geo(olc_id)
     # Create the b
-    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)    
+    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)    
 
     # Get all attributes from the input feature
     original_attributes = feature.attributes()
@@ -2187,7 +2186,7 @@ def point2olc(feature, resolution,feedback):
     new_fields.append(QgsField("cell_width", QVariant.Double))
     new_fields.append(QgsField("cell_height", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -2201,7 +2200,7 @@ def point2olc(feature, resolution,feedback):
     olc_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [olc_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area]
+    new_attributes = [olc_id, resolution, center_lat, center_lon, cell_width, cell_height,cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     olc_feature.setAttributes(all_attributes)    
@@ -2235,7 +2234,7 @@ def olccompact_from_qgsfeatures(qgs_features, feedback):
             [min_lon, max_lat],  # Top-left corner
             [min_lon, min_lat]   # Closing the polygon (same as the first point)
         ])
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon) 
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon) 
         
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -2250,7 +2249,7 @@ def olccompact_from_qgsfeatures(qgs_features, feedback):
         olc_feature['cell_width'] = cell_width
         olc_feature['cell_height'] = cell_height
         olc_feature['cell_area'] = cell_area
-
+        olc_feature['cell_perimeter'] = cell_perimeter
         olc_features.append(olc_feature)
         if feedback and i % 100 == 0:
             feedback.setProgress(int(100 * i / total_cells))
@@ -2316,7 +2315,7 @@ def polyline2olc(feature, resolution, predicate=None, compact=None,feedback=None
 
             # Compute additional attributes
             cell_resolution = resolution
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
 
             olc_feature = QgsFeature()
             olc_feature.setGeometry(cell_geometry)
@@ -2332,7 +2331,7 @@ def polyline2olc(feature, resolution, predicate=None, compact=None,feedback=None
             new_fields.append(QgsField("cell_width", QVariant.Double))
             new_fields.append(QgsField("cell_height", QVariant.Double))
             new_fields.append(QgsField("cell_area", QVariant.Double))
-
+            new_fields.append(QgsField("cell_perimeter", QVariant.Double))  
             
             # Combine original fields and new fields
             all_fields = QgsFields()
@@ -2347,7 +2346,7 @@ def polyline2olc(feature, resolution, predicate=None, compact=None,feedback=None
             olc_feature.setFields(all_fields)
             
             # Combine original attributes with new attributes
-            new_attributes = [olc_id, cell_resolution, center_lat, center_lon, cell_width, cell_height, cell_area]
+            new_attributes = [olc_id, cell_resolution, center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter]
             all_attributes = original_attributes + new_attributes
             
             olc_feature.setAttributes(all_attributes)    
@@ -2421,7 +2420,7 @@ def polygon2olc(feature, resolution, predicate=None, compact=None,feedback=None)
 
             # Compute additional attributes
             cell_resolution = resolution
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
 
             olc_feature = QgsFeature()
             olc_feature.setGeometry(cell_geometry)
@@ -2437,7 +2436,7 @@ def polygon2olc(feature, resolution, predicate=None, compact=None,feedback=None)
             new_fields.append(QgsField("cell_width", QVariant.Double))
             new_fields.append(QgsField("cell_height", QVariant.Double))
             new_fields.append(QgsField("cell_area", QVariant.Double))
-
+            new_fields.append(QgsField("cell_perimeter", QVariant.Double))
             
             # Combine original fields and new fields
             all_fields = QgsFields()
@@ -2452,7 +2451,7 @@ def polygon2olc(feature, resolution, predicate=None, compact=None,feedback=None)
             olc_feature.setFields(all_fields)
             
             # Combine original attributes with new attributes
-            new_attributes = [olc_id, cell_resolution, center_lat, center_lon, cell_width, cell_height, cell_area]
+            new_attributes = [olc_id, cell_resolution, center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter]
             all_attributes = original_attributes + new_attributes
             
             olc_feature.setAttributes(all_attributes)    
@@ -2493,7 +2492,7 @@ def point2geohash(feature, resolution,feedback):
     point = feature_geometry.asPoint()
     geohash_id = latlon2geohash(point.y(), point.x(), resolution)
     cell_polygon = geohash2geo(geohash_id)  
-    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon) 
+    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon) 
     
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)    
     # Create a single QGIS feature
@@ -2512,7 +2511,7 @@ def point2geohash(feature, resolution,feedback):
     new_fields.append(QgsField("cell_width", QVariant.Double))
     new_fields.append(QgsField("cell_height", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-    
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -2523,7 +2522,7 @@ def point2geohash(feature, resolution,feedback):
     geohash_feature.setFields(all_fields)
     
     # Combine original attributes with new attributes
-    new_attributes = [geohash_id, resolution, center_lat, center_lon,  cell_width, cell_height, cell_area]
+    new_attributes = [geohash_id, resolution, center_lat, center_lon,  cell_width, cell_height, cell_area,cell_perimeter]
     all_attributes = original_attributes + new_attributes
     
     geohash_feature.setAttributes(all_attributes)
@@ -2550,7 +2549,7 @@ def geohashcompact_from_qgsfeatures(qgs_features, feedback):
         cell_polygon = geohash2geo(geohash_id_compact)
         cell_resolution =  len(geohash_id_compact)
         
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon) 
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon) 
         
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -2565,7 +2564,7 @@ def geohashcompact_from_qgsfeatures(qgs_features, feedback):
         geohash_feature['cell_width'] = cell_width
         geohash_feature['cell_height'] = cell_height
         geohash_feature['cell_area'] = cell_area
-
+        geohash_feature['cell_perimeter'] = cell_perimeter
         geohash_features.append(geohash_feature)
         if feedback and i % 100 == 0:
             feedback.setProgress(int(100 * i / total_cells))
@@ -2610,7 +2609,7 @@ def polyline2geohash(feature, resolution, predicate=None, compact=None, feedback
         geohash_feature = QgsFeature()
         geohash_feature.setGeometry(cell_geometry)
         
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)  
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)  
         cell_resolution = resolution
             
         # Get all attributes from the input feature
@@ -2625,7 +2624,7 @@ def polyline2geohash(feature, resolution, predicate=None, compact=None, feedback
         new_fields.append(QgsField("cell_width", QVariant.Double))
         new_fields.append(QgsField("cell_height", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -2636,7 +2635,7 @@ def polyline2geohash(feature, resolution, predicate=None, compact=None, feedback
         geohash_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [gh,cell_resolution, center_lat, center_lon,  cell_width, cell_height, cell_area]
+        new_attributes = [gh,cell_resolution, center_lat, center_lon,  cell_width, cell_height, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         geohash_feature.setAttributes(all_attributes)    
@@ -2689,7 +2688,7 @@ def polygon2geohash(feature, resolution, predicate=None, compact=None, feedback=
         geohash_feature = QgsFeature()
         geohash_feature.setGeometry(cell_geometry)
         
-        center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)  
+        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)  
         cell_resolution = resolution
             
         # Get all attributes from the input feature
@@ -2704,7 +2703,7 @@ def polygon2geohash(feature, resolution, predicate=None, compact=None, feedback=
         new_fields.append(QgsField("cell_width", QVariant.Double))
         new_fields.append(QgsField("cell_height", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-        
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -2715,7 +2714,7 @@ def polygon2geohash(feature, resolution, predicate=None, compact=None, feedback=
         geohash_feature.setFields(all_fields)
         
         # Combine original attributes with new attributes
-        new_attributes = [gh,cell_resolution, center_lat, center_lon,  cell_width, cell_height, cell_area]
+        new_attributes = [gh,cell_resolution, center_lat, center_lon,  cell_width, cell_height, cell_area,cell_perimeter]
         all_attributes = original_attributes + new_attributes
         
         geohash_feature.setAttributes(all_attributes)    

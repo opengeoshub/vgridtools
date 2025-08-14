@@ -208,7 +208,8 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             QgsField(get_unique_name("center_lon"), QVariant.Double),
             QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'qtm') else "cell_width"), QVariant.Double),
             QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'qtm') else None,
-            QgsField(get_unique_name("cell_area"), QVariant.Double)
+            QgsField(get_unique_name("cell_area"), QVariant.Double),
+            QgsField(get_unique_name("cell_perimeter"), QVariant.Double)
         ]
 
         # Append the fields to output_fields

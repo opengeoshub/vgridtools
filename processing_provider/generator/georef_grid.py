@@ -41,6 +41,7 @@ from PyQt5.QtCore import QVariant
 import os, random
 
 from vgrid.dggs import georef
+from vgrid.utils.geometry import graticule_dggs_metrics
 from ...utils.imgs import Imgs
 
 
@@ -174,6 +175,8 @@ class GEOREFGrid(QgsProcessingAlgorithm):
             feature = QgsFeature(fields)
             feature.setAttribute("georef", gh)
             feature.setGeometry(polygon)
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(polygon)
+            feature.setAttributes([gh, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter])
             writer.addFeature(feature)
             return
         
@@ -199,6 +202,8 @@ class GEOREFGrid(QgsProcessingAlgorithm):
             feature = QgsFeature(fields)
             feature.setAttribute("georef", gh)
             feature.setGeometry(polygon)
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(polygon)
+            feature.setAttributes([gh, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter])
             writer.addFeature(feature)
             return
         
@@ -213,7 +218,13 @@ class GEOREFGrid(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         fields = QgsFields()
         fields.append(QgsField("georef", QVariant.String))
-
+        fields.append(QgsField('resolution', QVariant.Int))
+        fields.append(QgsField('center_lat', QVariant.Double))
+        fields.append(QgsField('center_lon', QVariant.Double))
+        fields.append(QgsField('cell_width', QVariant.Double))
+        fields.append(QgsField('cell_height', QVariant.Double))
+        fields.append(QgsField('cell_area', QVariant.Double))
+        fields.append(QgsField('cell_perimeter', QVariant.Double))
         # Get the output sink and its destination ID (this handles both file and temporary layers)
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context, 
                                                 fields, QgsWkbTypes.Polygon, 

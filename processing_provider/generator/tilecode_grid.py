@@ -146,7 +146,7 @@ class TilecodeGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('cell_width', QVariant.Double))
         output_fields.append(QgsField('cell_height', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -197,8 +197,8 @@ class TilecodeGrid(QgsProcessingAlgorithm):
             tilecode_feature.setGeometry(cell_geometry)
             
             tilecode_id = f"z{tile.z}x{tile.x}y{tile.y}"
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-            tilecode_feature.setAttributes([tilecode_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
+            tilecode_feature.setAttributes([tilecode_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter])                    
             sink.addFeature(tilecode_feature, QgsFeatureSink.FastInsert)
             if feedback.isCanceled():
                 break

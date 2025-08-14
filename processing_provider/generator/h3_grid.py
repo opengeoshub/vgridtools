@@ -148,7 +148,7 @@ class H3Grid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):        
@@ -196,8 +196,8 @@ class H3Grid(QgsProcessingAlgorithm):
                 num_edges = 6
                 if (h3.is_pentagon(bbox_cell)):
                     num_edges = 5                
-                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-                h3_feature.setAttributes([bbox_cell, self.resolution, center_lat, center_lon, avg_edge_len, cell_area])                    
+                center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+                h3_feature.setAttributes([bbox_cell, self.resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter])                    
                 sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)                    
 
                 if feedback.isCanceled():
@@ -230,8 +230,8 @@ class H3Grid(QgsProcessingAlgorithm):
                     if (h3.is_pentagon(child_cell)):
                         num_edges = 5 
                     
-                    center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-                    h3_feature.setAttributes([child_cell, self.resolution, center_lat, center_lon, avg_edge_len, cell_area])                    
+                    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+                    h3_feature.setAttributes([child_cell, self.resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter])                    
                     sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)                    
 
                     if feedback.isCanceled():

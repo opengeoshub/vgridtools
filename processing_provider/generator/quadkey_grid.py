@@ -114,7 +114,7 @@ class QuadkeyGrid(QgsProcessingAlgorithm):
 
         param = QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('Resolution/ zoom level [0.24]'),
+                    self.tr('Resolution/ zoom level [0.24]'),   
                     QgsProcessingParameterNumber.Integer,
                     defaultValue = 1,
                     minValue= 0,
@@ -147,7 +147,7 @@ class QuadkeyGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('cell_width', QVariant.Double))
         output_fields.append(QgsField('cell_height', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -197,11 +197,11 @@ class QuadkeyGrid(QgsProcessingAlgorithm):
             quadkey_feature.setGeometry(cell_geometry)
             
             quadkey_id = mercantile.quadkey(tile)
-            center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
-            quadkey_feature.setAttributes([quadkey_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+            center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
+            quadkey_feature.setAttributes([quadkey_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter])                    
             sink.addFeature(quadkey_feature, QgsFeatureSink.FastInsert)                    
 
-            if feedback.isCanceled():
+            if feedback.isCanceled():       
                 break
         
         feedback.pushInfo("Quadkey DGGS generation completed.")

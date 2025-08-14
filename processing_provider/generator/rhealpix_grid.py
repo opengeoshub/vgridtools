@@ -46,7 +46,7 @@ from vgrid.utils.geometry import rhealpix_cell_to_polygon,geodesic_dggs_metrics
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from ...utils.imgs import Imgs
 from shapely.geometry import box
-rhealpix_dggs = RHEALPixDGGS()
+rhealpix_dggs = RHEALPixDGGS()  # type: ignore
 
 
 class rHEALPixGrid(QgsProcessingAlgorithm):
@@ -148,7 +148,7 @@ class rHEALPixGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('center_lon', QVariant.Double))
         output_fields.append(QgsField('avg_edge_len', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):        
@@ -191,8 +191,8 @@ class rHEALPixGrid(QgsProcessingAlgorithm):
                 rhealpix_feature = QgsFeature()
                 rhealpix_feature.setGeometry(seed_cell_geometry) 
                 
-                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-                rhealpix_feature.setAttributes([seed_cell_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area])                    
+                center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+                rhealpix_feature.setAttributes([seed_cell_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter])                    
                 sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)                    
 
             else:
@@ -238,8 +238,8 @@ class rHEALPixGrid(QgsProcessingAlgorithm):
                         if seed_cell.ellipsoidal_shape() == 'dart':
                             num_edges = 3
                         
-                        center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-                        rhealpix_feature.setAttributes([cell_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area])                    
+                        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+                        rhealpix_feature.setAttributes([cell_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter])                    
                         sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert) 
                         
                     if feedback.isCanceled():
@@ -262,12 +262,12 @@ class rHEALPixGrid(QgsProcessingAlgorithm):
                 num_edges = 4
                 if cell.ellipsoidal_shape() == 'dart':
                     num_edges = 3
-                center_lat, center_lon, avg_edge_len, cell_area = geodesic_dggs_metrics(cell_polygon, num_edges)
-                rhealpix_feature.setAttributes([rhealpix_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area])                    
+                center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+                rhealpix_feature.setAttributes([rhealpix_id, self.resolution,center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter])                    
                 sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)                    
                 if feedback.isCanceled():
                     break
-                
+                        
         feedback.pushInfo("rHEALPix DGGS generation completed.")        
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = QColor.fromRgb(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))

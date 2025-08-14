@@ -45,7 +45,7 @@ from ...utils.imgs import Imgs
 import numpy as np
 from vgrid.dggs.gars.garsgrid import GARSGrid as GARSGRID 
 from shapely.geometry import Polygon
-from vgrid.utils.geometry import graticule_dggs_metrics
+from vgrid.utils.geometry import graticule_dggs_metrics     
         
 class GARSGrid(QgsProcessingAlgorithm):
     EXTENT = 'EXTENT'
@@ -151,7 +151,7 @@ class GARSGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField('cell_width', QVariant.Double))
         output_fields.append(QgsField('cell_height', QVariant.Double))
         output_fields.append(QgsField('cell_area', QVariant.Double))
-
+        output_fields.append(QgsField('cell_perimeter', QVariant.Double))
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -204,9 +204,9 @@ class GARSGrid(QgsProcessingAlgorithm):
                     gars_feature = QgsFeature()
                     gars_feature.setGeometry(cell_geometry)
                     
-                    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+                    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
                     gars_id = str(GARSGRID.from_latlon(lat, lon, resolution_minutes))
-                    gars_feature.setAttributes([gars_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+                    gars_feature.setAttributes([gars_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter])                    
                     
                     sink.addFeature(gars_feature, QgsFeatureSink.FastInsert)         
                     # Update progress and feedback message
@@ -244,9 +244,9 @@ class GARSGrid(QgsProcessingAlgorithm):
                     gars_feature = QgsFeature()
                     gars_feature.setGeometry(cell_geometry)
                     
-                    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(cell_polygon)
+                    center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
                     gars_id = str(GARSGRID.from_latlon(lat, lon, resolution_minutes))
-                    gars_feature.setAttributes([gars_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area])                    
+                    gars_feature.setAttributes([gars_id, self.resolution,center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter])                    
                     
                     sink.addFeature(gars_feature, QgsFeatureSink.FastInsert)         
                     # Update progress and feedback message
