@@ -1,3 +1,3 @@
 In python Console:
 > import pip
-> pip.main(['install','vgrid'])
+> pip.main(['install','vgrid','--upgrade'])
