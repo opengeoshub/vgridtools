@@ -163,11 +163,6 @@ Convert raster layers in geographic CRS to DGGS.
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsgenerator_h3.png">
 </div>
 
-<div align="center">
-  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/tutorial/grid_dggal.png">
-</div>
-
-
 ## Expressions
 
 ### latlon2h3
