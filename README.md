@@ -42,6 +42,7 @@
         <li><a href="#latlon2rhealpix">latlon2rhealpix</a></li>
         <li><a href="#latlon2isea4t">latlon2isea4t</a></li>
         <li><a href="#latlon2isea3h">latlon2isea3h</a></li>
+        <li><a href="#latlon2dggal">latlon2dggal</a></li>
         <li><a href="#latlon2qtm">latlon2qtm</a></li>
         <li><a href="#latlon2olc">latlon2olc</a></li>
         <li><a href="#latlon2geohash">latlon2geohash</a></li>
@@ -162,6 +163,10 @@ Convert raster layers in geographic CRS to DGGS.
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsgenerator_h3.png">
 </div>
 
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/tutorial/grid_dggal.png">
+</div>
+
 
 ## Expressions
 
@@ -261,6 +266,22 @@ Convert (lat, long) to OpenEAGGR ISEA3H ID (Windows only).
 <br/>
 <div align="center">
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2isea3h.png">
+</div>
+
+### latlon2dggal
+
+Convert (lat, long) to DGGAL ID.
+<h4>Syntax</h4>
+<li>
+<code>latlon2dggal(dggs_type, lat, long, resolution) or latlon2dggal(dggs_type, $y, $x, resolution)</span> in WGS84 CRS</code>
+</li> 
+<h4>Example usage</h4>
+<li>
+<code>latlon2dggal('isea9r', 10.775275567242561, 106.70679737574993, 7)→ 'H7-629F2'</code>
+</li>
+<br/>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2dggal.png">
 </div>
 
 ### latlon2qtm
