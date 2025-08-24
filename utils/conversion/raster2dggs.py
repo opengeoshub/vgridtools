@@ -25,6 +25,9 @@ from vgrid.conversion.dggs2geo.olc2geo import olc2geo
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
 from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
+from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
+from vgrid.utils.constants import DGGAL_TYPES
+from dggal import *
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.utils.geometry import (
     graticule_dggs_metrics, geodesic_dggs_metrics,
@@ -1079,6 +1082,138 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
     if feedback:
         feedback.setProgress(100)
         feedback.pushInfo("Raster to Quadkey DGGS completed.")
+
+    return mem_layer
+
+
+########################## 
+# DGGAL
+#########################
+def raster2dggal(raster_layer: QgsRasterLayer, resolution: int, feedback=None, dggal_type=None) -> QgsVectorLayer:
+    if not raster_layer.isValid():
+        raise ValueError("Invalid raster layer.")
+
+    provider = raster_layer.dataProvider()
+    extent = raster_layer.extent()
+    width, height = raster_layer.width(), raster_layer.height()
+    crs = raster_layer.crs()
+    band_count = provider.bandCount()
+
+    pixel_size_x = extent.width() / width
+    pixel_size_y = extent.height() / height
+
+    dggal_ids = set()
+    total_pixels = width * height
+    processed_pixels = 0
+
+    for row in range(height):
+        for col in range(width):
+            if feedback and feedback.isCanceled():
+                return None
+
+            x = extent.xMinimum() + col * pixel_size_x
+            y = extent.yMaximum() - row * pixel_size_y
+            
+            try:
+                dggal_id = latlon2dggal(dggal_type, y, x, resolution)
+                dggal_ids.add(dggal_id)
+            except Exception:
+                continue
+
+            processed_pixels += 1
+            if feedback and processed_pixels % 10000 == 0:
+                feedback.setProgress(int(100 * processed_pixels / total_pixels))
+
+    if feedback:
+        feedback.pushInfo(f"{len(dggal_ids)} pixels processed.")
+        feedback.setProgress(0)
+    feedback.pushInfo(f"Raster to DGGAL {dggal_type.upper()}...")
+
+    mem_layer = QgsVectorLayer(f"Polygon?crs={crs.authid()}", f"DGGAL {dggal_type.upper()} Grid", "memory")
+    mem_provider = mem_layer.dataProvider()
+
+    fields = QgsFields()
+    field_name = f"dggal_{dggal_type}"
+    fields.append(QgsField(field_name, QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("avg_edge_len", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    for i in range(band_count):
+        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    for i, dggal_id in enumerate(dggal_ids):
+        if feedback and feedback.isCanceled():
+            return None
+            
+        try:
+            cell_polygon = dggal2geo(dggal_type, dggal_id)
+            if not cell_polygon:
+                continue
+                
+            # Get center point for raster value extraction
+            center_point = cell_polygon.centroid
+            center_lon, center_lat = center_point.x, center_point.y
+            qgis_center_point = QgsPointXY(center_lon, center_lat)
+
+            ident = provider.identify(qgis_center_point, QgsRaster.IdentifyFormatValue)
+            if not ident.isValid():
+                continue
+
+            results = ident.results()
+            if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+                continue
+            
+            # Get resolution and edge count from DGGAL
+            try:
+                app = Application(appGlobals=globals())
+                pydggal_setup(app)
+                dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
+                dggrs = getattr(dggal, dggs_class_name)()
+                zone = dggrs.getZoneFromTextID(dggal_id)
+                zone_resolution = dggrs.getZoneLevel(zone)
+                num_edges = dggrs.countZoneEdges(zone)
+            except:
+                # Fallback values if we can't get them from DGGAL
+                zone_resolution = resolution
+                num_edges = 6  # Default for hexagonal cells
+            
+            center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            feature = QgsFeature()
+            feature.setGeometry(cell_geom)
+            attr_values = [
+                dggal_id,
+                zone_resolution,
+                center_lat,
+                center_lon,
+                avg_edge_len,
+                cell_area,
+                cell_perimeter,
+            ]
+            attr_values.extend(results.get(i + 1, None) for i in range(band_count))
+            feature.setAttributes(attr_values)
+
+            mem_provider.addFeatures([feature])
+
+        except Exception as e:
+            if feedback:
+                feedback.pushInfo(f"Warning: Could not process DGGAL ID {dggal_id}: {str(e)}")
+            continue
+
+        if feedback and i % 100 == 0:   
+            feedback.setProgress(int(100 * i / len(dggal_ids)))
+
+    if feedback:
+        feedback.setProgress(100)
+        feedback.pushInfo(f"Raster to DGGAL {dggal_type.upper()} completed.")
 
     return mem_layer
 

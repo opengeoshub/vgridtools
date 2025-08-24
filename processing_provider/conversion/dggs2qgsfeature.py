@@ -43,8 +43,9 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     INPUT = 'INPUT'
     CELL_ID = 'CELL_ID'
     DGGS_TYPE = 'DGGS_TYPE'
-    DGGS_TYPES = ['H3', 'S2','A5','rHEALPix','QTM', 'OLC', 'Geohash', 
-                  'GEOREF','MGRS', 'Tilecode','Quadkey', 'Maidenhead', 'GARS']
+    DGGS_TYPES = ['H3', 'S2','A5','rHEALPix',
+                  'DGGAL_GNOSIS', 'DGGAL_ISEA3H', 'DGGAL_ISEA9R', 'DGGAL_IVEA3H', 'DGGAL_IVEA9R', 'DGGAL_RTEA3H', 'DGGAL_RTEA9R',
+                  'QTM', 'OLC', 'Geohash','GEOREF','MGRS', 'Tilecode','Quadkey', 'Maidenhead', 'GARS']
     
     if platform.system() == 'Windows':
         index = DGGS_TYPES.index('rHEALPix') + 1
@@ -163,6 +164,13 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'a5': a52qgsfeature,
             'rhealpix': rhealpix2qgsfeature,
             # 'ease': ease2qgsfeature, # prone to unexpected errors
+            'dggal_gnosis': dggal_gnosis2qgsfeature,
+            'dggal_isea3h': dggal_isea3h2qgsfeature,
+            'dggal_isea9r': dggal_isea9r2qgsfeature,
+            'dggal_ivea3h': dggal_ivea3h2qgsfeature,
+            'dggal_ivea9r': dggal_ivea9r2qgsfeature,
+            'dggal_rtea3h': dggal_rtea3h2qgsfeature,
+            'dggal_rtea9r': dggal_rtea9r2qgsfeature,
             'qtm': qtm2qgsfeature,
             'olc': olc2qgsfeature,
             'geohash': geohash2qgsfeature,
@@ -206,8 +214,12 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             QgsField(get_unique_name("resolution"), QVariant.Int),
             QgsField(get_unique_name("center_lat"), QVariant.Double),
             QgsField(get_unique_name("center_lon"), QVariant.Double),
-            QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'qtm') else "cell_width"), QVariant.Double),
-            QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'qtm') else None,
+            QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'dggal_gnosis', 
+            'dggal_isea3h', 'dggal_isea9r', 'dggal_ivea3h', 'dggal_ivea9r', 'dggal_rtea3h', 'dggal_rtea9r','qtm') else "cell_width"), QVariant.Double),
+            
+            QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 
+            'dggal_gnosis', 'dggal_isea3h', 'dggal_isea9r', 'dggal_ivea3h', 'dggal_ivea9r', 'dggal_rtea3h', 'dggal_rtea9r','qtm') else None,
+            
             QgsField(get_unique_name("cell_area"), QVariant.Double),
             QgsField(get_unique_name("cell_perimeter"), QVariant.Double)
         ]

@@ -59,8 +59,8 @@
 ## Vgridtools installation
 ### After installing `vgridtools`, a dialog will appear prompting you to install `vgrid`. Copy the following commands:
 ```python
-import pip
-pip.main(['install', 'vgrid', '--upgrade'])
+import pip  
+pip.main(['install', 'vgrid','--upgrade'])
 ```
 ### Use the same command after upgrading vgridtools
 

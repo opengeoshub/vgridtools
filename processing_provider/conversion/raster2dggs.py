@@ -34,6 +34,8 @@ from vgrid.stats.olcstats import olc_metrics
 from vgrid.stats.geohashstats import geohash_metrics
 from vgrid.stats.tilecodestats import tilecode_metrics
 from vgrid.stats.quadkeystats import quadkey_metrics
+from vgrid.stats.dggalstats import dggal_metrics
+from vgrid.utils.constants import MIN_CELL_AREA
 
 class Raster2DGGS(QgsProcessingAlgorithm):
     """
@@ -46,7 +48,8 @@ class Raster2DGGS(QgsProcessingAlgorithm):
     
     DGGS_TYPES = [
         'H3', 'S2','A5','rHEALPix','QTM', 'OLC', 'Geohash', 
-        'Tilecode','Quadkey']
+        'Tilecode','Quadkey',
+        'DGGAL_GNOSIS', 'DGGAL_ISEA3H', 'DGGAL_ISEA9R', 'DGGAL_IVEA3H', 'DGGAL_IVEA9R', 'DGGAL_RTEA3H', 'DGGAL_RTEA9R']
     DGGS_RESOLUTION = {
         'H3': (-1, 15, 10),
         'S2': (-1, 30, 16),
@@ -56,7 +59,14 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         'OLC': (-1, 13, 10),
         'Geohash': (-1, 10, 9),
         'Tilecode': (-1, 26, 15),
-        'Quadkey': (-1, 26, 15)        
+        'Quadkey': (-1, 26, 15),
+        'DGGAL_GNOSIS': (-1, 28, 18),
+        'DGGAL_ISEA3H': (-1, 33, 22),
+        'DGGAL_ISEA9R': (-1, 16, 11),
+        'DGGAL_IVEA3H': (-1, 33, 22),
+        'DGGAL_IVEA9R': (-1, 16, 11),
+        'DGGAL_RTEA3H': (-1, 33, 22),
+        'DGGAL_RTEA9R': (-1, 16, 11),
     }
     if platform.system() == 'Windows':
         index = DGGS_TYPES.index('rHEALPix') + 1
@@ -101,7 +111,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         return 'conversion'
 
     def tags(self):
-        return self.tr('raster, H3, S2, A5, rHEALPix, ISEA4T, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS').split(',')
+        return self.tr('raster, H3, S2, A5, rHEALPix, ISEA4T, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS, DGGAL_GNOSIS, DGGAL_ISEA3H, DGGAL_ISEA9R, DGGAL_IVEA3H, DGGAL_IVEA9R, DGGAL_RTEA3H, DGGAL_RTEA9R').split(',')
     
     txt_en = 'Raster to DGGS'
     txt_vi = 'Raster to DGGS'
@@ -184,6 +194,10 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         elif dggs_type == 'quadkey':
             resolutions = range(27)
             cell_area = lambda res: quadkey_metrics(res)[2]  # avg_area
+        elif dggs_type.startswith('dggal_'):
+            dggal_type = dggs_type.replace('dggal_', '')
+            resolutions = range(34)  # DGGAL typically supports 0-15
+            cell_area = lambda res: dggal_metrics(dggal_type, res)[2]  # avg_area
             
         else:
             raise ValueError(f"Unsupported DGGS type: {dggs_type}")
@@ -192,6 +206,8 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         min_diff = float('inf')
         for res in resolutions:
             area = cell_area(res)
+            if area < MIN_CELL_AREA:    
+                break
             diff = abs(area - pixel_size)
             if diff < min_diff:
                 min_diff = diff
@@ -258,7 +274,14 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             'olc': raster2olc,
             'geohash': raster2geohash, 
             'tilecode': raster2tilecode,
-            'quadkey': raster2quadkey
+            'quadkey': raster2quadkey,
+            'dggal_gnosis': raster2dggal,
+            'dggal_isea3h': raster2dggal,
+            'dggal_isea9r': raster2dggal,
+            'dggal_ivea3h': raster2dggal,
+            'dggal_ivea9r': raster2dggal,
+            'dggal_rtea3h': raster2dggal,
+            'dggal_rtea9r': raster2dggal
         }
         if platform.system() == 'Windows':
             self.DGGS_TYPE_functions['isea4t'] = raster2isea4t 
@@ -275,9 +298,13 @@ class Raster2DGGS(QgsProcessingAlgorithm):
 
         feedback.pushInfo(f"Processing raster: {raster_layer.name()} at resolution: {self.resolution}")
 
-        # conversion_function returns a memory layer (QgsVectorLayer)
-        memory_layer = conversion_function(raster_layer, self.resolution,feedback)
-        # memory_layer = conversion_function(raster_layer)
+        # Handle DGGAL types specially - they need the dggal_type as parameter
+        if self.dggs_type.startswith('dggal_'):
+            dggal_type = self.dggs_type.replace('dggal_', '')
+            memory_layer = conversion_function(raster_layer, self.resolution, feedback, dggal_type)
+        else:
+            # conversion_function returns a memory layer (QgsVectorLayer)
+            memory_layer = conversion_function(raster_layer, self.resolution, feedback)
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():
             raise QgsProcessingException("Invalid output layer returned from conversion function.")

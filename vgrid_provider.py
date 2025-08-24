@@ -36,6 +36,8 @@ from .processing_provider.binning.s2_bin import S2Bin
 from .processing_provider.binning.a5_bin import A5Bin
 from .processing_provider.binning.rhealpix_bin import rHEALPixBin
 from .processing_provider.binning.isea4t_bin import ISEA4TBin
+from .processing_provider.binning.dggal_bin import DGGALBin
+
 from .processing_provider.binning.qtm_bin import QTMBin
 
 from .processing_provider.binning.olc_bin import OLCBin
@@ -57,6 +59,7 @@ from .processing_provider.generator.qtm_grid import QTMGrid
 from .processing_provider.generator.olc_grid import OLCGrid
 from .processing_provider.generator.geohash_grid import GeohashGrid
 from .processing_provider.generator.georef_grid import GEOREFGrid
+from .processing_provider.generator.dggal_grid import DGGALGrid
 from .processing_provider.generator.mgrs_grid import MGRSGrid
 from .processing_provider.generator.gzd_grid import GZDGrid
 from .processing_provider.generator.tilecode_grid import TilecodeGrid
@@ -98,6 +101,8 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(A5Bin())
         self.addAlgorithm(rHEALPixBin())
         self.addAlgorithm(ISEA4TBin())
+        self.addAlgorithm(DGGALBin())
+        
         self.addAlgorithm(QTMBin())
 
         self.addAlgorithm(OLCBin())
@@ -119,8 +124,11 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(OLCGrid())
         self.addAlgorithm(GeohashGrid())
         # self.addAlgorithm(GEOREFGrid())
+        self.addAlgorithm(DGGALGrid())
+        ################################
         self.addAlgorithm(MGRSGrid())
         self.addAlgorithm(GZDGrid())
+        ################################
         self.addAlgorithm(TilecodeGrid())
         self.addAlgorithm(QuadkeyGrid())
         self.addAlgorithm(MaidenheadGrid())

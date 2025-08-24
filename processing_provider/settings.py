@@ -29,7 +29,8 @@ class DGGSSettingsDialog(QDialog):
         layout = QVBoxLayout()
         
         # Add resolution inputs for each DGGS type
-        dggs_types = ['H3', 'S2', 'rHEALPix', 'QTM', 'OLC', 'Geohash', 'Tilecode', 'Quadkey']
+        dggs_types = ['H3', 'S2', 'rHEALPix', 'QTM', 'OLC', 'Geohash', 'Tilecode', 'Quadkey', 
+                      'DGGAL_GNOSIS', 'DGGAL_ISEA3H', 'DGGAL_ISEA9R', 'DGGAL_IVEA3H', 'DGGAL_IVEA9R', 'DGGAL_RTEA3H', 'DGGAL_RTEA9R']
         self.res_spins = {}
         
         for dggs_type in dggs_types:
@@ -57,7 +58,8 @@ class DGGSSettingsDialog(QDialog):
         default_dggs_type = self.settings.value('vgridtools/default_dggs_type', 0, type=int)
         default_resolution = self.settings.value('vgridtools/default_resolution', 10, type=int)
         
-        dggs_types = ['H3', 'S2', 'rHEALPix', 'QTM', 'OLC', 'Geohash', 'Tilecode', 'Quadkey']
+        dggs_types = ['H3', 'S2', 'rHEALPix', 'QTM', 'OLC', 'Geohash', 'Tilecode', 'Quadkey', 
+                      'DGGAL_GNOSIS', 'DGGAL_ISEA3H', 'DGGAL_ISEA9R', 'DGGAL_IVEA3H', 'DGGAL_IVEA9R', 'DGGAL_RTEA3H', 'DGGAL_RTEA9R']
         selected_type = dggs_types[default_dggs_type]
         
         for dggs_type, spin in self.res_spins.items():
@@ -68,7 +70,8 @@ class DGGSSettingsDialog(QDialog):
                 spin.setValue(min_res)
     
     def getSelectedTypeAndResolution(self):
-        dggs_types = ['H3', 'S2', 'rHEALPix', 'QTM', 'OLC', 'Geohash', 'Tilecode', 'Quadkey']
+        dggs_types = ['H3', 'S2', 'rHEALPix', 'QTM', 'OLC', 'Geohash', 'Tilecode', 'Quadkey', 
+                      'DGGAL_GNOSIS', 'DGGAL_ISEA3H', 'DGGAL_ISEA9R', 'DGGAL_IVEA3H', 'DGGAL_IVEA9R', 'DGGAL_RTEA3H', 'DGGAL_RTEA9R']
         selected_type = None
         selected_resolution = None
         
@@ -96,6 +99,13 @@ class DGGSSettingsAlgorithm(QgsProcessingAlgorithm):
     GEOHASH = 'GEOHASH'
     TILECODE = 'TILECODE'
     QUADKEY = 'QUADKEY'
+    DGGAL_GNOSIS = 'DGGAL_GNOSIS'
+    DGGAL_ISEA3H = 'DGGAL_ISEA3H'
+    DGGAL_ISEA9R = 'DGGAL_ISEA9R'
+    DGGAL_IVEA3H = 'DGGAL_IVEA3H'
+    DGGAL_IVEA9R = 'DGGAL_IVEA9R'
+    DGGAL_RTEA3H = 'DGGAL_RTEA3H'
+    DGGAL_RTEA9R = 'DGGAL_RTEA9R'
     
     DGGS_RESOLUTION = {
         'H3': (0, 15, 10),
@@ -105,7 +115,14 @@ class DGGSSettingsAlgorithm(QgsProcessingAlgorithm):
         'OLC': (2, 15, 10),
         'Geohash': (1, 10, 9),
         'Tilecode': (0, 29, 15),
-        'Quadkey': (0, 29, 15)        
+        'Quadkey': (0, 29, 15),
+        'DGGAL_GNOSIS': (0, 28, 18),
+        'DGGAL_ISEA3H': (0, 33, 22),
+        'DGGAL_ISEA9R': (0, 16, 11),
+        'DGGAL_IVEA3H': (0, 33, 22),
+        'DGGAL_IVEA9R': (0, 16, 11),
+        'DGGAL_RTEA3H': (0, 33, 22),
+        'DGGAL_RTEA9R': (0, 16, 11),
     }
     
     def tr(self, string):
@@ -133,8 +150,10 @@ class DGGSSettingsAlgorithm(QgsProcessingAlgorithm):
         default_resolution = settings.value('vgridtools/default_resolution', 10, type=int)
         
         # Add individual DGGS type parameters with their resolution ranges
-        dggs_types = ['H3', 'S2', 'rHEALPix', 'QTM', 'OLC', 'Geohash', 'Tilecode', 'Quadkey']
-        dggs_params = [self.H3, self.S2, self.RHEALPIX, self.QTM, self.OLC, self.GEOHASH, self.TILECODE, self.QUADKEY]
+        dggs_types = ['H3', 'S2', 'rHEALPix', 'QTM', 'OLC', 'Geohash', 'Tilecode', 'Quadkey', 
+                      'DGGAL_GNOSIS', 'DGGAL_ISEA3H', 'DGGAL_ISEA9R', 'DGGAL_IVEA3H', 'DGGAL_IVEA9R', 'DGGAL_RTEA3H', 'DGGAL_RTEA9R']
+        dggs_params = [self.H3, self.S2, self.RHEALPIX, self.QTM, self.OLC, self.GEOHASH, self.TILECODE, self.QUADKEY,
+                       self.DGGAL_GNOSIS, self.DGGAL_ISEA3H, self.DGGAL_ISEA9R, self.DGGAL_IVEA3H, self.DGGAL_IVEA9R, self.DGGAL_RTEA3H, self.DGGAL_RTEA9R]
         
         for i, (dggs_type, param) in enumerate(zip(dggs_types, dggs_params)):
             min_res, max_res, default_res = self.DGGS_RESOLUTION[dggs_type]
@@ -165,6 +184,7 @@ class DGGSSettingsAlgorithm(QgsProcessingAlgorithm):
         settings.setValue('vgridtools/default_dggs_type', selected_index)
         settings.setValue('vgridtools/default_resolution', selected_resolution)
         
-        dggs_types = ['H3', 'S2', 'rHEALPix', 'QTM', 'OLC', 'Geohash', 'Tilecode', 'Quadkey']
+        dggs_types = ['H3', 'S2', 'rHEALPix', 'QTM', 'OLC', 'Geohash', 'Tilecode', 'Quadkey', 
+                      'DGGAL_GNOSIS', 'DGGAL_ISEA3H', 'DGGAL_ISEA9R', 'DGGAL_IVEA3H', 'DGGAL_IVEA9R', 'DGGAL_RTEA3H', 'DGGAL_RTEA9R']
         feedback.pushInfo(f"Settings saved: DGGS Type = {dggs_types[selected_index]}, Resolution = {selected_resolution}")
         return {} 

@@ -25,17 +25,20 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication,QSettings,Qt
 from PyQt5.QtCore import QVariant
 import os, statistics
-from vgrid.conversion.dggs2geo.a52geo import a52geo
-from vgrid.conversion.latlon2dggs import latlon2a5
+from vgrid.utils.geometry import dggal_to_geo
+from vgrid.utils.constants import DGGAL_TYPES
+from vgrid.utils.io import validate_dggal_resolution
+from vgrid.conversion.latlon2dggs import latlon2dggal
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter    
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
  
-class A5Bin(QgsProcessingAlgorithm):
+class DGGALBin(QgsProcessingAlgorithm):
     INPUT = 'INPUT'
     CATEGORY_FIELD = 'CATEGORY_FIELD'
     NUMERIC_FIELD = 'NUMERIC_FIELD'
     STATS = 'STATS'
+    DGGS_TYPE = 'DGGS_TYPE'
     RESOLUTION = 'RESOLUTION'
     OUTPUT = 'OUTPUT'
 
@@ -61,16 +64,16 @@ class A5Bin(QgsProcessingAlgorithm):
             return self.translate(string[0])
     
     def createInstance(self):
-        return A5Bin()
+        return DGGALBin()
 
     def name(self):
-        return 'bin_a5'
+        return 'bin_dggal'
 
     def icon(self):
-        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_a5.svg'))
+        return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/generator/grid_dggal.svg'))
 
     def displayName(self):
-        return self.tr('A5 Bin', 'A5 Bin')
+        return self.tr('DGGAL Bin', 'DGGAL Bin')
 
     def group(self):
         return self.tr('Binning', 'Binning')
@@ -79,11 +82,11 @@ class A5Bin(QgsProcessingAlgorithm):
         return 'binning'
 
     def tags(self):
-        return self.tr('DGGS, A5, Binning').split(',')
+        return self.tr('DGGS, DGGAL, Binning').split(',')
     
-    txt_en = 'A5 Bin'
-    txt_vi = 'A5 Bin'
-    figure = '../images/tutorial/bin_a5.png'
+    txt_en = 'DGGAL Bin'
+    txt_vi = 'DGGAL Bin'
+    figure = '../images/tutorial/bin_dggal.png'
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -120,7 +123,7 @@ class A5Bin(QgsProcessingAlgorithm):
                 "Numeric field (for statistics other than 'count')",
                 parentLayerParameterName=self.INPUT,
                 optional=True,
-                type=QgsProcessingParameterField.Numeric  # 🔥 This limits to numeric fields only
+                type=QgsProcessingParameterField.Numeric  # This limits to numeric fields only
             )
         )
         self.addParameter(
@@ -132,13 +135,21 @@ class A5Bin(QgsProcessingAlgorithm):
             )
         )
 
+        param = QgsProcessingParameterEnum(
+            self.DGGS_TYPE,
+            self.tr('DGGS Type'),
+            options=[key for key in DGGAL_TYPES.keys() if key != 'rhealpix'],
+            defaultValue='gnosis'
+        )
+        self.addParameter(param)
+
         self.addParameter(QgsProcessingParameterNumber(
                     self.RESOLUTION,
-                    self.tr('Resolution [0..29]'),
+                    self.tr('Resolution'),
                     QgsProcessingParameterNumber.Integer,
-                    defaultValue=17,
+                    defaultValue=1,
                     minValue= 0,
-                    maxValue= 29,
+                    maxValue= 33,
                     optional=False)
         )
 
@@ -149,17 +160,24 @@ class A5Bin(QgsProcessingAlgorithm):
         self.point_layer = self.parameterAsSource(parameters, self.INPUT, context)
         self.stats_index = self.parameterAsEnum(parameters, self.STATS, context)
         self.stats = self.STATISTICS[self.stats_index]
+        
+        dggs_type_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
+        self.dggs_type = list(DGGAL_TYPES.keys())[dggs_type_index]
+        
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)         
         self.numeric_field = self.parameterAsString(parameters, self.NUMERIC_FIELD, context)
         self.category_field = self.parameterAsString(parameters, self.CATEGORY_FIELD, context)
+
+        # Validate resolution for the selected DGGS type
+        self.resolution = validate_dggal_resolution(self.dggs_type, self.resolution)
 
         if self.stats != 'count' and not self.numeric_field:  
             raise QgsProcessingException("A numeric field is required for statistics other than 'count'.")
         return True
 
     def processAlgorithm(self, parameters, context, feedback):        
-        a5_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
-        a5_geometries = {}
+        dggal_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
+        dggal_geometries = {}
 
         total_points = self.point_layer.featureCount()
         feedback.setProgress(0)  # Initial progress value
@@ -172,32 +190,32 @@ class A5Bin(QgsProcessingAlgorithm):
                 feedback.pushInfo(f"Point feature {point_feature.id()} has invalid geometry and will be skipped")
                 continue
 
-            a5_hex = latlon2a5(point.y(), point.x(), self.resolution)
+            dggal_id = latlon2dggal(self.dggs_type, point.y(), point.x(), self.resolution)
             props = point_feature.attributes()
             fields = self.point_layer.fields()
             props_dict = {fields[i].name(): props[i] for i in range(len(fields))}
 
-            append_stats_value(a5_bins, a5_hex, props_dict, self.stats, self.numeric_field, self.category_field)
+            append_stats_value(dggal_bins, dggal_id, props_dict, self.stats, self.numeric_field, self.category_field)
 
             # Update progress after each point is processed
             feedback.setProgress(int((i + 1) / total_points * 100))
 
       
         # Generate geometries and update progress
-        total_a5_bins = len(a5_bins)
-        for i, a5_hex in enumerate(a5_bins.keys()):
-            cell_polygon = a52geo(a5_hex) # Fix antimeridian        
-            a5_geometries[a5_hex] = cell_polygon
+        total_dggal_bins = len(dggal_bins)
+        for i, dggal_id in enumerate(dggal_bins.keys()):
+            cell_polygon = dggal_to_geo(self.dggs_type, dggal_id)        
+            dggal_geometries[dggal_id] = cell_polygon
 
             # Update progress after each geometry is generated
-            feedback.setProgress(int((i + 1) / total_a5_bins * 100))
+            feedback.setProgress(int((i + 1) / total_dggal_bins * 100))
 
         # Prepare output fields
         out_fields = QgsFields()
-        out_fields.append(QgsField("a5", QVariant.String))
+        out_fields.append(QgsField(f"dggal_{self.dggs_type}", QVariant.String))
 
         all_categories = set()
-        for bin_data in a5_bins.values():
+        for bin_data in dggal_bins.values():
             all_categories.update(bin_data.keys())
 
         for cat in sorted(all_categories):
@@ -215,13 +233,13 @@ class A5Bin(QgsProcessingAlgorithm):
         # Create the sink for the output
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context, out_fields, QgsWkbTypes.Polygon, self.point_layer.sourceCrs())
 
-        # Process each a5 bin and update progress
-        total_a5_geometries = len(a5_geometries)
-        for i, (a5_hex, geom) in enumerate(a5_geometries.items()):
+        # Process each dggal bin and update progress
+        total_dggal_geometries = len(dggal_geometries)
+        for i, (dggal_id, geom) in enumerate(dggal_geometries.items()):
             props = {}
             for cat in sorted(all_categories):
                 prefix = '' if not self.category_field else f"{cat}_"
-                values = a5_bins[a5_hex].get(cat, get_default_stats_structure())
+                values = dggal_bins[dggal_id].get(cat, get_default_stats_structure())
 
                 if self.stats == 'count':
                     props[f'{prefix}count'] = values['count']
@@ -250,12 +268,12 @@ class A5Bin(QgsProcessingAlgorithm):
                 elif self.stats == 'variety':
                     props[f'{prefix}variety'] = len(set(values['values']))
 
-            a5_feature = QgsFeature(out_fields)
-            a5_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            a5_feature.setAttributes([props.get(f.name(), None) if f.name() != 'a5' else a5_hex for f in out_fields])
-            sink.addFeature(a5_feature, QgsFeatureSink.FastInsert)
+            dggal_feature = QgsFeature(out_fields)
+            dggal_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
+            dggal_feature.setAttributes([props.get(f.name(), None) if f.name() != f"dggal_{self.dggs_type}" else dggal_id for f in out_fields])
+            sink.addFeature(dggal_feature, QgsFeatureSink.FastInsert)
 
-            # Update progress after each a5 bin is processed
-            feedback.setProgress(int((i + 1) / total_a5_geometries * 100))
+            # Update progress after each dggal bin is processed
+            feedback.setProgress(int((i + 1) / total_dggal_geometries * 100))
 
         return {self.OUTPUT: dest_id}

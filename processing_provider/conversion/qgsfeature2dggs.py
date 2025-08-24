@@ -36,6 +36,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     PREDICATES = ['intersects', 'within', 'centroid_within','largest_overlap']
     DGGS_TYPES = [
         'H3', 'S2','A5','rHEALPix','QTM', 'OLC', 'Geohash', 
+        'DGGAL_GNOSIS', 'DGGAL_ISEA3H', 'DGGAL_ISEA9R', 'DGGAL_IVEA3H', 'DGGAL_IVEA9R', 'DGGAL_RTEA3H', 'DGGAL_RTEA9R',     
          'Tilecode','Quadkey']
     
     if platform.system() == 'Windows':
@@ -175,6 +176,13 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         elif (selected_dggs == 'GARS'):
             if res_value not in (30,15,5,1):
                 return (False, f"Resolution must be in [30,15,5,1] minutes for {selected_dggs}.")
+        elif (selected_dggs.startswith('DGGAL_')):
+            # Get DGGAL type from the selected option
+            dggal_type = selected_dggs.replace('DGGAL_', '').lower()
+            dggal_min_res = DGGAL_TYPES[dggal_type]["min_res"]
+            dggal_max_res = DGGAL_TYPES[dggal_type]["max_res"]
+            if not (dggal_min_res <= res_value <= dggal_max_res):
+                return (False, f"Resolution must be between {dggal_min_res} and {dggal_max_res} for {selected_dggs}.")
         
         return super().checkParameterValues(parameters, context)
     
@@ -203,8 +211,8 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             QgsField(get_unique_name("resolution"), QVariant.Int),
             QgsField(get_unique_name("center_lat"), QVariant.Double),
             QgsField(get_unique_name("center_lon"), QVariant.Double),
-            QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') else "cell_width"), QVariant.Double),
-            QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') else None,
+            QgsField(get_unique_name("avg_edge_len" if dggs_type in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') or dggs_type.startswith('dggal_') else "cell_width"), QVariant.Double),
+            QgsField(get_unique_name("cell_height"), QVariant.Double) if dggs_type not in ('h3', 's2', 'a5', 'rhealpix', 'isea4t', 'isea3h', 'ease', 'qtm') and not dggs_type.startswith('dggal_') else None,
             QgsField(get_unique_name("cell_area"), QVariant.Double),
             QgsField(get_unique_name("cell_perimeter"), QVariant.Double)
         ]
@@ -238,13 +246,20 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             'a5': qgsfeature2a5,
             'rhealpix': qgsfeature2rhealpix,   
             'isea4t': qgsfeature2isea4t,
-            'isea3h': qgsfeature2isea3h,       
+            'isea3h': qgsfeature2isea3h,   
+            'dggal_gnosis': qgsfeature2dggal,
+            'dggal_isea3h': qgsfeature2dggal,
+            'dggal_isea9r': qgsfeature2dggal,
+            'dggal_ivea3h': qgsfeature2dggal,
+            'dggal_ivea9r': qgsfeature2dggal,
+            'dggal_rtea3h': qgsfeature2dggal,
+            'dggal_rtea9r': qgsfeature2dggal,
             'qtm': qgsfeature2qtm,
             'olc': qgsfeature2olc,
             'geohash': qgsfeature2geohash, # Need to check polyline/ polygon2geohash
             'tilecode': qgsfeature2tilecode,
-            'quadkey': qgsfeature2quadkey
-        }
+            'quadkey': qgsfeature2quadkey       
+        }   
         return True
 
     def processFeature(self, feature, context, feedback):
@@ -260,36 +275,72 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             cell_polygons = []
             multi_cell_polygons = []
 
-            # Handle MultiPoint geometry
-            if feature_geom.wkbType() == QgsWkbTypes.MultiPoint:
-                for point in feature_geom.asMultiPoint():
-                    point_feature = QgsFeature(feature)  # Copy original feature
-                    point_feature.setGeometry(QgsGeometry.fromPointXY(point))  # Set individual point geometry
-                    cell_polygons = conversion_function(point_feature, self.resolution, self.predicate,self.compact, feedback)
-                    multi_cell_polygons.extend(cell_polygons)          
-                return multi_cell_polygons
+            # Handle DGGAL types specially - they need the dggal_type as first parameter
+            if self.dggs_type.startswith('dggal_'):
+                dggal_type = self.dggs_type.replace('dggal_', '')
+                
+                # Handle MultiPoint geometry
+                if feature_geom.wkbType() == QgsWkbTypes.MultiPoint:
+                    for point in feature_geom.asMultiPoint():
+                        point_feature = QgsFeature(feature)  # Copy original feature
+                        point_feature.setGeometry(QgsGeometry.fromPointXY(point))  # Set individual point geometry
+                        cell_polygons = conversion_function(dggal_type, point_feature, self.resolution, self.predicate, self.compact, feedback)
+                        multi_cell_polygons.extend(cell_polygons)          
+                    return multi_cell_polygons
+                
+                        
+                # Handle MultiLineString geometry
+                elif feature_geom.wkbType() == QgsWkbTypes.MultiLineString:
+                    for line in feature_geom.asMultiPolyline():
+                        line_feature = QgsFeature(feature)
+                        line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
+                        cell_polygons = conversion_function(dggal_type, line_feature, self.resolution, self.predicate, self.compact, feedback)
+                        multi_cell_polygons.extend(cell_polygons)
+                    return multi_cell_polygons
+                
+                # Handle MultiPolygon geometry
+                elif feature_geom.wkbType() == QgsWkbTypes.MultiPolygon:
+                    for polygon in feature_geom.asMultiPolygon():
+                        polygon_feature = QgsFeature(feature)
+                        polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
+                        cell_polygons = conversion_function(dggal_type, polygon_feature, self.resolution, self.predicate, self.compact, feedback)
+                        multi_cell_polygons.extend(cell_polygons)                
+                    return multi_cell_polygons
+                
+                else: # Single part features
+                    return conversion_function(dggal_type, feature, self.resolution, self.predicate, self.compact, feedback)
             
-                    
-            # Handle MultiLineString geometry
-            elif feature_geom.wkbType() == QgsWkbTypes.MultiLineString:
-                for line in feature_geom.asMultiPolyline():
-                    line_feature = QgsFeature(feature)
-                    line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
-                    cell_polygons = conversion_function(line_feature, self.resolution,self.predicate, self.compact,feedback)
-                    multi_cell_polygons.extend(cell_polygons)
-                return multi_cell_polygons
-            
-            # Handle MultiPolygon geometry
-            elif feature_geom.wkbType() == QgsWkbTypes.MultiPolygon:
-                for polygon in feature_geom.asMultiPolygon():
-                    polygon_feature = QgsFeature(feature)
-                    polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
-                    cell_polygons = conversion_function(polygon_feature, self.resolution,self.predicate, self.compact, feedback)
-                    multi_cell_polygons.extend(cell_polygons)                
-                return multi_cell_polygons
-            
-            else: # Single part features
-                return conversion_function(feature, self.resolution,self.predicate, self.compact, feedback)
+            else:
+                # Handle MultiPoint geometry
+                if feature_geom.wkbType() == QgsWkbTypes.MultiPoint:
+                    for point in feature_geom.asMultiPoint():
+                        point_feature = QgsFeature(feature)  # Copy original feature
+                        point_feature.setGeometry(QgsGeometry.fromPointXY(point))  # Set individual point geometry
+                        cell_polygons = conversion_function(point_feature, self.resolution, self.predicate,self.compact, feedback)
+                        multi_cell_polygons.extend(cell_polygons)          
+                    return multi_cell_polygons
+                
+                        
+                # Handle MultiLineString geometry
+                elif feature_geom.wkbType() == QgsWkbTypes.MultiLineString:
+                    for line in feature_geom.asMultiPolyline():
+                        line_feature = QgsFeature(feature)
+                        line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
+                        cell_polygons = conversion_function(line_feature, self.resolution,self.predicate, self.compact,feedback)
+                        multi_cell_polygons.extend(cell_polygons)
+                    return multi_cell_polygons
+                
+                # Handle MultiPolygon geometry
+                elif feature_geom.wkbType() == QgsWkbTypes.MultiPolygon:
+                    for polygon in feature_geom.asMultiPolygon():
+                        polygon_feature = QgsFeature(feature)
+                        polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
+                        cell_polygons = conversion_function(polygon_feature, self.resolution,self.predicate, self.compact, feedback)
+                        multi_cell_polygons.extend(cell_polygons)                
+                    return multi_cell_polygons
+                
+                else: # Single part features
+                    return conversion_function(feature, self.resolution,self.predicate, self.compact, feedback)
             
         except Exception as e:
             self.num_bad += 1

@@ -34,7 +34,8 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
     OUTPUT = 'OUTPUT'
 
     DGGS_TYPES = ['H3','S2', 'A5', 'rHEALPix', 'ISEA4T', 'ISEA3H', 'QTM',
-                  'OLC','Geohash','Tilecode','Quadkey']
+                  'OLC','Geohash','Tilecode','Quadkey',
+                  'DGGAL_GNOSIS', 'DGGAL_ISEA3H', 'DGGAL_ISEA9R', 'DGGAL_IVEA3H', 'DGGAL_IVEA9R', 'DGGAL_RTEA3H', 'DGGAL_RTEA9R']
     
     LOC = QgsApplication.locale()[:2]
 
@@ -62,7 +63,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/conversion/dggsexpand.png'))
 
     def tags(self):
-        return self.tr('DGGS, expand, H3,S2, A5, rHEALPix, ISEA4T, ISEA3H, QTM,OLC,Geohash,Tilecode,Quadkey').split(',')
+        return self.tr('DGGS, expand, H3,S2, A5, rHEALPix, ISEA4T, ISEA3H, QTM,OLC,Geohash,Tilecode,Quadkey,DGGAL_GNOSIS,DGGAL_ISEA3H,DGGAL_ISEA9R,DGGAL_IVEA3H,DGGAL_IVEA9R,DGGAL_RTEA3H,DGGAL_RTEA9R').split(',')
 
     txt_en = 'DGGS Expand'
     txt_vi = 'DGGS Expand'
@@ -146,8 +147,14 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
             'olc': olcexpand,
             'geohash': geohashexpand,
             'tilecode': tilecodeexpand,
-            'quadkey': quadkeyexpand
-
+            'quadkey': quadkeyexpand,
+            'dggal_gnosis': dggalexpand,
+            'dggal_isea3h': dggalexpand,
+            'dggal_isea9r': dggalexpand,
+            'dggal_ivea3h': dggalexpand,
+            'dggal_ivea9r': dggalexpand,
+            'dggal_rtea3h': dggalexpand,
+            'dggal_rtea9r': dggalexpand
         }
 
         return True
@@ -161,7 +168,12 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
 
         feedback.pushInfo(f"Expanding {self.dggs_type.upper()} at resolution {self.resolution}")
 
-        memory_layer = conversion_function(dggs_layer, self.resolution, self.dggs_field, feedback)
+        # Handle DGGAL types specially - they need the dggal_type as parameter
+        if self.dggs_type.startswith('dggal_'):
+            dggal_type = self.dggs_type.replace('dggal_', '')
+            memory_layer = conversion_function(dggs_layer, self.resolution, self.dggs_field, feedback, dggal_type)
+        else:
+            memory_layer = conversion_function(dggs_layer, self.resolution, self.dggs_field, feedback)
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():
             raise QgsProcessingException("Invalid output layer returned from conversion function.")

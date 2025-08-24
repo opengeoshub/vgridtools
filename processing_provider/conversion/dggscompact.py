@@ -44,7 +44,8 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
     OUTPUT = 'OUTPUT'
 
     DGGS_TYPES = ['H3','S2','A5','rHEALPix', 
-                  'QTM','OLC', 'Geohash', 'Tilecode', 'Quadkey']
+                  'QTM','OLC', 'Geohash', 'Tilecode', 'Quadkey',
+                  'DGGAL_GNOSIS', 'DGGAL_ISEA3H', 'DGGAL_ISEA9R', 'DGGAL_IVEA3H', 'DGGAL_IVEA9R', 'DGGAL_RTEA3H', 'DGGAL_RTEA9R']
 
     if platform.system() == 'Windows':
         index = DGGS_TYPES.index('rHEALPix') + 1
@@ -77,7 +78,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         return QIcon(os.path.join(os.path.dirname(os.path.dirname(__file__)), '../images/conversion/dggscompact.png'))
 
     def tags(self):
-        return self.tr('DGGS, compact, H3,S2, rHEALPix, ISEA4T, ISEA3H, QTM,OLC,Geohash,Tilecode,Quadkey').split(',')
+        return self.tr('DGGS, compact, H3,S2, rHEALPix, ISEA4T, ISEA3H, QTM,OLC,Geohash,Tilecode,Quadkey,DGGAL_GNOSIS,DGGAL_ISEA3H,DGGAL_ISEA9R,DGGAL_IVEA3H,DGGAL_IVEA9R,DGGAL_RTEA3H,DGGAL_RTEA9R').split(',')
 
     txt_en = 'DGGS Compact'
     txt_vi = 'DGGS Compact'
@@ -147,7 +148,14 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
             'olc': olccompact,
             'geohash': geohashcompact,
             'tilecode': tilecodecompact,
-            'quadkey': quadkeycompact
+            'quadkey': quadkeycompact,
+            'dggal_gnosis': dggalcompact,
+            'dggal_isea3h': dggalcompact,
+            'dggal_isea9r': dggalcompact,
+            'dggal_ivea3h': dggalcompact,
+            'dggal_ivea9r': dggalcompact,
+            'dggal_rtea3h': dggalcompact,
+            'dggal_rtea9r': dggalcompact
         }
         if platform.system() == 'Windows':
             self.DGGS_TYPE_functions['isea4t'] = isea4tcompact 
@@ -163,7 +171,12 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
 
         feedback.pushInfo(f"Compacting {self.dggs_type.upper()}")
 
-        memory_layer = conversion_function(dggs_layer, self.dggs_field,feedback)
+        # Handle DGGAL types specially - they need the dggal_type as parameter
+        if self.dggs_type.startswith('dggal_'):
+            dggal_type = self.dggs_type.replace('dggal_', '')
+            memory_layer = conversion_function(dggs_layer, self.dggs_field, feedback, dggal_type)
+        else:
+            memory_layer = conversion_function(dggs_layer, self.dggs_field, feedback)
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():
             raise QgsProcessingException("Invalid output layer returned from compact function.")

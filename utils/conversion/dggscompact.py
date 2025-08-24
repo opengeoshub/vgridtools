@@ -6,7 +6,10 @@ import a5
 
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
-import platform,re
+from vgrid.utils.constants import DGGAL_TYPES
+from dggal import *
+import platform
+
 if (platform.system() == 'Windows'):   
     from vgrid.dggs.eaggr.eaggr import Eaggr
     from vgrid.dggs.eaggr.enums.model import Model
@@ -38,6 +41,8 @@ from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
 from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
 from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
 from vgrid.dggs.tilecode import tilecode_resolution, quadkey_resolution
+from vgrid.conversion.dggscompact.dggalcompact import dggal_compact
+from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
 
 from vgrid.conversion.dggscompact import *
 from pyproj import Geod
@@ -838,5 +843,92 @@ def quadkeycompact(quadkey_layer: QgsVectorLayer, QuadkeyID_field=None,feedback=
         if feedback:    
             feedback.setProgress(100)
             feedback.pushInfo("Quadkey Compact completed.")
+                
+        return mem_layer
+
+
+########################## 
+# DGGAL
+# ########################
+def dggalcompact(dggal_layer: QgsVectorLayer, DGGALID_field=None, feedback=None, dggal_type=None) -> QgsVectorLayer:
+    if not DGGALID_field:
+        DGGALID_field = f'dggal_{dggal_type}'
+        
+    fields = QgsFields()
+    # Use the specific DGGAL type for the field name
+    field_name = f"dggal_{dggal_type}"
+    fields.append(QgsField(field_name, QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("avg_edge_len", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    crs = dggal_layer.crs().toWkt()
+    layer_name = f"dggal_{dggal_type}_compacted" if dggal_type else "dggal_compacted"
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, layer_name, "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    dggal_ids = [
+        feature[DGGALID_field]
+        for feature in dggal_layer.getFeatures()
+        if feature[DGGALID_field]
+    ]
+    
+    if dggal_ids:
+        try:
+            dggal_ids_compact = dggal_compact(dggal_type, dggal_ids)
+        except Exception as e:
+            raise QgsProcessingException(f"Compact cells failed. Please check your DGGAL ID field. Error: {str(e)}")
+        
+        total_cells = len(dggal_ids_compact)
+
+        for i, dggal_id_compact in enumerate(dggal_ids_compact):
+            if feedback:
+                feedback.setProgress(int((i / total_cells) * 100))
+                if feedback.isCanceled():
+                    return None
+            try:
+                cell_polygon = dggal2geo(dggal_type, dggal_id_compact)
+                
+                # Get resolution and edge count from DGGAL
+                try:
+                    dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
+                    dggrs = getattr(dggal, dggs_class_name)()
+                    zone = dggrs.getZoneFromTextID(dggal_id_compact)
+                    resolution = dggrs.getZoneLevel(zone)
+                    num_edges = dggrs.countZoneEdges(zone)
+                except:
+                    # Fallback values if we can't get them from DGGAL
+                    resolution = 0
+                    num_edges = 6  # Default for hexagonal cells
+                
+                center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+            except Exception as e:
+                if feedback:
+                    feedback.pushInfo(f"Warning: Could not process DGGAL ID {dggal_id_compact}: {str(e)}")
+                continue
+            
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            dggal_feature = QgsFeature(fields)
+            dggal_feature.setGeometry(cell_geom)
+            
+            attributes = {
+                field_name: dggal_id_compact,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "avg_edge_len": avg_edge_len,
+                "cell_area": cell_area,
+                "cell_perimeter": cell_perimeter,
+                }
+            dggal_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([dggal_feature])
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo(f"DGGAL {dggal_type.upper()} Compact completed.")
                 
         return mem_layer

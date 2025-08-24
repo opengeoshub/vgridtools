@@ -26,7 +26,14 @@ class DGGSettings:
             'Tilecode': (0, 29, 15),
             'Quadkey': (0, 29, 15),
             'ISEA4T': (0, 25, 17),
-            'ISEA3H': (0, 32, 17)
+            'ISEA3H': (0, 32, 17),  
+            'DGGAL_GNOSIS': (0, 28, 18),
+            'DGGAL_ISEA3H': (0, 33, 22),
+            'DGGAL_ISEA9R': (0, 16, 11),
+            'DGGAL_IVEA3H': (0, 33, 22),
+            'DGGAL_IVEA9R': (0, 16, 11),
+            'DGGAL_RTEA3H': (0, 33, 22),
+            'DGGAL_RTEA9R': (0, 16, 11),
         }
 
         # Load settings for each DGGS type

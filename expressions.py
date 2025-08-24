@@ -198,7 +198,30 @@ def latlon2isea3h(latitude, longitude, resolution, feature, parent):
 #   </ul>    
 #   """ 
 #   return latlon2dggs.latlon2ease(latitude, longitude, resolution)
-  
+
+@qgsfunction(args='auto', group=group_name)
+def latlon2dggal(dggs_type,latitude, longitude, resolution, feature, parent):
+  """<style type="text/css">
+    .function {
+    color: #05688f;
+    font-weight: bold;
+    }
+    .parameters {
+    color: red;
+    font-style:italic
+    }
+  </style>
+  Convert (lat, long) to DGGAL ID.
+  <h4>Syntax</h4>    
+    <li><span class = function>latlon2dggal</span>(<span class = parameters>dggs_type, lat, long, resolution</span>)</li>
+  <h4>Example usage</h4>
+
+  <ul>
+    <li><span class = function>latlon2dggal</span>(<span class = parameters>'isea9r', 10.775276, 106.706797, 7</span>)&rarr; 'H7-629F2'</li>
+  </ul>    
+  """ 
+  return latlon2dggs.latlon2dggal(dggs_type, latitude, longitude, resolution)
+
   
 @qgsfunction(args='auto', group=group_name)
 def latlon2qtm(latitude, longitude, resolution, feature, parent):

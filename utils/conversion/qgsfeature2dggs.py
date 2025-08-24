@@ -1,6 +1,7 @@
 from shapely.geometry import Polygon, box
 from shapely.wkt import loads as wkt_loads
 import platform
+import geopandas as gpd
 from qgis.core import QgsFeature, QgsGeometry, QgsField, QgsFields,QgsWkbTypes
 from PyQt5.QtCore import QVariant
 
@@ -9,7 +10,7 @@ import a5
 from vgrid.dggs import s2, olc, mercantile
 
 from vgrid.conversion.latlon2dggs import (
-    latlon2h3,latlon2s2,latlon2a5,latlon2isea4t, latlon2isea3h, latlon2qtm, latlon2ease,
+    latlon2h3,latlon2s2,latlon2a5,latlon2isea4t, latlon2isea3h, latlon2dggal, latlon2qtm, latlon2ease,
     latlon2olc, latlon2geohash, latlon2tilecode, latlon2quadkey
 )
 from vgrid.utils.io import (
@@ -20,6 +21,7 @@ from vgrid.utils.io import (
     validate_isea3h_resolution,
     validate_rhealpix_resolution,
     validate_ease_resolution,
+    validate_dggal_resolution,  
     validate_qtm_resolution,
     validate_olc_resolution,
     validate_geohash_resolution,
@@ -44,9 +46,11 @@ from vgrid.generator.olcgrid import olc_grid, olc_refine_cell
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
 from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
+from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo       
 from vgrid.utils.geometry import  graticule_dggs_metrics, geodesic_dggs_metrics,check_predicate
 
 from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_compact
+from vgrid.conversion.dggscompact.dggalcompact import dggal_compact 
 from vgrid.conversion.dggscompact.qtmcompact import qtm_compact
 from vgrid.conversion.dggscompact.olccompact import olc_compact
 from vgrid.conversion.dggscompact.geohashcompact import geohash_compact
@@ -71,6 +75,10 @@ if (platform.system() == 'Windows'):
     isea4t_dggs = Eaggr(Model.ISEA4T)
     isea3h_dggs = Eaggr(Model.ISEA3H)
 
+from vgrid.utils.constants import DGGAL_TYPES
+from dggal import *
+app = Application(appGlobals=globals())
+pydggal_setup(app)
 from pyproj import Geod
 geod = Geod(ellps="WGS84")
 p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (90.0, -180.0), (90.0, -90.0), (90.0, 0.0), (90.0, 90.0), (90.0, 180.0)
@@ -919,8 +927,345 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
 
     return a5_features
 
-
 ######################
+# QgsFeatures to DGGAL
+#######################
+def qgsfeature2dggal(dggal_type,feature, resolution, predicate = None, compact=None, feedback=None):
+    resolution = validate_dggal_resolution(dggal_type, resolution)
+    feature_geom = feature.geometry()
+    if feature_geom.wkbType() == QgsWkbTypes.Point:
+        return point2dggal(dggal_type, feature, resolution,feedback)
+    elif feature_geom.wkbType() == QgsWkbTypes.LineString: 
+        return polyline2dggal(dggal_type, feature, resolution,None,None,feedback)
+    elif feature_geom.wkbType() == QgsWkbTypes.Polygon:
+        return polygon2dggal(dggal_type, feature, resolution,predicate,compact,feedback)
+  
+def point2dggal(dggal_type, feature,resolution,feedback): 
+    if feedback and feedback.isCanceled():
+        return []
+    resolution = validate_dggal_resolution(dggal_type, resolution)
+    feature_geometry = feature.geometry()
+    point = feature_geometry.asPoint()   
+    dggal_id = latlon2dggal(dggal_type, point.y(), point.x(), resolution)
+    dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
+    dggrs = globals()[dggs_class_name]()
+    zone = dggrs.getZoneFromTextID(dggal_id)
+    num_edges = dggrs.countZoneEdges(zone)
+
+    cell_polygon = dggal2geo(dggal_type, dggal_id)
+    center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+    
+    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)        
+    # Create a single QGIS feature
+    dggal_feature = QgsFeature()
+    dggal_feature.setGeometry(cell_geometry)
+    
+    # Get all attributes from the input feature
+    original_attributes = feature.attributes()
+    original_fields = feature.fields()
+    
+    # Define new s2-related attributes
+    new_fields = QgsFields()
+    new_fields.append(QgsField(dggal_type, QVariant.String))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+    # Combine original fields and new fields
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+    
+    dggal_feature.setFields(all_fields)
+    
+    # Combine original attributes with new attributes
+    new_attributes = [dggal_id, resolution, center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter]
+    all_attributes = original_attributes + new_attributes
+    
+    dggal_feature.setAttributes(all_attributes)
+    
+    return [dggal_feature]
+
+def polyline2dggal(dggal_type, feature, resolution, predicate=None, compact=None, feedback=None):  
+    resolution = validate_dggal_resolution(dggal_type, resolution)
+    
+    if feature is None:
+        return []
+    
+    feature_geometry = feature.geometry()
+    shapely_geom = wkt_loads(feature_geometry.asWkt())
+    feature_rect = feature_geometry.boundingBox()
+    
+    if feedback:
+        feedback.pushInfo(f"Processing feature {feature.id()}")
+        feedback.setProgress(0)
+    
+    # Create the appropriate DGGS instance
+    dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
+    dggrs = globals()[dggs_class_name]()
+    
+    # Convert bounds from (minx, miny, maxx, maxy) to (min_lat, min_lon, max_lat, max_lon)
+    min_lat, min_lon = feature_rect.yMinimum(), feature_rect.xMinimum()
+    max_lat, max_lon =  feature_rect.yMaximum(), feature_rect.xMaximum()
+    
+    # Create GeoExtent for DGGAL   
+    ll = GeoPoint(min_lat, min_lon)
+    ur = GeoPoint(max_lat, max_lon)
+    geo_extent = GeoExtent(ll, ur)
+    
+    # Get zones from DGGAL
+    zones = dggrs.listZones(resolution, geo_extent)    
+    
+    dggal_features = []
+    total_zones = len(zones)
+    
+    for idx, zone in enumerate(zones):
+        if feedback and feedback.isCanceled():
+            return []
+        
+        zone_id = dggrs.getZoneTextID(zone)
+        num_edges = dggrs.countZoneEdges(zone)
+        cell_resolution = dggrs.getZoneLevel(zone)
+        
+        # Convert zone to geometry using dggal2geo
+        cell_polygon = dggal2geo(dggal_type, zone_id)
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+        
+        # Check intersection with the feature geometry
+        if not check_predicate(cell_polygon, shapely_geom, "intersects"):
+            continue
+        
+        # Calculate metrics
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+        
+        # Create QGIS feature
+        dggal_feature = QgsFeature()
+        dggal_feature.setGeometry(cell_geometry)
+        
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+        
+        # Define new DGGAL-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField(f"dggal_{dggal_type}", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        dggal_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [zone_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter]
+        all_attributes = original_attributes + new_attributes
+        
+        dggal_feature.setAttributes(all_attributes)
+        
+        dggal_features.append(dggal_feature)
+        
+        if feedback and idx % 100 == 0:
+            feedback.setProgress(int(100 * idx / total_zones))
+    
+    if feedback:
+        feedback.setProgress(100)
+    
+    return dggal_features
+
+
+def polygon2dggal(dggal_type, feature, resolution, predicate=None, compact=None, feedback=None):  
+    resolution = validate_dggal_resolution(dggal_type, resolution)
+    
+    if feature is None:
+        return []
+    
+    feature_geometry = feature.geometry()
+    shapely_geom = wkt_loads(feature_geometry.asWkt())
+    feature_rect = feature_geometry.boundingBox()
+    
+    if feedback:
+        feedback.pushInfo(f"Processing feature {feature.id()}")
+        feedback.setProgress(0)
+    
+    # Create the appropriate DGGS instance
+    dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
+    dggrs = globals()[dggs_class_name]()
+    
+    # Convert bounds from (minx, miny, maxx, maxy) to (min_lat, min_lon, max_lat, max_lon)
+    min_lat, min_lon = feature_rect.yMinimum(), feature_rect.xMinimum()
+    max_lat, max_lon =  feature_rect.yMaximum(), feature_rect.xMaximum()    
+    
+    ll = GeoPoint(min_lat, min_lon)
+    ur = GeoPoint(max_lat, max_lon)
+    geo_extent = GeoExtent(ll, ur)
+        
+    # Get zones from DGGAL
+    zones = dggrs.listZones(resolution, geo_extent)  
+   
+    dggal_features = []
+    total_zones = len(zones)
+    
+    for idx, zone in enumerate(zones):
+        if feedback and feedback.isCanceled():
+            return []
+        
+        zone_id = dggrs.getZoneTextID(zone)
+        num_edges = dggrs.countZoneEdges(zone)
+        cell_resolution = dggrs.getZoneLevel(zone)
+        
+        # Convert zone to geometry using dggal2geo
+        cell_polygon = dggal2geo(dggal_type, zone_id)
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+        
+        # Check predicate with the feature geometry
+        if not check_predicate(cell_polygon, shapely_geom, predicate):
+            continue
+        
+        # Calculate metrics
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+        
+        # Create QGIS feature
+        dggal_feature = QgsFeature()
+        dggal_feature.setGeometry(cell_geometry)
+        
+        # Get all attributes from the input feature
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+        
+        # Define new DGGAL-related attributes
+        new_fields = QgsFields()
+        new_fields.append(QgsField(f"dggal_{dggal_type}", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+        
+        # Combine original fields and new fields
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        
+        dggal_feature.setFields(all_fields)
+        
+        # Combine original attributes with new attributes
+        new_attributes = [zone_id, cell_resolution, center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter]
+        all_attributes = original_attributes + new_attributes
+        
+        dggal_feature.setAttributes(all_attributes)
+        
+        dggal_features.append(dggal_feature)
+        
+        if feedback and idx % 100 == 0:
+            feedback.setProgress(int(100 * idx / total_zones))
+    
+    if feedback:
+        feedback.setProgress(100)
+    
+    # Apply compact mode if enabled
+    if compact and dggal_features:
+        dggal_features = dggalcompact_from_qgsfeatures(dggal_features, feedback)
+    
+    return dggal_features
+
+
+def dggalcompact_from_qgsfeatures(qgs_features, feedback):           
+    # Find the DGGAL field name from the fields
+    original_fields = qgs_features[0].fields()
+    dggal_field_name = None
+    for field in original_fields:
+        if field.name().startswith('dggal_'):
+            dggal_field_name = field.name()
+            dggal_type = field.name().replace('dggal_', '')
+            break
+    
+    if dggal_field_name is None:
+        return qgs_features  # Return original features if no DGGAL field found
+    
+    # Get original attributes from the first feature (excluding DGGAL-specific fields)
+    original_attributes = qgs_features[0].attributes()
+    
+    # Find the indices of DGGAL-specific fields to exclude from original attributes
+    dggal_field_names = [dggal_field_name, 'resolution', 'center_lat', 'center_lon', 'avg_edge_len', 'cell_area', 'cell_perimeter']
+    dggal_field_indices = []
+    for field_name in dggal_field_names:
+        field_index = original_fields.indexOf(field_name)
+        if field_index >= 0:
+            dggal_field_indices.append(field_index)
+    
+    # Create list of original attributes excluding DGGAL-specific fields
+    preserved_attributes = []
+    for i, attr in enumerate(original_attributes):
+        if i not in dggal_field_indices:
+            preserved_attributes.append(attr)
+
+    dggal_ids = [f[dggal_field_name] for f in qgs_features if f[dggal_field_name]]
+
+    dggal_ids_compact = dggal_compact(dggal_type, dggal_ids)    
+    dggal_features = []
+    total_cells = len(dggal_ids_compact)
+    if feedback:
+        feedback.pushInfo(f"Compacting cells")   
+        feedback.setProgress(0)
+        
+    for i, dggal_id_compact in enumerate(dggal_ids_compact):
+        if feedback and feedback.isCanceled():
+            return []
+        dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
+        dggrs = getattr(dggal, dggs_class_name)()
+        zone = dggrs.getZoneFromTextID(dggal_id_compact)
+        num_edges = dggrs.countZoneEdges(zone)
+        cell_polygon = dggal2geo(dggal_type, dggal_id_compact)
+        cell_resolution = dggrs.getZoneLevel(zone)
+        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+        dggal_feature = QgsFeature()
+        dggal_feature.setFields(original_fields)
+        dggal_feature.setGeometry(cell_geometry)
+
+        # Set preserved original attributes
+        attr_index = 0
+        for j, attr in enumerate(original_attributes):
+            if j not in dggal_field_indices:
+                dggal_feature[original_fields[j].name()] = preserved_attributes[attr_index]
+                attr_index += 1
+
+        # Overwrite DGGAL-specific attributes
+        dggal_feature[dggal_field_name] = dggal_id_compact
+        dggal_feature['resolution'] = cell_resolution
+        dggal_feature['center_lat'] = center_lat
+        dggal_feature['center_lon'] = center_lon
+        dggal_feature['avg_edge_len'] = avg_edge_len
+        dggal_feature['cell_area'] = cell_area
+        dggal_feature['cell_perimeter'] = cell_perimeter   
+        dggal_features.append(dggal_feature)
+        if feedback and i % 100 == 0:
+            feedback.setProgress(int(100 * i / total_cells))
+
+    if feedback:
+        feedback.setProgress(100)        
+
+    return dggal_features
+
+
+#######################
 # QgsFeatures to rHEALPix
 #######################
 
@@ -2272,14 +2617,14 @@ def polyline2olc(feature, resolution, predicate=None, compact=None,feedback=None
     base_cells = olc_grid(base_resolution)
 
     seed_cells = []
-    for base_cell in base_cells["features"]:
-        base_cell_poly = Polygon(base_cell["geometry"]["coordinates"][0])
+    for idx, base_cell in base_cells.iterrows():
+        base_cell_poly = base_cell["geometry"]
         if base_cell_poly.intersects(feature_shapely):
             seed_cells.append(base_cell)
 
     refined_features = []
     for seed_cell in seed_cells:
-        seed_cell_poly = Polygon(seed_cell["geometry"]["coordinates"][0])
+        seed_cell_poly = seed_cell["geometry"]
 
         if seed_cell_poly.contains(feature_shapely) and resolution == base_resolution:
             refined_features.append(seed_cell)
@@ -2289,7 +2634,7 @@ def polyline2olc(feature, resolution, predicate=None, compact=None,feedback=None
             )
 
     resolution_features = [
-        refine_feature for refine_feature in refined_features if refine_feature["properties"]["resolution"] == resolution
+        refine_feature for refine_feature in refined_features if refine_feature["resolution"] == resolution
     ]
 
     seen_olc_ids = set()
@@ -2301,12 +2646,12 @@ def polyline2olc(feature, resolution, predicate=None, compact=None,feedback=None
     for i, resolution_feature in enumerate(resolution_features):
         if feedback and feedback.isCanceled():
             return []  
-        olc_id = resolution_feature["properties"]["olc"]
+        olc_id = resolution_feature["olc"]
         if olc_id not in seen_olc_ids:
             seen_olc_ids.add(olc_id)
             
-            cell_polygon = Polygon(resolution_feature["geometry"]["coordinates"][0])
-            olc_id = resolution_feature["properties"]["olc"]
+            cell_polygon = resolution_feature["geometry"]
+            olc_id = resolution_feature["olc"]
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             # Predicate-based filtering
@@ -2378,14 +2723,14 @@ def polygon2olc(feature, resolution, predicate=None, compact=None,feedback=None)
     base_cells = olc_grid(base_resolution)
 
     seed_cells = []
-    for base_cell in base_cells["features"]:
-        base_cell_poly = Polygon(base_cell["geometry"]["coordinates"][0])
+    for idx, base_cell in base_cells.iterrows():
+        base_cell_poly = base_cell["geometry"]
         if base_cell_poly.intersects(feature_shapely):
             seed_cells.append(base_cell)
 
     refined_features = []
     for seed_cell in seed_cells:
-        seed_cell_poly = Polygon(seed_cell["geometry"]["coordinates"][0])
+        seed_cell_poly = seed_cell["geometry"]
 
         if seed_cell_poly.contains(feature_shapely) and resolution == base_resolution:
             refined_features.append(seed_cell)
@@ -2395,7 +2740,7 @@ def polygon2olc(feature, resolution, predicate=None, compact=None,feedback=None)
             )
 
     resolution_features = [
-        refine_feature for refine_feature in refined_features if refine_feature["properties"]["resolution"] == resolution
+        refine_feature for refine_feature in refined_features if refine_feature["resolution"] == resolution
     ]
 
     seen_olc_ids = set()
@@ -2407,12 +2752,12 @@ def polygon2olc(feature, resolution, predicate=None, compact=None,feedback=None)
     for i, resolution_feature in enumerate(resolution_features):
         if feedback and feedback.isCanceled():
             return []  
-        olc_id = resolution_feature["properties"]["olc"]
+        olc_id = resolution_feature["olc"]
         if olc_id not in seen_olc_ids:
             seen_olc_ids.add(olc_id)
             
-            cell_polygon = Polygon(resolution_feature["geometry"]["coordinates"][0])
-            olc_id = resolution_feature["properties"]["olc"]
+            cell_polygon = resolution_feature["geometry"]
+            olc_id = resolution_feature["olc"]
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
           
             if not check_predicate(cell_geometry, feature_geometry, predicate):
