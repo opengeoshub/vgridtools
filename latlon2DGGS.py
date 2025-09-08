@@ -1,0 +1,1095 @@
+"""
+/***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+"""
+import os
+import re
+from qgis.PyQt.QtCore import QSize
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtWidgets import QDockWidget, QMenu, QApplication
+from qgis.PyQt.QtCore import pyqtSlot
+from qgis.PyQt.uic import loadUiType
+from qgis.core import QgsCoordinateTransform, QgsPoint, QgsPointXY, QgsProject
+from .util import epsg4326, tr, parseDMSString
+from .captureCoordinate import CaptureCoordinate
+from .settings import settings
+from .utm import latLon2Utm, isUtm, utm2Point
+from vgrid.conversion.latlon2dggs import *
+from vgrid.conversion.dggs2geo import *
+from vgrid.utils.geometry import geodesic_dggs_metrics  
+
+from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+
+
+FORM_CLASS, _ = loadUiType(os.path.join(
+    os.path.dirname(__file__), 'ui/latlon2dggs.ui'))
+
+s_invalid = tr('Invalid')
+s_copied = tr('copied to the clipboard')
+
+class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
+    inputProjection = 0
+    origPt = None
+    origCrs = epsg4326
+
+    def __init__(self, lltools, settingsDialog, iface, parent):
+        super(LatLon2DGGSWidget, self).__init__(parent)
+        self.setupUi(self)
+        self.iface = iface
+        self.canvas = iface.mapCanvas()
+        self.lltools = lltools
+        self.settings = settingsDialog
+        self.savedMapTool = None
+
+        self.clipboard = QApplication.clipboard()
+
+        # Set up a connection with the coordinate capture tool
+        self.captureCoordinate = CaptureCoordinate(self.canvas)
+        self.captureCoordinate.capturePoint.connect(self.capturedPoint)
+        self.captureCoordinate.captureStopped.connect(self.stopCapture)
+
+        self.xymenu = QMenu()
+        icon = QIcon(os.path.dirname(__file__) + '/images/yx.svg')
+        a = self.xymenu.addAction(icon, tr("Y, X (Lat, Lon) Order"))
+        a.setData(0)
+        icon = QIcon(os.path.dirname(__file__) + '/images/xy.svg')
+        a = self.xymenu.addAction(icon, tr("X, Y (Lon, Lat) Order"))
+        a.setData(1)
+        self.xyButton.setIconSize(QSize(16, 16))
+        self.xyButton.setIcon(icon)
+        self.xyButton.setMenu(self.xymenu)
+        self.xyButton.triggered.connect(self.xyTriggered)
+        self.inputXYOrder = settings.coordOrder
+        self.clearFormButton.setIcon(QIcon(':/images/themes/default/mIconClearText.svg'))
+        self.clearFormButton.clicked.connect(self.clearForm)
+        self.coordCaptureButton.setIcon(QIcon(os.path.dirname(__file__) + "/images/coordCapture.svg"))
+        self.coordCaptureButton.clicked.connect(self.startCapture)
+        self.zoomButton.setIcon(QIcon(':/images/themes/default/mActionZoomIn.svg'))
+        self.zoomButton.clicked.connect(self.zoomTo)
+        self.optionsButton.setIcon(QIcon(os.path.dirname(__file__) + "/images/settings.svg"))
+        self.optionsButton.clicked.connect(self.showSettings)
+
+        self.wgs84LineEdit.returnPressed.connect(self.commitWGS84)  
+        self.utmLineEdit.returnPressed.connect(self.commitUTM)
+        
+        self.h3LineEdit.returnPressed.connect(self.commitH3)
+        self.s2LineEdit.returnPressed.connect(self.commitS2)
+        self.a5LineEdit.returnPressed.connect(self.commitA5)
+        self.rhealpixLineEdit.returnPressed.connect(self.commitRHEALPIX)
+        self.isea4tLineEdit.returnPressed.connect(self.commitISEA4T)
+        self.isea3hLineEdit.returnPressed.connect(self.commitISEA3H)
+        self.easeLineEdit.returnPressed.connect(self.commitEASE)
+        
+        self.dggal_gnosisLineEdit.returnPressed.connect(self.commitDGGAL_GNOSIS)
+        self.dggal_isea3hLineEdit.returnPressed.connect(self.commitDGGAL_ISEA3H)
+        self.dggal_isea9rLineEdit.returnPressed.connect(self.commitDGGAL_ISEA9R)
+        self.dggal_ivea3hLineEdit.returnPressed.connect(self.commitDGGAL_IVEA3H)
+        self.dggal_ivea9rLineEdit.returnPressed.connect(self.commitDGGAL_IVEA9R)
+        self.dggal_rtea3hLineEdit.returnPressed.connect(self.commitDGGAL_RTEA3H)
+        self.dggal_rtea9rLineEdit.returnPressed.connect(self.commitDGGAL_RTEA9R)
+        self.dggal_rhealpixLineEdit.returnPressed.connect(self.commitDGGAL_RHEALPIX)
+
+        self.qtmLineEdit.returnPressed.connect(self.commitQTM)
+        self.olcLineEdit.returnPressed.connect(self.commitOLC)
+        self.geohashLineEdit.returnPressed.connect(self.commitGeohash)
+        self.georefLineEdit.returnPressed.connect(self.commitGEOREF)
+        self.mgrsLineEdit.returnPressed.connect(self.commitMGRS)
+        self.tilecodeLineEdit.returnPressed.connect(self.commitTilecode)
+        self.quadkeyLineEdit.returnPressed.connect(self.commitQuadkey)
+        self.maidenheadLineEdit.returnPressed.connect(self.commitMaidenhead)
+        self.garsLineEdit.returnPressed.connect(self.commitGARS)
+
+        icon = QIcon(':/images/themes/default/mActionEditCopy.svg')
+        self.wgs84CopyButton.setIcon(icon)
+        self.utmCopyButton.setIcon(icon)
+
+        self.h3CopyButton.setIcon(icon)
+        self.s2CopyButton.setIcon(icon)
+        self.a5CopyButton.setIcon(icon)
+        self.rhealpixCopyButton.setIcon(icon)
+        self.isea4tCopyButton.setIcon(icon)
+        self.isea3hCopyButton.setIcon(icon)
+        self.easeCopyButton.setIcon(icon)
+
+        self.dggal_gnosisCopyButton.setIcon(icon)
+        self.dggal_isea3hCopyButton.setIcon(icon)
+        self.dggal_isea9rCopyButton.setIcon(icon)
+        self.dggal_ivea3hCopyButton.setIcon(icon)
+        self.dggal_ivea9rCopyButton.setIcon(icon)
+        self.dggal_rtea3hCopyButton.setIcon(icon)
+        self.dggal_rtea9rCopyButton.setIcon(icon)
+        self.dggal_rhealpixCopyButton.setIcon(icon)
+        
+        self.qtmCopyButton.setIcon(icon)
+        self.olcCopyButton.setIcon(icon)
+        self.geohashCopyButton.setIcon(icon)
+        self.georefCopyButton.setIcon(icon)
+        self.mgrsCopyButton.setIcon(icon)
+        self.tilecodeCopyButton.setIcon(icon)
+        self.quadkeyCopyButton.setIcon(icon)
+        self.maidenheadCopyButton.setIcon(icon)
+        self.garsCopyButton.setIcon(icon)
+
+        self.wgs84CopyButton.clicked.connect(self.copyWGS84)
+        self.utmCopyButton.clicked.connect(self.copyUTM)    
+        
+        self.h3CopyButton.clicked.connect(self.copyH3)
+        self.s2CopyButton.clicked.connect(self.copyS2)
+        self.a5CopyButton.clicked.connect(self.copyA5)
+        self.rhealpixCopyButton.clicked.connect(self.copyRHEALPIX)
+        self.isea4tCopyButton.clicked.connect(self.copyISEA4T)
+        self.isea3hCopyButton.clicked.connect(self.copyISEA3H)
+        self.easeCopyButton.clicked.connect(self.copyEASE)
+        
+        self.dggal_gnosisCopyButton.clicked.connect(self.copyDGGAL_GNOSIS)
+        self.dggal_isea3hCopyButton.clicked.connect(self.copyDGGAL_ISEA3H)
+        self.dggal_isea9rCopyButton.clicked.connect(self.copyDGGAL_ISEA9R)
+        self.dggal_ivea3hCopyButton.clicked.connect(self.copyDGGAL_IVEA3H)
+        self.dggal_ivea9rCopyButton.clicked.connect(self.copyDGGAL_IVEA9R)
+        self.dggal_rtea3hCopyButton.clicked.connect(self.copyDGGAL_RTEA3H)
+        self.dggal_rtea9rCopyButton.clicked.connect(self.copyDGGAL_RTEA9R)
+        self.dggal_rhealpixCopyButton.clicked.connect(self.copyDGGAL_RHEALPIX)
+
+        self.qtmCopyButton.clicked.connect(self.copyQTM)    
+        self.olcCopyButton.clicked.connect(self.copyOLC)
+        self.geohashCopyButton.clicked.connect(self.copyGeohash)
+        self.georefCopyButton.clicked.connect(self.copyGEOREF)
+        self.mgrsCopyButton.clicked.connect(self.copyMGRS)          
+        self.tilecodeCopyButton.clicked.connect(self.copyTilecode)
+        self.quadkeyCopyButton.clicked.connect(self.copyQuadkey)
+        self.maidenheadCopyButton.clicked.connect(self.copyMaidenhead)
+        self.garsCopyButton.clicked.connect(self.copyGARS)
+
+    def showEvent(self, e):
+        self.inputXYOrder = settings.coordOrder
+        self.xyButton.setDefaultAction(self.xymenu.actions()[settings.coordOrder])
+        self.updateLabel()
+
+    def closeEvent(self, e):
+        if self.savedMapTool:
+            self.canvas.setMapTool(self.savedMapTool)
+            self.savedMapTool = None
+        QDockWidget.closeEvent(self, e)       
+
+    def xyTriggered(self, action):
+        self.xyButton.setDefaultAction(action)
+        self.inputXYOrder = action.data()
+        if self.origPt is not None:
+            self.updateCoordinates(-1, self.origPt, self.origCrs)
+        self.updateLabel()
+
+    def showInvalid(self, id):
+        self.origPt = None
+        if id != 0:
+            self.wgs84LineEdit.setText(s_invalid)
+        if id != 1:
+            self.utmLineEdit.setText(s_invalid)
+        
+        if id != 2:
+            self.h3LineEdit.setText(s_invalid)
+        if id != 3:
+            self.s2LineEdit.setText(s_invalid)
+        if id != 4:
+            self.a5LineEdit.setText(s_invalid)
+        if id != 5:
+            self.rhealpixLineEdit.setText(s_invalid)
+        if id != 6:
+            self.isea4tLineEdit.setText(s_invalid)
+        if id != 7:
+            self.isea3hLineEdit.setText(s_invalid)
+        if id != 8:
+            self.easeLineEdit.setText(s_invalid)
+        
+        if id != 9:
+            self.dggal_gnosisLineEdit.setText(s_invalid)
+        if id != 10:
+            self.dggal_isea3hLineEdit.setText(s_invalid)
+        if id != 11:
+            self.dggal_isea9rLineEdit.setText(s_invalid)
+        if id != 12:
+            self.dggal_ivea3hLineEdit.setText(s_invalid)
+        if id != 13:
+            self.dggal_ivea9rLineEdit.setText(s_invalid)
+        if id != 14:
+            self.dggal_rtea3hLineEdit.setText(s_invalid)
+        if id != 15:
+            self.dggal_rtea9rLineEdit.setText(s_invalid)
+        if id != 16:
+            self.dggal_rhealpixLineEdit.setText(s_invalid)
+        
+        if id != 17:
+            self.qtmLineEdit.setText(s_invalid)
+        if id != 18:
+            self.olcLineEdit.setText(s_invalid)
+        if id != 19:
+            self.geohashLineEdit.setText(s_invalid)
+        if id != 20:
+            self.georefLineEdit.setText(s_invalid)
+        if id != 21:
+            self.mgrsLineEdit.setText(s_invalid)
+        if id != 22:
+            self.tilecodeLineEdit.setText(s_invalid)
+        if id != 23:
+            self.quadkeyLineEdit.setText(s_invalid)
+        if id != 24:
+            self.maidenheadLineEdit.setText(s_invalid)
+        if id != 25:
+            self.garsLineEdit.setText(s_invalid)
+        
+
+    def clearForm(self):
+        self.origPt = None
+        
+        self.wgs84LineEdit.setText('')  
+        self.utmLineEdit.setText('')
+        
+        self.h3LineEdit.setText('') 
+        self.s2LineEdit.setText('')
+        self.a5LineEdit.setText('')
+        self.rhealpixLineEdit.setText('')
+        self.isea4tLineEdit.setText('')
+        self.isea3hLineEdit.setText('')
+        self.easeLineEdit.setText('')
+        
+        self.dggal_gnosisLineEdit.setText('')
+        self.dggal_isea3hLineEdit.setText('')
+        self.dggal_isea9rLineEdit.setText('')
+        self.dggal_ivea3hLineEdit.setText('')
+        self.dggal_ivea9rLineEdit.setText('')
+        self.dggal_rtea3hLineEdit.setText('')
+        self.dggal_rtea9rLineEdit.setText('')
+        self.dggal_rhealpixLineEdit.setText('')
+        
+        self.qtmLineEdit.setText('')
+        self.olcLineEdit.setText('')
+        self.geohashLineEdit.setText('')
+        self.georefLineEdit.setText('')
+        self.mgrsLineEdit.setText('')
+        self.tilecodeLineEdit.setText('')
+        self.quadkeyLineEdit.setText('')
+        self.maidenheadLineEdit.setText('')
+        self.garsLineEdit.setText('')   
+
+    def updateCoordinates(self, id, pt, crs):
+        self.origPt = pt
+        self.origCrs = crs
+        projCRS = self.canvas.mapSettings().destinationCrs()
+        # customCRS = self.customProjectionSelectionWidget.crs()
+        # customIsGeographic = customCRS.isGeographic()
+        if crs == epsg4326:
+            pt4326 = pt
+        else:
+            trans = QgsCoordinateTransform(crs, epsg4326, QgsProject.instance())
+            pt4326 = trans.transform(pt.x(), pt.y())
+        if id != 0:  # WGS 84
+            if self.inputXYOrder == 0:  # Y, X
+                s = f"{pt4326.y():.6f}, {pt4326.x():.6f}"
+            else:
+                s = f"{pt4326.x():.6f}, {pt4326.y():.6f}"
+            self.wgs84LineEdit.setText(s)       
+        if id != 1:  # UTM
+            s = latLon2Utm(pt4326.y(), pt4326.x(), 2)
+            self.utmLineEdit.setText(s)
+        
+        if id != 2:  # H3
+            try:
+                s = latlon2h3(pt4326.y(), pt4326.x(),settings.h3Res)
+            except Exception:
+                s = s_invalid
+            self.h3LineEdit.setText(s)
+        if id != 3:  # S2
+            try:
+                s = latlon2s2(pt4326.y(), pt4326.x(),settings.s2Res)
+            except Exception:
+                s = s_invalid
+            self.s2LineEdit.setText(s)
+        if id != 4:  # A5
+            try:
+                s = latlon2a5(pt4326.y(), pt4326.x(),settings.a5Res)
+            except Exception:
+                s = s_invalid
+            self.a5LineEdit.setText(s)
+        if id != 5:  # RHEALPIX
+            try:
+                s = latlon2rhealpix(pt4326.y(), pt4326.x(),settings.rhealpixRes)
+            except Exception:
+                s = s_invalid
+            self.rhealpixLineEdit.setText(s)
+        if id != 6:  # ISEA4T
+            try:
+                s = latlon2isea4t(pt4326.y(), pt4326.x(),settings.isea4tRes)
+            except Exception:
+                s = s_invalid
+            self.isea4tLineEdit.setText(s)
+        if id != 7:  # ISEA3H
+            try:
+                s = latlon2isea3h(pt4326.y(), pt4326.x(),settings.isea3hRes)
+            except Exception:
+                s = s_invalid
+            self.isea3hLineEdit.setText(s)
+        if id != 8:  # EASE
+            try:
+                s = latlon2ease(pt4326.y(), pt4326.x(),settings.easeRes)
+            except Exception:
+                s = s_invalid
+            self.easeLineEdit.setText(s)
+        
+        ### DGGAL
+        if id != 9:  
+            try:
+                s = latlon2dggal('gnosis', pt4326.y(), pt4326.x(),settings.dggal_gnosisRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_gnosisLineEdit.setText(s)
+        if id != 10:  
+            try:
+                s = latlon2dggal('isea3h', pt4326.y(), pt4326.x(),settings.dggal_isea3hRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_isea3hLineEdit.setText(s)
+        if id != 11:  
+            try:
+                s = latlon2dggal('isea9r', pt4326.y(), pt4326.x(),settings.dggal_isea9rRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_isea9rLineEdit.setText(s)
+        if id != 12:  
+            try:
+                s = latlon2dggal('ivea3h', pt4326.y(), pt4326.x(),settings.dggal_ivea3hRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_ivea3hLineEdit.setText(s)
+        if id != 13:  
+            try:
+                s = latlon2dggal('ivea9r', pt4326.y(), pt4326.x(),settings.dggal_ivea9rRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_ivea9rLineEdit.setText(s)
+        if id != 14:  
+            try:
+                s = latlon2dggal('rtea3h', pt4326.y(), pt4326.x(),settings.dggal_rtea3hRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_rtea3hLineEdit.setText(s)
+        if id != 15:  
+            try:
+                s = latlon2dggal('rtea9r', pt4326.y(), pt4326.x(),settings.dggal_rtea9rRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_rtea9rLineEdit.setText(s)
+        if id != 16:  
+            try:
+                s = latlon2dggal('rhealpix', pt4326.y(), pt4326.x(),settings.dggal_rhealpixRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_rhealpixLineEdit.setText(s)
+        
+        ### QTM
+        if id != 17:  
+            try:
+                s = latlon2qtm(pt4326.y(), pt4326.x(),settings.qtmRes)
+            except Exception:
+                s = s_invalid
+            self.qtmLineEdit.setText(s)
+        
+        ### Graticule-based DGGS
+
+        if id != 18:  
+            try:
+                s = latlon2olc(pt4326.y(), pt4326.x(),settings.olcRes)
+            except Exception:
+                s = s_invalid
+            self.olcLineEdit.setText(s)
+        if id != 19:  
+            try:
+                s = latlon2geohash(pt4326.y(), pt4326.x(),settings.geohashRes)
+            except Exception:
+                s = s_invalid
+            self.geohashLineEdit.setText(s)
+        if id != 20:  
+            try:
+                s = latlon2georef(pt4326.y(), pt4326.x(),settings.georefRes)
+            except Exception:
+                s = s_invalid
+            self.georefLineEdit.setText(s)
+        if id != 21:  
+            try:
+                s = latlon2mgrs(pt4326.y(), pt4326.x(),settings.mgrsRes)
+            except Exception:
+                s = s_invalid
+            self.mgrsLineEdit.setText(s)
+        if id != 22:  
+            try:
+                s = latlon2tilecode(pt4326.y(), pt4326.x(),settings.tilecodeRes)
+            except Exception:
+                s = s_invalid
+            self.tilecodeLineEdit.setText(s)
+        if id != 23:  
+            try:
+                s = latlon2quadkey(pt4326.y(), pt4326.x(),settings.quadkeyRes)
+            except Exception:
+                s = s_invalid
+            self.quadkeyLineEdit.setText(s)
+        if id != 24:  
+            try:
+                s = latlon2maidenhead(pt4326.y(), pt4326.x(),settings.maidenheadRes)
+            except Exception:
+                s = s_invalid
+            self.maidenheadLineEdit.setText(s)
+        if id != 25:  
+            try:
+                s = latlon2gars(pt4326.y(), pt4326.x(),settings.garsRes)
+            except Exception:
+                s = s_invalid
+            self.garsLineEdit.setText(s)
+
+
+    def updateCoordinates(self, id, pt, crs):
+        self.origPt = pt
+        self.origCrs = crs
+        if crs == epsg4326:
+            pt4326 = pt
+        else:
+            trans = QgsCoordinateTransform(crs, epsg4326, QgsProject.instance())
+            pt4326 = trans.transform(pt.x(), pt.y())
+        # if id != 0:  # WGS 84
+        #     if self.inputXYOrder == 0:  # Y, X
+        #         s = '{:.{prec}f}{}{:.{prec}f}'.format(pt4326.y(), settings.converterDelimiter, pt4326.x(), prec=settings.converter4326DDPrec)
+        #     else:
+        #         s = '{:.{prec}f}{}{:.{prec}f}'.format(pt4326.x(), settings.converterDelimiter, pt4326.y(), prec=settings.converter4326DDPrec)
+        #     self.wgs84LineEdit.setText(s)
+        # if id != 1:  # UTM
+        #     s = latLon2Utm(pt4326.y(), pt4326.x(), settings.converterUtmPrec, settings.converterUtmFormat)
+        #     self.utmLineEdit.setText(s)
+        
+        if id != 0:  # WGS 84
+            if self.inputXYOrder == 0:  # Y, X
+                s = f"{pt4326.y():.6f}, {pt4326.x():.6f}"
+            else:
+                s = f"{pt4326.x():.6f}, {pt4326.y():.6f}"
+            self.wgs84LineEdit.setText(s)       
+        if id != 1:  # UTM
+            s = latLon2Utm(pt4326.y(), pt4326.x(), 2)
+            self.utmLineEdit.setText(s)
+        if id != 2:  # H3
+            try:
+                s = latlon2h3(pt4326.y(), pt4326.x(),settings.h3Res)
+            except Exception:
+                s = s_invalid
+            self.h3LineEdit.setText(s)
+        if id != 3:  # S2
+            try:
+                s = latlon2s2(pt4326.y(), pt4326.x(),settings.s2Res)
+            except Exception:
+                s = s_invalid
+            self.s2LineEdit.setText(s)
+        if id != 4:  # A5
+            try:
+                s = latlon2a5(pt4326.y(), pt4326.x(),settings.a5Res)
+            except Exception:
+                s = s_invalid
+            self.a5LineEdit.setText(s)
+        if id != 5:  # RHEALPIX
+            try:
+                s = latlon2rhealpix(pt4326.y(), pt4326.x(),settings.rhealpixRes)
+            except Exception:
+                s = s_invalid
+            self.rhealpixLineEdit.setText(s)
+        if id != 6:  # ISEA4T
+            try:
+                s = latlon2isea4t(pt4326.y(), pt4326.x(),settings.isea4tRes)
+            except Exception:
+                s = s_invalid
+            self.isea4tLineEdit.setText(s)
+        if id != 7:  # ISEA3H
+            try:
+                s = latlon2isea3h(pt4326.y(), pt4326.x(),settings.isea3hRes)
+            except Exception:
+                s = s_invalid
+            self.isea3hLineEdit.setText(s)
+        if id != 8:  # EASE
+            try:
+                s = latlon2ease(pt4326.y(), pt4326.x(),settings.easeRes)
+            except Exception:
+                s = s_invalid
+            self.easeLineEdit.setText(s)
+        
+        ### DGGAL
+        if id != 9:  
+            try:
+                s = latlon2dggal('gnosis', pt4326.y(), pt4326.x(),settings.dggal_gnosisRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_gnosisLineEdit.setText(s)
+        if id != 10:        
+            try:
+                s = latlon2dggal('isea3h', pt4326.y(), pt4326.x(),settings.dggal_isea3hRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_isea3hLineEdit.setText(s)
+        if id != 11:        
+            try:
+                s = latlon2dggal('isea9r', pt4326.y(), pt4326.x(),settings.dggal_isea9rRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_isea9rLineEdit.setText(s)
+        if id != 12:    
+            try:
+                s = latlon2dggal('ivea3h', pt4326.y(), pt4326.x(),settings.dggal_ivea3hRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_ivea3hLineEdit.setText(s)
+        if id != 13:    
+            try:
+                s = latlon2dggal('ivea9r', pt4326.y(), pt4326.x(),settings.dggal_ivea9rRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_ivea9rLineEdit.setText(s)
+        if id != 14:        
+            try:
+                s = latlon2dggal('rtea3h', pt4326.y(), pt4326.x(),settings.dggal_rtea3hRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_rtea3hLineEdit.setText(s)
+        if id != 15:    
+            try:
+                s = latlon2dggal('rtea9r', pt4326.y(), pt4326.x(),settings.dggal_rtea9rRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_rtea9rLineEdit.setText(s)
+        if id != 16:    
+            try:
+                s = latlon2dggal('rhealpix', pt4326.y(), pt4326.x(),settings.dggal_rhealpixRes)
+            except Exception:
+                s = s_invalid
+            self.dggal_rhealpixLineEdit.setText(s)
+        
+        ### QTM
+        if id != 17:    
+            try:
+                s = latlon2qtm(pt4326.y(), pt4326.x(),settings.qtmRes)
+            except Exception:
+                s = s_invalid
+            self.qtmLineEdit.setText(s)
+        
+        if id != 18:  
+            try:
+                s = latlon2olc(pt4326.y(), pt4326.x(),settings.olcRes)
+            except Exception:
+                s = s_invalid
+            self.olcLineEdit.setText(s)
+        if id != 19:  
+            try:
+                s = latlon2geohash(pt4326.y(), pt4326.x(),settings.geohashRes)
+            except Exception:
+                s = s_invalid
+            self.geohashLineEdit.setText(s)
+        if id != 20:  
+            try:
+                s = latlon2georef(pt4326.y(), pt4326.x(),settings.georefRes)
+            except Exception:
+                s = s_invalid
+            self.georefLineEdit.setText(s)
+        if id != 21:  
+            try:
+                s = latlon2mgrs(pt4326.y(), pt4326.x(),settings.mgrsRes)
+            except Exception:
+                s = s_invalid
+            self.mgrsLineEdit.setText(s)
+        if id != 22:  
+            try:
+                s = latlon2tilecode(pt4326.y(), pt4326.x(),settings.tilecodeRes)
+            except Exception:
+                s = s_invalid
+            self.tilecodeLineEdit.setText(s)
+        if id != 23:  
+            try:
+                s = latlon2quadkey(pt4326.y(), pt4326.x(),settings.quadkeyRes)
+            except Exception:
+                s = s_invalid
+            self.quadkeyLineEdit.setText(s)
+        if id != 24:  
+            try:
+                s = latlon2maidenhead(pt4326.y(), pt4326.x(),settings.maidenheadRes)
+            except Exception:
+                s = s_invalid
+            self.maidenheadLineEdit.setText(s)
+        if id != 25:  
+            try:
+                s = latlon2gars(pt4326.y(), pt4326.x(),settings.garsRes)
+            except Exception:
+                s = s_invalid
+            self.garsLineEdit.setText(s)    
+
+    def commitWGS84(self):
+        text = self.wgs84LineEdit.text().strip()
+        try:
+            lat, lon = parseDMSString(text, self.inputXYOrder)
+            pt = QgsPoint(lon, lat)
+            self.updateCoordinates(0, pt, epsg4326)
+        except Exception:
+            # traceback.print_exc()
+            self.showInvalid(0)
+    
+    def commitUTM(self):
+        text = self.utmLineEdit.text().strip()
+        if isUtm(text):
+            pt = utm2Point(text, epsg4326)
+            self.updateCoordinates(1, QgsPoint(pt), epsg4326)
+        else:
+            self.showInvalid(1)
+
+    def commitH3(self):
+        text = self.h3LineEdit.text().strip()
+        try:
+            h3_geometry = h32geo(text)
+            num_edges = 6
+            if h3.is_pentagon(text):
+                num_edges = 5
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(h3_geometry, num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(2, pt, epsg4326)
+        except Exception:
+            self.showInvalid(2) 
+    
+    def commitS2(self): 
+        text = self.s2LineEdit.text().strip()
+        try:
+            s2_geometry = s22geo(text)  
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(s2_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(3, pt, epsg4326)
+        except Exception:
+            self.showInvalid(3) 
+    
+    def commitA5(self):
+        text = self.a5LineEdit.text().strip()
+        try:
+            a5_geometry = a52geo(text)
+            num_edges = 5
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(a5_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(4, pt, epsg4326)
+        except Exception:
+            self.showInvalid(4) 
+    
+    def commitRHEALPIX(self):
+        text = self.rhealpixLineEdit.text().strip()
+        try:    
+            rhealpix_dggs = RHEALPixDGGS(ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3)
+            rhealpix_geometry = rhealpix2geo(text)
+            rhealpix_uids = (text[0],) + tuple(map(int, text[1:]))
+            rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
+            num_edges = 4
+            if rhealpix_cell.ellipsoidal_shape() == "dart":
+                num_edges = 3
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(rhealpix_geometry,num_edges)  
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(5, pt, epsg4326)
+        except Exception:
+            self.showInvalid(5) 
+    
+    def commitISEA4T(self):
+        text = self.isea4tLineEdit.text().strip()
+        try:
+            isea4t_geometry = isea4t2geo(text)            
+            num_edges = 3
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(isea4t_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(6, pt, epsg4326)
+        except Exception:
+            self.showInvalid(6) 
+    
+    def commitISEA3H(self):
+        text = self.isea3hLineEdit.text().strip()
+        try:
+            isea3h_geometry = isea3h2geo(text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(isea3h_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(7, pt, epsg4326)
+        except Exception:
+            self.showInvalid(7) 
+    
+    def commitEASE(self):
+        text = self.easeLineEdit.text().strip()
+        try:
+            ease_geometry = ease2geo(text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(ease_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(8, pt, epsg4326) 
+        except Exception:
+            self.showInvalid(8)
+    
+    def commitDGGAL_GNOSIS(self):
+        text = self.dggal_gnosisLineEdit.text().strip()
+        try:
+            dggal_gnosis_geometry = dggal2geo('gnosis', text)   
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(dggal_gnosis_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(9, pt, epsg4326)
+        except Exception:
+            self.showInvalid(9)
+    
+    def commitDGGAL_ISEA3H(self):
+        text = self.dggal_isea3hLineEdit.text().strip()
+        try:
+            dggal_isea3h_geometry = dggal2geo('isea3h', text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(dggal_isea3h_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(10, pt, epsg4326)
+        except Exception:
+            self.showInvalid(10)
+    
+    def commitDGGAL_ISEA9R(self):
+        text = self.dggal_isea9rLineEdit.text().strip()
+        try:
+            dggal_isea9r_geometry = dggal2geo('isea9r', text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(dggal_isea9r_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(11, pt, epsg4326)
+        except Exception:
+            self.showInvalid(11)
+    
+    def commitDGGAL_IVEA3H(self):
+        text = self.dggal_ivea3hLineEdit.text().strip()
+        try:
+            dggal_ivea3h_geometry = dggal2geo('ivea3h', text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(dggal_ivea3h_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(12, pt, epsg4326)
+        except Exception:
+            self.showInvalid(12)
+    
+    def commitDGGAL_IVEA9R(self):
+        text = self.dggal_ivea9rLineEdit.text().strip()
+        try:
+            dggal_ivea9r_geometry = dggal2geo('ivea9r', text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(dggal_ivea9r_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(13, pt, epsg4326)
+        except Exception:
+            self.showInvalid(13)
+    
+    def commitDGGAL_RTEA3H(self):
+        text = self.dggal_rtea3hLineEdit.text().strip()
+        try:
+            dggal_rtea3h_geometry = dggal2geo('rtea3h', text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(dggal_rtea3h_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(14, pt, epsg4326)
+        except Exception:
+            self.showInvalid(14)
+    
+    def commitDGGAL_RTEA9R(self):
+        text = self.dggal_rtea9rLineEdit.text().strip()
+        try:
+            dggal_rtea9r_geometry = dggal2geo('rtea9r', text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(dggal_rtea9r_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(15, pt, epsg4326)
+        except Exception:
+            self.showInvalid(15)
+    
+    def commitDGGAL_RHEALPIX(self):
+        text = self.dggal_rhealpixLineEdit.text().strip()
+        try:
+            dggal_rhealpix_geometry = dggal2geo('rhealpix', text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(dggal_rhealpix_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(16, pt, epsg4326)
+        except Exception:
+            self.showInvalid(16)
+    
+    def commitQTM(self):
+        text = self.qtmLineEdit.text().strip()
+        try:
+            qtm_geometry = qtm2geo(text)
+            num_edges = 3
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(qtm_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(17, pt, epsg4326)
+        except Exception:
+            self.showInvalid(17)
+
+    def commitOLC(self):    
+        text = self.olcLineEdit.text().strip()
+        text = re.sub(r'\s+', '', text)  # Remove all white space
+        try:
+            olc_geometry = olc2geo(text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(olc_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(18, pt, epsg4326)
+        except Exception:
+            self.showInvalid(18)
+
+    def commitGeohash(self): 
+        text = self.geohashLineEdit.text().strip()
+        text = re.sub(r'\s+', '', text)  # Remove all white space
+        try:
+            geohash_geometry = geohash2geo(text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(geohash_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(19, pt, epsg4326)
+        except Exception:
+            self.showInvalid(19)
+
+    def commitGEOREF(self):
+        text = self.georefLineEdit.text().strip()
+        try:
+            georef_geometry = georef2geo(text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(georef_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(20, pt, epsg4326)    
+        except Exception:
+            # traceback.print_exc()
+            self.showInvalid(20)        
+
+
+    def commitMGRS(self):
+        text = self.mgrsLineEdit.text().strip()
+        text = re.sub(r'\s+', '', text)  # Remove all white space
+        text = re.sub(r'\s+', '', text)  # Remove all white space
+        try:
+            mgrs_geometry = mgrs2geo(text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(mgrs_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(21, pt, epsg4326)
+        except Exception:
+            self.showInvalid(21)
+
+    def commitTilecode(self):
+        text = self.tilecodeLineEdit.text().strip()
+        try:
+            tilecode_geometry = tilecode2geo(text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(tilecode_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(22, pt, epsg4326)
+        except Exception:
+            self.showInvalid(22)
+
+    def commitQuadkey(self):
+        text = self.quadkeyLineEdit.text().strip()
+        try:
+            quadkey_geometry = quadkey2geo(text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(quadkey_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(23, pt, epsg4326)
+        except Exception:
+            self.showInvalid(23)
+
+    def commitMaidenhead(self):
+        text = self.maidenheadLineEdit.text().strip()
+        try:
+            maidenhead_geometry = maidenhead2geo(text)  
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(maidenhead_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(24, pt, epsg4326)
+        except Exception:
+            self.showInvalid(24)
+
+    def commitGARS(self):
+        text = self.garsLineEdit.text().strip()
+        try:
+            gars_geometry = gars2geo(text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(gars_geometry,num_edges)
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(25, pt, epsg4326)    
+        except Exception:
+            # traceback.print_exc()
+            self.showInvalid(25)   
+
+    def updateLabel(self):
+        if self.inputXYOrder == 0:  # Y, X
+            xy = '(Y, X)'
+            latlon = '(lat,lon)'
+        else:
+            xy = '(X, Y)'
+            latlon = '(lon,lat)'     
+        label = 'WGS 84 {}'.format(latlon)
+        self.wgs84Label.setText(label)
+
+    def copyWGS84(self):
+        s = self.wgs84LineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyUTM(self):
+        s = self.utmLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyH3(self):
+        s = self.h3LineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyS2(self):
+        s = self.s2LineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyA5(self):
+        s = self.a5LineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyRHEALPIX(self):
+        s = self.rhealpixLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyISEA4T(self):
+        s = self.isea4tLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyISEA3H(self):
+        s = self.isea3hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyEASE(self):
+        s = self.easeLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyDGGAL_GNOSIS(self):
+        s = self.dggal_gnosisLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyDGGAL_ISEA3H(self):
+        s = self.dggal_isea3hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyDGGAL_ISEA9R(self):
+        s = self.dggal_isea9rLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyDGGAL_IVEA3H(self):
+        s = self.dggal_ivea3hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyDGGAL_IVEA9R(self):
+        s = self.dggal_ivea9rLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyDGGAL_RTEA3H(self):
+        s = self.dggal_rtea3hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyDGGAL_RTEA9R(self):
+        s = self.dggal_rtea9rLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyDGGAL_RHEALPIX(self):
+        s = self.dggal_rhealpixLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyQTM(self):
+        s = self.qtmLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyOLC(self):
+        s = self.plusLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyGeohash(self):
+        s = self.geohashLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyGEOREF(self):
+        s = self.georefLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyMGRS(self):
+        s = self.mgrsLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyTilecode(self):
+        s = self.tilecodeLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyQuadkey(self):
+        s = self.quadkeyLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyMaidenhead(self):
+        s = self.maidenheadLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyGARS(self):
+        s = self.garsLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    
+    @pyqtSlot(QgsPointXY)
+    def capturedPoint(self, pt):
+        if self.isVisible() and self.coordCaptureButton.isChecked():
+            self.updateCoordinates(-1, pt, epsg4326)
+
+    def startCapture(self):
+        if self.coordCaptureButton.isChecked():
+            self.savedMapTool = self.canvas.mapTool()
+            self.canvas.setMapTool(self.captureCoordinate)
+        else:
+            if self.savedMapTool:
+                self.canvas.setMapTool(self.savedMapTool)
+                self.savedMapTool = None
+        
+    @pyqtSlot()
+    def stopCapture(self):
+        self.coordCaptureButton.setChecked(False)
+
+    def showSettings(self):
+        self.settings.showTab(5)
+
+    def zoomTo(self):
+        text = self.wgs84LineEdit.text().strip()
+        try:
+            lat, lon = parseDMSString(text, self.inputXYOrder)
+            pt = self.lltools.zoomTo(epsg4326, lat, lon)
+        except Exception:
+            pass

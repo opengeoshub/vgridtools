@@ -20,9 +20,11 @@ from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 from pyproj import Geod
 import platform
-if (platform.system() == 'Windows'):
+
+if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
     from vgrid.dggs.eaggr.enums.model import Model
+
     isea4t_dggs = Eaggr(Model.ISEA4T)
     isea3h_dggs = Eaggr(Model.ISEA3H)
 
@@ -42,12 +44,17 @@ from numbers import Number
 geod = Geod(ellps="WGS84")
 E = WGS84_ELLIPSOID
 
-def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, feedback=None): 
+
+def get_nearest_resolution(
+    qgs_features, from_dggs, to_dggs, from_field=None, feedback=None
+):
     if not from_field:
         from_field = from_dggs
 
     try:
-        for feature in qgs_features.getFeatures():  # Use getFeatures() to iterate through the features
+        for feature in (
+            qgs_features.getFeatures()
+        ):  # Use getFeatures() to iterate through the features
             from_dggs_id = feature[from_field]
             break
         else:
@@ -58,53 +65,55 @@ def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, fe
         return
 
     try:
-        if from_dggs == 'h3':
+        if from_dggs == "h3":
             from_resolution = h3.get_resolution(from_dggs_id)
-            from_area = h3.average_hexagon_area(from_resolution, unit='m^2')
+            from_area = h3.average_hexagon_area(from_resolution, unit="m^2")
 
-        elif from_dggs == 's2':
+        elif from_dggs == "s2":
             s2_id = s2.CellId.from_token(from_dggs_id)
             from_resolution = s2_id.level()
-            _, _, from_area = s2_metrics(from_resolution)
+            _, _, from_area,_ = s2_metrics(from_resolution)
 
-        elif from_dggs == 'a5':
+        elif from_dggs == "a5":
             from_resolution = a5.get_resolution(a5.hex_to_bigint(from_dggs_id))
-            _, _, from_area = a5_metrics(from_resolution)
-    
-        elif from_dggs == 'rhealpix':
+            _, _, from_area,_ = a5_metrics(from_resolution)
+
+        elif from_dggs == "rhealpix":
             rhealpix_uids = (from_dggs_id[0],) + tuple(map(int, from_dggs_id[1:]))
-            rhealpix_dggs = RHEALPixDGGS(ellipsoid=E, north_square=1, south_square=3, N_side=3)
+            rhealpix_dggs = RHEALPixDGGS(
+                ellipsoid=E, north_square=1, south_square=3, N_side=3
+            )
             rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
             from_resolution = rhealpix_cell.resolution
-            _, _, from_area = rhealpix_metrics(from_resolution)
+            _, _, from_area,_ = rhealpix_metrics(from_resolution)
 
-        elif from_dggs == 'isea4t':
-            if platform.system() == 'Windows':
+        elif from_dggs == "isea4t":
+            if platform.system() == "Windows":
                 from_resolution = len(from_dggs_id) - 2
                 _, _, from_area, _ = isea4t_metrics(from_resolution)
 
-        elif from_dggs == 'qtm':
+        elif from_dggs == "qtm":
             from_resolution = len(from_dggs_id)
-            _, _, from_area = qtm_metrics(from_resolution)
+            _, _, from_area,_ = qtm_metrics(from_resolution)
 
-        elif from_dggs == 'olc':
+        elif from_dggs == "olc":
             coord = olc.decode(from_dggs_id)
             from_resolution = coord.codeLength
-            _, _, from_area = olc_metrics(from_resolution)
+            _, _, from_area,_ = olc_metrics(from_resolution)
 
-        elif from_dggs == 'geohash':
+        elif from_dggs == "geohash":
             from_resolution = len(from_dggs_id)
-            _, _, from_area = geohash_metrics(from_resolution)
+            _, _, from_area,_ = geohash_metrics(from_resolution)
 
-        elif from_dggs == 'tilecode':
-            match = re.match(r'z(\d+)x(\d+)y(\d+)', from_dggs_id)
+        elif from_dggs == "tilecode":
+            match = re.match(r"z(\d+)x(\d+)y(\d+)", from_dggs_id)
             from_resolution = int(match.group(1))
-            _, _, from_area = tilecode_metrics(from_resolution)
+            _, _, from_area,_ = tilecode_metrics(from_resolution)
 
-        elif from_dggs == 'quadkey':
+        elif from_dggs == "quadkey":
             tile = mercantile.quadkey_to_tile(from_dggs_id)
             from_resolution = tile.z
-            _, _, from_area = quadkey_metrics(from_resolution)
+            _, _, from_area,_ = quadkey_metrics(from_resolution)
 
     except Exception as e:
         if feedback:
@@ -112,43 +121,43 @@ def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, fe
         return
 
     nearest_resolution = None
-    min_diff = float('inf')
+    min_diff = float("inf")
 
     try:
-        if to_dggs == 'h3':
+        if to_dggs == "h3":
             for res in range(16):
-                avg_area = h3.average_hexagon_area(res, unit='m^2')
+                avg_area = h3.average_hexagon_area(res, unit="m^2")
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
                     nearest_resolution = res
 
-        elif to_dggs == 's2':
+        elif to_dggs == "s2":
             for res in range(31):
-                _, _, avg_area = s2_metrics(res)
+                _, _, avg_area,_ = s2_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
                     nearest_resolution = res
-        
-        elif to_dggs == 'a5':
+
+        elif to_dggs == "a5":
             for res in range(30):
-                _, _, avg_area = a5_metrics(res)
+                _, _, avg_area,_ = a5_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
                     nearest_resolution = res
 
-        elif to_dggs == 'rhealpix':
+        elif to_dggs == "rhealpix":
             for res in range(16):
-                _, _, avg_area = rhealpix_metrics(res)
+                _, _, avg_area,_ = rhealpix_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
                     nearest_resolution = res
 
-        elif to_dggs == 'isea4t':
-            if platform.system() == 'Windows':                
+        elif to_dggs == "isea4t":
+            if platform.system() == "Windows":
                 for res in range(26):
                     _, _, avg_area, _ = isea4t_metrics(res)
                     diff = abs(avg_area - from_area)
@@ -156,41 +165,41 @@ def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, fe
                         min_diff = diff
                         nearest_resolution = res
 
-        elif to_dggs == 'qtm':
+        elif to_dggs == "qtm":
             for res in range(1, 25):
-                _, _, avg_area = qtm_metrics(res)
+                _, _, avg_area,_ = qtm_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
                     nearest_resolution = res
 
-        elif to_dggs == 'olc':
+        elif to_dggs == "olc":
             for res in [2, 4, 6, 8, 10, 11, 12, 13, 14, 15]:
-                _, _, avg_area = olc_metrics(res)
+                _, _, avg_area,_ = olc_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
                     nearest_resolution = res
 
-        elif to_dggs == 'geohash':
+        elif to_dggs == "geohash":
             for res in range(1, 11):
-                _, _, avg_area = geohash_metrics(res)
+                _, _, avg_area,_ = geohash_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
                     nearest_resolution = res
 
-        elif to_dggs == 'tilecode':
+        elif to_dggs == "tilecode":
             for res in range(30):
-                _, _, avg_area = tilecode_metrics(res)
+                _, _, avg_area,_ = tilecode_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
                     nearest_resolution = res
 
-        elif to_dggs == 'quadkey':
+        elif to_dggs == "quadkey":
             for res in range(30):
-                _, _, avg_area = quadkey_metrics(res)
+                _, _, avg_area,_ = quadkey_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
@@ -198,47 +207,55 @@ def get_nearest_resolution(qgs_features, from_dggs, to_dggs, from_field=None, fe
 
     except Exception as e:
         if feedback:
-            feedback.reportError(f"Failed to calculate nearest resolution for {to_dggs}: {str(e)}")
+            feedback.reportError(
+                f"Failed to calculate nearest resolution for {to_dggs}: {str(e)}"
+            )
         return
 
     if feedback:
         feedback.pushInfo(f"Nearest {to_dggs} resolution: {nearest_resolution}")
     return nearest_resolution
 
+
 def generate_grid(qgs_features, to_dggs, resolution, feedback=None):
     dggs_grid = {}
-    if to_dggs == 'h3':
+    if to_dggs == "h3":
         dggs_grid = dggsgrid.generate_h3_grid(resolution, qgs_features, feedback)
-    elif to_dggs == 's2':
-        dggs_grid = dggsgrid.generate_s2_grid(resolution, qgs_features,feedback)
-    elif to_dggs == 'a5':
-        dggs_grid = dggsgrid.generate_a5_grid(resolution, qgs_features,feedback)
-    elif to_dggs == 'rhealpix':
-        dggs_grid = dggsgrid.generate_rhealpix_grid(resolution, qgs_features,feedback)
-    elif to_dggs == 'isea4t':
-        if (platform.system() == 'Windows'): 
-            dggs_grid = dggsgrid.generate_isea4t_grid(resolution, qgs_features,feedback)
-    elif to_dggs == 'qtm':
-        dggs_grid = dggsgrid.generate_qtm_grid(resolution, qgs_features,feedback)
-    elif to_dggs == 'olc':
-        dggs_grid = dggsgrid.generate_olc_grid(resolution, qgs_features,feedback)
-    elif to_dggs == 'geohash':
-        dggs_grid = dggsgrid.generate_geohash_grid(resolution, qgs_features,feedback)
-    elif to_dggs == 'tilecode':
-        dggs_grid = dggsgrid.generate_tilecode_grid(resolution, qgs_features,feedback)
-    elif to_dggs == 'quadkey':
-        dggs_grid = dggsgrid.generate_quadkey_grid(resolution, qgs_features,feedback)
+    elif to_dggs == "s2":
+        dggs_grid = dggsgrid.generate_s2_grid(resolution, qgs_features, feedback)
+    elif to_dggs == "a5":
+        dggs_grid = dggsgrid.generate_a5_grid(resolution, qgs_features, feedback)
+    elif to_dggs == "rhealpix":
+        dggs_grid = dggsgrid.generate_rhealpix_grid(resolution, qgs_features, feedback)
+    elif to_dggs == "isea4t":
+        if platform.system() == "Windows":
+            dggs_grid = dggsgrid.generate_isea4t_grid(
+                resolution, qgs_features, feedback
+            )
+    elif to_dggs == "qtm":
+        dggs_grid = dggsgrid.generate_qtm_grid(resolution, qgs_features, feedback)
+    elif to_dggs == "olc":
+        dggs_grid = dggsgrid.generate_olc_grid(resolution, qgs_features, feedback)
+    elif to_dggs == "geohash":
+        dggs_grid = dggsgrid.generate_geohash_grid(resolution, qgs_features, feedback)
+    elif to_dggs == "tilecode":
+        dggs_grid = dggsgrid.generate_tilecode_grid(resolution, qgs_features, feedback)
+    elif to_dggs == "quadkey":
+        dggs_grid = dggsgrid.generate_quadkey_grid(resolution, qgs_features, feedback)
     else:
         raise ValueError(f"Unsupported DGGS type: {to_dggs}")
 
     return dggs_grid
+
 
 def resampling(layer1, layer2, resample_field, feedback=None):
     try:
         layer1_features = []
         for feature in layer1.getFeatures():
             if resample_field not in feature.fields().names():
-                raise ValueError(f"There is no <{resample_field}> field in the input layer1 features.")
+                raise ValueError(
+                    f"There is no <{resample_field}> field in the input layer1 features."
+                )
             geom = load_wkt(feature.geometry().asWkt())
             value = feature[resample_field]
             layer1_features.append((geom, value))
@@ -254,7 +271,9 @@ def resampling(layer1, layer2, resample_field, feedback=None):
     if resample_field not in fields.names():
         fields.append(QgsField(resample_field, QVariant.Double))
 
-    output_layer = QgsVectorLayer("Polygon?crs=" + layer2.crs().authid(), "resampled", "memory")
+    output_layer = QgsVectorLayer(
+        "Polygon?crs=" + layer2.crs().authid(), "resampled", "memory"
+    )
     output_layer.startEditing()
     output_layer.dataProvider().addAttributes(fields)
     output_layer.updateFields()
@@ -316,14 +335,29 @@ def resampling(layer1, layer2, resample_field, feedback=None):
 
     return output_layer
 
-def resample(dggs_layer, dggstype_from, dggstype_to, resolution, dggs_field=None, resample_field=None, feedback=None):
+
+def resample(
+    dggs_layer,
+    dggstype_from,
+    dggstype_to,
+    resolution,
+    dggs_field=None,
+    resample_field=None,
+    feedback=None,
+):
     resampled_features = None
     if resolution == -1:
-        resolution = get_nearest_resolution(dggs_layer, dggstype_from, dggstype_to,dggs_field)
+        resolution = get_nearest_resolution(
+            dggs_layer, dggstype_from, dggstype_to, dggs_field
+        )
         if feedback:
             feedback.pushInfo(f"Nearest resolution: {resolution}")
     if resolution:
-        resampled_features = generate_grid(dggs_layer, dggstype_to, resolution, feedback)
-        if resample_field: 
-            resampled_features = resampling(dggs_layer, resampled_features,resample_field, feedback)
+        resampled_features = generate_grid(
+            dggs_layer, dggstype_to, resolution, feedback
+        )
+        if resample_field:
+            resampled_features = resampling(
+                dggs_layer, resampled_features, resample_field, feedback
+            )
     return resampled_features

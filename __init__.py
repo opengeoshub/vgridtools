@@ -23,25 +23,28 @@
 
 """
 
-__author__ = 'Thang Quach'
-__date__ = '2024-11-20'
-__copyright__ = '(L) 2024 by Thang Quach'
+__author__ = "Thang Quach"
+__date__ = "2024-11-20"
+__copyright__ = "(L) 2024 by Thang Quach"
 
 from PyQt5.QtWidgets import QInputDialog
 
+
 # noinspection PyPep8Naming
-def classFactory(iface):  # pylint: disable=invalid-name  
-  try:
-      import vgrid
-  except ImportError:
-    command = "import pip\npip.main(['install','vgrid, '--upgrade'])"   
-    text, ok = QInputDialog.getMultiLineText(None, "Vgrid DGGS - Vgrid module not found", 
-                                            "To run Vgrid Tools, please copy and run this code in the Python console to install vgrid package and reload QGIS:", 
-                                            command)
+def classFactory(iface):  # pylint: disable=invalid-name
+    try:
+        import vgrid
+    except ImportError:
+        command = "import pip\npip.main(['install','vgrid, '--upgrade'])"
+        text, ok = QInputDialog.getMultiLineText(
+            None,
+            "Vgrid DGGS - Vgrid module not found",
+            "To run Vgrid Tools, please copy and run this code in the Python console to install vgrid package and reload QGIS:",
+            command,
+        )
 
-  from .vgrid import VgridPlugin
-  # from .vgrid_menu import vgrid_menu
+    from .vgrid import VgridPlugin
+    # from .vgrid_menu import vgrid_menu
 
-  return VgridPlugin(iface)
-  # return vgrid_menu(iface)
-  
+    return VgridPlugin(iface)
+    # return vgrid_menu(iface)

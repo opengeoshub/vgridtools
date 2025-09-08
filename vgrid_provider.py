@@ -12,13 +12,13 @@
  ***************************************************************************/
 """
 
-__author__ = 'Thang Quach'
-__date__ = '2024-11-20'
-__copyright__ = '(L) 2024 by Thang Quach'
+__author__ = "Thang Quach"
+__date__ = "2024-11-20"
+__copyright__ = "(L) 2024 by Thang Quach"
 
 # This will get replaced with a git SHA1 when you do a git archive
 
-__revision__ = '$Format:%H$'
+__revision__ = "$Format:%H$"
 import os
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
@@ -67,17 +67,12 @@ from .processing_provider.generator.quadkey_grid import QuadkeyGrid
 from .processing_provider.generator.maidenhead_grid import MaidenheadGrid
 from .processing_provider.generator.gars_grid import GARSGrid
 
-
-import pathlib,sys
-
 class VgridProvider(QgsProcessingProvider):
-
     def __init__(self):
         """
         Default constructor.
         """
         QgsProcessingProvider.__init__(self)
-     
 
     def unload(self):
         """
@@ -96,13 +91,13 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(DGGSResample())
         ################################
 
-        self.addAlgorithm(H3Bin()) 
+        self.addAlgorithm(H3Bin())
         self.addAlgorithm(S2Bin())
         self.addAlgorithm(A5Bin())
         self.addAlgorithm(rHEALPixBin())
         self.addAlgorithm(ISEA4TBin())
         self.addAlgorithm(DGGALBin())
-        
+
         self.addAlgorithm(QTMBin())
 
         self.addAlgorithm(OLCBin())
@@ -111,7 +106,6 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(QuadkeyBin())
 
         self.addAlgorithm(PolygonBin())
-
 
         ################################
         self.addAlgorithm(H3Grid())
@@ -135,13 +129,13 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(GARSGrid())
 
     def id(self):
-        return 'vgrid'
+        return "vgrid"
 
     def name(self):
-        return self.tr('DGGS Vgrid')
+        return self.tr("DGGS Vgrid")
 
     def icon(self):
-        return QIcon(os.path.dirname(__file__) + './images/vgrid.svg')
+        return QIcon(os.path.dirname(__file__) + "./images/vgrid.svg")
 
-    def longName(self):      
+    def longName(self):
         return self.name()

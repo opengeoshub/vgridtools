@@ -7,11 +7,11 @@ from qgis.core import (
     QgsVectorLayer,
     QgsFields,
     QgsField,
-    QgsPointXY
+    QgsPointXY,
 )
 from PyQt5.QtCore import QVariant
 import math
-import h3 
+import h3
 
 
 from vgrid.dggs import s2, qtm, olc, geohash, tilecode
@@ -30,30 +30,54 @@ from vgrid.utils.constants import DGGAL_TYPES
 from dggal import *
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.utils.geometry import (
-    graticule_dggs_metrics, geodesic_dggs_metrics,
-    rhealpix_cell_to_polygon
+    graticule_dggs_metrics,
+    geodesic_dggs_metrics,
+    rhealpix_cell_to_polygon,
 )
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 
 E = WGS84_ELLIPSOID
 
-if (platform.system() == 'Windows'):
+if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
     from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
     from vgrid.dggs.eaggr.enums.model import Model
+
     isea4t_dggs = Eaggr(Model.ISEA4T)
     isea3h_dggs = Eaggr(Model.ISEA3H)
 
 from pyproj import Geod
-geod = Geod(ellps="WGS84")
-p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (90.0, -180.0), (90.0, -90.0), (90.0, 0.0), (90.0, 90.0), (90.0, 180.0)
-p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (0.0, -180.0), (0.0, -90.0), (0.0, 0.0), (0.0, 90.0), (0.0, 180.0)
-n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (-90.0, -180.0), (-90.0, -90.0), (-90.0, 0.0), (-90.0, 90.0), (-90.0, 180.0)
 
-########################## 
+geod = Geod(ellps="WGS84")
+p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (
+    (90.0, -180.0),
+    (90.0, -90.0),
+    (90.0, 0.0),
+    (90.0, 90.0),
+    (90.0, 180.0),
+)
+p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (
+    (0.0, -180.0),
+    (0.0, -90.0),
+    (0.0, 0.0),
+    (0.0, 90.0),
+    (0.0, 180.0),
+)
+n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (
+    (-90.0, -180.0),
+    (-90.0, -90.0),
+    (-90.0, 0.0),
+    (-90.0, 90.0),
+    (-90.0, 180.0),
+)
+
+
+##########################
 # H3
 # ########################
-def raster2h3(raster_layer: QgsRasterLayer, resolution: int, feedback=None) -> QgsVectorLayer:
+def raster2h3(
+    raster_layer: QgsRasterLayer, resolution: int, feedback=None
+) -> QgsVectorLayer:
     if not raster_layer.isValid():
         raise ValueError("Invalid raster layer.")
 
@@ -109,16 +133,21 @@ def raster2h3(raster_layer: QgsRasterLayer, resolution: int, feedback=None) -> Q
         if not ident.isValid():
             continue
         results = ident.results()
-        if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float('nan'))) for i in range(band_count)):
+        if all(
+            results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan")))
+            for i in range(band_count)
+        ):
             continue
 
         # Use h32geo to get the cell polygon with proper antimeridian handling
         cell_polygon = h32geo(h3_index)
         if not cell_polygon:
-            continue        
+            continue
 
         num_edges = 5 if h3.is_pentagon(h3_index) else 6
-        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(cell_polygon, num_edges)
+        )
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
         feature = QgsFeature()
         feature.setGeometry(cell_geom)
@@ -141,13 +170,16 @@ def raster2h3(raster_layer: QgsRasterLayer, resolution: int, feedback=None) -> Q
     if feedback:
         feedback.setProgress(100)
         feedback.pushInfo("Raster to H3 DGGS completed.")
-            
+
     return mem_layer
 
-########################## 
+
+##########################
 # S2
 # ########################
-def raster2s2(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
+def raster2s2(
+    raster_layer: QgsRasterLayer, resolution, feedback=None
+) -> QgsVectorLayer:
     if not raster_layer.isValid():
         raise ValueError("Invalid raster layer.")
 
@@ -190,7 +222,7 @@ def raster2s2(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
-        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+        fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
@@ -208,11 +240,16 @@ def raster2s2(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
         if not ident.isValid():
             continue
         results = ident.results()
-        if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+        if all(
+            results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan")))
+            for i in range(band_count)
+        ):
             continue
         cell_polygon = s22geo(s2_token)
         num_edges = 4
-        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(cell_polygon, num_edges)
+        )
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
@@ -235,15 +272,16 @@ def raster2s2(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
     if feedback:
         feedback.setProgress(100)
         feedback.pushInfo("Raster to S2 DGGS completed.")
-    
 
     return mem_layer
 
 
-########################## 
+##########################
 # A5
 # ########################
-def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
+def raster2a5(
+    raster_layer: QgsRasterLayer, resolution, feedback=None
+) -> QgsVectorLayer:
     if not raster_layer.isValid():
         raise ValueError("Invalid raster layer.")
 
@@ -286,7 +324,7 @@ def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
-        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+        fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
@@ -297,20 +335,25 @@ def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
         cell_polygon = a52geo(a5_hex)
         if not cell_polygon:
             continue
-        
+
         center_point = QgsPointXY(cell_polygon.centroid.x, cell_polygon.centroid.y)
 
         ident = provider.identify(center_point, QgsRaster.IdentifyFormatValue)
         if not ident.isValid():
             continue
         results = ident.results()
-        if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+        if all(
+            results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan")))
+            for i in range(band_count)
+        ):
             continue
-        
-        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)   
-                
-        num_edges = 5 
-        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+
+        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+        num_edges = 5
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(cell_polygon, num_edges)
+        )
 
         feature = QgsFeature()
         feature.setGeometry(cell_geom)
@@ -332,15 +375,16 @@ def raster2a5(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVec
     if feedback:
         feedback.setProgress(100)
         feedback.pushInfo("Raster to A5 DGGS completed.")
-    
 
     return mem_layer
 
 
-########################## 
+##########################
 # rHEALpix
 # ########################
-def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
+def raster2rhealpix(
+    raster_layer: QgsRasterLayer, resolution, feedback=None
+) -> QgsVectorLayer:
     rhealpix_dggs = RHEALPixDGGS(ellipsoid=E, north_square=1, south_square=3, N_side=3)
 
     if not raster_layer.isValid():
@@ -390,7 +434,7 @@ def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
-        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+        fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
 
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
@@ -410,14 +454,19 @@ def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
             continue
 
         results = ident.results()
-        if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+        if all(
+            results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan")))
+            for i in range(band_count)
+        ):
             continue
 
         cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
         if not cell_polygon:
-            continue    
-        num_edges = 3 if rhealpix_cell.ellipsoidal_shape() == 'dart' else 4
-        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+            continue
+        num_edges = 3 if rhealpix_cell.ellipsoidal_shape() == "dart" else 4
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(cell_polygon, num_edges)
+        )
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         feature = QgsFeature()
@@ -430,7 +479,7 @@ def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
             avg_edge_len,
             cell_area,
             cell_perimeter,
-            ]
+        ]
         attr_values.extend(results.get(i + 1, None) for i in range(band_count))
         feature.setAttributes(attr_values)
 
@@ -446,12 +495,13 @@ def raster2rhealpix(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
     return mem_layer
 
 
-########################## 
+##########################
 # ISEA4T
 # ########################
-def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
-    if (platform.system() == 'Windows'):        
-
+def raster2isea4t(
+    raster_layer: QgsRasterLayer, resolution, feedback=None
+) -> QgsVectorLayer:
+    if platform.system() == "Windows":
         if not raster_layer.isValid():
             raise ValueError("Invalid raster layer.")
 
@@ -487,7 +537,9 @@ def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Qg
             feedback.setProgress(0)
             feedback.pushInfo("Generating ISEA4T DGGS...")
 
-        mem_layer = QgsVectorLayer(f"Polygon?crs={crs.authid()}", "isea4t Grid", "memory")
+        mem_layer = QgsVectorLayer(
+            f"Polygon?crs={crs.authid()}", "isea4t Grid", "memory"
+        )
         mem_provider = mem_layer.dataProvider()
 
         fields = QgsFields()
@@ -499,7 +551,7 @@ def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Qg
         fields.append(QgsField("cell_area", QVariant.Double))
         fields.append(QgsField("cell_perimeter", QVariant.Double))
         for i in range(band_count):
-            fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+            fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
 
         mem_provider.addAttributes(fields)
         mem_layer.updateFields()
@@ -507,8 +559,8 @@ def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Qg
         for i, isea4t_id in enumerate(isea4t_ids):
             if feedback and feedback.isCanceled():
                 return None
-                        
-            isea4t_cell=DggsCell(isea4t_id)
+
+            isea4t_cell = DggsCell(isea4t_id)
             lat_long_point = isea4t_dggs.convert_dggs_cell_to_point(isea4t_cell)
             lat, lon = lat_long_point._latitude, lat_long_point._longitude
             center_point = QgsPointXY(lon, lat)
@@ -518,16 +570,22 @@ def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Qg
                 continue
 
             results = ident.results()
-            if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+            if all(
+                results.get(i + 1) is None
+                or math.isnan(results.get(i + 1, float("nan")))
+                for i in range(band_count)
+            ):
                 continue
 
             cell_polygon = isea4t2geo(isea4t_id)
             if not cell_polygon:
                 continue
-            
+
             num_edges = 3
-            
-            center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+
+            center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+                geodesic_dggs_metrics(cell_polygon, num_edges)
+            )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -557,10 +615,12 @@ def raster2isea4t(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Qg
         return mem_layer
 
 
-########################## 
+##########################
 # QTM
 # ########################
-def raster2qtm(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
+def raster2qtm(
+    raster_layer: QgsRasterLayer, resolution, feedback=None
+) -> QgsVectorLayer:
     if not raster_layer.isValid():
         raise ValueError("Invalid raster layer.")
 
@@ -608,7 +668,7 @@ def raster2qtm(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
-        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+        fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
 
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
@@ -616,7 +676,7 @@ def raster2qtm(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
     for i, qtm_id in enumerate(qtm_ids):
         if feedback and feedback.isCanceled():
             return None
-        lat,lon = qtm.qtm_id_to_latlon(qtm_id)
+        lat, lon = qtm.qtm_id_to_latlon(qtm_id)
         center_point = QgsPointXY(lon, lat)
 
         ident = provider.identify(center_point, QgsRaster.IdentifyFormatValue)
@@ -624,14 +684,19 @@ def raster2qtm(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
             continue
 
         results = ident.results()
-        if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+        if all(
+            results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan")))
+            for i in range(band_count)
+        ):
             continue
-        
+
         cell_polygon = qtm2geo(qtm_id)
         if not cell_polygon:
             continue
         num_edges = 3
-        center_lat, center_lon, avg_edge_len, cell_area,cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(cell_polygon, num_edges)
+        )
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -660,10 +725,13 @@ def raster2qtm(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
 
     return mem_layer
 
-########################## 
+
+##########################
 # OLC
 # ########################
-def raster2olc(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
+def raster2olc(
+    raster_layer: QgsRasterLayer, resolution, feedback=None
+) -> QgsVectorLayer:
     if not raster_layer.isValid():
         raise ValueError("Invalid raster layer.")
 
@@ -712,7 +780,7 @@ def raster2olc(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
-        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+        fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
 
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
@@ -720,8 +788,8 @@ def raster2olc(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
     for i, olc_id in enumerate(olc_ids):
         if feedback and feedback.isCanceled():
             return None
-        
-        lat,lon = olc.olc_to_latlon(olc_id)
+
+        lat, lon = olc.olc_to_latlon(olc_id)
         center_point = QgsPointXY(lon, lat)
 
         ident = provider.identify(center_point, QgsRaster.IdentifyFormatValue)
@@ -729,14 +797,19 @@ def raster2olc(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
             continue
 
         results = ident.results()
-        if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+        if all(
+            results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan")))
+            for i in range(band_count)
+        ):
             continue
 
         cell_polygon = olc2geo(olc_id)
         if not cell_polygon:
-            continue       
-        
-        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
+            continue
+
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+            graticule_dggs_metrics(cell_polygon)
+        )
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -767,10 +840,12 @@ def raster2olc(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVe
     return mem_layer
 
 
-########################## 
+##########################
 # Geohash
 # ########################
-def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
+def raster2geohash(
+    raster_layer: QgsRasterLayer, resolution, feedback=None
+) -> QgsVectorLayer:
     if not raster_layer.isValid():
         raise ValueError("Invalid raster layer.")
 
@@ -819,7 +894,7 @@ def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
-        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+        fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
 
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
@@ -827,7 +902,7 @@ def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
     for i, geohash_id in enumerate(geohash_ids):
         if feedback and feedback.isCanceled():
             return None
-        lat,lon = geohash.decode(geohash_id)
+        lat, lon = geohash.decode(geohash_id)
         center_point = QgsPointXY(lon, lat)
 
         ident = provider.identify(center_point, QgsRaster.IdentifyFormatValue)
@@ -835,16 +910,19 @@ def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
             continue
 
         results = ident.results()
-        if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+        if all(
+            results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan")))
+            for i in range(band_count)
+        ):
             continue
-        
+
         cell_polygon = geohash2geo(geohash_id)
         if not cell_polygon:
             continue
 
-        
-        
-        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+            graticule_dggs_metrics(cell_polygon)
+        )
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -874,10 +952,13 @@ def raster2geohash(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
 
     return mem_layer
 
-########################## 
+
+##########################
 # Tilecode
 # ########################
-def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
+def raster2tilecode(
+    raster_layer: QgsRasterLayer, resolution, feedback=None
+) -> QgsVectorLayer:
     if not raster_layer.isValid():
         raise ValueError("Invalid raster layer.")
 
@@ -926,7 +1007,7 @@ def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
-        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+        fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
 
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
@@ -934,7 +1015,7 @@ def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
     for i, tilecode_id in enumerate(tilecode_ids):
         if feedback and feedback.isCanceled():
             return None
-        lat,lon = tilecode.tilecode2latlon(tilecode_id)
+        lat, lon = tilecode.tilecode2latlon(tilecode_id)
         center_point = QgsPointXY(lon, lat)
 
         ident = provider.identify(center_point, QgsRaster.IdentifyFormatValue)
@@ -942,14 +1023,19 @@ def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
             continue
 
         results = ident.results()
-        if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+        if all(
+            results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan")))
+            for i in range(band_count)
+        ):
             continue
-                
+
         cell_polygon = tilecode2geo(tilecode_id)
         if not cell_polygon:
             continue
 
-        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+            graticule_dggs_metrics(cell_polygon)
+        )
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -979,10 +1065,13 @@ def raster2tilecode(raster_layer: QgsRasterLayer, resolution, feedback=None) -> 
 
     return mem_layer
 
-########################## 
+
+##########################
 # Quadkey
 # ########################
-def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> QgsVectorLayer:
+def raster2quadkey(
+    raster_layer: QgsRasterLayer, resolution, feedback=None
+) -> QgsVectorLayer:
     if not raster_layer.isValid():
         raise ValueError("Invalid raster layer.")
 
@@ -1031,7 +1120,7 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
-        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+        fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
 
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
@@ -1039,7 +1128,7 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
     for i, quadkey_id in enumerate(quadkey_ids):
         if feedback and feedback.isCanceled():
             return None
-        lat,lon = tilecode.quadkey2latlon(quadkey_id)
+        lat, lon = tilecode.quadkey2latlon(quadkey_id)
         center_point = QgsPointXY(lon, lat)
 
         ident = provider.identify(center_point, QgsRaster.IdentifyFormatValue)
@@ -1047,15 +1136,19 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
             continue
 
         results = ident.results()
-        if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+        if all(
+            results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan")))
+            for i in range(band_count)
+        ):
             continue
-        
+
         cell_polygon = quadkey2geo(quadkey_id)
         if not cell_polygon:
             continue
-        
-        
-        center_lat, center_lon, cell_width, cell_height, cell_area,cell_perimeter = graticule_dggs_metrics(cell_polygon)
+
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+            graticule_dggs_metrics(cell_polygon)
+        )
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -1076,7 +1169,7 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
 
         mem_provider.addFeatures([feature])
 
-        if feedback and i % 100 == 0:   
+        if feedback and i % 100 == 0:
             feedback.setProgress(int(100 * i / len(quadkey_ids)))
 
     if feedback:
@@ -1086,10 +1179,12 @@ def raster2quadkey(raster_layer: QgsRasterLayer, resolution, feedback=None) -> Q
     return mem_layer
 
 
-########################## 
+##########################
 # DGGAL
 #########################
-def raster2dggal(raster_layer: QgsRasterLayer, resolution: int, feedback=None, dggal_type=None) -> QgsVectorLayer:
+def raster2dggal(
+    raster_layer: QgsRasterLayer, resolution: int, feedback=None, dggal_type=None
+) -> QgsVectorLayer:
     if not raster_layer.isValid():
         raise ValueError("Invalid raster layer.")
 
@@ -1113,7 +1208,7 @@ def raster2dggal(raster_layer: QgsRasterLayer, resolution: int, feedback=None, d
 
             x = extent.xMinimum() + col * pixel_size_x
             y = extent.yMaximum() - row * pixel_size_y
-            
+
             try:
                 dggal_id = latlon2dggal(dggal_type, y, x, resolution)
                 dggal_ids.add(dggal_id)
@@ -1129,7 +1224,9 @@ def raster2dggal(raster_layer: QgsRasterLayer, resolution: int, feedback=None, d
         feedback.setProgress(0)
     feedback.pushInfo(f"Raster to DGGAL {dggal_type.upper()}...")
 
-    mem_layer = QgsVectorLayer(f"Polygon?crs={crs.authid()}", f"DGGAL {dggal_type.upper()} Grid", "memory")
+    mem_layer = QgsVectorLayer(
+        f"Polygon?crs={crs.authid()}", f"DGGAL {dggal_type.upper()} Grid", "memory"
+    )
     mem_provider = mem_layer.dataProvider()
 
     fields = QgsFields()
@@ -1142,7 +1239,7 @@ def raster2dggal(raster_layer: QgsRasterLayer, resolution: int, feedback=None, d
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
-        fields.append(QgsField(f"band_{i+1}", QVariant.Double))
+        fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
 
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
@@ -1150,12 +1247,12 @@ def raster2dggal(raster_layer: QgsRasterLayer, resolution: int, feedback=None, d
     for i, dggal_id in enumerate(dggal_ids):
         if feedback and feedback.isCanceled():
             return None
-            
+
         try:
             cell_polygon = dggal2geo(dggal_type, dggal_id)
             if not cell_polygon:
                 continue
-                
+
             # Get center point for raster value extraction
             center_point = cell_polygon.centroid
             center_lon, center_lat = center_point.x, center_point.y
@@ -1166,9 +1263,13 @@ def raster2dggal(raster_layer: QgsRasterLayer, resolution: int, feedback=None, d
                 continue
 
             results = ident.results()
-            if all(results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan"))) for i in range(band_count)):
+            if all(
+                results.get(i + 1) is None
+                or math.isnan(results.get(i + 1, float("nan")))
+                for i in range(band_count)
+            ):
                 continue
-            
+
             # Get resolution and edge count from DGGAL
             try:
                 app = Application(appGlobals=globals())
@@ -1182,8 +1283,10 @@ def raster2dggal(raster_layer: QgsRasterLayer, resolution: int, feedback=None, d
                 # Fallback values if we can't get them from DGGAL
                 zone_resolution = resolution
                 num_edges = 6  # Default for hexagonal cells
-            
-            center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = geodesic_dggs_metrics(cell_polygon, num_edges)
+
+            center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+                geodesic_dggs_metrics(cell_polygon, num_edges)
+            )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -1205,10 +1308,12 @@ def raster2dggal(raster_layer: QgsRasterLayer, resolution: int, feedback=None, d
 
         except Exception as e:
             if feedback:
-                feedback.pushInfo(f"Warning: Could not process DGGAL ID {dggal_id}: {str(e)}")
+                feedback.pushInfo(
+                    f"Warning: Could not process DGGAL ID {dggal_id}: {str(e)}"
+                )
             continue
 
-        if feedback and i % 100 == 0:   
+        if feedback and i % 100 == 0:
             feedback.setProgress(int(100 * i / len(dggal_ids)))
 
     if feedback:
@@ -1216,4 +1321,3 @@ def raster2dggal(raster_layer: QgsRasterLayer, resolution: int, feedback=None, d
         feedback.pushInfo(f"Raster to DGGAL {dggal_type.upper()} completed.")
 
     return mem_layer
-

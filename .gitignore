@@ -2,3 +2,4 @@
 *.pyc
 __pycache__/
 references/
+.ruff_cache/
