@@ -43,8 +43,8 @@ def classFactory(iface):  # pylint: disable=invalid-name
             command,
         )
 
-    from .vgrid import VgridPlugin
+    from .vgrid import VgridTools
     # from .vgrid_menu import vgrid_menu
 
-    return VgridPlugin(iface)
+    return VgridTools(iface)
     # return vgrid_menu(iface)

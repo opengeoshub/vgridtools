@@ -22,19 +22,18 @@ __revision__ = "$Format:%H$"
 
 import webbrowser
 import os
-import sys
-import inspect
-from PyQt5.QtWidgets import *
 from qgis.core import QgsApplication, QgsExpression
+from qgis.PyQt.QtGui import QIcon, QColor
+from qgis.PyQt.QtCore import Qt, QTimer, QUrl, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QMenu, QApplication, QToolButton
-
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
+from qgis.core import Qgis, QgsCoordinateTransform, QgsVectorLayer, QgsRectangle, QgsPoint, QgsPointXY, QgsGeometry, QgsWkbTypes, QgsProject, QgsApplication, QgsSettings
+from qgis.gui import QgsRubberBand
 
 from .vgrid_provider import VgridProvider
 from .expressions import *
-from .settings import SettingsWidget, settings
+from .settings import SettingsWidget
+from .latlon2dggs import LatLon2DGGSWidget
 from .util import tr
 
 exprs = (
@@ -56,8 +55,8 @@ exprs = (
     latlon2gars,
 )
 
+class VgridTools(object):  
 
-class VgridPlugin(object):
     latlon2DGGSDialog = None
 
     def __init__(
@@ -72,6 +71,10 @@ class VgridPlugin(object):
         self.toolbar = self.iface.addToolBar(tr('Vgrid Toolbar'))
         self.toolbar.setObjectName('VgridToolbar')
         self.toolbar.setToolTip(tr('Vgrid Toolbar'))
+        
+        self.crossRb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
+        self.crossRb.setColor(Qt.red)
+
 
     def initProcessing(self):
         """Init Processing provider for QGIS >= 3.8."""
@@ -91,9 +94,9 @@ class VgridPlugin(object):
         # Add settings action
         icon = QIcon(os.path.dirname(__file__) + '/images/vgrid.svg')
         self.latlon2DGGSAction = QAction(icon, tr("Lat Lon to DGGS"), self.iface.mainWindow())
-        self.latlon2DGGSAction.setObjectName('latlon2DGGS') 
+        self.latlon2DGGSAction.setObjectName('latlon2dggs') 
         self.latlon2DGGSAction.setToolTip(tr('Lat Lon to DGGS'))
-        self.latlon2DGGSAction.triggered.connect(self.latlon2DGGSTool)
+        self.latlon2DGGSAction.triggered.connect(self.latlon2DGGS)
         self.toolbar.addAction(self.latlon2DGGSAction)
 
 
@@ -106,13 +109,14 @@ class VgridPlugin(object):
         self.settingsAction.setToolTip(tr('Vgrid Settings'))
         self.settingsAction.triggered.connect(self.settings)
         self.toolbar.addAction(self.settingsAction)
-
-
+     
+    
     def unload(self):
-        QgsApplication.processingRegistry().removeProvider(self.provider)
+       
         for expr in exprs:
             if QgsExpression.isFunctionName(expr.name()):
                 QgsExpression.unregisterFunction(expr.name())
+        
         if self.Vgrid_menu is not None:
             self.iface.mainWindow().menuBar().removeAction(self.Vgrid_menu.menuAction())
 
@@ -120,24 +124,61 @@ class VgridPlugin(object):
         del self.toolbar
         
         if self.latlon2DGGSDialog:
+            self.latlon2DGGSDialog.removeMarker()
             self.iface.removeDockWidget(self.latlon2DGGSDialog)
             self.latlon2DGGSDialog = None
+        
+        self.settingsDialog = None
+        QgsApplication.processingRegistry().removeProvider(self.provider)
 
-
-    def latlon2DGGSTool(self):
+    def latlon2DGGS(self):
         '''Display the Convert Coordinate Tool Dialog box.'''
-        if self.latlon2DGGSDialog is None:
-            from .latlon2DGGS import LatLon2DGGSWidget
+        if self.latlon2DGGSDialog is None:            
             self.latlon2DGGSDialog = LatLon2DGGSWidget(self, self.settingsDialog, self.iface, self.iface.mainWindow())
             self.latlon2DGGSDialog.setFloating(True)
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.latlon2DGGSDialog)
         self.latlon2DGGSDialog.show()
-
+    
     
     def settings(self):
         '''Show the settings dialog box'''
         self.settingsDialog.show()
+    
+    def zoomTo(self, src_crs, lat, lon):
+        canvas_crs = self.canvas.mapSettings().destinationCrs()
+        transform = QgsCoordinateTransform(src_crs, canvas_crs, QgsProject.instance())
+        x, y = transform.transform(float(lon), float(lat))
 
+        rect = QgsRectangle(x, y, x, y)
+        self.canvas.setExtent(rect)
+
+        pt = QgsPointXY(x, y)
+        self.highlight(pt)
+        self.canvas.refresh()
+        return pt
+
+    def highlight(self, point):
+        currExt = self.canvas.extent()
+
+        leftPt = QgsPoint(currExt.xMinimum(), point.y())
+        rightPt = QgsPoint(currExt.xMaximum(), point.y())
+
+        topPt = QgsPoint(point.x(), currExt.yMaximum())
+        bottomPt = QgsPoint(point.x(), currExt.yMinimum())
+
+        horizLine = QgsGeometry.fromPolyline([leftPt, rightPt])
+        vertLine = QgsGeometry.fromPolyline([topPt, bottomPt])
+
+        self.crossRb.reset(QgsWkbTypes.LineGeometry)
+        self.crossRb.setWidth(2)
+        self.crossRb.setColor(QColor('#FF0000'))
+        self.crossRb.addGeometry(horizLine, None)
+        self.crossRb.addGeometry(vertLine, None)
+
+        QTimer.singleShot(700, self.resetRubberbands)
+
+    def resetRubberbands(self):
+        self.crossRb.reset()
 
     def Vgrid_add_submenu(self, submenu):
         if self.Vgrid_menu != None:

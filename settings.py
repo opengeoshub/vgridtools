@@ -35,30 +35,30 @@ class Settings():
         qset = QgsSettings()
         
         self.coordOrder = int(qset.value('/vgrid/coordOrder', CoordOrder.OrderYX))
-        self.h3Res = int(qset.value('/vgrid/h3Res', 14))
-        self.s2Res = int(qset.value('/vgrid/s2Res', 22))
-        self.a5Res = int(qset.value('/vgrid/a5Res', 14))
-        self.rhealpixRes = int(qset.value('/vgrid/rhealpixRes', 14))
-        self.isea4tRes = int(qset.value('/vgrid/isea4tRes', 21))
-        self.isea3hRes = int(qset.value('/vgrid/isea3hRes', 27))
-        self.easeRes = int(qset.value('/vgrid/easeRes', 5))
+        self.h3Res = int(qset.value('/vgrid/h3Res', 10))
+        self.s2Res = int(qset.value('/vgrid/s2Res', 16))
+        self.a5Res = int(qset.value('/vgrid/a5Res', 15))
+        self.rhealpixRes = int(qset.value('/vgrid/rhealpixRes', 10))
+        self.isea4tRes = int(qset.value('/vgrid/isea4tRes', 16))
+        self.isea3hRes = int(qset.value('/vgrid/isea3hRes', 20))
+        self.easeRes = int(qset.value('/vgrid/easeRes', 4))
 
-        self.dggal_gnosisRes = int(qset.value('/vgrid/dggal_gnosisRes', 22))
-        self.dggal_isea3hRes = int(qset.value('/vgrid/dggal_isea3hRes', 27))
-        self.dggal_isea9rRes = int(qset.value('/vgrid/dggal_isea9rRes', 13))
-        self.dggal_ivea3hRes = int(qset.value('/vgrid/dggal_ivea3hRes', 27))
-        self.dggal_ivea9rRes = int(qset.value('/vgrid/dggal_ivea9rRes', 13))
-        self.dggal_rtea3hRes = int(qset.value('/vgrid/dggal_rtea3hRes', 27))
-        self.dggal_rtea9rRes = int(qset.value('/vgrid/dggal_rtea9rRes', 13))
-        self.dggal_rhealpixRes = int(qset.value('/vgrid/dggal_rhealpixRes', 11))
+        self.dggal_gnosisRes = int(qset.value('/vgrid/dggal_gnosisRes', 16))
+        self.dggal_isea3hRes = int(qset.value('/vgrid/dggal_isea3hRes', 21))
+        self.dggal_isea9rRes = int(qset.value('/vgrid/dggal_isea9rRes', 10))
+        self.dggal_ivea3hRes = int(qset.value('/vgrid/dggal_ivea3hRes', 21))
+        self.dggal_ivea9rRes = int(qset.value('/vgrid/dggal_ivea9rRes', 10))    
+        self.dggal_rtea3hRes = int(qset.value('/vgrid/dggal_rtea3hRes', 21))
+        self.dggal_rtea9rRes = int(qset.value('/vgrid/dggal_rtea9rRes', 10))
+        self.dggal_rhealpixRes = int(qset.value('/vgrid/dggal_rhealpixRes', 10))        
 
-        self.qtmRes = int(qset.value('/vgrid/qtmRes', 24))
-        self.olcRes = int(qset.value('/vgrid/olcRes', 11))
-        self.geohashRes = int(qset.value('/vgrid/geohashRes', 9))
-        self.georefRes = int(qset.value('/vgrid/georefRes', 4))
-        self.mgrsRes = int(qset.value('/vgrid/mgrsRes', 4))
-        self.tilecodeRes = int(qset.value('/vgrid/tilecodeRes', 23))
-        self.quadkeyRes = int(qset.value('/vgrid/quadkeyRes', 23))
+        self.qtmRes = int(qset.value('/vgrid/qtmRes', 18))  
+        self.olcRes = int(qset.value('/vgrid/olcRes', 8))
+        self.geohashRes = int(qset.value('/vgrid/geohashRes', 7))
+        self.georefRes = int(qset.value('/vgrid/georefRes', 3))
+        self.mgrsRes = int(qset.value('/vgrid/mgrsRes', 3))
+        self.tilecodeRes = int(qset.value('/vgrid/tilecodeRes', 18))
+        self.quadkeyRes = int(qset.value('/vgrid/quadkeyRes', 18))
         self.maidenheadRes = int(qset.value('/vgrid/maidenheadRes', 4))
         self.garsRes = int(qset.value('/vgrid/garsRes', 4))
 
@@ -67,10 +67,10 @@ settings = Settings()
 
 
 class SettingsWidget(QDialog, FORM_CLASS):
-    def __init__(self, lltools, iface, parent):
+    def __init__(self, vgridtools, iface, parent):
         super(SettingsWidget, self).__init__(parent)
         self.setupUi(self)
-        self.lltools = lltools
+        self.vgridtools = vgridtools
         self.iface = iface
 
         self.buttonBox.button(QDialogButtonBox.RestoreDefaults).clicked.connect(self.restoreDefaults)
@@ -79,31 +79,31 @@ class SettingsWidget(QDialog, FORM_CLASS):
     def restoreDefaults(self):
         '''Restore all settings to their default state.'''
         # Follow order and default values from readSettings
-        self.coordOrder = coordOrder.OrderYX
-        self.h3ResSpinBox.setValue(14)
-        self.s2ResSpinBox.setValue(22)
-        self.a5ResSpinBox.setValue(14)
-        self.rhealpixResSpinBox.setValue(14)
-        self.isea4tResSpinBox.setValue(21)
-        self.isea3hResSpinBox.setValue(27)
-        self.easeResSpinBox.setValue(5)
+        self.coordOrder = CoordOrder.OrderYX
+        self.h3ResSpinBox.setValue(10)  
+        self.s2ResSpinBox.setValue(16)
+        self.a5ResSpinBox.setValue(15)
+        self.rhealpixResSpinBox.setValue(10)
+        self.isea4tResSpinBox.setValue(16)
+        self.isea3hResSpinBox.setValue(20)
+        self.easeResSpinBox.setValue(4)
 
-        self.dggal_gnosisResSpinBox.setValue(22)
-        self.dggal_isea3hResSpinBox.setValue(27)
-        self.dggal_isea9rResSpinBox.setValue(13)
-        self.dggal_ivea3hResSpinBox.setValue(27)
-        self.dggal_ivea9rResSpinBox.setValue(13)
-        self.dggal_rtea3hResSpinBox.setValue(27)
-        self.dggal_rtea9rResSpinBox.setValue(13)
-        self.dggal_rhealpixResSpinBox.setValue(14)
+        self.dggal_gnosisResSpinBox.setValue(16)    
+        self.dggal_isea3hResSpinBox.setValue(21)    
+        self.dggal_isea9rResSpinBox.setValue(10)    
+        self.dggal_ivea3hResSpinBox.setValue(21)
+        self.dggal_ivea9rResSpinBox.setValue(10)
+        self.dggal_rtea3hResSpinBox.setValue(21)
+        self.dggal_rtea9rResSpinBox.setValue(10)    
+        self.dggal_rhealpixResSpinBox.setValue(10)
 
-        self.qtmResSpinBox.setValue(24)
-        self.olcResSpinBox.setValue(11)
-        self.geohashResSpinBox.setValue(9)
-        self.georefResSpinBox.setValue(4)
-        self.mgrsResSpinBox.setValue(4)
-        self.tilecodeResSpinBox.setValue(23)
-        self.quadkeyResSpinBox.setValue(23)
+        self.qtmResSpinBox.setValue(18) 
+        self.olcResSpinBox.setValue(10) 
+        self.geohashResSpinBox.setValue(7)
+        self.georefResSpinBox.setValue(3)
+        self.mgrsResSpinBox.setValue(3)
+        self.tilecodeResSpinBox.setValue(18)
+        self.quadkeyResSpinBox.setValue(18)
         self.maidenheadResSpinBox.setValue(4)
         self.garsResSpinBox.setValue(4)
 
@@ -145,17 +145,10 @@ class SettingsWidget(QDialog, FORM_CLASS):
         qset.setValue('/vgrid/quadkeyRes', int(self.quadkeyResSpinBox.value()))
         qset.setValue('/vgrid/maidenheadRes', int(self.maidenheadResSpinBox.value()))
         qset.setValue('/vgrid/garsRes', int(self.garsResSpinBox.value()))
-        qset.setValue('/vgrid/ConverterDelimiter', self.converterDelimiterLineEdit.text())
-        qset.setValue('/vgrid/ConverterDdmmssDelimiter', self.converterDdmmssDelimiterLineEdit.text())
-        qset.setValue('/vgrid/converterPadZeroes', self.converterPadZeroesCheckBox.checkState())
-        qset.setValue('/vgrid/converterNsewBeginning', self.converterNsewBeginningCheckBox.checkState())
-        qset.setValue('/vgrid/ConverterMgrsAddSpaces', self.converterMgrsAddSpacesCheckBox.checkState())
-        qset.setValue('/vgrid/ConverterMgrsPrecision', int(self.converterMgrsPrecisionSpinBox.value()))
 
         # The values have been read from the widgets and saved to the registry.
         # Now we will read them back to the variables.
         self.readSettings()
-        self.lltools.settingsChanged()
         self.close()
         
     def showTab(self, tab):
@@ -172,17 +165,11 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.s2ResSpinBox.setValue(settings.s2Res)
         self.a5ResSpinBox.setValue(settings.a5Res)
         self.rhealpixResSpinBox.setValue(settings.rhealpixRes)
-        
-               
-        self.qtmResSpinBox.setValue(settings.qtmRes)
-        self.olcResSpinBox.setValue(settings.olcRes)
-        self.geohashResSpinBox.setValue(settings.geohashRes)
-        self.tilecodeResSpinBox.setValue(settings.tilecodeRes)
-        self.quadkeyResSpinBox.setValue(settings.quadkeyRes)
         self.isea4tResSpinBox.setValue(settings.isea4tRes)
         self.isea3hResSpinBox.setValue(settings.isea3hRes)
-        self.dggal_gnosisResSpinBox.setValue(settings.dggal_gnosisRes)
+        self.easeResSpinBox.setValue(settings.easeRes)
 
+        self.dggal_gnosisResSpinBox.setValue(settings.dggal_gnosisRes)
         self.dggal_isea3hResSpinBox.setValue(settings.dggal_isea3hRes)
         self.dggal_isea9rResSpinBox.setValue(settings.dggal_isea9rRes)
         self.dggal_ivea3hResSpinBox.setValue(settings.dggal_ivea3hRes)
@@ -190,3 +177,14 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.dggal_rtea3hResSpinBox.setValue(settings.dggal_rtea3hRes)
         self.dggal_rtea9rResSpinBox.setValue(settings.dggal_rtea9rRes)
         self.dggal_rhealpixResSpinBox.setValue(settings.dggal_rhealpixRes)
+
+        self.qtmResSpinBox.setValue(settings.qtmRes)
+        self.olcResSpinBox.setValue(settings.olcRes)
+        self.geohashResSpinBox.setValue(settings.geohashRes)
+        self.georefResSpinBox.setValue(settings.georefRes)
+        self.mgrsResSpinBox.setValue(settings.mgrsRes)
+        self.tilecodeResSpinBox.setValue(settings.tilecodeRes)
+        self.quadkeyResSpinBox.setValue(settings.quadkeyRes)
+        self.maidenheadResSpinBox.setValue(settings.maidenheadRes)
+        self.garsResSpinBox.setValue(settings.garsRes)
+

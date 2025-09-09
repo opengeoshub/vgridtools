@@ -1,6 +1,6 @@
 from qgis.core import QgsCoordinateReferenceSystem
 from qgis.core import QgsApplication
-
+import re
 LOC = QgsApplication.locale()[:2]
 
 epsg4326 = QgsCoordinateReferenceSystem('EPSG:4326')
