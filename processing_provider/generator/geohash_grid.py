@@ -44,6 +44,7 @@ from ...utils.imgs import Imgs
 from vgrid.utils.geometry import graticule_dggs_metrics
 from shapely.geometry import box
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
+from ...settings import settings
 
 
 class GeohashGrid(QgsProcessingAlgorithm):
@@ -123,13 +124,14 @@ class GeohashGrid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("Geohash")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution [1..10]"),
+            self.tr(f"Resolution [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=1,
-            minValue=1,
-            maxValue=10,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

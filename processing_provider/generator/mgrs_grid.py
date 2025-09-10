@@ -47,6 +47,7 @@ from PyQt5.QtCore import QVariant
 import os, random
 from vgrid.dggs import mgrs
 from ...utils.imgs import Imgs
+from ...settings import settings
 from vgrid.generator.mgrsgrid import is_valid_gzd
 import json
 from shapely.geometry import shape, Polygon
@@ -133,13 +134,14 @@ class MGRSGrid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("MGRS")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution [0..5]"),
+            self.tr(f"Resolution [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=0,
-            minValue=0,
-            maxValue=5,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

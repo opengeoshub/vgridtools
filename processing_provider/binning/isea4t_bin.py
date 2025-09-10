@@ -28,6 +28,7 @@ import os, statistics
 from collections import defaultdict, Counter
 from ...utils.imgs import Imgs
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
+from ...settings import settings
 from shapely.geometry import Polygon
 from shapely.wkt import loads
 
@@ -171,14 +172,15 @@ class ISEA4TBin(QgsProcessingAlgorithm):
             )
         )
 
+        min_res, max_res, default_res = settings.getResolution("ISEA4T")
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
-                self.tr("Resolution [0..25]"),
+                self.tr(f"Resolution [{min_res}..{max_res}]"),
                 QgsProcessingParameterNumber.Integer,
-                defaultValue=13,
-                minValue=0,
-                maxValue=25,
+                defaultValue=default_res,
+                minValue=min_res,
+                maxValue=max_res,
                 optional=False,
             )
         )

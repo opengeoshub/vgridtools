@@ -29,6 +29,7 @@ from shapely.geometry import Polygon
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
+from ...settings import settings
 from vgrid.dggs import geohash
 from vgrid.conversion.latlon2dggs import latlon2geohash
 
@@ -160,14 +161,15 @@ class GeohashBin(QgsProcessingAlgorithm):
             )
         )
 
+        min_res, max_res, default_res = settings.getResolution("Geohash")
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
-                self.tr("Resolution [1..10]"),
+                self.tr(f"Resolution [{min_res}..{max_res}]"),
                 QgsProcessingParameterNumber.Integer,
-                defaultValue=6,
-                minValue=1,
-                maxValue=10,
+                defaultValue=default_res,
+                minValue=min_res,
+                maxValue=max_res,
                 optional=False,
             )
         )

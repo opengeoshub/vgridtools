@@ -28,6 +28,7 @@ import os, statistics
 from collections import defaultdict, Counter
 from ...utils.imgs import Imgs
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
+from ...settings import settings
 
 from vgrid.conversion.latlon2dggs import latlon2rhealpix
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
@@ -162,14 +163,15 @@ class rHEALPixBin(QgsProcessingAlgorithm):
             )
         )
 
+        min_res, max_res, default_res = settings.getResolution("rHEALPix")
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
-                self.tr("Resolution [0..15]"),
+                self.tr(f"Resolution [{min_res}..{max_res}]"),
                 QgsProcessingParameterNumber.Integer,
-                defaultValue=8,
-                minValue=0,
-                maxValue=15,
+                defaultValue=default_res,
+                minValue=min_res,
+                maxValue=max_res,
                 optional=False,
             )
         )

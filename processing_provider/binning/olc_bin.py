@@ -29,6 +29,7 @@ from shapely.geometry import Polygon
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
+from ...settings import settings
 from vgrid.dggs import olc
 from vgrid.conversion.latlon2dggs import latlon2olc
 
@@ -160,14 +161,15 @@ class OLCBin(QgsProcessingAlgorithm):
             )
         )
 
+        min_res, max_res, default_res = settings.getResolution("OLC")
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
-                self.tr("Resolution [2, 4, 6, 8, 10, 11..15]"),
+                self.tr(f"Resolution [{min_res}..{max_res}]"),
                 QgsProcessingParameterNumber.Integer,
-                defaultValue=8,
-                minValue=2,
-                maxValue=15,
+                defaultValue=default_res,
+                minValue=min_res,
+                maxValue=max_res,
                 optional=False,
             )
         )

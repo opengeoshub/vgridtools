@@ -15,7 +15,6 @@ from qgis.PyQt.uic import loadUiType
 from qgis.PyQt.QtWidgets import QDialog, QDialogButtonBox
 from qgis.core import QgsSettings
 
-
 FORM_CLASS, _ = loadUiType(os.path.join(
     os.path.dirname(__file__), 'ui/settings.ui'))
 
@@ -62,6 +61,43 @@ class Settings():
         self.maidenheadRes = int(qset.value('/vgrid/maidenheadRes', 4))
         self.garsRes = int(qset.value('/vgrid/garsRes', 4))
 
+    def getResolution(self, dggs_type):
+        """
+        Get resolution settings for a specific DGGS type.
+        Returns tuple (min_res, max_res, default_res) or None if not found.
+        """
+        # Define resolution ranges and defaults for each DGGS type
+        resolution_config = {
+            "H3": (0, 15, self.h3Res),
+            "S2": (0, 30, self.s2Res),
+            "A5": (0, 29, self.a5Res),
+            "rHEALPix": (0, 15, self.rhealpixRes),
+            "ISEA4T": (0, 39, self.isea4tRes),
+            "ISEA3H": (0, 40, self.isea3hRes),
+            "EASE": (0, 6, self.easeRes),          
+            
+            "DGGAL_GNOSIS": (0, 28, self.dggal_gnosisRes),
+            "DGGAL_ISEA3H": (0, 33, self.dggal_isea3hRes),
+            "DGGAL_ISEA9R": (0, 16, self.dggal_isea9rRes),
+            "DGGAL_IVEA3H": (0, 33, self.dggal_ivea3hRes),
+            "DGGAL_IVEA9R": (0, 16, self.dggal_ivea9rRes),
+            "DGGAL_RTEA3H": (0, 33, self.dggal_rtea3hRes),
+            "DGGAL_RTEA9R": (0, 16, self.dggal_rtea9rRes),
+            "DGGAL_RHEALPIX": (0, 16, self.dggal_rhealpixRes),
+            
+            "QTM": (1, 24, self.qtmRes),
+            "OLC": (2, 15, self.olcRes),
+            "Geohash": (1, 12, self.geohashRes),
+            "GEOREF": (0, 10, self.georefRes),
+            "MGRS": (0, 5, self.mgrsRes),
+            "Tilecode": (0, 29, self.tilecodeRes),
+            "Quadkey": (0, 29, self.quadkeyRes),
+            "Maidenhead": (1, 4, self.maidenheadRes),
+            "GARS": (1, 4, self.garsRes),
+        }
+        
+        return resolution_config.get(dggs_type)
+
 
 settings = Settings()
 
@@ -79,7 +115,7 @@ class SettingsWidget(QDialog, FORM_CLASS):
     def restoreDefaults(self):
         '''Restore all settings to their default state.'''
         # Follow order and default values from readSettings
-        self.coordOrder = CoordOrder.OrderYX
+        # self.coordOrder = CoordOrder.OrderYX
         self.h3ResSpinBox.setValue(10)  
         self.s2ResSpinBox.setValue(16)
         self.a5ResSpinBox.setValue(15)
@@ -98,7 +134,7 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.dggal_rhealpixResSpinBox.setValue(10)
 
         self.qtmResSpinBox.setValue(18) 
-        self.olcResSpinBox.setValue(10) 
+        self.olcResSpinBox.setValue(8) 
         self.geohashResSpinBox.setValue(7)
         self.georefResSpinBox.setValue(3)
         self.mgrsResSpinBox.setValue(3)
@@ -116,8 +152,7 @@ class SettingsWidget(QDialog, FORM_CLASS):
 
     def accept(self):
         '''Accept the settings and save them for next time.'''
-        qset = QgsSettings()
-        
+        qset = QgsSettings()       
         
         qset.setValue('/vgrid/h3Res', int(self.h3ResSpinBox.value()))
         qset.setValue('/vgrid/s2Res', int(self.s2ResSpinBox.value()))
@@ -187,4 +222,3 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.quadkeyResSpinBox.setValue(settings.quadkeyRes)
         self.maidenheadResSpinBox.setValue(settings.maidenheadRes)
         self.garsResSpinBox.setValue(settings.garsRes)
-

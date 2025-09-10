@@ -44,6 +44,7 @@ import os, random
 from vgrid.dggs import georef
 from vgrid.utils.geometry import graticule_dggs_metrics
 from ...utils.imgs import Imgs
+from ...settings import settings
 
 
 class GEOREFGrid(QgsProcessingAlgorithm):
@@ -123,13 +124,14 @@ class GEOREFGrid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("GEOREF")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("RESOLUTION"),
+            self.tr(f"RESOLUTION [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=1,
-            minValue=0,
-            maxValue=5,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

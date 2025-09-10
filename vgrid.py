@@ -26,7 +26,7 @@ from qgis.core import QgsApplication, QgsExpression
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import Qt, QTimer, QUrl, QTranslator, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtWidgets import QAction, QMenu, QApplication, QToolButton
+from qgis.PyQt.QtWidgets import QAction, QMenu, QWidgetAction, QCheckBox, QApplication, QToolButton
 from qgis.core import Qgis, QgsCoordinateTransform, QgsVectorLayer, QgsRectangle, QgsPoint, QgsPointXY, QgsGeometry, QgsWkbTypes, QgsProject, QgsApplication, QgsSettings
 from qgis.gui import QgsRubberBand
 
@@ -34,7 +34,8 @@ from .vgrid_provider import VgridProvider
 from .expressions import *
 from .settings import SettingsWidget
 from .latlon2dggs import LatLon2DGGSWidget
-from .util import tr
+from .utils import tr
+from .dggsgen import DGGSGen
 
 exprs = (
     latlon2h3,
@@ -67,6 +68,7 @@ class VgridTools(object):
         self.plugin_dir = os.path.dirname(__file__)
         self.iface = iface
         self.canvas = iface.mapCanvas()
+        self.dggsgen = DGGSGen(self, self.canvas, self.iface)
         self.Vgrid_menu = None
         self.toolbar = self.iface.addToolBar(tr('Vgrid Toolbar'))
         self.toolbar.setObjectName('VgridToolbar')
@@ -74,7 +76,7 @@ class VgridTools(object):
         
         self.crossRb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
         self.crossRb.setColor(Qt.red)
-
+        # self.dggsgen = DGGSGen(self, self.canvas, self.iface)
 
     def initProcessing(self):
         """Init Processing provider for QGIS >= 3.8."""
@@ -87,29 +89,50 @@ class VgridTools(object):
             if not QgsExpression.isFunctionName(expr.name()):
                 QgsExpression.registerFunction(expr)
 
-        # Create menu
-        # self.Vgrid_menu = QMenu(QCoreApplication.translate("Vgrid", "Vgrid"))
-        # self.iface.mainWindow().menuBar().insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.Vgrid_menu)
+        # Create Vgrid menu
+        self.Vgrid_menu = QMenu(QCoreApplication.translate("Vgrid", "Vgrid"))
+        self.iface.mainWindow().menuBar().insertMenu(self.iface.firstRightStandardMenu().menuAction(), self.Vgrid_menu)
 
-        # Add settings action
+        # Create Vgrid DGGS submenu
+        self.dggs_menu = QMenu(u'DGGS')
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
+        self.Vgrid_add_submenu2(self.dggs_menu, icon)
+
+        # Add Vgrid DGGS items
+        # icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_h3.svg")  
+        # self.h3_action = QAction(u'H3', self.iface.mainWindow())
+        # self.h3_action.setCheckable(True)  
+        # self.h3_action.setChecked(False)           
+        # self.h3_action.toggled.connect(self.h3_grid)  # use toggled(bool)
+        # self.dggs_menu.addAction(self.h3_action)
+
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_h3.svg")
+
+        self.h3_widget_action = QWidgetAction(self.dggs_menu)
+        checkbox = QCheckBox(u'H3')
+        checkbox.setIcon(icon)
+        checkbox.setChecked(False)  # optional initial state
+        checkbox.toggled.connect(lambda checked: (self.dggsgen.enable_h3(checked), self.dggsgen.H3Grid()) if checked else self.dggsgen.enable_h3(False))
+        self.h3_widget_action.setDefaultWidget(checkbox)
+        self.dggs_menu.addAction(self.h3_widget_action)
+
+
+        # Add Latlon2DGGS action
         icon = QIcon(os.path.dirname(__file__) + '/images/vgrid.svg')
         self.latlon2DGGSAction = QAction(icon, tr("Lat Lon to DGGS"), self.iface.mainWindow())
         self.latlon2DGGSAction.setObjectName('latlon2dggs') 
         self.latlon2DGGSAction.setToolTip(tr('Lat Lon to DGGS'))
         self.latlon2DGGSAction.triggered.connect(self.latlon2DGGS)
-        self.toolbar.addAction(self.latlon2DGGSAction)
+        self.toolbar.addAction(self.latlon2DGGSAction)       
 
-
+        # Add Interface for settings
         self.settingsDialog = SettingsWidget(self, self.iface, self.iface.mainWindow())
-        
-        # Initialize the Settings Dialog Box
-        settingsicon = QIcon(os.path.dirname(__file__) + '/images/settings.svg')  
-        self.settingsAction = QAction(settingsicon, tr("Settings"), self.iface.mainWindow())
+        settings_icon = QIcon(os.path.dirname(__file__) + '/images/settings.svg')  
+        self.settingsAction = QAction(settings_icon, tr("Settings"), self.iface.mainWindow())
         self.settingsAction.setObjectName('settings')
         self.settingsAction.setToolTip(tr('Vgrid Settings'))
         self.settingsAction.triggered.connect(self.settings)
         self.toolbar.addAction(self.settingsAction)
-     
     
     def unload(self):
        
@@ -192,6 +215,14 @@ class VgridTools(object):
             self.Vgrid_menu.addMenu(submenu)
         else:
             self.iface.addPluginToMenu("&Vgrid", submenu.menuAction())
+
+    def Vgrid_add_submenu3(self, submenu, icon):
+        if self.dggs_menu != None:
+            submenu.setIcon(QIcon(icon))
+            self.dggs_menu.addMenu(submenu)
+        else:
+            self.iface.addPluginToMenu("&DGGS", submenu.menuAction())
+
 
     def VgridHome(self):
         webbrowser.open("https://vgrid.vn")

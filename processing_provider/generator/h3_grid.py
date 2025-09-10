@@ -37,7 +37,7 @@ from qgis.core import (
     QgsVectorLayerSimpleLabeling,
 )
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
+from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os, random
@@ -47,6 +47,7 @@ import h3
 from ...utils.imgs import Imgs
 from shapely.geometry import Polygon, box
 from vgrid.utils.geometry import geodesic_dggs_metrics, fix_h3_antimeridian_cells
+from ...settings import settings
 
 
 class H3Grid(QgsProcessingAlgorithm):
@@ -126,13 +127,14 @@ class H3Grid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("H3")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution [0.15]"),
+            self.tr(f"Resolution [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=1,
-            minValue=0,
-            maxValue=15,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

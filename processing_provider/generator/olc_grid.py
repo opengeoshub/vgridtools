@@ -47,6 +47,7 @@ from vgrid.generator.olcgrid import olc_refine_cell
 from vgrid.utils.geometry import graticule_dggs_metrics, graticule_dggs_to_feature
 
 from ...utils.imgs import Imgs
+from ...settings import settings
 from shapely.geometry import Polygon, box
 
 
@@ -127,13 +128,14 @@ class OLCGrid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("OLC")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution/ Code length in [2, 4, 6, 8, 10, 11..15]"),
+            self.tr(f"Resolution/ Code length [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=2,
-            minValue=2,
-            maxValue=15,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

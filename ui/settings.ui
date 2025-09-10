@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>337</width>
-    <height>437</height>
+    <width>484</width>
+    <height>514</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,9 +26,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
-        <width>300</width>
-        <height>619</height>
+        <y>-268</y>
+        <width>447</width>
+        <height>733</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_11">
@@ -40,457 +40,779 @@
          <property name="currentIndex">
           <number>0</number>
          </property>
-         <widget class="QWidget" name="Latlon2DGGS">
+         <widget class="QWidget" name="DGGSResColor">
           <attribute name="title">
-           <string>DGGS default resolution</string>
+           <string>DGGS</string>
           </attribute>
-          <layout class="QVBoxLayout" name="verticalLayout_10">
+          <layout class="QHBoxLayout" name="horizontalLayout_38">
            <item>
-            <layout class="QFormLayout" name="formLayout_4">
-             <property name="verticalSpacing">
-              <number>4</number>
-             </property>
-             <item row="0" column="0">
-              <widget class="QLabel" name="h3Label">
-               <property name="text">
-                <string>H3</string>
-               </property>
-              </widget>
+            <layout class="QFormLayout" name="formLayout">
+             <item row="0" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_36">
+               <item>
+                <widget class="QLabel" name="dggsLabel">
+                 <property name="text">
+                  <string>DGGS</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="colorLabel">
+                 <property name="text">
+                  <string>Default Resolution</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="resLabel">
+                 <property name="text">
+                  <string>Stroke Color</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </item>
-             <item row="0" column="1">
-              <widget class="QSpinBox" name="h3ResSpinBox">
-               <property name="maximum">
-                <number>15</number>
-               </property>
-               <property name="value">
-                <number>13</number>
-               </property>
-              </widget>
+             <item row="1" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_3">
+               <item>
+                <widget class="QLabel" name="s2Label">
+                 <property name="text">
+                  <string>S2 [0..30]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="s2ResSpinBox">
+                 <property name="maximum">
+                  <number>30</number>
+                 </property>
+                 <property name="value">
+                  <number>16</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="s2ColorButton">
+                 <property name="color">
+                  <color>
+                   <red>255</red>
+                   <green>165</green>
+                   <blue>0</blue>
+                  </color>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </item>
-             <item row="1" column="0">
-              <widget class="QLabel" name="s2Label">
-               <property name="text">
-                <string>S2</string>
-               </property>
-              </widget>
+             <item row="2" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout">
+               <item>
+                <widget class="QLabel" name="a5Label">
+                 <property name="text">
+                  <string>A5 [0..29]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="a5ResSpinBox">
+                 <property name="maximum">
+                  <number>29</number>
+                 </property>
+                 <property name="value">
+                  <number>15</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="a5ColorButton">
+                 <property name="color">
+                  <color>
+                   <red>0</red>
+                   <green>255</green>
+                   <blue>0</blue>
+                  </color>
+                 </property>
+                 <property name="defaultColor">
+                  <color>
+                   <red>0</red>
+                   <green>255</green>
+                   <blue>0</blue>
+                  </color>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </item>
-             <item row="1" column="1">
-              <widget class="QSpinBox" name="s2ResSpinBox">
-               <property name="maximum">
-                <number>30</number>
-               </property>
-               <property name="value">
-                <number>21</number>
-               </property>
-              </widget>
+             <item row="3" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_7">
+               <item>
+                <widget class="QLabel" name="h3Label">
+                 <property name="text">
+                  <string>H3 [0..15]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="h3ResSpinBox"/>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="h3ColorButton">
+                 <property name="color">
+                  <color>
+                   <red>0</red>
+                   <green>0</green>
+                   <blue>255</blue>
+                  </color>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </item>
-             <item row="2" column="0">
-              <widget class="QLabel" name="a5Label">
-               <property name="text">
-                <string>A5</string>
-               </property>
-              </widget>
+             <item row="4" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_10">
+               <item>
+                <widget class="QLabel" name="rhealpixLabel">
+                 <property name="text">
+                  <string>rHEALPix [0..15]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="rhealpixResSpinBox">
+                 <property name="maximum">
+                  <number>15</number>
+                 </property>
+                 <property name="value">
+                  <number>10</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="rhealpixColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="2" column="1">
-              <widget class="QSpinBox" name="a5ResSpinBox">
-               <property name="maximum">
-                <number>29</number>
-               </property>
-               <property name="value">
-                <number>13</number>
-               </property>
-              </widget>
+             <item row="5" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_11">
+               <item>
+                <widget class="QLabel" name="isea4tLabel">
+                 <property name="text">
+                  <string>ISEA4T [0..39]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="isea4tResSpinBox">
+                 <property name="maximum">
+                  <number>39</number>
+                 </property>
+                 <property name="value">
+                  <number>16</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="isea4tColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="3" column="0">
-              <widget class="QLabel" name="rhealpixLabel">
-               <property name="text">
-                <string>rHEALPix</string>
-               </property>
-              </widget>
+             <item row="6" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_12">
+               <item>
+                <widget class="QLabel" name="isea3hLabel">
+                 <property name="text">
+                  <string>ISEA3H [0..40]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="isea3hResSpinBox">
+                 <property name="maximum">
+                  <number>40</number>
+                 </property>
+                 <property name="value">
+                  <number>20</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="isea3hColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="3" column="1">
-              <widget class="QSpinBox" name="rhealpixResSpinBox">
-               <property name="maximum">
-                <number>15</number>
-               </property>
-               <property name="value">
-                <number>13</number>
-               </property>
-              </widget>
+             <item row="7" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_13">
+               <item>
+                <widget class="QLabel" name="easeLabel">
+                 <property name="text">
+                  <string>EASE [0..6]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="easeResSpinBox">
+                 <property name="maximum">
+                  <number>6</number>
+                 </property>
+                 <property name="value">
+                  <number>4</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="easeColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="isea4tLabel">
-               <property name="text">
-                <string>ISEA4T</string>
-               </property>
-              </widget>
+             <item row="8" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_14">
+               <item>
+                <widget class="QLabel" name="dggal_gnosisLabel">
+                 <property name="text">
+                  <string>DGGAL_GNOSIS [0..28]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="dggal_gnosisResSpinBox">
+                 <property name="maximum">
+                  <number>28</number>
+                 </property>
+                 <property name="value">
+                  <number>16</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="dggal_gnosisColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="4" column="1">
-              <widget class="QSpinBox" name="isea4tResSpinBox">
-               <property name="maximum">
-                <number>39</number>
-               </property>
-               <property name="value">
-                <number>20</number>
-               </property>
-              </widget>
+             <item row="9" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_15">
+               <item>
+                <widget class="QLabel" name="dgga_isea3hLlabel">
+                 <property name="text">
+                  <string>DGGAL_ISEA3H [0..33]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="dggal_isea3hResSpinBox">
+                 <property name="maximum">
+                  <number>33</number>
+                 </property>
+                 <property name="value">
+                  <number>21</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="dggal_isea3hColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="5" column="0">
-              <widget class="QLabel" name="isea3hLabel">
-               <property name="text">
-                <string>ISEA3H</string>
-               </property>
-              </widget>
+             <item row="10" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_16">
+               <item>
+                <widget class="QLabel" name="dggal_isea9rLabel">
+                 <property name="text">
+                  <string>DGGAL_ISEA9R [0..16]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="dggal_isea9rResSpinBox">
+                 <property name="maximum">
+                  <number>16</number>
+                 </property>
+                 <property name="value">
+                  <number>10</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="dggal_isea9rColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="5" column="1">
-              <widget class="QSpinBox" name="isea3hResSpinBox">
-               <property name="maximum">
-                <number>40</number>
-               </property>
-               <property name="value">
-                <number>26</number>
-               </property>
-              </widget>
+             <item row="11" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_21">
+               <item>
+                <widget class="QLabel" name="dggal_ivea3hLabel_2">
+                 <property name="text">
+                  <string>DGGAL_IVEA3H [0..33]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="dggal_ivea3hResSpinBox">
+                 <property name="maximum">
+                  <number>33</number>
+                 </property>
+                 <property name="value">
+                  <number>21</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="dggal_ivea3hColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="6" column="0">
-              <widget class="QLabel" name="easeLabel">
-               <property name="text">
-                <string>EASE</string>
-               </property>
-              </widget>
+             <item row="12" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_22">
+               <item>
+                <widget class="QLabel" name="dggal_ivea9rLabel">
+                 <property name="text">
+                  <string>DGGAL_IVEA9R [0..16]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="dggal_ivea9rResSpinBox">
+                 <property name="maximum">
+                  <number>16</number>
+                 </property>
+                 <property name="value">
+                  <number>10</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="dggal_ivea9rColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="6" column="1">
-              <widget class="QSpinBox" name="easeResSpinBox">
-               <property name="maximum">
-                <number>6</number>
-               </property>
-               <property name="value">
-                <number>4</number>
-               </property>
-              </widget>
+             <item row="13" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_23">
+               <item>
+                <widget class="QLabel" name="dggal_rtea3gLabel">
+                 <property name="text">
+                  <string>DGGAL_RTEA3H [0..33]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="dggal_rtea3hResSpinBox">
+                 <property name="maximum">
+                  <number>33</number>
+                 </property>
+                 <property name="value">
+                  <number>21</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="dggal_rtea3hColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="7" column="0">
-              <widget class="QLabel" name="dggal_gnosisLabel">
-               <property name="text">
-                <string>DGGAL_GNOSIS</string>
-               </property>
-              </widget>
+             <item row="14" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_24">
+               <item>
+                <widget class="QLabel" name="dggal_rtea9rLabel">
+                 <property name="text">
+                  <string>DGGAL_RTEA9R [0..16]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="dggal_rtea9rResSpinBox">
+                 <property name="maximum">
+                  <number>16</number>
+                 </property>
+                 <property name="value">
+                  <number>10</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="dggal_rtea9rColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="7" column="1">
-              <widget class="QSpinBox" name="dggal_gnosisResSpinBox">
-               <property name="maximum">
-                <number>28</number>
-               </property>
-               <property name="value">
-                <number>21</number>
-               </property>
-              </widget>
+             <item row="15" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_25">
+               <item>
+                <widget class="QLabel" name="dggal_rhealpixLabel">
+                 <property name="text">
+                  <string>DGGAL_RHEALPIX [0..16]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="dggal_rhealpixResSpinBox">
+                 <property name="maximum">
+                  <number>16</number>
+                 </property>
+                 <property name="value">
+                  <number>10</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="dggal_rhealpixColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="8" column="0">
-              <widget class="QLabel" name="dgga_isea3hLlabel">
-               <property name="text">
-                <string>DGGAL_ISEA3H</string>
-               </property>
-              </widget>
+             <item row="16" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_26">
+               <item>
+                <widget class="QLabel" name="qtmLabel">
+                 <property name="text">
+                  <string>QTM [1..24]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="qtmResSpinBox">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>24</number>
+                 </property>
+                 <property name="value">
+                  <number>18</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="qtmColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="8" column="1">
-              <widget class="QSpinBox" name="dggal_isea3hResSpinBox">
-               <property name="maximum">
-                <number>33</number>
-               </property>
-               <property name="value">
-                <number>26</number>
-               </property>
-              </widget>
+             <item row="17" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_27">
+               <item>
+                <widget class="QLabel" name="olcLabel">
+                 <property name="text">
+                  <string>OLC [2,4,6,8,10,11..15]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="olcResSpinBox">
+                 <property name="minimum">
+                  <number>2</number>
+                 </property>
+                 <property name="maximum">
+                  <number>15</number>
+                 </property>
+                 <property name="value">
+                  <number>10</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="olcColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="9" column="0">
-              <widget class="QLabel" name="dggal_isea9rLabel">
-               <property name="text">
-                <string>DGGAL_ISEA9R</string>
-               </property>
-              </widget>
+             <item row="24" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_35">
+               <item>
+                <widget class="QLabel" name="garsLabel">
+                 <property name="text">
+                  <string>GARS [1..4]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="garsResSpinBox">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>4</number>
+                 </property>
+                 <property name="value">
+                  <number>4</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="garsColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="9" column="1">
-              <widget class="QSpinBox" name="dggal_isea9rResSpinBox">
-               <property name="maximum">
-                <number>16</number>
-               </property>
-               <property name="value">
-                <number>12</number>
-               </property>
-              </widget>
+             <item row="23" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_34">
+               <item>
+                <widget class="QLabel" name="maidenheadLabel">
+                 <property name="text">
+                  <string>Maidenhead [1..4]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="maidenheadResSpinBox">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>4</number>
+                 </property>
+                 <property name="value">
+                  <number>4</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="maidenheadColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="10" column="0">
-              <widget class="QLabel" name="dggal_ivea3hLabel">
-               <property name="text">
-                <string>DGGAL_IVEA3H</string>
-               </property>
-              </widget>
+             <item row="22" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_33">
+               <item>
+                <widget class="QLabel" name="quadkeyLabel">
+                 <property name="text">
+                  <string>Quadkey [0..29]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="quadkeyResSpinBox">
+                 <property name="maximum">
+                  <number>29</number>
+                 </property>
+                 <property name="value">
+                  <number>18</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="quadkeyColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="10" column="1">
-              <widget class="QSpinBox" name="dggal_ivea3hResSpinBox">
-               <property name="maximum">
-                <number>33</number>
-               </property>
-               <property name="value">
-                <number>26</number>
-               </property>
-              </widget>
+             <item row="21" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_32">
+               <item>
+                <widget class="QLabel" name="tilecodeLabel">
+                 <property name="text">
+                  <string>Tilecode [0..29]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="tilecodeResSpinBox">
+                 <property name="maximum">
+                  <number>29</number>
+                 </property>
+                 <property name="value">
+                  <number>18</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="tilecodeColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="11" column="0">
-              <widget class="QLabel" name="dggal_ivea9rLabel">
-               <property name="text">
-                <string>DGGAL_IVEA9R</string>
-               </property>
-              </widget>
+             <item row="20" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_31">
+               <item>
+                <widget class="QLabel" name="mgrsLabel_2">
+                 <property name="text">
+                  <string>MGRS [0..5]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="mgrsResSpinBox">
+                 <property name="maximum">
+                  <number>5</number>
+                 </property>
+                 <property name="value">
+                  <number>3</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="mgrsColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="11" column="1">
-              <widget class="QSpinBox" name="dggal_ivea9rResSpinBox">
-               <property name="maximum">
-                <number>16</number>
-               </property>
-               <property name="value">
-                <number>12</number>
-               </property>
-              </widget>
+             <item row="19" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_29">
+               <item>
+                <widget class="QLabel" name="georefLabel">
+                 <property name="text">
+                  <string>GEOREF [0..10]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="georefResSpinBox">
+                 <property name="maximum">
+                  <number>10</number>
+                 </property>
+                 <property name="value">
+                  <number>3</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="georefColorButton"/>
+               </item>
+              </layout>
              </item>
-             <item row="13" column="0">
-              <widget class="QLabel" name="dggal_rtea9rLabel">
-               <property name="text">
-                <string>DGGAL_RTEA9R</string>
-               </property>
-              </widget>
-             </item>
-             <item row="13" column="1">
-              <widget class="QSpinBox" name="dggal_rtea9rResSpinBox">
-               <property name="maximum">
-                <number>16</number>
-               </property>
-               <property name="value">
-                <number>12</number>
-               </property>
-              </widget>
-             </item>
-             <item row="14" column="0">
-              <widget class="QLabel" name="dggal_rhealpixLabel">
-               <property name="text">
-                <string>DGGAL_RHEALPIX</string>
-               </property>
-              </widget>
-             </item>
-             <item row="14" column="1">
-              <widget class="QSpinBox" name="dggal_rhealpixResSpinBox">
-               <property name="maximum">
-                <number>16</number>
-               </property>
-               <property name="value">
-                <number>13</number>
-               </property>
-              </widget>
-             </item>
-             <item row="15" column="0">
-              <widget class="QLabel" name="qtmLabel">
-               <property name="text">
-                <string>QTM</string>
-               </property>
-              </widget>
-             </item>
-             <item row="15" column="1">
-              <widget class="QSpinBox" name="qtmResSpinBox">
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>24</number>
-               </property>
-               <property name="value">
-                <number>23</number>
-               </property>
-              </widget>
-             </item>
-             <item row="16" column="0">
-              <widget class="QLabel" name="olcLabel">
-               <property name="text">
-                <string>OLC</string>
-               </property>
-              </widget>
-             </item>
-             <item row="16" column="1">
-              <widget class="QSpinBox" name="olcResSpinBox">
-               <property name="minimum">
-                <number>10</number>
-               </property>
-               <property name="maximum">
-                <number>15</number>
-               </property>
-               <property name="value">
-                <number>10</number>
-               </property>
-              </widget>
-             </item>
-             <item row="17" column="0">
-              <widget class="QLabel" name="geohashLabel">
-               <property name="text">
-                <string>Geohash</string>
-               </property>
-              </widget>
-             </item>
-             <item row="17" column="1">
-              <widget class="QSpinBox" name="geohashResSpinBox">
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>12</number>
-               </property>
-               <property name="value">
-                <number>8</number>
-               </property>
-              </widget>
-             </item>
-             <item row="18" column="0">
-              <widget class="QLabel" name="georefLabel">
-               <property name="text">
-                <string>GEOREF</string>
-               </property>
-              </widget>
-             </item>
-             <item row="18" column="1">
-              <widget class="QSpinBox" name="georefResSpinBox">
-               <property name="maximum">
-                <number>10</number>
-               </property>
-               <property name="value">
-                <number>3</number>
-               </property>
-              </widget>
-             </item>
-             <item row="19" column="0">
-              <widget class="QLabel" name="mgrsLabel">
-               <property name="text">
-                <string>MGRS</string>
-               </property>
-              </widget>
-             </item>
-             <item row="19" column="1">
-              <widget class="QSpinBox" name="mgrsResSpinBox">
-               <property name="maximum">
-                <number>5</number>
-               </property>
-               <property name="value">
-                <number>4</number>
-               </property>
-              </widget>
-             </item>
-             <item row="20" column="0">
-              <widget class="QLabel" name="tilecodeLabel">
-               <property name="text">
-                <string>Tilecode</string>
-               </property>
-              </widget>
-             </item>
-             <item row="20" column="1">
-              <widget class="QSpinBox" name="tilecodeResSpinBox">
-               <property name="maximum">
-                <number>29</number>
-               </property>
-               <property name="value">
-                <number>22</number>
-               </property>
-              </widget>
-             </item>
-             <item row="21" column="0">
-              <widget class="QLabel" name="quadkeyLabel">
-               <property name="text">
-                <string>Quadkey</string>
-               </property>
-              </widget>
-             </item>
-             <item row="21" column="1">
-              <widget class="QSpinBox" name="quadkeyResSpinBox">
-               <property name="maximum">
-                <number>29</number>
-               </property>
-               <property name="value">
-                <number>22</number>
-               </property>
-              </widget>
-             </item>
-             <item row="22" column="0">
-              <widget class="QLabel" name="maidenheadLabel">
-               <property name="text">
-                <string>Maidenhead</string>
-               </property>
-              </widget>
-             </item>
-             <item row="22" column="1">
-              <widget class="QSpinBox" name="maidenheadResSpinBox">
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>4</number>
-               </property>
-               <property name="value">
-                <number>4</number>
-               </property>
-              </widget>
-             </item>
-             <item row="23" column="0">
-              <widget class="QLabel" name="garsLabel">
-               <property name="text">
-                <string>GARS</string>
-               </property>
-              </widget>
-             </item>
-             <item row="23" column="1">
-              <widget class="QSpinBox" name="garsResSpinBox">
-               <property name="minimum">
-                <number>1</number>
-               </property>
-               <property name="maximum">
-                <number>4</number>
-               </property>
-               <property name="value">
-                <number>4</number>
-               </property>
-              </widget>
-             </item>
-             <item row="12" column="1">
-              <widget class="QSpinBox" name="dggal_rtea3hResSpinBox">
-               <property name="maximum">
-                <number>33</number>
-               </property>
-               <property name="value">
-                <number>26</number>
-               </property>
-              </widget>
-             </item>
-             <item row="12" column="0">
-              <widget class="QLabel" name="dggal_rtea3gLabel">
-               <property name="text">
-                <string>DGGAL_RTEA3H</string>
-               </property>
-              </widget>
+             <item row="18" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_28">
+               <item>
+                <widget class="QLabel" name="geohashLabel">
+                 <property name="text">
+                  <string>Geohash [1..12]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="geohashResSpinBox">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>12</number>
+                 </property>
+                 <property name="value">
+                  <number>7</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="geohashColorButton"/>
+               </item>
+              </layout>
              </item>
             </layout>
            </item>
-           <item>
-            <spacer name="verticalSpacer">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>40</height>
-              </size>
-             </property>
-            </spacer>
-           </item>
           </layout>
          </widget>
+         <widget class="QWidget" name="General">
+          <attribute name="title">
+           <string>General</string>
+          </attribute>
+          <widget class="QWidget" name="horizontalLayoutWidget_26">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>10</y>
+             <width>401</width>
+             <height>181</height>
+            </rect>
+           </property>
+           <layout class="QFormLayout" name="formLayout_3">
+            <item row="0" column="0">
+             <widget class="QCheckBox" name="persistentMarkerCheckBox">
+              <property name="text">
+               <string>Use persistent marker</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_59">
+              <property name="text">
+               <string>Marker color</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QgsColorButton" name="markerColorButton">
+              <property name="color">
+               <color>
+                <red>255</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_63">
+              <property name="text">
+               <string>Marker icon size</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QSpinBox" name="markerSizeSpinBox">
+              <property name="minimum">
+               <number>5</number>
+              </property>
+              <property name="maximum">
+               <number>199</number>
+              </property>
+              <property name="singleStep">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <number>18</number>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="label_64">
+              <property name="text">
+               <string>Marker width</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QSpinBox" name="markerWidthSpinBox">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>31</number>
+              </property>
+              <property name="value">
+               <number>2</number>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="label_65">
+              <property name="text">
+               <string>Grid width</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QSpinBox" name="gridWidthSpinBox">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>31</number>
+              </property>
+              <property name="value">
+               <number>2</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </widget>
         </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>
@@ -508,6 +830,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsColorButton</class>
+   <extends>QToolButton</extends>
+   <header>qgscolorbutton.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>

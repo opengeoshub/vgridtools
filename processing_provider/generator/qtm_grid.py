@@ -45,6 +45,7 @@ from vgrid.dggs import qtm
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from shapely.geometry import box
 from ...utils.imgs import Imgs
+from ...settings import settings
 
 
 class QTMGrid(QgsProcessingAlgorithm):
@@ -124,13 +125,14 @@ class QTMGrid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("QTM")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution [1..24]"),
+            self.tr(f"Resolution [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=2,
-            minValue=1,
-            maxValue=24,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

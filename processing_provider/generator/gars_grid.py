@@ -46,6 +46,7 @@ import numpy as np
 from gars_field.garsgrid import GARSGrid as GARSGRID
 from shapely.geometry import Polygon
 from vgrid.utils.geometry import graticule_dggs_metrics
+from ...settings import settings
 
 
 class GARSGrid(QgsProcessingAlgorithm):
@@ -125,12 +126,13 @@ class GARSGrid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("GARS")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution [1..4] (30, 15, 5, 1 minutes)"),
+            self.tr(f"Resolution [{min_res}..{max_res}] (30, 15, 5, 1 minutes)"),
             defaultValue=1,  # Default to the first option (30 minutes)
-            minValue=0,
-            maxValue=5,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

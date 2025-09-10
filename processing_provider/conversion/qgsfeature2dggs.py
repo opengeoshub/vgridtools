@@ -22,7 +22,7 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 import platform
 from ...utils.imgs import Imgs
 from ...utils.conversion.qgsfeature2dggs import *
-from .dggs_settings import settings, DGGSettingsDialog
+from ...settings import settings
 
 
 class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
@@ -102,7 +102,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
     def tags(self):
         return self.tr(
-            "vector, S2, H3, rHEALPix, ISEA4T, ISEA3H, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS"
+            "vector, S2, H3, rHEALPix, ISEA4T, ISEA3H, EASE, DGGAL, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS"
         ).split(",")
 
     txt_en = "Vector to DGGS"
@@ -152,18 +152,15 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.DGGS_TYPE, "DGGS Type", options=self.DGGS_TYPES, defaultValue=0
+                self.DGGS_TYPE, "DGGS type", options=self.DGGS_TYPES, defaultValue=0
             )
         )
 
         # Get default resolution from settings
+        default_res = 2
         default_dggs = self.DGGS_TYPES[0]
-        resolution_settings = settings.getResolution(default_dggs)
-        if resolution_settings is None:
-            default_res = 10  # Fallback default resolution
-        else:
-            _, _, default_res = resolution_settings
-
+        _, _, default_res = settings.getResolution(default_dggs)
+       
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
@@ -211,24 +208,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 return (
                     False,
                     f"Resolution must be in [2,4,6,8,10,11,12,13,14,15] for {selected_dggs}.",
-                )
-        elif selected_dggs == "GARS":
-            if res_value not in (30, 15, 5, 1):
-                return (
-                    False,
-                    f"Resolution must be in [30,15,5,1] minutes for {selected_dggs}.",
-                )
-        elif selected_dggs.startswith("DGGAL_"):
-            # Get DGGAL type from the selected option
-            dggal_type = selected_dggs.replace("DGGAL_", "").lower()
-            dggal_min_res = DGGAL_TYPES[dggal_type]["min_res"]
-            dggal_max_res = DGGAL_TYPES[dggal_type]["max_res"]
-            if not (dggal_min_res <= res_value <= dggal_max_res):
-                return (
-                    False,
-                    f"Resolution must be between {dggal_min_res} and {dggal_max_res} for {selected_dggs}.",
-                )
-
+                )      
         return super().checkParameterValues(parameters, context)
 
     def outputFields(self, input_fields):

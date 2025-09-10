@@ -46,6 +46,7 @@ from vgrid.utils.geometry import rhealpix_cell_to_polygon, geodesic_dggs_metrics
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from ...utils.imgs import Imgs
 from shapely.geometry import box
+from ...settings import settings
 
 rhealpix_dggs = RHEALPixDGGS()  # type: ignore
 
@@ -127,13 +128,14 @@ class rHEALPixGrid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("rHEALPix")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution [0..15]"),
+            self.tr(f"Resolution [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=1,
-            minValue=0,
-            maxValue=15,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

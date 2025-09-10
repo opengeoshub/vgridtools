@@ -61,6 +61,7 @@ if platform.system() == "Windows":
 
 from ...utils.imgs import Imgs
 from shapely.geometry import box
+from ...settings import settings
 from vgrid.utils.constants import ISEA4T_RES_ACCURACY_DICT
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from vgrid.utils.antimeridian import fix_polygon
@@ -143,13 +144,14 @@ class ISEA4TGrid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("ISEA4T")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution [0..39]"),
+            self.tr(f"Resolution [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=1,
-            minValue=0,
-            maxValue=39,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

@@ -41,13 +41,12 @@ from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
-import a5
 from ...utils.imgs import Imgs
 import random
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.latlon2dggs import latlon2a5
-
+from ...settings import settings    
 
 class A5Grid(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
@@ -125,14 +124,14 @@ class A5Grid(QgsProcessingAlgorithm):
             self.EXTENT, self.tr("Grid extent"), optional=True
         )
         self.addParameter(param)
-
+        min_res, max_res, _ = settings.getResolution("A5")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution [0..29]"),
+            self.tr(f"Resolution [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=1,
-            minValue=0,
-            maxValue=29,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

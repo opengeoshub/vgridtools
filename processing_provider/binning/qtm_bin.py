@@ -30,6 +30,7 @@ from shapely.geometry import Point, Polygon, shape
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
+from ...settings import settings
 
 
 class QTMBin(QgsProcessingAlgorithm):
@@ -159,14 +160,15 @@ class QTMBin(QgsProcessingAlgorithm):
             )
         )
 
+        min_res, max_res, default_res = settings.getResolution("QTM")
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
-                self.tr("Resolution [1..24]"),
+                self.tr(f"Resolution [{min_res}..{max_res}]"),
                 QgsProcessingParameterNumber.Integer,
-                defaultValue=14,
-                minValue=1,
-                maxValue=24,
+                defaultValue=default_res,
+                minValue=min_res,
+                maxValue=max_res,
                 optional=False,
             )
         )

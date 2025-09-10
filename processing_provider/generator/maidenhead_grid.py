@@ -46,6 +46,7 @@ from vgrid.dggs import maidenhead
 from ...utils.imgs import Imgs
 from shapely.geometry import Polygon
 from vgrid.utils.geometry import graticule_dggs_metrics
+from ...settings import settings
 
 grid_params = {
     1: (18, 18, 20, 10),  # Fields: 20° lon, 10° lat
@@ -132,13 +133,14 @@ class MaidenheadGrid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("Maidenhead")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution [1..4]"),
+            self.tr(f"Resolution [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=1,
-            minValue=1,
-            maxValue=4,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

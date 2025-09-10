@@ -47,6 +47,7 @@ from vgrid.utils.antimeridian import fix_polygon
 from shapely.geometry import Polygon, box
 import random
 from vgrid.utils.geometry import geodesic_dggs_metrics
+from ...settings import settings
 
 
 class S2Grid(QgsProcessingAlgorithm):
@@ -126,13 +127,14 @@ class S2Grid(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        min_res, max_res, _ = settings.getResolution("S2")
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
-            self.tr("Resolution [0..30]"),
+            self.tr(f"Resolution [{min_res}..{max_res}]"),
             QgsProcessingParameterNumber.Integer,
             defaultValue=1,
-            minValue=0,
-            maxValue=30,
+            minValue=min_res,
+            maxValue=max_res,
             optional=False,
         )
         self.addParameter(param)

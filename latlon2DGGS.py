@@ -19,12 +19,13 @@ from qgis.core import Qgis, QgsWkbTypes,QgsCoordinateTransform,QgsGeometry, QgsP
 
 from qgis.gui import QgsRubberBand
 
-
-from .util import epsg4326, tr, parseDMSString
-from .captureCoordinate import CaptureCoordinate
+from .utils import tr
+from .utils.latlon import epsg4326, parseDMSString
 from .settings import settings
-from .utm import latLon2Utm, isUtm, utm2Point
+from .utils.utm import latLon2Utm, isUtm, utm2Point
+from .utils.captureCoordinate import CaptureCoordinate
 from vgrid.conversion.latlon2dggs import *
+from .utils.captureCoordinate import CaptureCoordinate
 from vgrid.conversion.dggs2geo import *
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.utils.geometry import geodesic_dggs_metrics  
@@ -32,6 +33,10 @@ from vgrid.utils.geometry import geodesic_dggs_metrics
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 import traceback
+
+from shapely.geometry import Polygon, box
+from vgrid.utils.geometry import geodesic_dggs_metrics, fix_h3_antimeridian_cells
+from math import log2
 
 
 FORM_CLASS, _ = loadUiType(os.path.join(
@@ -53,7 +58,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.vgridtools = vgridtools
         self.settings = settingsDialog
         self.savedMapTool = None
-
         self.clipboard = QApplication.clipboard()
 
         # Set up a connection with the coordinate capture tool
@@ -242,7 +246,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.maidenheadZoomtoButton.clicked.connect(self.zoomToMaidenhead)
         self.garsZoomtoButton.clicked.connect(self.zoomToGARS)
 
-
         self.marker = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
         self.marker.setColor(QColor('#FF0000'))
         self.marker.setStrokeColor(QColor('#FF0000'))
@@ -255,7 +258,8 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.polygon_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.polygon_marker.setStrokeColor(QColor('#FF0000'))
         self.polygon_marker.setWidth(2)
-        
+
+
     def showEvent(self, e):
         self.inputXYOrder = settings.coordOrder
         self.xyButton.setDefaultAction(self.xymenu.actions()[settings.coordOrder])
@@ -1106,29 +1110,26 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 num_edges = 5
             center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(cell_polygon,num_edges)
             
-            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)           
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
-           
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
-                trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
-
-            # Set the map extent - double the extent
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()            
             self.marker.reset(QgsWkbTypes.PointGeometry)
             self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
+                cell_geometry.transform(trans)
+
+            # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1147,27 +1148,22 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
-           
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
-                trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
 
-            # Set the map extent - double the extent
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
+                cell_geometry.transform(trans)
+
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1186,27 +1182,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1230,27 +1222,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1269,27 +1257,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
-
+                cell_geometry.transform(trans)
+    
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1308,27 +1292,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
-            
+                cell_geometry.transform(trans)
+    
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1347,27 +1327,24 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
+
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
             
         except Exception as e:
             traceback.print_exc()
@@ -1385,28 +1362,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(cell_polygon,num_edges)
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
                 
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1425,27 +1397,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1463,28 +1431,24 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(cell_polygon,num_edges)
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            
-            bbox = cell_geometry.boundingBox()
+
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1503,27 +1467,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1542,27 +1502,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1581,27 +1537,24 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
+
+            bbox = cell_geometry.boundingBox()  
 
             # Set the map extent - double the extent
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1620,27 +1573,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1659,18 +1608,17 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
@@ -1678,8 +1626,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1698,27 +1645,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1736,27 +1679,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
-           
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
-                trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
-
-            # Set the map extent - double the extent
-            bbox.scale(2.0, QgsPointXY(bbox.center()))  
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()            
             self.marker.reset(QgsWkbTypes.PointGeometry)
             self.marker.addPoint(pt)
+           
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:                
+                trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
+                cell_geometry.transform(trans)
+
+            # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))  
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()                   
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1775,27 +1714,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1814,27 +1749,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1853,28 +1784,24 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(cell_polygon,num_edges)
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            
-            bbox = cell_geometry.boundingBox()
+                          
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-            
+
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1893,27 +1820,24 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
+            
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1932,27 +1856,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -1971,27 +1891,23 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
            
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
+            if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
+                cell_geometry.transform(trans)
 
             # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
             bbox.scale(2.0, QgsPointXY(bbox.center()))  
             self.canvas.setExtent(bbox)
             self.canvas.refresh()            
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -2010,33 +1926,76 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             
-            bbox = cell_geometry.boundingBox()
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            # Transform to canvas CRS if needed
-           
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if canvas_crs != epsg4326:
-                trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
-                pt = trans.transform(pt)
-                bbox = trans.transform(bbox)
-                cell_geometry = trans.transform(cell_geometry)
-
-            # Set the map extent - double the extent
-            bbox.scale(2.0, QgsPointXY(bbox.center()))  
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()            
             self.marker.reset(QgsWkbTypes.PointGeometry)
             self.marker.addPoint(pt)
+           
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans = QgsCoordinateTransform(epsg4326,canvas_crs,QgsProject.instance())
+                cell_geometry.transform(trans)
+
+            # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))  
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()                   
             
             self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
-            if cell_geometry:
-                self.polygon_marker.addGeometry(cell_geometry, None)
+            self.polygon_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
             self.iface.messageBar().pushMessage("", tr("Invalid Coordinate: {}").format(str(e)), level=Qgis.Warning, duration=2)
-            return          
+            return      
     
+
+    def getH3Resolution(self, zoom):
+        if (zoom <= 3.0): return 0
+        if (zoom <= 4.4): return 1
+        if (zoom <= 5.7): return 2
+        if (zoom <= 7.1): return 3
+        if (zoom <= 8.4): return 4
+        if (zoom <= 9.8): return 5
+        if (zoom <= 11.4): return 6
+        if (zoom <= 12.7): return 7
+        if (zoom <= 14.1): return 8
+        if (zoom <= 15.5): return 9
+        if (zoom <= 16.8): return 10
+        if (zoom <= 18.2): return 11
+        if (zoom <= 19.5): return 12
+        if (zoom <= 21.1): return 13
+        if (zoom <= 21.9): return 14
+        return 15
+
+    def gridH3(self):
+        if self.h3gridcheckBox.isChecked():
+            # Get current map canvas extent
+            canvas_extent = self.canvas.extent()
+            scale = self.iface.mapCanvas().scale()
+
+            # Convert the scale to the equivalent zoom level
+            # (This is accurate enough for at least 2 decimal places)
+            zoom = 29.1402 - log2(scale)
+            resolution = self.getH3Resolution(zoom)
+            # Convert QgsRectangle to Shapely polygon for h3.geo_to_cells
+            extent_bbox = box(canvas_extent.xMinimum(), canvas_extent.yMinimum(), 
+                            canvas_extent.xMaximum(), canvas_extent.yMaximum())
+            
+            bbox_cells = h3.geo_to_cells(extent_bbox, resolution)
+            for bbox_cell in bbox_cells:
+                hex_boundary = h3.cell_to_boundary(bbox_cell)
+                filtered_boundary = fix_h3_antimeridian_cells(hex_boundary)
+                reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
+                cell_polygon = Polygon(reversed_boundary)
+                if not cell_polygon.intersects(extent_bbox):
+                    continue
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                self.polygon_marker.addGeometry(cell_geometry, None)
+                self.canvas.refresh()                        
+        else:
+            self.removeMarker()
+
     @pyqtSlot(QgsPointXY)
     def capturedPoint(self, pt):
         if self.isVisible() and self.coordCaptureButton.isChecked():

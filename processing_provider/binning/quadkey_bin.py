@@ -29,6 +29,7 @@ from shapely.geometry import Polygon
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
+from ...settings import settings
 from vgrid.dggs import mercantile
 from vgrid.conversion.latlon2dggs import latlon2quadkey
 
@@ -160,14 +161,15 @@ class QuadkeyBin(QgsProcessingAlgorithm):
             )
         )
 
+        min_res, max_res, default_res = settings.getResolution("Quadkey")
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
-                self.tr("Resolution [0..29]"),
+                self.tr(f"Resolution [{min_res}..{max_res}]"),
                 QgsProcessingParameterNumber.Integer,
-                defaultValue=15,
-                minValue=0,
-                maxValue=29,
+                defaultValue=default_res,
+                minValue=min_res,
+                maxValue=max_res,
                 optional=False,
             )
         )
