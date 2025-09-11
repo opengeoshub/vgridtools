@@ -21,9 +21,11 @@ from qgis.gui import *
 from qgis.utils import qgsfunction
 from vgrid.conversion import latlon2dggs
 from .utils import tr
+
 group_name = "DGGS Vgrid"
 
 # https://qgis.org/pyqgis/3.2/core/Expression/QgsExpression.html
+
 
 @qgsfunction(args="auto", group=group_name)
 def latlon2h3(latitude, longitude, resolution, feature, parent):

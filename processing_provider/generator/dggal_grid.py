@@ -42,8 +42,8 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os, random, sys
-
+import os
+from ...settings import settings
 from dggal import *
 
 # Initialize dggal application
@@ -281,9 +281,7 @@ class DGGALGrid(QgsProcessingAlgorithm):
 
         feedback.pushInfo(f"{self.dggs_type} DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor.fromRgb(
-                random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
-            )
+            lineColor = settings.dggal_gnosisColor
             fontColor = QColor("#000000")
             field_name = f"dggal_{self.dggs_type}"
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
@@ -311,14 +309,17 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym = layer.renderer().symbol().symbolLayer(0)
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
-        label = QgsPalLayerSettings()
-        label.fieldName = self.field_name
-        format = label.format()
-        format.setColor(self.font_color)
-        format.setSize(8)
-        label.setFormat(format)
-        labeling = QgsVectorLayerSimpleLabeling(label)
-        layer.setLabeling(labeling)
+
+        if settings.gridLabel:
+            label = QgsPalLayerSettings()
+            label.fieldName = self.field_name
+            format = label.format()
+            format.setColor(self.font_color)
+            format.setSize(8)
+            label.setFormat(format)
+            labeling = QgsVectorLayerSimpleLabeling(label)
+            layer.setLabeling(labeling)
+
         layer.setLabelsEnabled(True)
         iface.layerTreeView().refreshLayerSymbology(layer.id())
 

@@ -274,7 +274,7 @@ def a5expand(
     if a5_hexes:
         try:
             max_res = max(
-                a5.get_resolution(a5.hex_to_bigint(a5_hex)) for a5_hex in a5_hexes
+                a5.get_resolution(a5.hex_to_u64(a5_hex)) for a5_hex in a5_hexes
             )
             if resolution <= max_res:
                 if feedback:

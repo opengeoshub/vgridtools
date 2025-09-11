@@ -40,7 +40,7 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os, random
+import os
 
 from vgrid.dggs import olc
 from vgrid.generator.olcgrid import olc_refine_cell
@@ -155,7 +155,7 @@ class OLCGrid(QgsProcessingAlgorithm):
         # Get the extent parameter
         self.grid_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
 
-        if self.resolution > 6 and (
+        if self.resolution > 4 and (
             self.grid_extent is None or self.grid_extent.isEmpty()
         ):
             feedback.reportError(
@@ -206,7 +206,6 @@ class OLCGrid(QgsProcessingAlgorithm):
                 center_lat = lat + lat_step / 2
                 center_lon = lng + lng_step / 2
                 olc_id = olc.encode(center_lat, center_lon, resolution)
-                resolution = olc.decode(olc_id).codeLength
                 cell_polygon = Polygon(
                     [
                         [lng, lat],  # SW
@@ -251,6 +250,7 @@ class OLCGrid(QgsProcessingAlgorithm):
                 self.grid_extent.yMaximum(),
             )
         if extent_bbox:
+            # Generate grid within bounding box
             # Step 1: Generate base cells at the lowest resolution (e.g., resolution 2)
             base_resolution = 2
             base_cells = self.generate_olc_grid(base_resolution)
@@ -290,14 +290,14 @@ class OLCGrid(QgsProcessingAlgorithm):
             resolution_features = [
                 feature
                 for feature in refined_features
-                if feature["properties"]["resolution"] == self.resolution
+                if feature["resolution"] == self.resolution
             ]
 
             final_features = []
             seen_olc_ids = set()  # Reset the set for final feature filtering
 
             for feature in resolution_features:
-                olc_id = feature["properties"]["olc"]
+                olc_id = feature["olc"]
                 if (
                     olc_id not in seen_olc_ids
                 ):  # Check if OLC code is already in the set
@@ -308,6 +308,44 @@ class OLCGrid(QgsProcessingAlgorithm):
 
             # Convert final_features to QgsFeature
             for feature in final_features:
+                cell_polygon = feature["geometry"]
+                olc_id = feature["olc"]
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+                olc_feature = QgsFeature()
+                olc_feature.setGeometry(cell_geometry)
+                (
+                    center_lat,
+                    center_lon,
+                    cell_width,
+                    cell_height,
+                    cell_area,
+                    cell_perimeter,
+                ) = graticule_dggs_metrics(cell_polygon)
+                olc_feature.setAttributes(
+                    [
+                        olc_id,
+                        self.resolution,
+                        center_lat,
+                        center_lon,
+                        cell_width,
+                        cell_height,
+                        cell_area,
+                        cell_perimeter,
+                    ]
+                )
+                sink.addFeature(olc_feature, QgsFeatureSink.FastInsert)
+                if feedback.isCanceled():
+                    break
+        else:
+            # Generate global grid when no extent is provided
+            global_cells = self.generate_olc_grid(self.resolution)
+
+            # Convert global features to QgsFeature
+            for feature in global_cells["features"]:
+                if feedback.isCanceled():
+                    break
+
                 cell_polygon = Polygon(feature["geometry"]["coordinates"][0])
                 olc_id = feature["properties"]["olc"]
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -335,15 +373,10 @@ class OLCGrid(QgsProcessingAlgorithm):
                     ]
                 )
                 sink.addFeature(olc_feature, QgsFeatureSink.FastInsert)
-                # sink.addFeature(qgs_feature, QgsFeatureSink.FastInsert)
-                if feedback.isCanceled():
-                    break
 
         feedback.pushInfo("OLC DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor.fromRgb(
-                random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
-            )
+            lineColor = settings.olcColor
             fontColor = QColor("#000000")
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
                 StylePostProcessor.create(lineColor, fontColor)
@@ -368,17 +401,18 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym = layer.renderer().symbol().symbolLayer(0)
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
-        label = QgsPalLayerSettings()
-        label.fieldName = "olc"
-        format = label.format()
-        format.setColor(self.font_color)
-        format.setSize(8)
-        label.setFormat(format)
-        labeling = QgsVectorLayerSimpleLabeling(label)
-        layer.setLabeling(labeling)
-        layer.setLabelsEnabled(True)
-        iface.layerTreeView().refreshLayerSymbology(layer.id())
+        if settings.gridLabel:
+            label = QgsPalLayerSettings()
+            label.fieldName = "olc"
+            format = label.format()
+            format.setColor(self.font_color)
+            format.setSize(8)
+            label.setFormat(format)
+            labeling = QgsVectorLayerSimpleLabeling(label)
+            layer.setLabeling(labeling)
+            layer.setLabelsEnabled(True)
 
+        iface.layerTreeView().refreshLayerSymbology(layer.id())
         root = QgsProject.instance().layerTreeRoot()
         layer_node = root.findLayer(layer.id())
         if layer_node:

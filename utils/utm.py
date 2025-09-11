@@ -8,69 +8,85 @@
  *                                                                         *
  ***************************************************************************/
 """
+
 import re
-from qgis.core import QgsPointXY, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsProject
+from qgis.core import (
+    QgsPointXY,
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsProject,
+)
 from .latlon import epsg4326
 from . import tr
+
 
 class UtmException(Exception):
     pass
 
+
 def utmParse(utm_str):
     utm = utm_str.strip().upper()
-    m = re.match(r'(\d+)\s*([NS])\s+(\d+\.?\d*)\s+(\d+\.?\d*)', utm)
+    m = re.match(r"(\d+)\s*([NS])\s+(\d+\.?\d*)\s+(\d+\.?\d*)", utm)
     if m:
         m = m.groups()
         if len(m) == 4:
             zone = int(m[0])
             if zone < 1 or zone > 60:
-                raise UtmException(tr('Invalid UTM Coordinate'))
+                raise UtmException(tr("Invalid UTM Coordinate"))
             hemisphere = m[1]
-            if hemisphere != 'N' and hemisphere != 'S':
-                raise UtmException(tr('Invalid UTM Coordinate'))
+            if hemisphere != "N" and hemisphere != "S":
+                raise UtmException(tr("Invalid UTM Coordinate"))
             easting = float(m[2])
             northing = float(m[3])
-            return(zone, hemisphere, easting, northing)
-    m = re.match(r'(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*,\s*(\d+)\s*([NS])', utm)
+            return (zone, hemisphere, easting, northing)
+    m = re.match(r"(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*,\s*(\d+)\s*([NS])", utm)
     if m is None:
-        m = re.match(r'(\d+\.?\d*)\s*M\s*E\s*,\s*(\d+\.?\d*)\s*M\s*N\s*,\s*(\d+)\s*([NS])', utm)
+        m = re.match(
+            r"(\d+\.?\d*)\s*M\s*E\s*,\s*(\d+\.?\d*)\s*M\s*N\s*,\s*(\d+)\s*([NS])", utm
+        )
         if m is None:
-            m = re.match(r'(\d+\.?\d*)\s*M\s*E\s*,\s*(\d+\.?\d*)\s*M\s*N\s*,\s*(\d+)\s*,\s*([NS])', utm)
+            m = re.match(
+                r"(\d+\.?\d*)\s*M\s*E\s*,\s*(\d+\.?\d*)\s*M\s*N\s*,\s*(\d+)\s*,\s*([NS])",
+                utm,
+            )
     if m:
         m = m.groups()
         if len(m) == 4:
             zone = int(m[2])
             if zone < 1 or zone > 60:
-                raise UtmException(tr('Invalid UTM Coordinate'))
+                raise UtmException(tr("Invalid UTM Coordinate"))
             hemisphere = m[3]
-            if hemisphere != 'N' and hemisphere != 'S':
-                raise UtmException(tr('Invalid UTM Coordinate'))
+            if hemisphere != "N" and hemisphere != "S":
+                raise UtmException(tr("Invalid UTM Coordinate"))
             easting = float(m[0])
             northing = float(m[1])
-            return(zone, hemisphere, easting, northing)
-    
-    raise UtmException('Invalid UTM Coordinate')
+            return (zone, hemisphere, easting, northing)
+
+    raise UtmException("Invalid UTM Coordinate")
+
 
 def utm2Point(utm, crs=epsg4326):
     zone, hemisphere, easting, northing = utmParse(utm)
     utmcrs = QgsCoordinateReferenceSystem(utmGetEpsg(hemisphere, zone))
     pt = QgsPointXY(easting, northing)
     utmtrans = QgsCoordinateTransform(utmcrs, crs, QgsProject.instance())
-    return(utmtrans.transform(pt))
+    return utmtrans.transform(pt)
+
 
 def isUtm(utm):
     try:
         z, h, e, n = utmParse(utm)
     except Exception:
-        return(False)
+        return False
 
-    return(True)
+    return True
+
 
 def latLon2UtmZone(lat, lon):
     if lon < -180 or lon > 360:
-        raise UtmException(tr('Invalid longitude'))
+        raise UtmException(tr("Invalid longitude"))
     if lat > 84.5 or lat < -80.5:
-        raise UtmException(tr('Invalid latitude'))
+        raise UtmException(tr("Invalid latitude"))
     if lon < 180:
         zone = int(31 + (lon / 6.0))
     else:
@@ -93,10 +109,11 @@ def latLon2UtmZone(lat, lon):
             zone = 37
 
     if lat < 0:
-        hemisphere = 'S'
+        hemisphere = "S"
     else:
-        hemisphere = 'N'
-    return(zone, hemisphere)
+        hemisphere = "N"
+    return (zone, hemisphere)
+
 
 def latLon2UtmParameters(lat, lon):
     zone, hemisphere = latLon2UtmZone(lat, lon)
@@ -105,26 +122,36 @@ def latLon2UtmParameters(lat, lon):
     utmtrans = QgsCoordinateTransform(epsg4326, utmcrs, QgsProject.instance())
     pt = QgsPointXY(lon, lat)
     utmpt = utmtrans.transform(pt)
-    return(zone, hemisphere, utmpt.x(), utmpt.y())
+    return (zone, hemisphere, utmpt.x(), utmpt.y())
+
 
 def latLon2Utm(lat, lon, precision, format=0):
     try:
         zone, hemisphere, utmx, utmy = latLon2UtmParameters(lat, lon)
         if format == 0:
-            msg = '{}{} {:.{prec}f} {:.{prec}f}'.format(zone, hemisphere, utmx, utmy, prec=precision)
+            msg = "{}{} {:.{prec}f} {:.{prec}f}".format(
+                zone, hemisphere, utmx, utmy, prec=precision
+            )
         elif format == 1:
-            msg = '{:.{prec}f},{:.{prec}f},{}{}'.format(utmx, utmy, zone, hemisphere, prec=precision)
+            msg = "{:.{prec}f},{:.{prec}f},{}{}".format(
+                utmx, utmy, zone, hemisphere, prec=precision
+            )
         elif format == 2:
-            msg = '{:.{prec}f}mE,{:.{prec}f}mN,{}{}'.format(utmx, utmy, zone, hemisphere, prec=precision)
+            msg = "{:.{prec}f}mE,{:.{prec}f}mN,{}{}".format(
+                utmx, utmy, zone, hemisphere, prec=precision
+            )
         else:
-            msg = '{:.{prec}f}mE,{:.{prec}f}mN,{},{}'.format(utmx, utmy, zone, hemisphere, prec=precision)
+            msg = "{:.{prec}f}mE,{:.{prec}f}mN,{},{}".format(
+                utmx, utmy, zone, hemisphere, prec=precision
+            )
     except Exception:
-        msg = ''
-    return(msg)
+        msg = ""
+    return msg
+
 
 def utmGetEpsg(hemisphere, zone):
-    if hemisphere == 'N':
+    if hemisphere == "N":
         code = 32600 + zone
     else:
         code = 32700 + zone
-    return('EPSG:{}'.format(code))
+    return "EPSG:{}".format(code)

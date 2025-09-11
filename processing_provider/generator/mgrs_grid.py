@@ -44,7 +44,7 @@ from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
 from qgis.core import QgsApplication
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os, random
+import os
 from vgrid.dggs import mgrs
 from ...utils.imgs import Imgs
 from ...settings import settings
@@ -86,7 +86,7 @@ class MGRSGrid(QgsProcessingAlgorithm):
         return QIcon(
             os.path.join(
                 os.path.dirname(os.path.dirname(__file__)),
-                "../images/generator/grid_quad.svg",
+                "../images/generator/grid_mgrs.svg",
             )
         )
 
@@ -325,9 +325,7 @@ class MGRSGrid(QgsProcessingAlgorithm):
         feedback.pushInfo("MGRS DGGS generation completed.")
         # Apply styling (optional)
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor.fromRgb(
-                random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
-            )
+            lineColor = settings.mgrsColor
             fontColor = QColor("#000000")  # Black font
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
                 StylePostProcessor.create(lineColor, fontColor)
@@ -352,17 +350,18 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym = layer.renderer().symbol().symbolLayer(0)
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
-        label = QgsPalLayerSettings()
-        label.fieldName = "mgrs"
-        format = label.format()
-        format.setColor(self.font_color)
-        format.setSize(8)
-        label.setFormat(format)
-        labeling = QgsVectorLayerSimpleLabeling(label)
-        layer.setLabeling(labeling)
-        layer.setLabelsEnabled(True)
-        iface.layerTreeView().refreshLayerSymbology(layer.id())
+        if settings.gridLabel:
+            label = QgsPalLayerSettings()
+            label.fieldName = "mgrs"
+            format = label.format()
+            format.setColor(self.font_color)
+            format.setSize(8)
+            label.setFormat(format)
+            labeling = QgsVectorLayerSimpleLabeling(label)
+            layer.setLabeling(labeling)
+            layer.setLabelsEnabled(True)
 
+        iface.layerTreeView().refreshLayerSymbology(layer.id())
         root = QgsProject.instance().layerTreeRoot()
         layer_node = root.findLayer(layer.id())
         if layer_node:

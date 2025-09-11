@@ -4,7 +4,7 @@ import platform
 import geopandas as gpd
 from qgis.core import QgsFeature, QgsGeometry, QgsField, QgsFields, QgsWkbTypes
 from PyQt5.QtCore import QVariant
-
+import re
 import h3
 import a5
 from vgrid.dggs import s2, olc, mercantile
@@ -55,17 +55,17 @@ from vgrid.conversion.dggs2geo.isea3h2geo import isea3h2geo
 from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
 from vgrid.conversion.dggs2geo.ease2geo import ease2geo
 from vgrid.conversion.dggs2geo.olc2geo import olc2geo
-from vgrid.generator.olcgrid import olc_grid, olc_refine_cell
+from vgrid.generator.olcgrid import olc_refine_cell
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
 from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
 from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
 from vgrid.utils.geometry import (
     graticule_dggs_metrics,
+    graticule_dggs_to_feature,
     geodesic_dggs_metrics,
     check_predicate,
 )
-
 from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_compact
 from vgrid.conversion.dggscompact.dggalcompact import dggal_compact
 from vgrid.conversion.dggscompact.qtmcompact import qtm_compact
@@ -801,7 +801,7 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
                     if not check_predicate(cell_polygon, shapely_geom, "intersects"):
                         continue
 
-                    cell_resolution = a5.get_resolution(a5.hex_to_bigint(a5_hex))
+                    cell_resolution = a5.get_resolution(a5.hex_to_u64(a5_hex))
                     num_edges = 5
                     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
                         geodesic_dggs_metrics(cell_polygon, num_edges)
@@ -938,7 +938,7 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None)
                     if not check_predicate(cell_polygon, shapely_geom, predicate):
                         continue
 
-                    cell_resolution = a5.get_resolution(a5.hex_to_bigint(a5_hex))
+                    cell_resolution = a5.get_resolution(a5.hex_to_u64(a5_hex))
                     num_edges = 5
                     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
                         geodesic_dggs_metrics(cell_polygon, num_edges)
@@ -1041,7 +1041,7 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
         if feedback and feedback.isCanceled():
             return []
         cell_polygon = a52geo(a5_hex_compact)
-        cell_resolution = a5.get_resolution(a5.hex_to_bigint(a5_hex_compact))
+        cell_resolution = a5.get_resolution(a5.hex_to_u64(a5_hex_compact))
         num_edges = 5  # A5 cells are pentagons
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
             geodesic_dggs_metrics(cell_polygon, num_edges)
@@ -3038,6 +3038,54 @@ def olccompact_from_qgsfeatures(qgs_features, feedback):
     return olc_features
 
 
+def generate_olc_grid(resolution):
+        """
+        Generate a global grid of Open Location Codes (Plus Codes) at the specified precision
+        as a GeoJSON-like feature collection.
+        """
+        # Define the boundaries of the world
+        sw_lat, sw_lng = -90, -180
+        ne_lat, ne_lng = 90, 180
+
+        # Get the precision step size
+        area = olc.decode(olc.encode(sw_lat, sw_lng, resolution))
+        lat_step = area.latitudeHi - area.latitudeLo
+        lng_step = area.longitudeHi - area.longitudeLo
+
+        olc_features = []
+
+        # Calculate the total number of steps for progress tracking
+        total_lat_steps = int((ne_lat - sw_lat) / lat_step)
+        total_lng_steps = int((ne_lng - sw_lng) / lng_step)
+        total_steps = total_lat_steps * total_lng_steps
+
+        lat = sw_lat
+        while lat < ne_lat:
+            lng = sw_lng
+            while lng < ne_lng:
+                # Generate the Plus Code for the center of the cell
+                center_lat = lat + lat_step / 2
+                center_lon = lng + lng_step / 2
+                olc_id = olc.encode(center_lat, center_lon, resolution)
+                cell_polygon = Polygon(
+                    [
+                        [lng, lat],  # SW
+                        [lng, lat + lat_step],  # NW
+                        [lng + lng_step, lat + lat_step],  # NE
+                        [lng + lng_step, lat],  # SE
+                        [lng, lat],  # Close the polygon
+                    ]
+                )
+                olc_feature = graticule_dggs_to_feature(
+                    "olc", olc_id, resolution, cell_polygon
+                )
+                olc_features.append(olc_feature)
+                lng += lng_step
+            lat += lat_step
+
+        # Return the feature collection
+        return {"type": "FeatureCollection", "features": olc_features}
+
 def polyline2olc(feature, resolution, predicate=None, compact=None, feedback=None):
     olc_features = []
 
@@ -3048,26 +3096,40 @@ def polyline2olc(feature, resolution, predicate=None, compact=None, feedback=Non
     fields.append(QgsField("olc", QVariant.String))
 
     base_resolution = 2
-    base_cells = olc_grid(base_resolution)
+    base_cells = generate_olc_grid(base_resolution)
 
     seed_cells = []
-    for idx, base_cell in base_cells.iterrows():
-        base_cell_poly = base_cell["geometry"]
+    for base_cell in base_cells["features"]:
+        base_cell_poly = Polygon(base_cell["geometry"]["coordinates"][0])
         if base_cell_poly.intersects(feature_shapely):
             seed_cells.append(base_cell)
 
     refined_features = []
     for seed_cell in seed_cells:
-        seed_cell_poly = seed_cell["geometry"]
+        seed_cell_poly = Polygon(seed_cell["geometry"]["coordinates"][0])
 
         if seed_cell_poly.contains(feature_shapely) and resolution == base_resolution:
             refined_features.append(seed_cell)
         else:
-            refined_features.extend(
-                olc_refine_cell(
-                    seed_cell_poly.bounds, base_resolution, resolution, feature_shapely
-                )
+            # Convert pandas Series objects to dictionary format
+            olc_records = olc_refine_cell(
+                seed_cell_poly.bounds, base_resolution, resolution, feature_shapely
             )
+            for record in olc_records:
+                # Convert pandas Series to dictionary format
+                if hasattr(record, 'to_dict'):
+                    record_dict = record.to_dict()
+                else:
+                    # If it's already a dict-like object, use it as is
+                    record_dict = record
+                
+                # Ensure the record has the expected structure
+                # If geometry is a shapely geometry, convert to GeoJSON mapping for consistency
+                if "geometry" in record_dict and hasattr(record_dict["geometry"], "wkt"):
+                    from shapely.geometry import mapping
+                    record_dict["geometry"] = mapping(record_dict["geometry"])
+                
+                refined_features.append(record_dict)
 
     resolution_features = [
         refine_feature
@@ -3088,7 +3150,17 @@ def polyline2olc(feature, resolution, predicate=None, compact=None, feedback=Non
         if olc_id not in seen_olc_ids:
             seen_olc_ids.add(olc_id)
 
-            cell_polygon = resolution_feature["geometry"]
+            # Normalize geometry to a Shapely Polygon
+            geom_obj = resolution_feature.get("geometry")
+            try:
+                if hasattr(geom_obj, "geom_type"):
+                    cell_polygon = geom_obj
+                else:
+                    from shapely.geometry import shape
+                    cell_polygon = shape(geom_obj)
+            except Exception:
+                # Fallback to previous behavior if it's a plain coordinates array
+                cell_polygon = Polygon(resolution_feature["geometry"]["coordinates"][0])
             olc_id = resolution_feature["olc"]
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -3174,26 +3246,40 @@ def polygon2olc(feature, resolution, predicate=None, compact=None, feedback=None
     fields.append(QgsField("olc", QVariant.String))
 
     base_resolution = 2
-    base_cells = olc_grid(base_resolution)
+    base_cells = generate_olc_grid(base_resolution)
 
     seed_cells = []
-    for idx, base_cell in base_cells.iterrows():
-        base_cell_poly = base_cell["geometry"]
+    for base_cell in base_cells["features"]:
+        base_cell_poly = Polygon(base_cell["geometry"]["coordinates"][0])
         if base_cell_poly.intersects(feature_shapely):
             seed_cells.append(base_cell)
 
     refined_features = []
     for seed_cell in seed_cells:
-        seed_cell_poly = seed_cell["geometry"]
+        seed_cell_poly = Polygon(seed_cell["geometry"]["coordinates"][0])
 
         if seed_cell_poly.contains(feature_shapely) and resolution == base_resolution:
             refined_features.append(seed_cell)
         else:
-            refined_features.extend(
-                olc_refine_cell(
-                    seed_cell_poly.bounds, base_resolution, resolution, feature_shapely
-                )
+            # Convert pandas Series objects to dictionary format
+            olc_records = olc_refine_cell(
+                seed_cell_poly.bounds, base_resolution, resolution, feature_shapely
             )
+            for record in olc_records:
+                # Convert pandas Series to dictionary format
+                if hasattr(record, 'to_dict'):
+                    record_dict = record.to_dict()
+                else:
+                    # If it's already a dict-like object, use it as is
+                    record_dict = record
+                
+                # Ensure the record has the expected structure
+                # If geometry is a shapely geometry, convert to GeoJSON mapping for consistency
+                if "geometry" in record_dict and hasattr(record_dict["geometry"], "wkt"):
+                    from shapely.geometry import mapping
+                    record_dict["geometry"] = mapping(record_dict["geometry"])
+                
+                refined_features.append(record_dict)
 
     resolution_features = [
         refine_feature
@@ -3214,7 +3300,17 @@ def polygon2olc(feature, resolution, predicate=None, compact=None, feedback=None
         if olc_id not in seen_olc_ids:
             seen_olc_ids.add(olc_id)
 
-            cell_polygon = resolution_feature["geometry"]
+            # Normalize geometry to a Shapely Polygon
+            geom_obj = resolution_feature.get("geometry")
+            try:
+                if hasattr(geom_obj, "geom_type"):
+                    cell_polygon = geom_obj
+                else:
+                    from shapely.geometry import shape
+                    cell_polygon = shape(geom_obj)
+            except Exception:
+                # Fallback to previous behavior if it's a plain coordinates array
+                cell_polygon = Polygon(resolution_feature["geometry"]["coordinates"][0])
             olc_id = resolution_feature["olc"]
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -3619,7 +3715,7 @@ def point2tilecode(feature, resolution, feedback):
     resolution = tilecode_cell.z
     cell_polygon = tilecode2geo(tilecode_id)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(
+    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = graticule_dggs_metrics(
         cell_polygon
     )
 
@@ -3640,7 +3736,8 @@ def point2tilecode(feature, resolution, feedback):
     new_fields.append(QgsField("cell_width", QVariant.Double))
     new_fields.append(QgsField("cell_width", QVariant.Double))
     new_fields.append(QgsField("cell_height", QVariant.Double))
-
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -3659,6 +3756,7 @@ def point2tilecode(feature, resolution, feedback):
         cell_width,
         cell_height,
         cell_area,
+        cell_perimeter,
     ]
     all_attributes = original_attributes + new_attributes
 
@@ -3710,7 +3808,7 @@ def tilecodecompact_from_qgsfeatures(qgs_features, feedback):
 
         cell_resolution = z
 
-        center_lat, center_lon, cell_width, cell_height, cell_area = (
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
             graticule_dggs_metrics(cell_polygon)
         )
 
@@ -3727,7 +3825,7 @@ def tilecodecompact_from_qgsfeatures(qgs_features, feedback):
         tilecode_feature["cell_width"] = cell_width
         tilecode_feature["cell_height"] = cell_height
         tilecode_feature["cell_area"] = cell_area
-
+        tilecode_feature["cell_perimeter"] = cell_perimeter         
         tilecode_features.append(tilecode_feature)
 
         if feedback and i % 100 == 0:
@@ -3784,7 +3882,7 @@ def polyline2tilecode(feature, resolution, predicate=None, compact=None, feedbac
         tilecode_feature = QgsFeature()
         tilecode_feature.setGeometry(cell_geometry)
 
-        center_lat, center_lon, cell_width, cell_height, cell_area = (
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
             graticule_dggs_metrics(cell_polygon)
         )
         resolution = tile.z
@@ -3802,7 +3900,7 @@ def polyline2tilecode(feature, resolution, predicate=None, compact=None, feedbac
         new_fields.append(QgsField("cell_width", QVariant.Double))
         new_fields.append(QgsField("cell_height", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -3821,7 +3919,8 @@ def polyline2tilecode(feature, resolution, predicate=None, compact=None, feedbac
             cell_width,
             cell_height,
             cell_area,
-        ]
+            cell_perimeter,         
+            ]   
         all_attributes = original_attributes + new_attributes
 
         tilecode_feature.setAttributes(all_attributes)
@@ -3886,7 +3985,7 @@ def polygon2tilecode(feature, resolution, predicate=None, compact=None, feedback
         tilecode_feature = QgsFeature()
         tilecode_feature.setGeometry(cell_geometry)
 
-        center_lat, center_lon, cell_width, cell_height, cell_area = (
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
             graticule_dggs_metrics(cell_polygon)
         )
         resolution = tile.z
@@ -3904,7 +4003,7 @@ def polygon2tilecode(feature, resolution, predicate=None, compact=None, feedback
         new_fields.append(QgsField("cell_width", QVariant.Double))
         new_fields.append(QgsField("cell_height", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         # Combine original fields and new fields
         all_fields = QgsFields()
         for field in original_fields:
@@ -3923,7 +4022,8 @@ def polygon2tilecode(feature, resolution, predicate=None, compact=None, feedback
             cell_width,
             cell_height,
             cell_area,
-        ]
+            cell_perimeter,
+            ]
         all_attributes = original_attributes + new_attributes
 
         tilecode_feature.setAttributes(all_attributes)
@@ -3970,7 +4070,7 @@ def point2quadkey(feature, resolution, feedback):
     cell_resolution = quadkey_cell.z
     cell_polygon = quadkey2geo(quadkey_id)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-    center_lat, center_lon, cell_width, cell_height, cell_area = graticule_dggs_metrics(
+    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = graticule_dggs_metrics(
         cell_polygon
     )
 
@@ -3991,7 +4091,7 @@ def point2quadkey(feature, resolution, feedback):
     new_fields.append(QgsField("cell_width", QVariant.Double))
     new_fields.append(QgsField("cell_height", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
-
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -4010,7 +4110,8 @@ def point2quadkey(feature, resolution, feedback):
         cell_width,
         cell_height,
         cell_area,
-    ]
+        cell_perimeter,
+        ]
     all_attributes = original_attributes + new_attributes
 
     quadkey_feature.setAttributes(all_attributes)
@@ -4057,7 +4158,7 @@ def quadkeycompact_from_qgsfeatures(qgs_features, feedback):
 
         cell_resolution = z
 
-        center_lat, center_lon, cell_width, cell_height, cell_area = (
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
             graticule_dggs_metrics(cell_polygon)
         )
 
@@ -4074,7 +4175,7 @@ def quadkeycompact_from_qgsfeatures(qgs_features, feedback):
         quadkey_feature["cell_width"] = cell_width
         quadkey_feature["cell_height"] = cell_height
         quadkey_feature["cell_area"] = cell_area
-
+        quadkey_feature["cell_perimeter"] = cell_perimeter
         quadkey_features.append(quadkey_feature)
         if feedback and i % 100 == 0:
             feedback.setProgress(int(100 * i / total_cells))
@@ -4129,7 +4230,7 @@ def polyline2quadkey(feature, resolution, predicate=None, compact=None, feedback
         quadkey_feature = QgsFeature()
         quadkey_feature.setGeometry(cell_geometry)
 
-        center_lat, center_lon, cell_width, cell_height, cell_area = (
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter  = ( 
             graticule_dggs_metrics(cell_polygon)
         )
         cell_resolution = tile.z
@@ -4145,7 +4246,7 @@ def polyline2quadkey(feature, resolution, predicate=None, compact=None, feedback
         new_fields.append(QgsField("cell_width", QVariant.Double))
         new_fields.append(QgsField("cell_height", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
-
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
         all_fields = QgsFields()
         for field in original_fields:
             all_fields.append(field)
@@ -4162,6 +4263,7 @@ def polyline2quadkey(feature, resolution, predicate=None, compact=None, feedback
             cell_width,
             cell_height,
             cell_area,
+            cell_perimeter,
         ]
         all_attributes = original_attributes + new_attributes
 
@@ -4178,7 +4280,7 @@ def polyline2quadkey(feature, resolution, predicate=None, compact=None, feedback
     if compact:
         quadkey_features = quadkeycompact_from_qgsfeatures(quadkey_features, feedback)
 
-    return quadkey_feature
+    return quadkey_features
 
 
 def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=None):
@@ -4225,7 +4327,7 @@ def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=
         quadkey_feature = QgsFeature()
         quadkey_feature.setGeometry(cell_geometry)
 
-        center_lat, center_lon, cell_width, cell_height, cell_area = (
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
             graticule_dggs_metrics(cell_polygon)
         )
         cell_resolution = tile.z
@@ -4241,6 +4343,7 @@ def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=
         new_fields.append(QgsField("cell_width", QVariant.Double))
         new_fields.append(QgsField("cell_height", QVariant.Double))
         new_fields.append(QgsField("cell_area", QVariant.Double))
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
 
         all_fields = QgsFields()
         for field in original_fields:
@@ -4258,7 +4361,8 @@ def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=
             cell_width,
             cell_height,
             cell_area,
-        ]
+            cell_perimeter,
+            ]
         all_attributes = original_attributes + new_attributes
 
         quadkey_feature.setAttributes(all_attributes)

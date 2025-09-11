@@ -40,7 +40,7 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os, random
+import os
 from vgrid.dggs import qtm
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from shapely.geometry import box
@@ -407,9 +407,7 @@ class QTMGrid(QgsProcessingAlgorithm):
 
         feedback.pushInfo("QTM DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor.fromRgb(
-                random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
-            )
+            lineColor = settings.qtmColor
             fontColor = QColor("#000000")
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
                 StylePostProcessor.create(lineColor, fontColor)
@@ -434,17 +432,18 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym = layer.renderer().symbol().symbolLayer(0)
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
-        label = QgsPalLayerSettings()
-        label.fieldName = "qtm"
-        format = label.format()
-        format.setColor(self.font_color)
-        format.setSize(8)
-        label.setFormat(format)
-        labeling = QgsVectorLayerSimpleLabeling(label)
-        layer.setLabeling(labeling)
-        layer.setLabelsEnabled(True)
-        iface.layerTreeView().refreshLayerSymbology(layer.id())
+        if settings.gridLabel:
+            label = QgsPalLayerSettings()
+            label.fieldName = "qtm"
+            format = label.format()
+            format.setColor(self.font_color)
+            format.setSize(8)
+            label.setFormat(format)
+            labeling = QgsVectorLayerSimpleLabeling(label)
+            layer.setLabeling(labeling)
+            layer.setLabelsEnabled(True)
 
+        iface.layerTreeView().refreshLayerSymbology(layer.id())
         root = QgsProject.instance().layerTreeRoot()
         layer_node = root.findLayer(layer.id())
         if layer_node:

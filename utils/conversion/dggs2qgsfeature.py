@@ -174,7 +174,7 @@ def s22qgsfeature(feature, s2_token):
 def a52qgsfeature(feature, a5_hex):
     cell_polygon = a52geo(a5_hex)
     num_edges = 5
-    cell_bigint = a5.hex_to_bigint(a5_hex)
+    cell_bigint = a5.hex_to_u64(a5_hex)
     resolution = a5.get_resolution(cell_bigint)
 
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (

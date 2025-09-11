@@ -16,7 +16,7 @@ __author__ = "Thang Quach"
 __date__ = "2024-11-20"
 __copyright__ = "(L) 2024, Thang Quach"
 
-from qgis.core import (
+from qgis.core import (  # type: ignore
     QgsApplication,
     QgsProject,
     QgsFeatureSink,
@@ -36,17 +36,17 @@ from qgis.core import (
     QgsPalLayerSettings,
     QgsVectorLayerSimpleLabeling,
 )
-from qgis.PyQt.QtGui import QIcon, QColor
+from qgis.PyQt.QtGui import QIcon, QColor  # type: ignore
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
 from qgis.utils import iface
-from PyQt5.QtCore import QVariant
-import os, random
+from PyQt5.QtCore import QVariant  # type: ignore
+import os
 
 from vgrid.utils.geometry import rhealpix_cell_to_polygon, geodesic_dggs_metrics
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-from ...utils.imgs import Imgs
+from ...utils.imgs import Imgs  # type: ignore
 from shapely.geometry import box
-from ...settings import settings
+from ...settings import settings  # type: ignore
 
 rhealpix_dggs = RHEALPixDGGS()  # type: ignore
 
@@ -338,9 +338,7 @@ class rHEALPixGrid(QgsProcessingAlgorithm):
 
         feedback.pushInfo("rHEALPix DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = QColor.fromRgb(
-                random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)
-            )
+            lineColor = settings.rhealpixColor
             fontColor = QColor("#000000")
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
                 StylePostProcessor.create(lineColor, fontColor)
@@ -365,17 +363,18 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         sym = layer.renderer().symbol().symbolLayer(0)
         sym.setBrushStyle(Qt.NoBrush)
         sym.setStrokeColor(self.line_color)
-        label = QgsPalLayerSettings()
-        label.fieldName = "rhealpix"
-        format = label.format()
-        format.setColor(self.font_color)
-        format.setSize(8)
-        label.setFormat(format)
-        labeling = QgsVectorLayerSimpleLabeling(label)
-        layer.setLabeling(labeling)
-        layer.setLabelsEnabled(True)
-        iface.layerTreeView().refreshLayerSymbology(layer.id())
+        if settings.gridLabel:
+            label = QgsPalLayerSettings()
+            label.fieldName = "rhealpix"
+            format = label.format()
+            format.setColor(self.font_color)
+            format.setSize(8)
+            label.setFormat(format)
+            labeling = QgsVectorLayerSimpleLabeling(label)
+            layer.setLabeling(labeling)
+            layer.setLabelsEnabled(True)
 
+        iface.layerTreeView().refreshLayerSymbology(layer.id())
         root = QgsProject.instance().layerTreeRoot()
         layer_node = root.findLayer(layer.id())
         if layer_node:

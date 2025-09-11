@@ -41,7 +41,7 @@ from vgrid.utils.constants import MIN_CELL_AREA
 
 class Raster2DGGS(QgsProcessingAlgorithm):
     """
-    convert Raster Layer to H3, S2, rHEALPix, ISEA4T, QTM, OLC, Geohash, Tilecode
+    convert Raster Layer to H3, S2, rHEALPix, ISEA4T, QTM, OLC, Geohash, Tilecode, Quadkey, DGGAL_GNOSIS, DGGAL_ISEA3H, DGGAL_ISEA9R, DGGAL_IVEA3H, DGGAL_IVEA9R, DGGAL_RTEA3H, DGGAL_RTEA9R, DGGAL_RHEALPIX
     """
 
     INPUT = "INPUT"
@@ -54,11 +54,6 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         "S2",
         "A5",
         "rHEALPix",
-        "QTM",
-        "OLC",
-        "Geohash",
-        "Tilecode",
-        "Quadkey",
         "DGGAL_GNOSIS",
         "DGGAL_ISEA3H",
         "DGGAL_ISEA9R",
@@ -66,17 +61,18 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         "DGGAL_IVEA9R",
         "DGGAL_RTEA3H",
         "DGGAL_RTEA9R",
+        "DGGAL_RHEALPIX",
+        "QTM",
+        "OLC",
+        "Geohash",
+        "Tilecode",
+        "Quadkey",
     ]
     DGGS_RESOLUTION = {
         "H3": (-1, 15, 10),
         "S2": (-1, 30, 16),
         "A5": (-1, 29, 15),
         "rHEALPix": (-1, 15, 11),
-        "QTM": (-1, 24, 12),
-        "OLC": (-1, 13, 10),
-        "Geohash": (-1, 10, 9),
-        "Tilecode": (-1, 26, 15),
-        "Quadkey": (-1, 26, 15),
         "DGGAL_GNOSIS": (-1, 28, 18),
         "DGGAL_ISEA3H": (-1, 33, 22),
         "DGGAL_ISEA9R": (-1, 16, 11),
@@ -84,6 +80,12 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         "DGGAL_IVEA9R": (-1, 16, 11),
         "DGGAL_RTEA3H": (-1, 33, 22),
         "DGGAL_RTEA9R": (-1, 16, 11),
+        "DGGAL_RHEALPIX": (-1, 16, 11),
+        "QTM": (-1, 24, 12),
+        "OLC": (-1, 13, 10),
+        "Geohash": (-1, 10, 9),
+        "Tilecode": (-1, 26, 15),
+        "Quadkey": (-1, 26, 15),
     }
     if platform.system() == "Windows":
         index = DGGS_TYPES.index("rHEALPix") + 1
@@ -131,7 +133,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
 
     def tags(self):
         return self.tr(
-            "raster, H3, S2, A5, rHEALPix, ISEA4T, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS, DGGAL_GNOSIS, DGGAL_ISEA3H, DGGAL_ISEA9R, DGGAL_IVEA3H, DGGAL_IVEA9R, DGGAL_RTEA3H, DGGAL_RTEA9R"
+            "raster, H3, S2, A5, rHEALPix, ISEA4T, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS, DGGAL_GNOSIS, DGGAL_ISEA3H, DGGAL_ISEA9R, DGGAL_IVEA3H, DGGAL_IVEA9R, DGGAL_RTEA3H, DGGAL_RTEA9R, DGGAL_RHEALPIX, QTM"
         ).split(",")
 
     txt_en = "Raster to DGGS"
@@ -329,6 +331,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             "dggal_ivea9r": raster2dggal,
             "dggal_rtea3h": raster2dggal,
             "dggal_rtea9r": raster2dggal,
+            "dggal_rhealpix": raster2dggal,
         }
         if platform.system() == "Windows":
             self.DGGS_TYPE_functions["isea4t"] = raster2isea4t

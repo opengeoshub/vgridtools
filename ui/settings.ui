@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>484</width>
+    <width>505</width>
     <height>514</height>
    </rect>
   </property>
@@ -26,9 +26,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-268</y>
-        <width>447</width>
-        <height>733</height>
+        <y>0</y>
+        <width>468</width>
+        <height>739</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_11">
@@ -38,7 +38,7 @@
        <item>
         <widget class="QTabWidget" name="tabWidget">
          <property name="currentIndex">
-          <number>0</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="DGGSResColor">
           <attribute name="title">
@@ -72,7 +72,7 @@
                </item>
               </layout>
              </item>
-             <item row="1" column="0" colspan="2">
+             <item row="2" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_3">
                <item>
                 <widget class="QLabel" name="s2Label">
@@ -104,7 +104,7 @@
                </item>
               </layout>
              </item>
-             <item row="2" column="0" colspan="2">
+             <item row="3" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout">
                <item>
                 <widget class="QLabel" name="a5Label">
@@ -143,32 +143,7 @@
                </item>
               </layout>
              </item>
-             <item row="3" column="0" colspan="2">
-              <layout class="QHBoxLayout" name="horizontalLayout_7">
-               <item>
-                <widget class="QLabel" name="h3Label">
-                 <property name="text">
-                  <string>H3 [0..15]</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QSpinBox" name="h3ResSpinBox"/>
-               </item>
-               <item>
-                <widget class="QgsColorButton" name="h3ColorButton">
-                 <property name="color">
-                  <color>
-                   <red>0</red>
-                   <green>0</green>
-                   <blue>255</blue>
-                  </color>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item row="4" column="0" colspan="2">
+             <item row="5" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_10">
                <item>
                 <widget class="QLabel" name="rhealpixLabel">
@@ -192,7 +167,7 @@
                </item>
               </layout>
              </item>
-             <item row="5" column="0" colspan="2">
+             <item row="6" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_11">
                <item>
                 <widget class="QLabel" name="isea4tLabel">
@@ -216,7 +191,7 @@
                </item>
               </layout>
              </item>
-             <item row="6" column="0" colspan="2">
+             <item row="7" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_12">
                <item>
                 <widget class="QLabel" name="isea3hLabel">
@@ -240,7 +215,7 @@
                </item>
               </layout>
              </item>
-             <item row="7" column="0" colspan="2">
+             <item row="8" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_13">
                <item>
                 <widget class="QLabel" name="easeLabel">
@@ -264,7 +239,7 @@
                </item>
               </layout>
              </item>
-             <item row="8" column="0" colspan="2">
+             <item row="9" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_14">
                <item>
                 <widget class="QLabel" name="dggal_gnosisLabel">
@@ -288,7 +263,7 @@
                </item>
               </layout>
              </item>
-             <item row="9" column="0" colspan="2">
+             <item row="10" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_15">
                <item>
                 <widget class="QLabel" name="dgga_isea3hLlabel">
@@ -312,7 +287,7 @@
                </item>
               </layout>
              </item>
-             <item row="10" column="0" colspan="2">
+             <item row="11" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_16">
                <item>
                 <widget class="QLabel" name="dggal_isea9rLabel">
@@ -336,7 +311,7 @@
                </item>
               </layout>
              </item>
-             <item row="11" column="0" colspan="2">
+             <item row="12" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_21">
                <item>
                 <widget class="QLabel" name="dggal_ivea3hLabel_2">
@@ -360,7 +335,7 @@
                </item>
               </layout>
              </item>
-             <item row="12" column="0" colspan="2">
+             <item row="13" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_22">
                <item>
                 <widget class="QLabel" name="dggal_ivea9rLabel">
@@ -384,7 +359,7 @@
                </item>
               </layout>
              </item>
-             <item row="13" column="0" colspan="2">
+             <item row="14" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_23">
                <item>
                 <widget class="QLabel" name="dggal_rtea3gLabel">
@@ -408,7 +383,7 @@
                </item>
               </layout>
              </item>
-             <item row="14" column="0" colspan="2">
+             <item row="15" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_24">
                <item>
                 <widget class="QLabel" name="dggal_rtea9rLabel">
@@ -432,7 +407,7 @@
                </item>
               </layout>
              </item>
-             <item row="15" column="0" colspan="2">
+             <item row="16" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_25">
                <item>
                 <widget class="QLabel" name="dggal_rhealpixLabel">
@@ -456,7 +431,7 @@
                </item>
               </layout>
              </item>
-             <item row="16" column="0" colspan="2">
+             <item row="17" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_26">
                <item>
                 <widget class="QLabel" name="qtmLabel">
@@ -483,7 +458,7 @@
                </item>
               </layout>
              </item>
-             <item row="17" column="0" colspan="2">
+             <item row="18" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_27">
                <item>
                 <widget class="QLabel" name="olcLabel">
@@ -510,7 +485,7 @@
                </item>
               </layout>
              </item>
-             <item row="24" column="0" colspan="2">
+             <item row="25" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_35">
                <item>
                 <widget class="QLabel" name="garsLabel">
@@ -537,7 +512,7 @@
                </item>
               </layout>
              </item>
-             <item row="23" column="0" colspan="2">
+             <item row="24" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_34">
                <item>
                 <widget class="QLabel" name="maidenheadLabel">
@@ -564,7 +539,7 @@
                </item>
               </layout>
              </item>
-             <item row="22" column="0" colspan="2">
+             <item row="23" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_33">
                <item>
                 <widget class="QLabel" name="quadkeyLabel">
@@ -588,7 +563,7 @@
                </item>
               </layout>
              </item>
-             <item row="21" column="0" colspan="2">
+             <item row="22" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_32">
                <item>
                 <widget class="QLabel" name="tilecodeLabel">
@@ -612,7 +587,7 @@
                </item>
               </layout>
              </item>
-             <item row="20" column="0" colspan="2">
+             <item row="21" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_31">
                <item>
                 <widget class="QLabel" name="mgrsLabel_2">
@@ -636,7 +611,7 @@
                </item>
               </layout>
              </item>
-             <item row="19" column="0" colspan="2">
+             <item row="20" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_29">
                <item>
                 <widget class="QLabel" name="georefLabel">
@@ -660,7 +635,7 @@
                </item>
               </layout>
              </item>
-             <item row="18" column="0" colspan="2">
+             <item row="19" column="0" colspan="2">
               <layout class="QHBoxLayout" name="horizontalLayout_28">
                <item>
                 <widget class="QLabel" name="geohashLabel">
@@ -687,6 +662,38 @@
                </item>
               </layout>
              </item>
+             <item row="1" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_7">
+               <item>
+                <widget class="QLabel" name="h3Label">
+                 <property name="text">
+                  <string>H3 [0..15]</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="h3ResSpinBox">
+                 <property name="maximum">
+                  <number>15</number>
+                 </property>
+                 <property name="value">
+                  <number>10</number>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QgsColorButton" name="h3ColorButton">
+                 <property name="color">
+                  <color>
+                   <red>0</red>
+                   <green>0</green>
+                   <blue>255</blue>
+                  </color>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
             </layout>
            </item>
           </layout>
@@ -700,12 +707,32 @@
             <rect>
              <x>10</x>
              <y>10</y>
-             <width>401</width>
-             <height>181</height>
+             <width>431</width>
+             <height>235</height>
             </rect>
            </property>
            <layout class="QFormLayout" name="formLayout_3">
             <item row="0" column="0">
+             <widget class="QCheckBox" name="zoomLevelCheckBox">
+              <property name="text">
+               <string>Display zoom level on status bar</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QCheckBox" name="gridLabelCheckBox">
+              <property name="text">
+               <string>Show labels after DGGS Generator </string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
              <widget class="QCheckBox" name="persistentMarkerCheckBox">
               <property name="text">
                <string>Use persistent marker</string>
@@ -715,14 +742,41 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_59">
+            <item row="3" column="0">
+             <widget class="QLabel" name="coorOrderLabel">
+              <property name="text">
+               <string>Coordinate order</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QComboBox" name="coordOrderComboBox"/>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="epsg4326Label">
+              <property name="text">
+               <string>Decimal degree precision</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QSpinBox" name="epsg4326PrecisionSpinBox">
+              <property name="maximum">
+               <number>32</number>
+              </property>
+              <property name="value">
+               <number>8</number>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QLabel" name="markerColorLabel">
               <property name="text">
                <string>Marker color</string>
               </property>
              </widget>
             </item>
-            <item row="1" column="1">
+            <item row="5" column="1">
              <widget class="QgsColorButton" name="markerColorButton">
               <property name="color">
                <color>
@@ -733,14 +787,14 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_63">
+            <item row="6" column="0">
+             <widget class="QLabel" name="markerSizelabel">
               <property name="text">
                <string>Marker icon size</string>
               </property>
              </widget>
             </item>
-            <item row="2" column="1">
+            <item row="6" column="1">
              <widget class="QSpinBox" name="markerSizeSpinBox">
               <property name="minimum">
                <number>5</number>
@@ -756,14 +810,14 @@
               </property>
              </widget>
             </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_64">
+            <item row="7" column="0">
+             <widget class="QLabel" name="markerWidthLabel">
               <property name="text">
                <string>Marker width</string>
               </property>
              </widget>
             </item>
-            <item row="3" column="1">
+            <item row="7" column="1">
              <widget class="QSpinBox" name="markerWidthSpinBox">
               <property name="minimum">
                <number>1</number>
@@ -776,14 +830,14 @@
               </property>
              </widget>
             </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="label_65">
+            <item row="8" column="0">
+             <widget class="QLabel" name="gridWidthLabel">
               <property name="text">
-               <string>Grid width</string>
+               <string>Grid stroke width</string>
               </property>
              </widget>
             </item>
-            <item row="4" column="1">
+            <item row="8" column="1">
              <widget class="QSpinBox" name="gridWidthSpinBox">
               <property name="minimum">
                <number>1</number>

@@ -72,11 +72,11 @@ def get_nearest_resolution(
         elif from_dggs == "s2":
             s2_id = s2.CellId.from_token(from_dggs_id)
             from_resolution = s2_id.level()
-            _, _, from_area,_ = s2_metrics(from_resolution)
+            _, _, from_area, _ = s2_metrics(from_resolution)
 
         elif from_dggs == "a5":
-            from_resolution = a5.get_resolution(a5.hex_to_bigint(from_dggs_id))
-            _, _, from_area,_ = a5_metrics(from_resolution)
+            from_resolution = a5.get_resolution(a5.hex_to_u64(from_dggs_id))
+            _, _, from_area, _ = a5_metrics(from_resolution)
 
         elif from_dggs == "rhealpix":
             rhealpix_uids = (from_dggs_id[0],) + tuple(map(int, from_dggs_id[1:]))
@@ -85,7 +85,7 @@ def get_nearest_resolution(
             )
             rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
             from_resolution = rhealpix_cell.resolution
-            _, _, from_area,_ = rhealpix_metrics(from_resolution)
+            _, _, from_area, _ = rhealpix_metrics(from_resolution)
 
         elif from_dggs == "isea4t":
             if platform.system() == "Windows":
@@ -94,26 +94,26 @@ def get_nearest_resolution(
 
         elif from_dggs == "qtm":
             from_resolution = len(from_dggs_id)
-            _, _, from_area,_ = qtm_metrics(from_resolution)
+            _, _, from_area, _ = qtm_metrics(from_resolution)
 
         elif from_dggs == "olc":
             coord = olc.decode(from_dggs_id)
             from_resolution = coord.codeLength
-            _, _, from_area,_ = olc_metrics(from_resolution)
+            _, _, from_area, _ = olc_metrics(from_resolution)
 
         elif from_dggs == "geohash":
             from_resolution = len(from_dggs_id)
-            _, _, from_area,_ = geohash_metrics(from_resolution)
+            _, _, from_area, _ = geohash_metrics(from_resolution)
 
         elif from_dggs == "tilecode":
             match = re.match(r"z(\d+)x(\d+)y(\d+)", from_dggs_id)
             from_resolution = int(match.group(1))
-            _, _, from_area,_ = tilecode_metrics(from_resolution)
+            _, _, from_area, _ = tilecode_metrics(from_resolution)
 
         elif from_dggs == "quadkey":
             tile = mercantile.quadkey_to_tile(from_dggs_id)
             from_resolution = tile.z
-            _, _, from_area,_ = quadkey_metrics(from_resolution)
+            _, _, from_area, _ = quadkey_metrics(from_resolution)
 
     except Exception as e:
         if feedback:
@@ -134,7 +134,7 @@ def get_nearest_resolution(
 
         elif to_dggs == "s2":
             for res in range(31):
-                _, _, avg_area,_ = s2_metrics(res)
+                _, _, avg_area, _ = s2_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
@@ -142,7 +142,7 @@ def get_nearest_resolution(
 
         elif to_dggs == "a5":
             for res in range(30):
-                _, _, avg_area,_ = a5_metrics(res)
+                _, _, avg_area, _ = a5_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
@@ -150,7 +150,7 @@ def get_nearest_resolution(
 
         elif to_dggs == "rhealpix":
             for res in range(16):
-                _, _, avg_area,_ = rhealpix_metrics(res)
+                _, _, avg_area, _ = rhealpix_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
@@ -167,7 +167,7 @@ def get_nearest_resolution(
 
         elif to_dggs == "qtm":
             for res in range(1, 25):
-                _, _, avg_area,_ = qtm_metrics(res)
+                _, _, avg_area, _ = qtm_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
@@ -175,7 +175,7 @@ def get_nearest_resolution(
 
         elif to_dggs == "olc":
             for res in [2, 4, 6, 8, 10, 11, 12, 13, 14, 15]:
-                _, _, avg_area,_ = olc_metrics(res)
+                _, _, avg_area, _ = olc_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
@@ -183,7 +183,7 @@ def get_nearest_resolution(
 
         elif to_dggs == "geohash":
             for res in range(1, 11):
-                _, _, avg_area,_ = geohash_metrics(res)
+                _, _, avg_area, _ = geohash_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
@@ -191,7 +191,7 @@ def get_nearest_resolution(
 
         elif to_dggs == "tilecode":
             for res in range(30):
-                _, _, avg_area,_ = tilecode_metrics(res)
+                _, _, avg_area, _ = tilecode_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
@@ -199,7 +199,7 @@ def get_nearest_resolution(
 
         elif to_dggs == "quadkey":
             for res in range(30):
-                _, _, avg_area,_ = quadkey_metrics(res)
+                _, _, avg_area, _ = quadkey_metrics(res)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff

@@ -41,9 +41,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "S2",
         "A5",
         "rHEALPix",
-        "QTM",
-        "OLC",
-        "Geohash",
         "DGGAL_GNOSIS",
         "DGGAL_ISEA3H",
         "DGGAL_ISEA9R",
@@ -52,6 +49,9 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "DGGAL_RTEA3H",
         "DGGAL_RTEA9R",
         "DGGAL_RHEALPIX",
+        "QTM",
+        "OLC",
+        "Geohash",
         "Tilecode",
         "Quadkey",
     ]
@@ -160,7 +160,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         default_res = 2
         default_dggs = self.DGGS_TYPES[0]
         _, _, default_res = settings.getResolution(default_dggs)
-       
+
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
@@ -208,7 +208,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 return (
                     False,
                     f"Resolution must be in [2,4,6,8,10,11,12,13,14,15] for {selected_dggs}.",
-                )      
+                )
         return super().checkParameterValues(parameters, context)
 
     def outputFields(self, input_fields):
@@ -294,6 +294,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             "dggal_ivea9r": qgsfeature2dggal,
             "dggal_rtea3h": qgsfeature2dggal,
             "dggal_rtea9r": qgsfeature2dggal,
+            "dggal_rhealpix": qgsfeature2dggal,
             "qtm": qgsfeature2qtm,
             "olc": qgsfeature2olc,
             "geohash": qgsfeature2geohash,  # Need to check polyline/ polygon2geohash
@@ -435,6 +436,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         except Exception as e:
             self.num_bad += 1
             feedback.reportError(f"Error processing feature {feature.id()}: {str(e)}")
+            return []
 
     def postProcessAlgorithm(self, context, feedback):
         if self.num_bad:

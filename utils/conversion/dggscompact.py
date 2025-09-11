@@ -282,7 +282,7 @@ def a5compact(
             if not cell_polygon.is_valid:
                 continue
 
-            resolution = a5.get_resolution(a5.hex_to_bigint(a5_hex_compact))
+            resolution = a5.get_resolution(a5.hex_to_u64(a5_hex_compact))
             num_edges = 5  # A5 cells are pentagons
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
                 geodesic_dggs_metrics(cell_polygon, num_edges)
