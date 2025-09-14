@@ -1,24 +1,19 @@
-from shapely.geometry import Polygon, box
-from qgis.core import (
-    Qgis,
+from shapely.geometry import box
+from qgis.core import (         
     QgsWkbTypes,
     QgsCoordinateTransform,
     QgsGeometry,
-    QgsPoint,
-    QgsPointXY,
     QgsProject,
-    QgsRectangle,
 )
 from qgis.PyQt.QtCore import QObject, QTimer
-from qgis.PyQt.QtGui import QColor
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 import h3
-import traceback
 from ..utils import tr
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.conversion.dggs2geo.h32geo import h32geo
+from math import log2, floor
 
 class H3Grid(QObject):  
     def __init__(self, vgridtools, canvas, iface):
@@ -73,14 +68,7 @@ class H3Grid(QObject):
 
             self.canvas.refresh()
         
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
+        except Exception as e:           
             return
 
     def enable_h3(self, enabled: bool):
@@ -98,6 +86,7 @@ class H3Grid(QObject):
         from math import log2
 
         zoom = 29.1402 - log2(scale)
+
         if zoom <= 3.0:
             return 0
         if zoom <= 4.4:

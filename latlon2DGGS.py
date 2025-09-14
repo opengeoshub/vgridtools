@@ -44,10 +44,7 @@ from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 import traceback
 
-from shapely.geometry import Polygon, box
-from vgrid.utils.geometry import geodesic_dggs_metrics, fix_h3_antimeridian_cells
-from math import log2
-
+from vgrid.utils.geometry import geodesic_dggs_metrics
 
 FORM_CLASS, _ = loadUiType(os.path.join(os.path.dirname(__file__), "ui/latlon2dggs.ui"))
 
@@ -271,113 +268,113 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.marker.setIcon(QgsRubberBand.ICON_CROSS)
 
         self.h3_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.h3_marker.setStrokeColor(settings.h3Color)
+        self.h3_marker.setStrokeColor(settings.markerColor)
         self.h3_marker.setWidth(settings.gridWidth)
 
         self.s2_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.s2_marker.setStrokeColor(settings.s2Color)
+        self.s2_marker.setStrokeColor(settings.markerColor)
         self.s2_marker.setWidth(settings.gridWidth)
 
         self.a5_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.a5_marker.setStrokeColor(settings.a5Color)
+        self.a5_marker.setStrokeColor(settings.markerColor)
         self.a5_marker.setWidth(settings.gridWidth)
 
         self.isea4t_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.isea4t_marker.setStrokeColor(settings.isea4tColor)
+        self.isea4t_marker.setStrokeColor(settings.markerColor)
         self.isea4t_marker.setWidth(settings.gridWidth)
 
         self.isea3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.isea3h_marker.setStrokeColor(settings.isea3hColor)
+        self.isea3h_marker.setStrokeColor(settings.markerColor)
         self.rhealpix_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.rhealpix_marker.setStrokeColor(settings.rhealpixColor)
+        self.rhealpix_marker.setStrokeColor(settings.markerColor)
         self.rhealpix_marker.setWidth(settings.gridWidth)
 
         self.ease_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.ease_marker.setStrokeColor(settings.easeColor)
+        self.ease_marker.setStrokeColor(settings.markerColor)
         self.ease_marker.setWidth(settings.gridWidth)
 
         self.dggal_gnosis_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
-        self.dggal_gnosis_marker.setStrokeColor(settings.dggal_gnosisColor)
+        self.dggal_gnosis_marker.setStrokeColor(settings.markerColor)
         self.dggal_gnosis_marker.setWidth(settings.gridWidth)
 
         self.dggal_isea3h_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
-        self.dggal_isea3h_marker.setStrokeColor(settings.dggal_isea3hColor)
+        self.dggal_isea3h_marker.setStrokeColor(settings.markerColor)
         self.dggal_isea3h_marker.setWidth(settings.gridWidth)
 
         self.dggal_isea9r_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
-        self.dggal_isea9r_marker.setStrokeColor(settings.dggal_isea9rColor)
+        self.dggal_isea9r_marker.setStrokeColor(settings.markerColor)
         self.dggal_isea9r_marker.setWidth(settings.gridWidth)
 
         self.dggal_ivea3h_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
-        self.dggal_ivea3h_marker.setStrokeColor(settings.dggal_ivea3hColor)
+        self.dggal_ivea3h_marker.setStrokeColor(settings.markerColor)
         self.dggal_ivea3h_marker.setWidth(settings.gridWidth)
 
         self.dggal_ivea9r_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
-        self.dggal_ivea9r_marker.setStrokeColor(settings.dggal_ivea9rColor)
+        self.dggal_ivea9r_marker.setStrokeColor(settings.markerColor)
         self.dggal_ivea9r_marker.setWidth(settings.gridWidth)
 
         self.dggal_rtea3h_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
-        self.dggal_rtea3h_marker.setStrokeColor(settings.dggal_rtea3hColor)
+        self.dggal_rtea3h_marker.setStrokeColor(settings.markerColor)
         self.dggal_rtea3h_marker.setWidth(settings.gridWidth)
 
         self.dggal_rtea9r_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
-        self.dggal_rtea9r_marker.setStrokeColor(settings.dggal_rtea9rColor)
+        self.dggal_rtea9r_marker.setStrokeColor(settings.markerColor)
         self.dggal_rtea9r_marker.setWidth(settings.gridWidth)
 
         self.dggal_rhealpix_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
-        self.dggal_rhealpix_marker.setStrokeColor(settings.dggal_rhealpixColor)
+        self.dggal_rhealpix_marker.setStrokeColor(settings.markerColor)
         self.dggal_rhealpix_marker.setWidth(settings.gridWidth)
 
         self.qtm_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.qtm_marker.setStrokeColor(settings.qtmColor)
+        self.qtm_marker.setStrokeColor(settings.markerColor)
         self.qtm_marker.setWidth(settings.gridWidth)
 
         self.olc_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.olc_marker.setStrokeColor(settings.olcColor)
+        self.olc_marker.setStrokeColor(settings.markerColor)
         self.olc_marker.setWidth(settings.gridWidth)
 
         self.geohash_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.geohash_marker.setStrokeColor(settings.geohashColor)
+        self.geohash_marker.setStrokeColor(settings.markerColor)
         self.geohash_marker.setWidth(settings.gridWidth)
 
         self.georef_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.georef_marker.setStrokeColor(settings.georefColor)
+        self.georef_marker.setStrokeColor(settings.markerColor)
         self.georef_marker.setWidth(settings.gridWidth)
 
         self.mgrs_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.mgrs_marker.setStrokeColor(settings.mgrsColor)
+        self.mgrs_marker.setStrokeColor(settings.markerColor)
         self.mgrs_marker.setWidth(settings.gridWidth)
 
         self.tilecode_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.tilecode_marker.setStrokeColor(settings.tilecodeColor)
+        self.tilecode_marker.setStrokeColor(settings.markerColor)
         self.tilecode_marker.setWidth(settings.gridWidth)
 
         self.quadkey_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.quadkey_marker.setStrokeColor(settings.quadkeyColor)
+        self.quadkey_marker.setStrokeColor(settings.markerColor)
         self.quadkey_marker.setWidth(settings.gridWidth)
 
         self.maidenhead_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.maidenhead_marker.setStrokeColor(settings.maidenheadColor)
+        self.maidenhead_marker.setStrokeColor(settings.markerColor)
         self.maidenhead_marker.setWidth(settings.gridWidth)
 
         self.gars_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.gars_marker.setStrokeColor(settings.garsColor)
+        self.gars_marker.setStrokeColor(settings.markerColor)
         self.gars_marker.setWidth(settings.gridWidth)
 
     def configure(self):

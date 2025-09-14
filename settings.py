@@ -140,11 +140,11 @@ class Settings:
         self.olcColor.setAlpha(int(qset.value("/vgrid/olcColorOpacity", 255)))
 
         self.geohashRes = int(qset.value("/vgrid/geohashRes", 7))
-        self.geohashColor = QColor(qset.value("/vgrid/geohashColor", "#ff0000"))
+        self.geohashColor = QColor(qset.value("/vgrid/geohashColor", "#672a5c"))
         self.geohashColor.setAlpha(int(qset.value("/vgrid/geohashColorOpacity", 255)))
 
         self.georefRes = int(qset.value("/vgrid/georefRes", 3))
-        self.georefColor = QColor(qset.value("/vgrid/georefColor", "#ff0000"))
+        self.georefColor = QColor(qset.value("/vgrid/georefColor", "#672a5c"))
         self.georefColor.setAlpha(int(qset.value("/vgrid/georefColorOpacity", 255)))
 
         self.mgrsRes = int(qset.value("/vgrid/mgrsRes", 3))
@@ -160,13 +160,13 @@ class Settings:
         self.quadkeyColor.setAlpha(int(qset.value("/vgrid/quadkeyColorOpacity", 255)))
 
         self.maidenheadRes = int(qset.value("/vgrid/maidenheadRes", 4))
-        self.maidenheadColor = QColor(qset.value("/vgrid/maidenheadColor", "#ff0000"))
+        self.maidenheadColor = QColor(qset.value("/vgrid/maidenheadColor", "#672a5c"))
         self.maidenheadColor.setAlpha(
             int(qset.value("/vgrid/maidenheadColorOpacity", 255))
         )
 
         self.garsRes = int(qset.value("/vgrid/garsRes", 4))
-        self.garsColor = QColor(qset.value("/vgrid/garsColor", "#ff0000"))
+        self.garsColor = QColor(qset.value("/vgrid/garsColor", "#672a5c"))
         self.garsColor.setAlpha(int(qset.value("/vgrid/garsColorOpacity", 255)))
 
         ### General Settings ###
@@ -312,11 +312,11 @@ class SettingsWidget(QDialog, FORM_CLASS):
 
         # Geohash
         self.geohashResSpinBox.setValue(7)
-        self.geohashColorButton.setColor(QColor("#ff0000"))
+        self.geohashColorButton.setColor(QColor("#672a5c"))
 
         # GEOREF
         self.georefResSpinBox.setValue(3)
-        self.georefColorButton.setColor(QColor("#ff0000"))
+        self.georefColorButton.setColor(QColor("#672a5c"))
 
         # MGRS
         self.mgrsResSpinBox.setValue(3)
@@ -332,11 +332,11 @@ class SettingsWidget(QDialog, FORM_CLASS):
 
         # Maidenhead
         self.maidenheadResSpinBox.setValue(4)
-        self.maidenheadColorButton.setColor(QColor("#ff0000"))
+        self.maidenheadColorButton.setColor(QColor("#672a5c"))
 
         # GARS
         self.garsResSpinBox.setValue(4)
-        self.garsColorButton.setColor(QColor("#ff0000"))
+        self.garsColorButton.setColor(QColor("#672a5c"))
 
         ### General Settings ###
         self.zoomLevelCheckBox.setCheckState(Qt.Checked)

@@ -38,8 +38,163 @@
        <item>
         <widget class="QTabWidget" name="tabWidget">
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
+         <widget class="QWidget" name="General">
+          <attribute name="title">
+           <string>General</string>
+          </attribute>
+          <widget class="QWidget" name="horizontalLayoutWidget_26">
+           <property name="geometry">
+            <rect>
+             <x>10</x>
+             <y>10</y>
+             <width>431</width>
+             <height>235</height>
+            </rect>
+           </property>
+           <layout class="QFormLayout" name="formLayout_3">
+            <item row="0" column="0">
+             <widget class="QCheckBox" name="zoomLevelCheckBox">
+              <property name="text">
+               <string>Display zoom level on status bar</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QCheckBox" name="gridLabelCheckBox">
+              <property name="text">
+               <string>Show labels after DGGS Generator </string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QCheckBox" name="persistentMarkerCheckBox">
+              <property name="text">
+               <string>Use persistent marker</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="coorOrderLabel">
+              <property name="text">
+               <string>Coordinate order</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QComboBox" name="coordOrderComboBox"/>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="epsg4326Label">
+              <property name="text">
+               <string>Decimal degree precision</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QSpinBox" name="epsg4326PrecisionSpinBox">
+              <property name="maximum">
+               <number>32</number>
+              </property>
+              <property name="value">
+               <number>8</number>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QLabel" name="markerColorLabel">
+              <property name="text">
+               <string>Marker color</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QgsColorButton" name="markerColorButton">
+              <property name="color">
+               <color>
+                <red>255</red>
+                <green>0</green>
+                <blue>0</blue>
+               </color>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="0">
+             <widget class="QLabel" name="markerSizelabel">
+              <property name="text">
+               <string>Marker icon size</string>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="1">
+             <widget class="QSpinBox" name="markerSizeSpinBox">
+              <property name="minimum">
+               <number>5</number>
+              </property>
+              <property name="maximum">
+               <number>199</number>
+              </property>
+              <property name="singleStep">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <number>18</number>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="0">
+             <widget class="QLabel" name="markerWidthLabel">
+              <property name="text">
+               <string>Marker width</string>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="1">
+             <widget class="QSpinBox" name="markerWidthSpinBox">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>31</number>
+              </property>
+              <property name="value">
+               <number>2</number>
+              </property>
+             </widget>
+            </item>
+            <item row="8" column="0">
+             <widget class="QLabel" name="gridWidthLabel">
+              <property name="text">
+               <string>Grid stroke width</string>
+              </property>
+             </widget>
+            </item>
+            <item row="8" column="1">
+             <widget class="QSpinBox" name="gridWidthSpinBox">
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>31</number>
+              </property>
+              <property name="value">
+               <number>2</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </widget>
          <widget class="QWidget" name="DGGSResColor">
           <attribute name="title">
            <string>DGGS</string>
@@ -697,161 +852,6 @@
             </layout>
            </item>
           </layout>
-         </widget>
-         <widget class="QWidget" name="General">
-          <attribute name="title">
-           <string>General</string>
-          </attribute>
-          <widget class="QWidget" name="horizontalLayoutWidget_26">
-           <property name="geometry">
-            <rect>
-             <x>10</x>
-             <y>10</y>
-             <width>431</width>
-             <height>235</height>
-            </rect>
-           </property>
-           <layout class="QFormLayout" name="formLayout_3">
-            <item row="0" column="0">
-             <widget class="QCheckBox" name="zoomLevelCheckBox">
-              <property name="text">
-               <string>Display zoom level on status bar</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QCheckBox" name="gridLabelCheckBox">
-              <property name="text">
-               <string>Show labels after DGGS Generator </string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QCheckBox" name="persistentMarkerCheckBox">
-              <property name="text">
-               <string>Use persistent marker</string>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="coorOrderLabel">
-              <property name="text">
-               <string>Coordinate order</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QComboBox" name="coordOrderComboBox"/>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="epsg4326Label">
-              <property name="text">
-               <string>Decimal degree precision</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QSpinBox" name="epsg4326PrecisionSpinBox">
-              <property name="maximum">
-               <number>32</number>
-              </property>
-              <property name="value">
-               <number>8</number>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="0">
-             <widget class="QLabel" name="markerColorLabel">
-              <property name="text">
-               <string>Marker color</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="1">
-             <widget class="QgsColorButton" name="markerColorButton">
-              <property name="color">
-               <color>
-                <red>255</red>
-                <green>0</green>
-                <blue>0</blue>
-               </color>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="0">
-             <widget class="QLabel" name="markerSizelabel">
-              <property name="text">
-               <string>Marker icon size</string>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="1">
-             <widget class="QSpinBox" name="markerSizeSpinBox">
-              <property name="minimum">
-               <number>5</number>
-              </property>
-              <property name="maximum">
-               <number>199</number>
-              </property>
-              <property name="singleStep">
-               <number>1</number>
-              </property>
-              <property name="value">
-               <number>18</number>
-              </property>
-             </widget>
-            </item>
-            <item row="7" column="0">
-             <widget class="QLabel" name="markerWidthLabel">
-              <property name="text">
-               <string>Marker width</string>
-              </property>
-             </widget>
-            </item>
-            <item row="7" column="1">
-             <widget class="QSpinBox" name="markerWidthSpinBox">
-              <property name="minimum">
-               <number>1</number>
-              </property>
-              <property name="maximum">
-               <number>31</number>
-              </property>
-              <property name="value">
-               <number>2</number>
-              </property>
-             </widget>
-            </item>
-            <item row="8" column="0">
-             <widget class="QLabel" name="gridWidthLabel">
-              <property name="text">
-               <string>Grid stroke width</string>
-              </property>
-             </widget>
-            </item>
-            <item row="8" column="1">
-             <widget class="QSpinBox" name="gridWidthSpinBox">
-              <property name="minimum">
-               <number>1</number>
-              </property>
-              <property name="maximum">
-               <number>31</number>
-              </property>
-              <property name="value">
-               <number>2</number>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
          </widget>
         </widget>
        </item>

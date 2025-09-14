@@ -121,14 +121,7 @@ class A5Grid(QObject):
 
             self.canvas.refresh()
 
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
+        except Exception as e:             
             return
 
     def enable_a5(self, enabled: bool):
@@ -144,12 +137,11 @@ class A5Grid(QObject):
         # Map scale to approximate zoom, then to A5 resolution similar cadence as H3
 
         zoom = 29.1402 - log2(scale)
+        min_res, max_res, _ = settings.getResolution("A5")
 
-        # Base mapping: floor(zoom), but not less than 1
-        res = max(1, int(floor(zoom/1.7)))
+        res = max(min_res, int(floor(zoom)))
 
         # Respect configured bounds
-        min_res, max_res, _ = settings.getResolution("A5")
         if res < min_res:
             return min_res
         if res > max_res:

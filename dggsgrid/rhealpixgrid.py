@@ -141,14 +141,7 @@ class RhealpixGrid(QObject):
 
             self.canvas.refresh()
 
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
+        except Exception as e:            
             return
 
     def enable_rhealpix(self, enabled: bool):
@@ -165,11 +158,8 @@ class RhealpixGrid(QObject):
         from math import log2, floor
 
         zoom = 29.1402 - log2(scale)
-        res = max(0, int(floor(zoom/1.7)))
-
         min_res, max_res, _ = settings.getResolution("rHEALPix")
-        if res < min_res:
-            return min_res
+        res = max(min_res, int(floor(zoom/1.7)))
         if res > max_res:
             return max_res
         return res

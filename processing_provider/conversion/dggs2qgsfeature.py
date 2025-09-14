@@ -101,7 +101,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return QIcon(
             os.path.join(
                 os.path.dirname(os.path.dirname(__file__)),
-                "../images/generator/grid_hex.svg",
+                "../images/conversion/cellid2dggs.svg",
             )
         )
 

@@ -115,14 +115,7 @@ class S2Grid(QObject):
 
             self.canvas.refresh()
 
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
+        except Exception as e:          
             return
 
     def enable_s2(self, enabled: bool):

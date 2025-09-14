@@ -83,15 +83,17 @@ class VgridProvider(QgsProcessingProvider):
         pass
 
     def loadAlgorithms(self):
+        # Conversion algorithms
         self.addAlgorithm(CellID2DGGS())
         self.addAlgorithm(Vector2DGGS())
-        self.addAlgorithm(Raster2DGGS())
-        self.addAlgorithm(DGGSExpand())
         self.addAlgorithm(DGGSCompact())
-        ################################
+        self.addAlgorithm(DGGSExpand())
+        self.addAlgorithm(Raster2DGGS())
+        
+        # Resampling algorithms
         self.addAlgorithm(DGGSResample())
-        ################################
-
+        
+        # Binning algorithms
         self.addAlgorithm(H3Bin())
         self.addAlgorithm(S2Bin())
         self.addAlgorithm(A5Bin())
@@ -108,7 +110,7 @@ class VgridProvider(QgsProcessingProvider):
 
         self.addAlgorithm(PolygonBin())
 
-        ################################
+        # Generator algorithms
         self.addAlgorithm(H3Grid())
         self.addAlgorithm(S2Grid())
         self.addAlgorithm(A5Grid())
@@ -127,7 +129,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(TilecodeGrid())
         self.addAlgorithm(QuadkeyGrid())
         self.addAlgorithm(MaidenheadGrid())
-        self.addAlgorithm(GARSGrid())
+        self.addAlgorithm(GARSGrid())        
 
     def id(self):
         return "vgrid"
