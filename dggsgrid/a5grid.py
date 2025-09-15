@@ -21,6 +21,7 @@ from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.latlon2dggs import latlon2a5
 from math import log2, floor
 
+
 class A5Grid(QObject):
     def __init__(self, vgridtools, canvas, iface):
         super(A5Grid, self).__init__()
@@ -54,41 +55,41 @@ class A5Grid(QObject):
             scale = self.canvas.scale()
             resolution = self._get_a5_resolution(scale)
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-
-            # Define bbox in EPSG:4326
-            extent_polygon = box(
-                canvas_extent.xMinimum(),
-                canvas_extent.yMinimum(),
-                canvas_extent.xMaximum(),
-                canvas_extent.yMaximum(),
-            )
-
-            # Transform extent to EPSG:4326 if needed
-            if epsg4326 != canvas_crs:
-                # Build QgsGeometry rectangle and transform
-                extent_geom = QgsGeometry.fromWkt(extent_polygon.wkt)
-                trans_to_4326 = QgsCoordinateTransform(
-                    canvas_crs, epsg4326, QgsProject.instance()
-                )
-                extent_geom.transform(trans_to_4326)
-                rect = extent_geom.boundingBox()
-                min_lon, min_lat, max_lon, max_lat = (
-                    rect.xMinimum(),
-                    rect.yMinimum(),
-                    rect.xMaximum(),
-                    rect.yMaximum(),
-                )
+            if resolution <= 3:
+                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
             else:
-                min_lon, min_lat, max_lon, max_lat = (
-                    extent_polygon.bounds[0],
-                    extent_polygon.bounds[1],
-                    extent_polygon.bounds[2],
-                    extent_polygon.bounds[3],
+                canvas_extent_bbox = box(
+                    canvas_extent.xMinimum(),
+                    canvas_extent.yMinimum(),
+                    canvas_extent.xMaximum(),
+                    canvas_extent.yMaximum(),
                 )
+
+                # Transform extent to EPSG:4326 if needed
+                if epsg4326 != canvas_crs:
+                    # Build QgsGeometry rectangle and transform
+                    extent_geom = QgsGeometry.fromWkt(canvas_extent_bbox.wkt)
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    extent_geom.transform(trans_to_4326)
+                    rect = extent_geom.boundingBox()
+                    min_lon, min_lat, max_lon, max_lat = (
+                        rect.xMinimum(),
+                        rect.yMinimum(),
+                        rect.xMaximum(),
+                        rect.yMaximum(),
+                    )
+                else:
+                    min_lon, min_lat, max_lon, max_lat = (
+                        canvas_extent_bbox.bounds[0],
+                        canvas_extent_bbox.bounds[1],
+                        canvas_extent_bbox.bounds[2],
+                        canvas_extent_bbox.bounds[3],
+                    )
 
             # Determine lon/lat step based on resolution (aligned with processing a5)
             lon_width, lat_width = self._resolution_to_step(resolution)
-
             # Iterate over bbox grid
             seen = set()
             lon = min_lon
@@ -121,7 +122,7 @@ class A5Grid(QObject):
 
             self.canvas.refresh()
 
-        except Exception as e:             
+        except Exception as e:
             return
 
     def enable_a5(self, enabled: bool):
@@ -140,10 +141,6 @@ class A5Grid(QObject):
         min_res, max_res, _ = settings.getResolution("A5")
 
         res = max(min_res, int(floor(zoom)))
-
-        # Respect configured bounds
-        if res < min_res:
-            return min_res
         if res > max_res:
             return max_res
         return res
@@ -188,5 +185,3 @@ class A5Grid(QObject):
             self.a5_marker.deleteLater()
         except Exception:
             pass
-
-

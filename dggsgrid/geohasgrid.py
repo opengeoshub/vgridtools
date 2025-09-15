@@ -88,10 +88,38 @@ class GeohashGrid(QObject):
 
             # Initial geohashes covering the world at the lowest resolution
             initial_geohashes = [
-                "b", "c", "f", "g", "u", "v", "y", "z",
-                "8", "9", "d", "e", "s", "t", "w", "x",
-                "0", "1", "2", "3", "p", "q", "r", "k",
-                "m", "n", "h", "j", "4", "5", "6", "7",
+                "b",
+                "c",
+                "f",
+                "g",
+                "u",
+                "v",
+                "y",
+                "z",
+                "8",
+                "9",
+                "d",
+                "e",
+                "s",
+                "t",
+                "w",
+                "x",
+                "0",
+                "1",
+                "2",
+                "3",
+                "p",
+                "q",
+                "r",
+                "k",
+                "m",
+                "n",
+                "h",
+                "j",
+                "4",
+                "5",
+                "6",
+                "7",
             ]
 
             # Generate geohash cells
@@ -105,7 +133,9 @@ class GeohashGrid(QObject):
 
                 # Expand each intersected geohash to the target resolution
                 for gh in intersected_geohashes:
-                    self._expand_geohash_within_extent(gh, resolution, extent_bbox, canvas_crs)
+                    self._expand_geohash_within_extent(
+                        gh, resolution, extent_bbox, canvas_crs
+                    )
             else:
                 # Generate global grid when no extent is provided
                 for gh in initial_geohashes:
@@ -152,7 +182,9 @@ class GeohashGrid(QObject):
 
         # If not at the target length, expand the geohash with all possible characters
         for char in "0123456789bcdefghjkmnpqrstuvwxyz":
-            self._expand_geohash_within_extent(gh + char, target_length, extent_bbox, canvas_crs)
+            self._expand_geohash_within_extent(
+                gh + char, target_length, extent_bbox, canvas_crs
+            )
 
     def enable_geohash(self, enabled: bool):
         self.geohash_enabled = bool(enabled)

@@ -37,14 +37,15 @@ from qgis.core import (
 )
 
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
+from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
 
 from vgrid.dggs import olc
-from vgrid.generator.olcgrid import olc_refine_cell
-from vgrid.utils.geometry import graticule_dggs_metrics, graticule_dggs_to_feature
+from vgrid.generator.olcgrid import olc_grid, olc_refine_cell
+from vgrid.utils.geometry import graticule_dggs_metrics, graticule_dggs_to_geoseries
+import geopandas as gpd
 
 from ...utils.imgs import Imgs
 from ...settings import settings
@@ -159,7 +160,7 @@ class OLCGrid(QgsProcessingAlgorithm):
             self.grid_extent is None or self.grid_extent.isEmpty()
         ):
             feedback.reportError(
-                "For performance reason, when resolutin/ code length is greater than 6, the grid extent must be set."
+                "For performance reason, when resolutin/ code length is greater than 4, the grid extent must be set."
             )
             return False
 
@@ -176,54 +177,6 @@ class OLCGrid(QgsProcessingAlgorithm):
         output_fields.append(QgsField("cell_area", QVariant.Double))
         output_fields.append(QgsField("cell_perimeter", QVariant.Double))
         return output_fields
-
-    def generate_olc_grid(self, resolution):
-        """
-        Generate a global grid of Open Location Codes (Plus Codes) at the specified precision
-        as a GeoJSON-like feature collection.
-        """
-        # Define the boundaries of the world
-        sw_lat, sw_lng = -90, -180
-        ne_lat, ne_lng = 90, 180
-
-        # Get the precision step size
-        area = olc.decode(olc.encode(sw_lat, sw_lng, resolution))
-        lat_step = area.latitudeHi - area.latitudeLo
-        lng_step = area.longitudeHi - area.longitudeLo
-
-        olc_features = []
-
-        # Calculate the total number of steps for progress tracking
-        total_lat_steps = int((ne_lat - sw_lat) / lat_step)
-        total_lng_steps = int((ne_lng - sw_lng) / lng_step)
-        total_steps = total_lat_steps * total_lng_steps
-
-        lat = sw_lat
-        while lat < ne_lat:
-            lng = sw_lng
-            while lng < ne_lng:
-                # Generate the Plus Code for the center of the cell
-                center_lat = lat + lat_step / 2
-                center_lon = lng + lng_step / 2
-                olc_id = olc.encode(center_lat, center_lon, resolution)
-                cell_polygon = Polygon(
-                    [
-                        [lng, lat],  # SW
-                        [lng, lat + lat_step],  # NW
-                        [lng + lng_step, lat + lat_step],  # NE
-                        [lng + lng_step, lat],  # SE
-                        [lng, lat],  # Close the polygon
-                    ]
-                )
-                olc_feature = graticule_dggs_to_feature(
-                    "olc", olc_id, resolution, cell_polygon
-                )
-                olc_features.append(olc_feature)
-                lng += lng_step
-            lat += lat_step
-
-        # Return the feature collection
-        return {"type": "FeatureCollection", "features": olc_features}
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
@@ -250,66 +203,73 @@ class OLCGrid(QgsProcessingAlgorithm):
                 self.grid_extent.yMaximum(),
             )
         if extent_bbox:
-            # Generate grid within bounding box
+            # Generate grid within bounding box - implement directly
+            min_lon, min_lat, max_lon, max_lat = extent_bbox.bounds
+            bbox_poly = box(min_lon, min_lat, max_lon, max_lat)
+
             # Step 1: Generate base cells at the lowest resolution (e.g., resolution 2)
             base_resolution = 2
-            base_cells = self.generate_olc_grid(base_resolution)
+            base_gdf = olc_grid(base_resolution, verbose=False)
 
             # Step 2: Identify seed cells that intersect with the bounding box
             seed_cells = []
-            for base_cell in base_cells["features"]:
-                base_cell_poly = Polygon(base_cell["geometry"]["coordinates"][0])
-                if extent_bbox.intersects(base_cell_poly):
+            for idx, base_cell in base_gdf.iterrows():
+                base_cell_poly = base_cell["geometry"]
+                if bbox_poly.intersects(base_cell_poly):
                     seed_cells.append(base_cell)
 
-            refined_features = []
+            refined_records = []
 
             # Step 3: Iterate over seed cells and refine to the output resolution
             for seed_cell in seed_cells:
-                seed_cell_poly = Polygon(seed_cell["geometry"]["coordinates"][0])
+                seed_cell_poly = seed_cell["geometry"]
 
                 if (
-                    seed_cell_poly.contains(extent_bbox)
+                    seed_cell_poly.contains(bbox_poly)
                     and self.resolution == base_resolution
                 ):
                     # Append the seed cell directly if fully contained and resolution matches
-                    refined_features.append(seed_cell)
+                    refined_records.append(seed_cell)
                 else:
                     # Refine the seed cell to the output resolution and add it to the output
-                    refined_features.extend(
+                    refined_records.extend(
                         olc_refine_cell(
                             seed_cell_poly.bounds,
                             base_resolution,
                             self.resolution,
-                            extent_bbox,
+                            bbox_poly,
                         )
                     )
-                if feedback.isCanceled():
-                    break
 
-            resolution_features = [
-                feature
-                for feature in refined_features
-                if feature["resolution"] == self.resolution
+            # Filter to target resolution and remove duplicates
+            final_records = [
+                record
+                for record in refined_records
+                if record["resolution"] == self.resolution
             ]
 
-            final_features = []
-            seen_olc_ids = set()  # Reset the set for final feature filtering
-
-            for feature in resolution_features:
-                olc_id = feature["olc"]
-                if (
-                    olc_id not in seen_olc_ids
-                ):  # Check if OLC code is already in the set
-                    final_features.append(feature)
+            # Remove duplicates based on OLC ID
+            seen_olc_ids = set()
+            unique_records = []
+            for record in final_records:
+                olc_id = record["olc"]
+                if olc_id not in seen_olc_ids:
+                    unique_records.append(record)
                     seen_olc_ids.add(olc_id)
+
+            # Convert to QgsFeature directly
+            total_features = len(unique_records)
+            feedback.pushInfo(f"Processing {total_features} OLC grid cells...")
+
+            for i, record in enumerate(unique_records):
                 if feedback.isCanceled():
                     break
 
-            # Convert final_features to QgsFeature
-            for feature in final_features:
-                cell_polygon = feature["geometry"]
-                olc_id = feature["olc"]
+                progress = int((i / total_features) * 100)
+                feedback.setProgress(progress)
+
+                cell_polygon = record["geometry"]
+                olc_id = record["olc"]
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
                 olc_feature = QgsFeature()
@@ -335,44 +295,80 @@ class OLCGrid(QgsProcessingAlgorithm):
                     ]
                 )
                 sink.addFeature(olc_feature, QgsFeatureSink.FastInsert)
-                if feedback.isCanceled():
-                    break
         else:
-            # Generate global grid when no extent is provided
-            global_cells = self.generate_olc_grid(self.resolution)
+            # Define the boundaries of the world
+            sw_lat, sw_lng = -90, -180
+            ne_lat, ne_lng = 90, 180
 
-            # Convert global features to QgsFeature
-            for feature in global_cells["features"]:
-                if feedback.isCanceled():
-                    break
+            # Get the precision step size
+            area = olc.decode(olc.encode(sw_lat, sw_lng, self.resolution))
+            lat_step = area.latitudeHi - area.latitudeLo
+            lng_step = area.longitudeHi - area.longitudeLo
 
-                cell_polygon = Polygon(feature["geometry"]["coordinates"][0])
-                olc_id = feature["properties"]["olc"]
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            # Calculate the total number of steps for progress tracking
+            total_lat_steps = int((ne_lat - sw_lat) / lat_step)
+            total_lng_steps = int((ne_lng - sw_lng) / lng_step)
+            total_steps = total_lat_steps * total_lng_steps
 
-                olc_feature = QgsFeature()
-                olc_feature.setGeometry(cell_geometry)
-                (
-                    center_lat,
-                    center_lon,
-                    cell_width,
-                    cell_height,
-                    cell_area,
-                    cell_perimeter,
-                ) = graticule_dggs_metrics(cell_polygon)
-                olc_feature.setAttributes(
-                    [
-                        olc_id,
-                        self.resolution,
+            feedback.pushInfo(f"Processing {total_steps} global OLC grid cells...")
+
+            current_step = 0
+            lat = sw_lat
+            while lat < ne_lat:
+                lng = sw_lng
+                while lng < ne_lng:
+                    if feedback.isCanceled():
+                        break
+
+                    # Generate the Plus Code for the center of the cell
+                    center_lat = lat + lat_step / 2
+                    center_lon = lng + lng_step / 2
+                    olc_id = olc.encode(center_lat, center_lon, self.resolution)
+                    cell_polygon = Polygon(
+                        [
+                            [lng, lat],  # SW
+                            [lng, lat + lat_step],  # NW
+                            [lng + lng_step, lat + lat_step],  # NE
+                            [lng + lng_step, lat],  # SE
+                            [lng, lat],  # Close the polygon
+                        ]
+                    )
+
+                    # Create QgsFeature directly
+                    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    olc_feature = QgsFeature()
+                    olc_feature.setGeometry(cell_geometry)
+
+                    (
                         center_lat,
                         center_lon,
                         cell_width,
                         cell_height,
                         cell_area,
                         cell_perimeter,
-                    ]
-                )
-                sink.addFeature(olc_feature, QgsFeatureSink.FastInsert)
+                    ) = graticule_dggs_metrics(cell_polygon)
+
+                    olc_feature.setAttributes(
+                        [
+                            olc_id,
+                            self.resolution,
+                            center_lat,
+                            center_lon,
+                            cell_width,
+                            cell_height,
+                            cell_area,
+                            cell_perimeter,
+                        ]
+                    )
+                    sink.addFeature(olc_feature, QgsFeatureSink.FastInsert)
+
+                    lng += lng_step
+                    current_step += 1
+
+                    # Update QGIS progress
+                    progress = int((current_step / total_steps) * 100)
+                    feedback.setProgress(progress)
+                lat += lat_step
 
         feedback.pushInfo("OLC DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):

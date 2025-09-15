@@ -87,10 +87,16 @@ class TilecodeGrid(QObject):
             # Generate tilecode cells
             if extent_polygon_canvas:
                 # Generate grid within bounding box
-                tiles = list(mercantile.tiles(min_lon, min_lat, max_lon, max_lat, resolution))
+                tiles = list(
+                    mercantile.tiles(min_lon, min_lat, max_lon, max_lat, resolution)
+                )
             else:
                 # Generate global grid when no extent is provided
-                tiles = list(mercantile.tiles(-180.0, -85.05112878, 180.0, 85.05112878, resolution))
+                tiles = list(
+                    mercantile.tiles(
+                        -180.0, -85.05112878, 180.0, 85.05112878, resolution
+                    )
+                )
 
             # Iterate over each tile to create features
             for tile in tiles:
@@ -98,13 +104,15 @@ class TilecodeGrid(QObject):
                 bounds = mercantile.bounds(tile)
 
                 # Create a Shapely polygon
-                cell_polygon = Polygon([
-                    (bounds.west, bounds.south),
-                    (bounds.east, bounds.south),
-                    (bounds.east, bounds.north),
-                    (bounds.west, bounds.north),
-                    (bounds.west, bounds.south),  # Closing the polygon
-                ])
+                cell_polygon = Polygon(
+                    [
+                        (bounds.west, bounds.south),
+                        (bounds.east, bounds.south),
+                        (bounds.east, bounds.north),
+                        (bounds.west, bounds.north),
+                        (bounds.west, bounds.south),  # Closing the polygon
+                    ]
+                )
 
                 geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 if epsg4326 != canvas_crs:
@@ -138,7 +146,7 @@ class TilecodeGrid(QObject):
         min_res, max_res, _ = settings.getResolution("Tilecode")
 
         # Tilecode resolution mapping - similar to other grids
-        res = max(min_res, int(floor(zoom*1.1)))
+        res = max(min_res, int(floor(zoom * 1.1)))
 
         if res > max_res:
             return max_res

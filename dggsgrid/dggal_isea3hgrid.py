@@ -10,7 +10,7 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
-import traceback    
+import traceback
 
 from ..utils import tr
 from ..utils.latlon import epsg4326
@@ -67,7 +67,7 @@ class DGGALISEA3HGrid(QObject):
             canvas_crs = self.canvas.mapSettings().destinationCrs()
 
             # Define bbox in canvas CRS
-            extent_polygon_canvas = box(
+            canvas_extent_bbox = box(
                 canvas_extent.xMinimum(),
                 canvas_extent.yMinimum(),
                 canvas_extent.xMaximum(),
@@ -76,7 +76,7 @@ class DGGALISEA3HGrid(QObject):
 
             # Transform extent to EPSG:4326 if needed
             if epsg4326 != canvas_crs:
-                extent_geom = QgsGeometry.fromWkt(extent_polygon_canvas.wkt)
+                extent_geom = QgsGeometry.fromWkt(canvas_extent_bbox.wkt)
                 trans_to_4326 = QgsCoordinateTransform(
                     canvas_crs, epsg4326, QgsProject.instance()
                 )
@@ -90,10 +90,10 @@ class DGGALISEA3HGrid(QObject):
                 )
             else:
                 min_lon, min_lat, max_lon, max_lat = (
-                    extent_polygon_canvas.bounds[0],
-                    extent_polygon_canvas.bounds[1],
-                    extent_polygon_canvas.bounds[2],
-                    extent_polygon_canvas.bounds[3],
+                    canvas_extent_bbox.bounds[0],
+                    canvas_extent_bbox.bounds[1],
+                    canvas_extent_bbox.bounds[2],
+                    canvas_extent_bbox.bounds[3],
                 )
 
             # Validate resolution for the selected DGGS type
@@ -115,16 +115,16 @@ class DGGALISEA3HGrid(QObject):
                     zone_id = self.dggrs.getZoneTextID(zone)
                     # Convert zone to geometry using dggal_to_geo
                     cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
-                    
+
                     # Check if cell intersects with the canvas extent
-                    if cell_polygon.intersects(extent_polygon_canvas):
-                        geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    if cell_polygon.intersects(canvas_extent_bbox):
+                        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                         if epsg4326 != canvas_crs:
                             trans = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
                             )
-                            geom.transform(trans)
-                        self.dggal_marker.addGeometry(geom, None)
+                            cell_geom.transform(trans)
+                        self.dggal_marker.addGeometry(cell_geom, None)
                 except Exception:
                     continue
 
@@ -151,8 +151,8 @@ class DGGALISEA3HGrid(QObject):
         # DGGAL resolution mapping - similar to other grids
         min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
         max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
-       
-        res = max(min_res, int(floor(zoom*1.15)))
+
+        res = max(min_res, int(floor(zoom * 1.15)))
 
         # Respect configured bounds (DGGAL typically supports 0-33)
         if res > max_res:

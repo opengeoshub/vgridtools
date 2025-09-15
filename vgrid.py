@@ -127,7 +127,7 @@ class VgridTools(object):
         self.tilecodegrid = TilecodeGrid(self, self.canvas, self.iface)
         self.maidenheadgrid = MaidenheadGrid(self, self.canvas, self.iface)
         self.garsgrid = GARSGrid(self, self.canvas, self.iface)
-        
+
         self.Vgrid_menu = None
         self.toolbar = self.iface.addToolBar(tr("Vgrid Toolbar"))
         self.toolbar.setObjectName("VgridToolbar")
@@ -135,7 +135,6 @@ class VgridTools(object):
 
         self.crossRb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
         self.crossRb.setColor(Qt.red)
-
 
         self.iface.mapCanvas().scaleChanged.connect(self.displayZoomLevel)
 
@@ -191,22 +190,27 @@ class VgridTools(object):
 
         # Create Conversion submenu
         self.conversion_menu = QMenu("Conversion")
-        conversion_icon = QIcon(os.path.dirname(__file__) + "/images/conversion/conversion.svg")
+        conversion_icon = QIcon(
+            os.path.dirname(__file__) + "/images/conversion/conversion.svg"
+        )
         self.Vgrid_add_submenu2(self.conversion_menu, conversion_icon)
 
         # Create Generator submenu
         self.generator_menu = QMenu("Generator")
-        generator_icon = QIcon(os.path.dirname(__file__) + "/images/generator/generator.svg")
+        generator_icon = QIcon(
+            os.path.dirname(__file__) + "/images/generator/generator.svg"
+        )
         self.Vgrid_add_submenu2(self.generator_menu, generator_icon)
-
 
         # Create Binning submenu
         self.binning_menu = QMenu("Binning")
         binning_icon = QIcon(os.path.dirname(__file__) + "/images/binning/binning.svg")
         self.Vgrid_add_submenu2(self.binning_menu, binning_icon)
 
-        # Create Resampling action 
-        resampling_icon = QIcon(os.path.dirname(__file__) + "/images/resampling/dggsresample.svg")
+        # Create Resampling action
+        resampling_icon = QIcon(
+            os.path.dirname(__file__) + "/images/resampling/dggsresample.svg"
+        )
         self.resamplingAction = QAction(
             resampling_icon, tr("Resampling"), self.iface.mainWindow()
         )
@@ -214,8 +218,6 @@ class VgridTools(object):
         self.resamplingAction.setToolTip(tr("DGGS Resample"))
         self.resamplingAction.triggered.connect(self.runDGGSResample)
         self.Vgrid_menu.addAction(self.resamplingAction)
-
-
 
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_h3.svg")
         self.h3_widget_action = QWidgetAction(self.geodesic_dggs_menu)
@@ -244,7 +246,7 @@ class VgridTools(object):
         self.s2_widget_action.setDefaultWidget(s2_checkbox)
         self.geodesic_dggs_menu.addAction(self.s2_widget_action)
 
-          # A5
+        # A5
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_a5.svg")
         self.a5_widget_action = QWidgetAction(self.geodesic_dggs_menu)
         a5_checkbox = QCheckBox("A5")
@@ -533,9 +535,7 @@ class VgridTools(object):
         # Add Binning actions
         # H3 Bin
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_h3.svg")
-        self.h3BinAction = QAction(
-            icon, tr("H3 Bin"), self.iface.mainWindow()
-        )
+        self.h3BinAction = QAction(icon, tr("H3 Bin"), self.iface.mainWindow())
         self.h3BinAction.setObjectName("h3Bin")
         self.h3BinAction.setToolTip(tr("H3 Binning"))
         self.h3BinAction.triggered.connect(self.runH3Bin)
@@ -543,9 +543,7 @@ class VgridTools(object):
 
         # S2 Bin
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_s2.svg")
-        self.s2BinAction = QAction(
-            icon, tr("S2 Bin"), self.iface.mainWindow()
-        )
+        self.s2BinAction = QAction(icon, tr("S2 Bin"), self.iface.mainWindow())
         self.s2BinAction.setObjectName("s2Bin")
         self.s2BinAction.setToolTip(tr("S2 Binning"))
         self.s2BinAction.triggered.connect(self.runS2Bin)
@@ -553,9 +551,7 @@ class VgridTools(object):
 
         # A5 Bin
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_a5.svg")
-        self.a5BinAction = QAction(
-            icon, tr("A5 Bin"), self.iface.mainWindow()
-        )
+        self.a5BinAction = QAction(icon, tr("A5 Bin"), self.iface.mainWindow())
         self.a5BinAction.setObjectName("a5Bin")
         self.a5BinAction.setToolTip(tr("A5 Binning"))
         self.a5BinAction.triggered.connect(self.runA5Bin)
@@ -573,9 +569,7 @@ class VgridTools(object):
 
         # ISEA4T Bin
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
-        self.isea4tBinAction = QAction(
-            icon, tr("ISEA4T Bin"), self.iface.mainWindow()
-        )
+        self.isea4tBinAction = QAction(icon, tr("ISEA4T Bin"), self.iface.mainWindow())
         self.isea4tBinAction.setObjectName("isea4tBin")
         self.isea4tBinAction.setToolTip(tr("ISEA4T Binning"))
         self.isea4tBinAction.triggered.connect(self.runISEA4TBin)
@@ -583,9 +577,7 @@ class VgridTools(object):
 
         # DGGAL Bin
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggalBinAction = QAction(
-            icon, tr("DGGAL Bin"), self.iface.mainWindow()
-        )
+        self.dggalBinAction = QAction(icon, tr("DGGAL Bin"), self.iface.mainWindow())
         self.dggalBinAction.setObjectName("dggalBin")
         self.dggalBinAction.setToolTip(tr("DGGAL Binning"))
         self.dggalBinAction.triggered.connect(self.runDGGALBin)
@@ -593,9 +585,7 @@ class VgridTools(object):
 
         # OLC Bin
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_olc.svg")
-        self.olcBinAction = QAction(
-            icon, tr("OLC Bin"), self.iface.mainWindow()
-        )
+        self.olcBinAction = QAction(icon, tr("OLC Bin"), self.iface.mainWindow())
         self.olcBinAction.setObjectName("olcBin")
         self.olcBinAction.setToolTip(tr("OLC Binning"))
         self.olcBinAction.triggered.connect(self.runOLCBin)
@@ -685,9 +675,7 @@ class VgridTools(object):
         # Add Generator actions
         # H3 Grid
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_h3.svg")
-        self.h3GridAction = QAction(
-            icon, tr("H3 Grid"), self.iface.mainWindow()
-        )
+        self.h3GridAction = QAction(icon, tr("H3 Grid"), self.iface.mainWindow())
         self.h3GridAction.setObjectName("h3Grid")
         self.h3GridAction.setToolTip(tr("H3 Grid"))
         self.h3GridAction.triggered.connect(self.runH3Grid)
@@ -695,9 +683,7 @@ class VgridTools(object):
 
         # S2 Grid
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_s2.svg")
-        self.s2GridAction = QAction(
-            icon, tr("S2 Grid"), self.iface.mainWindow()
-        )
+        self.s2GridAction = QAction(icon, tr("S2 Grid"), self.iface.mainWindow())
         self.s2GridAction.setObjectName("s2Grid")
         self.s2GridAction.setToolTip(tr("S2 Grid"))
         self.s2GridAction.triggered.connect(self.runS2Grid)
@@ -705,9 +691,7 @@ class VgridTools(object):
 
         # A5 Grid
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_a5.svg")
-        self.a5GridAction = QAction(
-            icon, tr("A5 Grid"), self.iface.mainWindow()
-        )
+        self.a5GridAction = QAction(icon, tr("A5 Grid"), self.iface.mainWindow())
         self.a5GridAction.setObjectName("a5Grid")
         self.a5GridAction.setToolTip(tr("A5 Grid"))
         self.a5GridAction.triggered.connect(self.runA5Grid)
@@ -735,9 +719,7 @@ class VgridTools(object):
 
         # QTM Grid
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
-        self.qtmGridAction = QAction(
-            icon, tr("QTM Grid"), self.iface.mainWindow()
-        )
+        self.qtmGridAction = QAction(icon, tr("QTM Grid"), self.iface.mainWindow())
         self.qtmGridAction.setObjectName("qtmGrid")
         self.qtmGridAction.setToolTip(tr("QTM Grid"))
         self.qtmGridAction.triggered.connect(self.runQTMGrid)
@@ -745,9 +727,7 @@ class VgridTools(object):
 
         # OLC Grid
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_olc.svg")
-        self.olcGridAction = QAction(
-            icon, tr("OLC Grid"), self.iface.mainWindow()
-        )
+        self.olcGridAction = QAction(icon, tr("OLC Grid"), self.iface.mainWindow())
         self.olcGridAction.setObjectName("olcGrid")
         self.olcGridAction.setToolTip(tr("OLC Grid"))
         self.olcGridAction.triggered.connect(self.runOLCGrid)
@@ -765,9 +745,7 @@ class VgridTools(object):
 
         # DGGAL Grid
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggalGridAction = QAction(
-            icon, tr("DGGAL Grid"), self.iface.mainWindow()
-        )
+        self.dggalGridAction = QAction(icon, tr("DGGAL Grid"), self.iface.mainWindow())
         self.dggalGridAction.setObjectName("dggalGrid")
         self.dggalGridAction.setToolTip(tr("DGGAL Grid"))
         self.dggalGridAction.triggered.connect(self.runDGGALGrid)
@@ -775,9 +753,7 @@ class VgridTools(object):
 
         # MGRS Grid
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_mgrs.svg")
-        self.mgrsGridAction = QAction(
-            icon, tr("MGRS Grid"), self.iface.mainWindow()
-        )
+        self.mgrsGridAction = QAction(icon, tr("MGRS Grid"), self.iface.mainWindow())
         self.mgrsGridAction.setObjectName("mgrsGrid")
         self.mgrsGridAction.setToolTip(tr("MGRS Grid"))
         self.mgrsGridAction.triggered.connect(self.runMGRSGrid)
@@ -785,9 +761,7 @@ class VgridTools(object):
 
         # GZD Grid
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.gzdGridAction = QAction(
-            icon, tr("GZD Grid"), self.iface.mainWindow()
-        )
+        self.gzdGridAction = QAction(icon, tr("GZD Grid"), self.iface.mainWindow())
         self.gzdGridAction.setObjectName("gzdGrid")
         self.gzdGridAction.setToolTip(tr("GZD Grid"))
         self.gzdGridAction.triggered.connect(self.runGZDGrid)
@@ -825,15 +799,12 @@ class VgridTools(object):
 
         # GARS Grid
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.garsGridAction = QAction(
-            icon, tr("GARS Grid"), self.iface.mainWindow()
-        )
+        self.garsGridAction = QAction(icon, tr("GARS Grid"), self.iface.mainWindow())
         self.garsGridAction.setObjectName("garsGrid")
         self.garsGridAction.setToolTip(tr("GARS Grid"))
         self.garsGridAction.triggered.connect(self.runGARSGrid)
         self.generator_menu.addAction(self.garsGridAction)
 
-        
         # Add Latlon2DGGS action
         icon = QIcon(os.path.dirname(__file__) + "/images/vgrid.svg")
         self.latlon2DGGSAction = QAction(
@@ -1011,128 +982,127 @@ class VgridTools(object):
 
     def runH3Bin(self):
         """Run H3 Binning algorithm"""
-        processing.execAlgorithmDialog('vgrid:bin_h3', {})   
-        
+        processing.execAlgorithmDialog("vgrid:bin_h3", {})
 
     def runS2Bin(self):
         """Run S2 Binning algorithm"""
-        processing.execAlgorithmDialog('vgrid:bin_s2', {})   
+        processing.execAlgorithmDialog("vgrid:bin_s2", {})
 
     def runA5Bin(self):
         """Run A5 Binning algorithm"""
-        processing.execAlgorithmDialog('vgrid:bin_a5', {})   
+        processing.execAlgorithmDialog("vgrid:bin_a5", {})
 
     def runRhealpixBin(self):
         """Run rHEALPix Binning algorithm"""
-        processing.execAlgorithmDialog('vgrid:bin_rhealpix', {})   
+        processing.execAlgorithmDialog("vgrid:bin_rhealpix", {})
 
     def runISEA4TBin(self):
         """Run ISEA4T Binning algorithm"""
-        processing.execAlgorithmDialog('vgrid:bin_isea4t', {})   
+        processing.execAlgorithmDialog("vgrid:bin_isea4t", {})
 
     def runDGGALBin(self):
         """Run DGGAL Binning algorithm"""
-        processing.execAlgorithmDialog('vgrid:bin_dggal', {})   
+        processing.execAlgorithmDialog("vgrid:bin_dggal", {})
 
     def runOLCBin(self):
         """Run OLC Binning algorithm"""
-        processing.execAlgorithmDialog('vgrid:bin_olc', {})   
+        processing.execAlgorithmDialog("vgrid:bin_olc", {})
 
     def runGeohashBin(self):
         """Run Geohash Binning algorithm"""
-        processing.execAlgorithmDialog('vgrid:bin_geohash', {})   
+        processing.execAlgorithmDialog("vgrid:bin_geohash", {})
 
     def runTilecodeBin(self):
         """Run Tilecode Binning algorithm"""
-        processing.execAlgorithmDialog('vgrid:bin_tilecode', {})   
+        processing.execAlgorithmDialog("vgrid:bin_tilecode", {})
 
     def runQuadkeyBin(self):
         """Run Quadkey Binning algorithm"""
-        processing.execAlgorithmDialog('vgrid:bin_quadkey', {})   
+        processing.execAlgorithmDialog("vgrid:bin_quadkey", {})
 
     def runCellId2DGGS(self):
         """Run Cell ID to DGGS algorithm"""
-        processing.execAlgorithmDialog('vgrid:cellid2dggs', {})   
+        processing.execAlgorithmDialog("vgrid:cellid2dggs", {})
 
     def runVector2DGGS(self):
         """Run Vector to DGGS algorithm"""
-        processing.execAlgorithmDialog('vgrid:vector2dggs', {})   
+        processing.execAlgorithmDialog("vgrid:vector2dggs", {})
 
     def runDGGSCompact(self):
         """Run DGGS Compact algorithm"""
-        processing.execAlgorithmDialog('vgrid:dggscompact', {})   
+        processing.execAlgorithmDialog("vgrid:dggscompact", {})
 
     def runDGGSExpand(self):
         """Run DGGS Expand algorithm"""
-        processing.execAlgorithmDialog('vgrid:dggsexpand', {})   
+        processing.execAlgorithmDialog("vgrid:dggsexpand", {})
 
     def runRaster2DGGS(self):
         """Run Raster to DGGS algorithm"""
-        processing.execAlgorithmDialog('vgrid:raster2dggs', {})   
+        processing.execAlgorithmDialog("vgrid:raster2dggs", {})
 
     def runH3Grid(self):
         """Run H3 Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_h3', {})   
+        processing.execAlgorithmDialog("vgrid:grid_h3", {})
 
     def runS2Grid(self):
         """Run S2 Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_s2', {})   
+        processing.execAlgorithmDialog("vgrid:grid_s2", {})
 
     def runA5Grid(self):
         """Run A5 Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_a5', {})   
+        processing.execAlgorithmDialog("vgrid:grid_a5", {})
 
     def runRhealpixGrid(self):
         """Run rHEALPix Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_rhealpix', {})   
+        processing.execAlgorithmDialog("vgrid:grid_rhealpix", {})
 
     def runISEA4TGrid(self):
         """Run ISEA4T Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_isea4t', {})   
+        processing.execAlgorithmDialog("vgrid:grid_isea4t", {})
 
     def runQTMGrid(self):
         """Run QTM Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_qtm', {})   
+        processing.execAlgorithmDialog("vgrid:grid_qtm", {})
 
     def runOLCGrid(self):
         """Run OLC Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_olc', {})   
+        processing.execAlgorithmDialog("vgrid:grid_olc", {})
 
     def runGeohashGrid(self):
         """Run Geohash Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_geohash', {})   
+        processing.execAlgorithmDialog("vgrid:grid_geohash", {})
 
     def runDGGALGrid(self):
         """Run DGGAL Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_dggal', {})   
+        processing.execAlgorithmDialog("vgrid:grid_dggal", {})
 
     def runMGRSGrid(self):
         """Run MGRS Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_mgrs', {})   
+        processing.execAlgorithmDialog("vgrid:grid_mgrs", {})
 
     def runGZDGrid(self):
         """Run GZD Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_gzd', {})   
+        processing.execAlgorithmDialog("vgrid:grid_gzd", {})
 
     def runTilecodeGrid(self):
         """Run Tilecode Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_tilecode', {})   
+        processing.execAlgorithmDialog("vgrid:grid_tilecode", {})
 
     def runQuadkeyGrid(self):
         """Run Quadkey Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_quadkey', {})   
+        processing.execAlgorithmDialog("vgrid:grid_quadkey", {})
 
     def runMaidenheadGrid(self):
         """Run Maidenhead Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_maidenhead', {})   
+        processing.execAlgorithmDialog("vgrid:grid_maidenhead", {})
 
     def runGARSGrid(self):
         """Run GARS Grid algorithm"""
-        processing.execAlgorithmDialog('vgrid:grid_gars', {})   
+        processing.execAlgorithmDialog("vgrid:grid_gars", {})
 
     def runDGGSResample(self):
         """Run DGGS Resample algorithm"""
-        processing.execAlgorithmDialog('vgrid:dggsresample', {})   
+        processing.execAlgorithmDialog("vgrid:dggsresample", {})
 
     def VgridHome(self):
         webbrowser.open("https://vgrid.vn")

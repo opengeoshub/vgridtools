@@ -10,9 +10,13 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
-import traceback
+from pyproj import Geod
+import geopandas as gpd
 
-from ..utils import tr
+from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+geod = Geod(ellps="WGS84")
+rhealpix_dggs = RHEALPixDGGS()
+
 from ..utils.latlon import epsg4326
 from ..settings import settings
 
@@ -56,92 +60,103 @@ class RhealpixGrid(QObject):
             scale = self.canvas.scale()
             resolution = self._get_rhealpix_resolution(scale)
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-
-            # Define bbox in canvas CRS
-            extent_polygon_canvas = box(
-                canvas_extent.xMinimum(),
-                canvas_extent.yMinimum(),
-                canvas_extent.xMaximum(),
-                canvas_extent.yMaximum(),
-            )
-
-            # Transform extent to EPSG:4326 if needed
-            if epsg4326 != canvas_crs:
-                extent_geom = QgsGeometry.fromWkt(extent_polygon_canvas.wkt)
-                trans_to_4326 = QgsCoordinateTransform(
-                    canvas_crs, epsg4326, QgsProject.instance()
-                )
-                extent_geom.transform(trans_to_4326)
-                rect = extent_geom.boundingBox()
-                min_lon, min_lat, max_lon, max_lat = (
-                    rect.xMinimum(),
-                    rect.yMinimum(),
-                    rect.xMaximum(),
-                    rect.yMaximum(),
-                )
+            if resolution <= 2:
+                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
+                rhealpix_cells  = rhealpix_dggs.grid(resolution)
+                for rhealpix_cell in rhealpix_cells:
+                    cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
+                    cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    if epsg4326 != canvas_crs:
+                        trans = QgsCoordinateTransform(
+                            epsg4326, canvas_crs, QgsProject.instance()
+                        )
+                        cell_geom.transform(trans)
+                    self.rhealpix_marker.addGeometry(cell_geom, None)
             else:
-                min_lon, min_lat, max_lon, max_lat = (
-                    extent_polygon_canvas.bounds[0],
-                    extent_polygon_canvas.bounds[1],
-                    extent_polygon_canvas.bounds[2],
-                    extent_polygon_canvas.bounds[3],
+                # Define bbox in canvas CRS
+                canvas_extent_bbox = box(
+                    canvas_extent.xMinimum(),
+                    canvas_extent.yMinimum(),
+                    canvas_extent.xMaximum(),
+                    canvas_extent.yMaximum(),
                 )
 
-            extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
-
-            # Seed cell from bbox center
-            bbox_center_lon = (min_lon + max_lon) / 2.0
-            bbox_center_lat = (min_lat + max_lat) / 2.0
-            seed_point = (bbox_center_lon, bbox_center_lat)
-
-            seed_cell = self._rhealpix_dggs.cell_from_point(
-                resolution, seed_point, plane=False
-            )
-            seed_cell_polygon = rhealpix_cell_to_polygon(seed_cell)
-
-            cells_to_draw_ids = set()
-
-            # If one cell fully contains the bbox, just draw it
-            if seed_cell_polygon.contains(extent_bbox):
-                cells_to_draw_ids.add(str(seed_cell))
-            else:
-                # BFS over neighbors to cover bbox extent
-                covered_ids = set()
-                queue = [seed_cell]
-                while queue:
-                    current_cell = queue.pop()
-                    current_id = str(current_cell)
-                    if current_id in covered_ids:
-                        continue
-                    covered_ids.add(current_id)
-
-                    cell_polygon = rhealpix_cell_to_polygon(current_cell)
-                    if cell_polygon.intersects(extent_bbox):
-                        cells_to_draw_ids.add(current_id)
-                        neighbors = current_cell.neighbors(plane=False)
-                        for _, neighbor in neighbors.items():
-                            neighbor_id = str(neighbor)
-                            if neighbor_id not in covered_ids:
-                                queue.append(neighbor)
-
-            # Draw collected cells
-            for cell_id in cells_to_draw_ids:
-                rhealpix_uids = (cell_id[0],) + tuple(map(int, cell_id[1:]))
-                cell = self._rhealpix_dggs.cell(rhealpix_uids)
-                cell_polygon = rhealpix_cell_to_polygon(cell)
-                if not cell_polygon.intersects(extent_bbox):
-                    continue
-                geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                # Transform extent to EPSG:4326 if needed
                 if epsg4326 != canvas_crs:
-                    trans = QgsCoordinateTransform(
-                        epsg4326, canvas_crs, QgsProject.instance()
+                    extent_geom = QgsGeometry.fromWkt(canvas_extent_bbox.wkt)
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
                     )
-                    geom.transform(trans)
-                self.rhealpix_marker.addGeometry(geom, None)
+                    extent_geom.transform(trans_to_4326)
+                    rect = extent_geom.boundingBox()
+                    min_lon, min_lat, max_lon, max_lat = (
+                        rect.xMinimum(),
+                        rect.yMinimum(),
+                        rect.xMaximum(),
+                        rect.yMaximum(),
+                    )
+                else:
+                    min_lon, min_lat, max_lon, max_lat = (
+                        canvas_extent_bbox.bounds[0],
+                        canvas_extent_bbox.bounds[1],
+                        canvas_extent_bbox.bounds[2],
+                        canvas_extent_bbox.bounds[3],
+                    )
+
+                extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
+                # Seed cell from bbox center
+                bbox_center_lon = (min_lon + max_lon) / 2.0
+                bbox_center_lat = (min_lat + max_lat) / 2.0
+                seed_point = (bbox_center_lon, bbox_center_lat)
+
+                seed_cell = self._rhealpix_dggs.cell_from_point(
+                    resolution, seed_point, plane=False
+                )
+                seed_cell_polygon = rhealpix_cell_to_polygon(seed_cell)
+
+                cells_to_draw_ids = set()
+
+                # If one cell fully contains the bbox, just draw it
+                if seed_cell_polygon.contains(extent_bbox):
+                    cells_to_draw_ids.add(str(seed_cell))
+                else:
+                    # BFS over neighbors to cover bbox extent
+                    covered_ids = set()
+                    queue = [seed_cell]
+                    while queue:
+                        current_cell = queue.pop()
+                        current_id = str(current_cell)
+                        if current_id in covered_ids:
+                            continue
+                        covered_ids.add(current_id)
+
+                        cell_polygon = rhealpix_cell_to_polygon(current_cell)
+                        if cell_polygon.intersects(extent_bbox):
+                            cells_to_draw_ids.add(current_id)
+                            neighbors = current_cell.neighbors(plane=False)
+                            for _, neighbor in neighbors.items():
+                                neighbor_id = str(neighbor)
+                                if neighbor_id not in covered_ids:
+                                    queue.append(neighbor)
+
+                # Draw collected cells
+                for cell_id in cells_to_draw_ids:
+                    rhealpix_uids = (cell_id[0],) + tuple(map(int, cell_id[1:]))
+                    cell = self._rhealpix_dggs.cell(rhealpix_uids)
+                    cell_polygon = rhealpix_cell_to_polygon(cell)
+                    if not cell_polygon.intersects(extent_bbox):
+                        continue
+                    cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    if epsg4326 != canvas_crs:
+                        trans = QgsCoordinateTransform(
+                            epsg4326, canvas_crs, QgsProject.instance()
+                        )
+                        cell_geom.transform(trans)
+                    self.rhealpix_marker.addGeometry(cell_geom, None)
 
             self.canvas.refresh()
 
-        except Exception as e:            
+        except Exception as e:
             return
 
     def enable_rhealpix(self, enabled: bool):
@@ -159,7 +174,7 @@ class RhealpixGrid(QObject):
 
         zoom = 29.1402 - log2(scale)
         min_res, max_res, _ = settings.getResolution("rHEALPix")
-        res = max(min_res, int(floor(zoom/1.7)))
+        res = max(min_res, int(floor(zoom / 1.7)))
         if res > max_res:
             return max_res
         return res
@@ -188,5 +203,3 @@ class RhealpixGrid(QObject):
             self.rhealpix_marker.deleteLater()
         except Exception:
             pass
-
-

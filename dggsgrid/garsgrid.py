@@ -91,8 +91,8 @@ class GARSGrid(QObject):
             minutes_map = {
                 1: 30,  # 30 minutes
                 2: 15,  # 15 minutes
-                3: 5,   # 5 minutes
-                4: 1,   # 1 minute
+                3: 5,  # 5 minutes
+                4: 1,  # 1 minute
             }
 
             resolution_minutes = minutes_map[resolution]
@@ -103,22 +103,28 @@ class GARSGrid(QObject):
 
             # Calculate the cell indices corresponding to the extent bounds
             min_x = max(0, int((min_lon - lon_min) / resolution_degrees))
-            max_x = min(len(longitudes), int((max_lon - lon_min) / resolution_degrees) + 1)
+            max_x = min(
+                len(longitudes), int((max_lon - lon_min) / resolution_degrees) + 1
+            )
             min_y = max(0, int((min_lat - lat_min) / resolution_degrees))
-            max_y = min(len(latitudes), int((max_lat - lat_min) / resolution_degrees) + 1)
+            max_y = min(
+                len(latitudes), int((max_lat - lat_min) / resolution_degrees) + 1
+            )
 
             # Generate GARS cells within extent
             for i in range(min_x, max_x):
                 for j in range(min_y, max_y):
                     lon = longitudes[i]
                     lat = latitudes[j]
-                    cell_polygon = Polygon([
-                        (lon, lat),
-                        (lon + resolution_degrees, lat),
-                        (lon + resolution_degrees, lat + resolution_degrees),
-                        (lon, lat + resolution_degrees),
-                        (lon, lat),
-                    ])
+                    cell_polygon = Polygon(
+                        [
+                            (lon, lat),
+                            (lon + resolution_degrees, lat),
+                            (lon + resolution_degrees, lat + resolution_degrees),
+                            (lon, lat + resolution_degrees),
+                            (lon, lat),
+                        ]
+                    )
 
                     geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     if epsg4326 != canvas_crs:
@@ -150,7 +156,7 @@ class GARSGrid(QObject):
 
         zoom = 29.1402 - log2(scale)
         min_res, max_res, _ = settings.getResolution("GARS")
-        res = max(min_res+1, int(floor(zoom / 5.0)))
+        res = max(min_res + 1, int(floor(zoom / 5.0)))
 
         # Get GARS resolution bounds from settings
         min_res, max_res, _ = settings.getResolution("GARS")

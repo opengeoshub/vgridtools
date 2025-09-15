@@ -124,7 +124,7 @@ class QTGrid(QObject):
             # Generate QTM cells
             QTMID = {}
             levelFacets = {}
-            
+
             for lvl in range(resolution):
                 levelFacets[lvl] = []
                 QTMID[lvl] = []
@@ -134,7 +134,7 @@ class QTGrid(QObject):
                         facet_geom = qtm.constructGeometry(facet)
                         QTMID[0].append(str(i + 1))
                         levelFacets[0].append(facet)
-                        
+
                         # Check if facet intersects with extent
                         if facet_geom.intersects(extent_bbox):
                             geom = QgsGeometry.fromWkt(facet_geom.wkt)
@@ -152,7 +152,7 @@ class QTGrid(QObject):
                             new_id = QTMID[lvl - 1][i] + str(j)
                             QTMID[lvl].append(new_id)
                             levelFacets[lvl].append(subfacet)
-                            
+
                             # Check if subfacet intersects with extent
                             if subfacet_geom.intersects(extent_bbox):
                                 geom = QgsGeometry.fromWkt(subfacet_geom.wkt)

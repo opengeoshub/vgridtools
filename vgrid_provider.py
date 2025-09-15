@@ -89,10 +89,10 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(DGGSCompact())
         self.addAlgorithm(DGGSExpand())
         self.addAlgorithm(Raster2DGGS())
-        
+
         # Resampling algorithms
         self.addAlgorithm(DGGSResample())
-        
+
         # Binning algorithms
         self.addAlgorithm(H3Bin())
         self.addAlgorithm(S2Bin())
@@ -129,7 +129,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(TilecodeGrid())
         self.addAlgorithm(QuadkeyGrid())
         self.addAlgorithm(MaidenheadGrid())
-        self.addAlgorithm(GARSGrid())        
+        self.addAlgorithm(GARSGrid())
 
     def id(self):
         return "vgrid"

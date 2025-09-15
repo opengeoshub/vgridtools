@@ -3039,52 +3039,53 @@ def olccompact_from_qgsfeatures(qgs_features, feedback):
 
 
 def generate_olc_grid(resolution):
-        """
-        Generate a global grid of Open Location Codes (Plus Codes) at the specified precision
-        as a GeoJSON-like feature collection.
-        """
-        # Define the boundaries of the world
-        sw_lat, sw_lng = -90, -180
-        ne_lat, ne_lng = 90, 180
+    """
+    Generate a global grid of Open Location Codes (Plus Codes) at the specified precision
+    as a GeoJSON-like feature collection.
+    """
+    # Define the boundaries of the world
+    sw_lat, sw_lng = -90, -180
+    ne_lat, ne_lng = 90, 180
 
-        # Get the precision step size
-        area = olc.decode(olc.encode(sw_lat, sw_lng, resolution))
-        lat_step = area.latitudeHi - area.latitudeLo
-        lng_step = area.longitudeHi - area.longitudeLo
+    # Get the precision step size
+    area = olc.decode(olc.encode(sw_lat, sw_lng, resolution))
+    lat_step = area.latitudeHi - area.latitudeLo
+    lng_step = area.longitudeHi - area.longitudeLo
 
-        olc_features = []
+    olc_features = []
 
-        # Calculate the total number of steps for progress tracking
-        total_lat_steps = int((ne_lat - sw_lat) / lat_step)
-        total_lng_steps = int((ne_lng - sw_lng) / lng_step)
-        total_steps = total_lat_steps * total_lng_steps
+    # Calculate the total number of steps for progress tracking
+    total_lat_steps = int((ne_lat - sw_lat) / lat_step)
+    total_lng_steps = int((ne_lng - sw_lng) / lng_step)
+    total_steps = total_lat_steps * total_lng_steps
 
-        lat = sw_lat
-        while lat < ne_lat:
-            lng = sw_lng
-            while lng < ne_lng:
-                # Generate the Plus Code for the center of the cell
-                center_lat = lat + lat_step / 2
-                center_lon = lng + lng_step / 2
-                olc_id = olc.encode(center_lat, center_lon, resolution)
-                cell_polygon = Polygon(
-                    [
-                        [lng, lat],  # SW
-                        [lng, lat + lat_step],  # NW
-                        [lng + lng_step, lat + lat_step],  # NE
-                        [lng + lng_step, lat],  # SE
-                        [lng, lat],  # Close the polygon
-                    ]
-                )
-                olc_feature = graticule_dggs_to_feature(
-                    "olc", olc_id, resolution, cell_polygon
-                )
-                olc_features.append(olc_feature)
-                lng += lng_step
-            lat += lat_step
+    lat = sw_lat
+    while lat < ne_lat:
+        lng = sw_lng
+        while lng < ne_lng:
+            # Generate the Plus Code for the center of the cell
+            center_lat = lat + lat_step / 2
+            center_lon = lng + lng_step / 2
+            olc_id = olc.encode(center_lat, center_lon, resolution)
+            cell_polygon = Polygon(
+                [
+                    [lng, lat],  # SW
+                    [lng, lat + lat_step],  # NW
+                    [lng + lng_step, lat + lat_step],  # NE
+                    [lng + lng_step, lat],  # SE
+                    [lng, lat],  # Close the polygon
+                ]
+            )
+            olc_feature = graticule_dggs_to_feature(
+                "olc", olc_id, resolution, cell_polygon
+            )
+            olc_features.append(olc_feature)
+            lng += lng_step
+        lat += lat_step
 
-        # Return the feature collection
-        return {"type": "FeatureCollection", "features": olc_features}
+    # Return the feature collection
+    return {"type": "FeatureCollection", "features": olc_features}
+
 
 def polyline2olc(feature, resolution, predicate=None, compact=None, feedback=None):
     olc_features = []
@@ -3117,18 +3118,21 @@ def polyline2olc(feature, resolution, predicate=None, compact=None, feedback=Non
             )
             for record in olc_records:
                 # Convert pandas Series to dictionary format
-                if hasattr(record, 'to_dict'):
+                if hasattr(record, "to_dict"):
                     record_dict = record.to_dict()
                 else:
                     # If it's already a dict-like object, use it as is
                     record_dict = record
-                
+
                 # Ensure the record has the expected structure
                 # If geometry is a shapely geometry, convert to GeoJSON mapping for consistency
-                if "geometry" in record_dict and hasattr(record_dict["geometry"], "wkt"):
+                if "geometry" in record_dict and hasattr(
+                    record_dict["geometry"], "wkt"
+                ):
                     from shapely.geometry import mapping
+
                     record_dict["geometry"] = mapping(record_dict["geometry"])
-                
+
                 refined_features.append(record_dict)
 
     resolution_features = [
@@ -3157,6 +3161,7 @@ def polyline2olc(feature, resolution, predicate=None, compact=None, feedback=Non
                     cell_polygon = geom_obj
                 else:
                     from shapely.geometry import shape
+
                     cell_polygon = shape(geom_obj)
             except Exception:
                 # Fallback to previous behavior if it's a plain coordinates array
@@ -3267,18 +3272,21 @@ def polygon2olc(feature, resolution, predicate=None, compact=None, feedback=None
             )
             for record in olc_records:
                 # Convert pandas Series to dictionary format
-                if hasattr(record, 'to_dict'):
+                if hasattr(record, "to_dict"):
                     record_dict = record.to_dict()
                 else:
                     # If it's already a dict-like object, use it as is
                     record_dict = record
-                
+
                 # Ensure the record has the expected structure
                 # If geometry is a shapely geometry, convert to GeoJSON mapping for consistency
-                if "geometry" in record_dict and hasattr(record_dict["geometry"], "wkt"):
+                if "geometry" in record_dict and hasattr(
+                    record_dict["geometry"], "wkt"
+                ):
                     from shapely.geometry import mapping
+
                     record_dict["geometry"] = mapping(record_dict["geometry"])
-                
+
                 refined_features.append(record_dict)
 
     resolution_features = [
@@ -3307,6 +3315,7 @@ def polygon2olc(feature, resolution, predicate=None, compact=None, feedback=None
                     cell_polygon = geom_obj
                 else:
                     from shapely.geometry import shape
+
                     cell_polygon = shape(geom_obj)
             except Exception:
                 # Fallback to previous behavior if it's a plain coordinates array
@@ -3715,8 +3724,8 @@ def point2tilecode(feature, resolution, feedback):
     resolution = tilecode_cell.z
     cell_polygon = tilecode2geo(tilecode_id)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = graticule_dggs_metrics(
-        cell_polygon
+    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+        graticule_dggs_metrics(cell_polygon)
     )
 
     # Create a single QGIS feature
@@ -3825,7 +3834,7 @@ def tilecodecompact_from_qgsfeatures(qgs_features, feedback):
         tilecode_feature["cell_width"] = cell_width
         tilecode_feature["cell_height"] = cell_height
         tilecode_feature["cell_area"] = cell_area
-        tilecode_feature["cell_perimeter"] = cell_perimeter         
+        tilecode_feature["cell_perimeter"] = cell_perimeter
         tilecode_features.append(tilecode_feature)
 
         if feedback and i % 100 == 0:
@@ -3919,8 +3928,8 @@ def polyline2tilecode(feature, resolution, predicate=None, compact=None, feedbac
             cell_width,
             cell_height,
             cell_area,
-            cell_perimeter,         
-            ]   
+            cell_perimeter,
+        ]
         all_attributes = original_attributes + new_attributes
 
         tilecode_feature.setAttributes(all_attributes)
@@ -4023,7 +4032,7 @@ def polygon2tilecode(feature, resolution, predicate=None, compact=None, feedback
             cell_height,
             cell_area,
             cell_perimeter,
-            ]
+        ]
         all_attributes = original_attributes + new_attributes
 
         tilecode_feature.setAttributes(all_attributes)
@@ -4070,8 +4079,8 @@ def point2quadkey(feature, resolution, feedback):
     cell_resolution = quadkey_cell.z
     cell_polygon = quadkey2geo(quadkey_id)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = graticule_dggs_metrics(
-        cell_polygon
+    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+        graticule_dggs_metrics(cell_polygon)
     )
 
     # Create a single QGIS feature
@@ -4111,7 +4120,7 @@ def point2quadkey(feature, resolution, feedback):
         cell_height,
         cell_area,
         cell_perimeter,
-        ]
+    ]
     all_attributes = original_attributes + new_attributes
 
     quadkey_feature.setAttributes(all_attributes)
@@ -4230,7 +4239,7 @@ def polyline2quadkey(feature, resolution, predicate=None, compact=None, feedback
         quadkey_feature = QgsFeature()
         quadkey_feature.setGeometry(cell_geometry)
 
-        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter  = ( 
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
             graticule_dggs_metrics(cell_polygon)
         )
         cell_resolution = tile.z
@@ -4362,7 +4371,7 @@ def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=
             cell_height,
             cell_area,
             cell_perimeter,
-            ]
+        ]
         all_attributes = original_attributes + new_attributes
 
         quadkey_feature.setAttributes(all_attributes)

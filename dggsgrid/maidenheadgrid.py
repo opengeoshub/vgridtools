@@ -127,13 +127,15 @@ class MaidenheadGrid(QObject):
                     ) = maidenhead.maidenGrid(maidenhead_id)
 
                     # Define the polygon based on the bounding box
-                    cell_polygon = Polygon([
-                        [min_lon_maiden, min_lat_maiden],  # Bottom-left corner
-                        [max_lon_maiden, min_lat_maiden],  # Bottom-right corner
-                        [max_lon_maiden, max_lat_maiden],  # Top-right corner
-                        [min_lon_maiden, max_lat_maiden],  # Top-left corner
-                        [min_lon_maiden, min_lat_maiden],  # Closing the polygon
-                    ])
+                    cell_polygon = Polygon(
+                        [
+                            [min_lon_maiden, min_lat_maiden],  # Bottom-left corner
+                            [max_lon_maiden, min_lat_maiden],  # Bottom-right corner
+                            [max_lon_maiden, max_lat_maiden],  # Top-right corner
+                            [min_lon_maiden, max_lat_maiden],  # Top-left corner
+                            [min_lon_maiden, min_lat_maiden],  # Closing the polygon
+                        ]
+                    )
 
                     geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     if epsg4326 != canvas_crs:
@@ -183,7 +185,9 @@ class MaidenheadGrid(QObject):
         try:
             self._extentTimer.stop()
             try:
-                self._extentTimer.timeout.disconnect(self._refreshMaidenheadGridOnExtent)
+                self._extentTimer.timeout.disconnect(
+                    self._refreshMaidenheadGridOnExtent
+                )
             except Exception:
                 pass
             try:
