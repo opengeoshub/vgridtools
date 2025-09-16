@@ -11,6 +11,7 @@ from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
 import traceback
+from math import log2, floor
 
 from ..utils import tr
 from ..utils.latlon import epsg4326
@@ -52,6 +53,11 @@ class QTGrid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             resolution = self._get_qtm_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | QTM resolution:{resolution}"
+                )   
             canvas_crs = self.canvas.mapSettings().destinationCrs()
 
             # Define bbox in canvas CRS
@@ -180,8 +186,6 @@ class QTGrid(QObject):
 
     def _get_qtm_resolution(self, scale):
         # Map scale to zoom, then to QTM resolution
-        from math import log2, floor
-
         zoom = 29.1402 - log2(scale)
         min_res, max_res, _ = settings.getResolution("QTM")
 

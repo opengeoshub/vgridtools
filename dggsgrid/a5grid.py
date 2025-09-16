@@ -54,8 +54,13 @@ class A5Grid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             resolution = self._get_a5_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | A5 resolution:{resolution}"
+                )
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if resolution <= 3:
+            if resolution <= 2:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
             else:
                 canvas_extent_bbox = box(
@@ -155,10 +160,11 @@ class A5Grid(QObject):
             return 10, 10
         if resolution == 3:
             return 5, 5
-        # finer than 3 halves each step
-        base_width = 5
-        factor = 0.5 ** (resolution - 3)
-        step = base_width * factor
+        if resolution > 3:
+            # finer than 3 halves each step
+            base_width = 5
+            factor = 0.5 ** (resolution - 3)
+            step = base_width * factor
         return step, step
 
     @pyqtSlot()

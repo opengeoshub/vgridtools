@@ -12,7 +12,8 @@ from qgis.PyQt.QtCore import pyqtSlot
 
 from pyproj import Geod
 import geopandas as gpd
-
+from math import log2, floor
+    
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 geod = Geod(ellps="WGS84")
 rhealpix_dggs = RHEALPixDGGS()
@@ -59,6 +60,11 @@ class RhealpixGrid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             resolution = self._get_rhealpix_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | rHEALPix resolution:{resolution}"
+                )   
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             if resolution <= 2:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
@@ -170,7 +176,7 @@ class RhealpixGrid(QObject):
 
     def _get_rhealpix_resolution(self, scale):
         # Map scale to zoom, then clamp to configured bounds
-        from math import log2, floor
+        from math import log2    
 
         zoom = 29.1402 - log2(scale)
         min_res, max_res, _ = settings.getResolution("rHEALPix")

@@ -9,11 +9,10 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 import h3
-from ..utils import tr
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.conversion.dggs2geo.h32geo import h32geo
-from math import log2, floor
+from math import log2    
 
 
 class H3Grid(QObject):
@@ -49,6 +48,11 @@ class H3Grid(QObject):
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             scale = self.canvas.scale()
             resolution = self._get_h3_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | H3 resolution:{resolution}"
+                )   
             if resolution == 0:
                 base_cells = h3.get_res0_cells()
                 for cell in base_cells:
@@ -120,9 +124,6 @@ class H3Grid(QObject):
 
     def _get_h3_resolution(self, scale):
         # Convert map scale to approximate web-mercator-like zoom
-        # zoom ~= 29.1402 - log2(scale)
-        from math import log2
-
         zoom = 29.1402 - log2(scale)
         if zoom <= 3.0:
             return 0

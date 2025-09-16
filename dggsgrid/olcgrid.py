@@ -45,6 +45,11 @@ class OLCGrid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             resolution = self._get_olc_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | OLC resolution:{resolution}"
+                )   
             canvas_crs = self.canvas.mapSettings().destinationCrs()        
             base_resolution = 2
             base_gdf = olc_grid_vgrid(base_resolution, verbose=False)

@@ -11,6 +11,7 @@ from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
 import traceback
+from math import log2, floor
 
 from ..utils import tr
 from ..utils.latlon import epsg4326
@@ -52,52 +53,48 @@ class TilecodeGrid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             resolution = self._get_tilecode_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | Tilecode resolution:{resolution}"
+                )   
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-
-            # Define bbox in canvas CRS
-            extent_polygon_canvas = box(
-                canvas_extent.xMinimum(),
-                canvas_extent.yMinimum(),
-                canvas_extent.xMaximum(),
-                canvas_extent.yMaximum(),
-            )
-
-            # Transform extent to EPSG:4326 if needed
-            if epsg4326 != canvas_crs:
-                extent_geom = QgsGeometry.fromWkt(extent_polygon_canvas.wkt)
-                trans_to_4326 = QgsCoordinateTransform(
-                    canvas_crs, epsg4326, QgsProject.instance()
-                )
-                extent_geom.transform(trans_to_4326)
-                rect = extent_geom.boundingBox()
-                min_lon, min_lat, max_lon, max_lat = (
-                    rect.xMinimum(),
-                    rect.yMinimum(),
-                    rect.xMaximum(),
-                    rect.yMaximum(),
-                )
+            if resolution <= 4:
+                min_lon, min_lat, max_lon, max_lat = -180.0, -85.05112878, 180.0, 85.051128780
             else:
-                min_lon, min_lat, max_lon, max_lat = (
-                    extent_polygon_canvas.bounds[0],
-                    extent_polygon_canvas.bounds[1],
-                    extent_polygon_canvas.bounds[2],
-                    extent_polygon_canvas.bounds[3],
+                # Define bbox in canvas CRS
+                extent_polygon_canvas = box(
+                    canvas_extent.xMinimum(),
+                    canvas_extent.yMinimum(),
+                    canvas_extent.xMaximum(),
+                    canvas_extent.yMaximum(),
                 )
 
-            # Generate tilecode cells
-            if extent_polygon_canvas:
-                # Generate grid within bounding box
-                tiles = list(
+                # Transform extent to EPSG:4326 if needed
+                if epsg4326 != canvas_crs:
+                    extent_geom = QgsGeometry.fromWkt(extent_polygon_canvas.wkt)
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    extent_geom.transform(trans_to_4326)
+                    rect = extent_geom.boundingBox()
+                    min_lon, min_lat, max_lon, max_lat = (
+                        rect.xMinimum(),
+                        rect.yMinimum(),
+                        rect.xMaximum(),
+                        rect.yMaximum(),
+                    )
+                else:
+                    min_lon, min_lat, max_lon, max_lat = (
+                        extent_polygon_canvas.bounds[0],
+                        extent_polygon_canvas.bounds[1],
+                        extent_polygon_canvas.bounds[2],
+                        extent_polygon_canvas.bounds[3],
+                    )
+
+            tiles = list(
                     mercantile.tiles(min_lon, min_lat, max_lon, max_lat, resolution)
                 )
-            else:
-                # Generate global grid when no extent is provided
-                tiles = list(
-                    mercantile.tiles(
-                        -180.0, -85.05112878, 180.0, 85.05112878, resolution
-                    )
-                )
-
             # Iterate over each tile to create features
             for tile in tiles:
                 # Get the tile's bounding box in geographic coordinates
@@ -114,13 +111,14 @@ class TilecodeGrid(QObject):
                     ]
                 )
 
-                geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 if epsg4326 != canvas_crs:
+                    cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     trans = QgsCoordinateTransform(
                         epsg4326, canvas_crs, QgsProject.instance()
                     )
-                    geom.transform(trans)
-                self.tilecode_marker.addGeometry(geom, None)
+                    cell_geom.transform(trans)
+                self.tilecode_marker.addGeometry(cell_geom, None)
 
             self.canvas.refresh()
 
@@ -139,9 +137,7 @@ class TilecodeGrid(QObject):
             self.tilecode_grid()
 
     def _get_tilecode_resolution(self, scale):
-        # Map scale to zoom, then to Tilecode resolution
-        from math import log2, floor
-
+        # Map scale to zoom, then to Tilecode resolution    
         zoom = 29.1402 - log2(scale)
         min_res, max_res, _ = settings.getResolution("Tilecode")
 

@@ -51,42 +51,12 @@ class GeohashGrid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             resolution = self._get_geohash_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | Geohash resolution:{resolution}"
+                )   
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-
-            # Define bbox in canvas CRS
-            extent_polygon_canvas = box(
-                canvas_extent.xMinimum(),
-                canvas_extent.yMinimum(),
-                canvas_extent.xMaximum(),
-                canvas_extent.yMaximum(),
-            )
-
-            # Transform extent to EPSG:4326 if needed
-            if epsg4326 != canvas_crs:
-                extent_geom = QgsGeometry.fromWkt(extent_polygon_canvas.wkt)
-                trans_to_4326 = QgsCoordinateTransform(
-                    canvas_crs, epsg4326, QgsProject.instance()
-                )
-                extent_geom.transform(trans_to_4326)
-                rect = extent_geom.boundingBox()
-                min_lon, min_lat, max_lon, max_lat = (
-                    rect.xMinimum(),
-                    rect.yMinimum(),
-                    rect.xMaximum(),
-                    rect.yMaximum(),
-                )
-            else:
-                min_lon, min_lat, max_lon, max_lat = (
-                    extent_polygon_canvas.bounds[0],
-                    extent_polygon_canvas.bounds[1],
-                    extent_polygon_canvas.bounds[2],
-                    extent_polygon_canvas.bounds[3],
-                )
-
-            # Create extent bbox for intersection testing
-            extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
-
-            # Initial geohashes covering the world at the lowest resolution
             initial_geohashes = [
                 "b",
                 "c",
@@ -121,10 +91,42 @@ class GeohashGrid(QObject):
                 "6",
                 "7",
             ]
+            if resolution <= 2:
+                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
+                extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
+                for gh in initial_geohashes:
+                    self._expand_geohash(gh, resolution, canvas_crs)
+            else:
+                # Define bbox in canvas CRS
+                canvas_extent_bbox  = box(
+                    canvas_extent.xMinimum(),
+                    canvas_extent.yMinimum(),
+                    canvas_extent.xMaximum(),
+                    canvas_extent.yMaximum(),
+                )
 
-            # Generate geohash cells
-            if extent_bbox:
-                # Generate grid within bounding box
+                # Transform extent to EPSG:4326 if needed
+                if epsg4326 != canvas_crs:
+                    extent_geom = QgsGeometry.fromWkt(canvas_extent_bbox.wkt)
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    extent_geom.transform(trans_to_4326)
+                    rect = extent_geom.boundingBox()
+                    min_lon, min_lat, max_lon, max_lat = (
+                        rect.xMinimum(),
+                        rect.yMinimum(),
+                        rect.xMaximum(),
+                        rect.yMaximum(),
+                    )
+                else:
+                    min_lon, min_lat, max_lon, max_lat = (
+                        canvas_extent_bbox.bounds[0],
+                        canvas_extent_bbox.bounds[1],
+                        canvas_extent_bbox.bounds[2],
+                        canvas_extent_bbox.bounds[3],
+                    )
+                extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
                 intersected_geohashes = []
                 for gh in initial_geohashes:
                     cell_polygon = geohash2geo(gh)
@@ -134,12 +136,7 @@ class GeohashGrid(QObject):
                 # Expand each intersected geohash to the target resolution
                 for gh in intersected_geohashes:
                     self._expand_geohash_within_extent(
-                        gh, resolution, extent_bbox, canvas_crs
-                    )
-            else:
-                # Generate global grid when no extent is provided
-                for gh in initial_geohashes:
-                    self._expand_geohash(gh, resolution, canvas_crs)
+                        gh, resolution, extent_bbox, canvas_crs)
 
             self.canvas.refresh()
 
@@ -151,13 +148,13 @@ class GeohashGrid(QObject):
         """Recursive function to expand geohashes to target resolution and draw them."""
         if len(gh) == target_length:
             cell_polygon = geohash2geo(gh)
-            geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(
                     epsg4326, canvas_crs, QgsProject.instance()
                 )
-                geom.transform(trans)
-            self.geohash_marker.addGeometry(geom, None)
+                cell_geom.transform(trans)
+            self.geohash_marker.addGeometry(cell_geom, None)
             return
 
         # Expand the geohash with all possible characters
@@ -171,13 +168,13 @@ class GeohashGrid(QObject):
             return
 
         if len(gh) == target_length:
-            geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             if epsg4326 != canvas_crs:
                 trans = QgsCoordinateTransform(
                     epsg4326, canvas_crs, QgsProject.instance()
                 )
-                geom.transform(trans)
-            self.geohash_marker.addGeometry(geom, None)
+                cell_geom.transform(trans)
+            self.geohash_marker.addGeometry(cell_geom, None)
             return
 
         # If not at the target length, expand the geohash with all possible characters

@@ -57,7 +57,7 @@
             <item row="0" column="0">
              <widget class="QCheckBox" name="zoomLevelCheckBox">
               <property name="text">
-               <string>Display zoom level on status bar</string>
+               <string>Display zoom level/ DGGS resolution on status bar</string>
               </property>
               <property name="checked">
                <bool>true</bool>

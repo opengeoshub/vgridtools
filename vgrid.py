@@ -72,7 +72,6 @@ from .dggsgrid.olcgrid import OLCGrid
 from .dggsgrid.geohasgrid import GeohashGrid
 from .dggsgrid.tilecodegrid import TilecodeGrid
 from .dggsgrid.maidenheadgrid import MaidenheadGrid
-from .dggsgrid.garsgrid import GARSGrid
 from math import log2
 
 exprs = (
@@ -126,7 +125,6 @@ class VgridTools(object):
         self.geohashgrid = GeohashGrid(self, self.canvas, self.iface)
         self.tilecodegrid = TilecodeGrid(self, self.canvas, self.iface)
         self.maidenheadgrid = MaidenheadGrid(self, self.canvas, self.iface)
-        self.garsgrid = GARSGrid(self, self.canvas, self.iface)
 
         self.Vgrid_menu = None
         self.toolbar = self.iface.addToolBar(tr("Vgrid Toolbar"))
@@ -148,7 +146,7 @@ class VgridTools(object):
         zoom = 29.1402 - log2(scale)
         if settings.zoomLevel:
             self.iface.mainWindow().statusBar().showMessage(
-                "Vgrid zoom Level {:.2f}".format(zoom)
+                "Zoom Level: {:.2f}".format(zoom)
             )
 
     def initProcessing(self):
@@ -514,23 +512,6 @@ class VgridTools(object):
         )
         self.maidenhead_widget_action.setDefaultWidget(maidenhead_checkbox)
         self.graticule_based_dggs_menu.addAction(self.maidenhead_widget_action)
-
-        # GARS (Graticule-based DGGS)
-        # icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        # self.gars_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
-        # gars_checkbox = QCheckBox("GARS")
-        # gars_checkbox.setIcon(icon)
-        # gars_checkbox.setChecked(False)
-        # gars_checkbox.toggled.connect(
-        #     lambda checked: (
-        #         self.garsgrid.enable_gars(checked),
-        #         self.garsgrid.gars_grid(),
-        #     )
-        #     if checked
-        #     else self.garsgrid.enable_gars(False)
-        # )
-        # self.gars_widget_action.setDefaultWidget(gars_checkbox)
-        # self.graticule_based_dggs_menu.addAction(self.gars_widget_action)
 
         # Add Binning actions
         # H3 Bin

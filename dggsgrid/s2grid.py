@@ -10,6 +10,8 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
+from math import log2, floor
+
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.utils.geometry import s2_cell_to_polygon
@@ -51,6 +53,11 @@ class S2Grid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             resolution = self._get_s2_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | S2 resolution:{resolution}"
+                )   
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             coverer = s2.RegionCoverer()
             coverer.min_level = resolution
@@ -124,15 +131,10 @@ class S2Grid(QObject):
 
     def _get_s2_resolution(self, scale):
         # Map scale to approximate zoom, then to S2 resolution by flooring zoom
-        from math import log2, floor
-
         zoom = 29.1402 - log2(scale)
-        res = int(floor(zoom))
-
         # Respect configured bounds
         min_res, max_res, _ = settings.getResolution("S2")
-        if res < min_res:
-            return min_res
+        res = max(min_res, int(floor(zoom)))
         if res > max_res:
             return max_res
         return res

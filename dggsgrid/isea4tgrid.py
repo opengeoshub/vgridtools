@@ -11,8 +11,8 @@ from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
 import platform
+from math import log2, floor
 
-from ..utils import tr
 from ..utils.latlon import epsg4326
 from ..settings import settings
 
@@ -25,12 +25,7 @@ if platform.system() == "Windows":
         get_isea4t_children_cells,
         get_isea4t_children_cells_within_bbox,
     )
-    from vgrid.utils.geometry import (
-        isea4t_cell_to_polygon,
-        fix_isea4t_antimeridian_cells,
-    )
     from vgrid.utils.constants import ISEA4T_BASE_CELLS, ISEA4T_RES_ACCURACY_DICT
-    from vgrid.utils.antimeridian import fix_polygon
     from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
     isea4t_dggs = Eaggr(Model.ISEA4T)
 
@@ -69,6 +64,11 @@ class ISEA4TGrid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             resolution = self._get_isea4t_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | ISEA4T resolution:{resolution}"
+                )   
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             
             if resolution <= 3:
@@ -158,7 +158,6 @@ class ISEA4TGrid(QObject):
 
     def _get_isea4t_resolution(self, scale):
         # Map scale to zoom, then to ISEA4T resolution
-        from math import log2, floor
         zoom = 29.1402 - log2(scale)
         min_res, max_res, _ = settings.getResolution("ISEA4T")
         res = max(min_res, int(floor(zoom)))

@@ -10,7 +10,7 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
-import traceback
+from math import log2, floor
 
 from ..utils import tr  
 from ..utils.latlon import epsg4326
@@ -20,7 +20,6 @@ from ..settings import settings
 from dggal import *
 from vgrid.utils.geometry import dggal_to_geo
 from vgrid.utils.constants import DGGAL_TYPES
-from vgrid.utils.io import validate_dggal_resolution
 
 # Initialize dggal application
 app = Application(appGlobals=globals())
@@ -32,7 +31,7 @@ class DGGALIVEA9RGrid(QObject):
         super(DGGALIVEA9RGrid, self).__init__()
         self.canvas = canvas
         self.vgridtools = vgridtools
-        self.iface = iface
+        self.iface = iface      
 
         self.dggal_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.dggal_marker.setStrokeColor(settings.dggal_ivea9rColor)
@@ -64,6 +63,11 @@ class DGGALIVEA9RGrid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             resolution = self._get_dggal_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | DGGAL IVEA9R resolution:{resolution}"
+                )   
             canvas_crs = self.canvas.mapSettings().destinationCrs()
 
             # Define bbox in canvas CRS
@@ -96,11 +100,8 @@ class DGGALIVEA9RGrid(QObject):
                     canvas_extent_bbox.bounds[3],
                 )
 
-            # Validate resolution for the selected DGGS type
-            resolution = validate_dggal_resolution(self.dggs_type, resolution)
-
             # Create geo extent from canvas extent
-            geo_extent = wholeWorld  # Default to whole world
+            geo_extent = wholeWorld
             if min_lat < 90 and min_lat > -90 and max_lat < 90 and max_lat > -90:
                 ll = GeoPoint(min_lat, min_lon)
                 ur = GeoPoint(max_lat, max_lon)
@@ -115,16 +116,13 @@ class DGGALIVEA9RGrid(QObject):
                     zone_id = self.dggrs.getZoneTextID(zone)
                     # Convert zone to geometry using dggal_to_geo
                     cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
-
-                    # Check if cell intersects with the canvas extent
-                    if cell_polygon.intersects(canvas_extent_bbox):
-                        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
-                        if epsg4326 != canvas_crs:
-                            trans = QgsCoordinateTransform(
-                                epsg4326, canvas_crs, QgsProject.instance()
-                            )
-                            cell_geom.transform(trans)
-                        self.dggal_marker.addGeometry(cell_geom, None)
+                    cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    if epsg4326 != canvas_crs:
+                        trans = QgsCoordinateTransform(
+                            epsg4326, canvas_crs, QgsProject.instance()
+                        )
+                        cell_geom.transform(trans)
+                    self.dggal_marker.addGeometry(cell_geom, None)
                 except Exception:
                     continue
 
@@ -145,7 +143,6 @@ class DGGALIVEA9RGrid(QObject):
 
     def _get_dggal_resolution(self, scale):
         # Map scale to zoom, then to DGGAL resolution
-        from math import log2, floor
 
         zoom = 29.1402 - log2(scale)
         # DGGAL resolution mapping - similar to other grids

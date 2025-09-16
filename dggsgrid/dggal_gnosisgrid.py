@@ -10,9 +10,8 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
-import traceback
+from math import log2, floor
 
-from ..utils import tr
 from ..utils.latlon import epsg4326
 from ..settings import settings
 
@@ -20,7 +19,7 @@ from ..settings import settings
 from dggal import *
 from vgrid.utils.geometry import dggal_to_geo
 from vgrid.utils.constants import DGGAL_TYPES
-from vgrid.utils.io import validate_dggal_resolution
+from vgrid.utils.io import validate_coordinate
 
 # Initialize dggal application
 app = Application(appGlobals=globals())
@@ -64,8 +63,13 @@ class DGGALGnosisGrid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             resolution = self._get_dggal_resolution(scale)
+            if settings.zoomLevel:
+                zoom = 29.1402 - log2(scale)
+                self.iface.mainWindow().statusBar().showMessage(
+                    f"Zoom Level: {zoom:.2f} | DGGAL GNOSIS resolution:{resolution}"
+                )
+           
             canvas_crs = self.canvas.mapSettings().destinationCrs()
-
             # Define bbox in canvas CRS
             canvas_extent_bbox = box(
                 canvas_extent.xMinimum(),
@@ -95,12 +99,8 @@ class DGGALGnosisGrid(QObject):
                     canvas_extent_bbox.bounds[2],
                     canvas_extent_bbox.bounds[3],
                 )
-
-            # Validate resolution for the selected DGGS type
-            resolution = validate_dggal_resolution(self.dggs_type, resolution)
-            # Create geo extent from canvas extent
-            geo_extent = wholeWorld  # Default to whole world
-            if min_lat < 90 and min_lat > -90 and max_lat < 90 and max_lat > -90:
+            geo_extent = wholeWorld
+            if min_lat < 90 and min_lat > -90 and max_lat < 90 and max_lat > -90:          
                 ll = GeoPoint(min_lat, min_lon)
                 ur = GeoPoint(max_lat, max_lon)
                 geo_extent = GeoExtent(ll, ur)
@@ -114,22 +114,21 @@ class DGGALGnosisGrid(QObject):
                     # Convert zone to geometry using dggal_to_geo
                     cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
                     # Check if cell intersects with the canvas extent
-                    if cell_polygon.intersects(canvas_extent_bbox):
-                        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
-                        if epsg4326 != canvas_crs:
-                            trans = QgsCoordinateTransform(
-                                epsg4326, canvas_crs, QgsProject.instance()
-                            )
-                            cell_geom.transform(trans)
-                        self.dggal_marker.addGeometry(cell_geom, None)
+                    cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    if epsg4326 != canvas_crs:
+                        trans = QgsCoordinateTransform(
+                            epsg4326, canvas_crs, QgsProject.instance()
+                        )
+                        cell_geom.transform(trans)
+                    self.dggal_marker.addGeometry(cell_geom, None)
                 except Exception:
                     continue
 
             self.canvas.refresh()
 
         except Exception as e:
-            print(e)
             return
+    
 
     def enable_dggal(self, enabled: bool):
         self.dggal_enabled = bool(enabled)
@@ -142,8 +141,6 @@ class DGGALGnosisGrid(QObject):
 
     def _get_dggal_resolution(self, scale):
         # Map scale to zoom, then to DGGAL resolution
-        from math import log2, floor
-
         zoom = 29.1402 - log2(scale)
         # DGGAL resolution mapping - similar to other grids
         min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
