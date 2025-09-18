@@ -79,7 +79,7 @@ from vgrid.generator.geohashgrid import expand_geohash_bbox
 from vgrid.utils.constants import (
     ISEA4T_RES_ACCURACY_DICT,
     ISEA3H_RES_ACCURACY_DICT,
-    INITIAL_GEOHASHES,
+    INITIAL_GEOHASHES,    
 )
 
 if platform.system() == "Windows":

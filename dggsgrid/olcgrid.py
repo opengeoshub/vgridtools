@@ -12,9 +12,10 @@ from qgis.PyQt.QtCore import pyqtSlot
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
-from math import log2, floor
+from math import log2
 # OLC imports
 from vgrid.generator.olcgrid import olc_grid as olc_grid_vgrid, olc_refine_cell
+from vgrid.utils.io import validate_coordinate
 
 class OLCGrid(QObject):
     def __init__(self, vgridtools, canvas, iface):
@@ -41,8 +42,12 @@ class OLCGrid(QObject):
             # Clear previous grid before drawing a new one
             self.removeMarker()
             self.olc_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.olc_marker.setStrokeColor(settings.olcColor)
+            self.olc_marker.setWidth(settings.gridWidth)
 
             canvas_extent = self.canvas.extent()
+            canvas_crs = QgsProject.instance().crs()        
+
             scale = self.canvas.scale()
             resolution = self._get_olc_resolution(scale)
             if settings.zoomLevel:
@@ -50,54 +55,39 @@ class OLCGrid(QObject):
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | OLC resolution:{resolution}"
                 )   
-            canvas_crs = self.canvas.mapSettings().destinationCrs()        
+
             base_resolution = 2
             base_gdf = olc_grid_vgrid(base_resolution, verbose=False)
             if resolution == 2:
-                # Use existing base_gdf geometry instead of regenerating
                 for idx, base_cell in base_gdf.iterrows():
                     cell_polygon = base_cell["geometry"]
                     geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     if epsg4326 != canvas_crs:
-                        trans = QgsCoordinateTransform(
+                        trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        geom.transform(trans)
-                    self.olc_marker.addGeometry(geom, None)                
+                        geom.transform(trans_to_canvas)
+                    self.olc_marker.addGeometry(geom, None)     
             else:
-                # Define bbox in canvas CRS
-                canvas_extent_bbox = box(
+                min_lon, min_lat, max_lon, max_lat = (
                     canvas_extent.xMinimum(),
                     canvas_extent.yMinimum(),
                     canvas_extent.xMaximum(),
                     canvas_extent.yMaximum(),
                 )
-
-                # Transform extent to EPSG:4326 if needed
                 if epsg4326 != canvas_crs:
-                    extent_geom = QgsGeometry.fromWkt(canvas_extent_bbox.wkt)
-                    trans_to_4326 = QgsCoordinateTransform(
-                        canvas_crs, epsg4326, QgsProject.instance()
-                    )
-                    extent_geom.transform(trans_to_4326)
-                    rect = extent_geom.boundingBox()
+                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
+                    transformed_extent = trans_to_4326.transform(canvas_extent)              
                     min_lon, min_lat, max_lon, max_lat = (
-                        rect.xMinimum(),
-                        rect.yMinimum(),
-                        rect.xMaximum(),
-                        rect.yMaximum(),
-                    )
-                else:
-                    min_lon, min_lat, max_lon, max_lat = (
-                        canvas_extent_bbox.bounds[0],
-                        canvas_extent_bbox.bounds[1],
-                        canvas_extent_bbox.bounds[2],
-                        canvas_extent_bbox.bounds[3],
-                    )
-                # Create extent bbox for intersection testing
+                        transformed_extent.xMinimum(),
+                        transformed_extent.yMinimum(),
+                        transformed_extent.xMaximum(),
+                        transformed_extent.yMaximum(),
+                    )       
+
+                min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)  
                 extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
                 # Generate grid within bounding box using seed cell refinement
-                min_lon, min_lat, max_lon, max_lat = extent_bbox.bounds               
                 seed_cells = []
                 for idx, base_cell in base_gdf.iterrows():
                     base_cell_poly = base_cell["geometry"]
@@ -140,17 +130,15 @@ class OLCGrid(QObject):
                     cell_polygon = record["geometry"]
                     geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     if epsg4326 != canvas_crs:
-                        trans = QgsCoordinateTransform(
+                        trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        geom.transform(trans)
+                        geom.transform(trans_to_canvas)
                     self.olc_marker.addGeometry(geom, None)
             self.canvas.refresh()
               
         except Exception as e:
-            print(e)
             return
-
 
 
     def enable_olc(self, enabled: bool):

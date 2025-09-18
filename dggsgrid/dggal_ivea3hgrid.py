@@ -12,9 +12,9 @@ from qgis.PyQt.QtCore import pyqtSlot
 
 from math import log2, floor
 
-from ..utils import tr
 from ..utils.latlon import epsg4326
 from ..settings import settings
+from vgrid.utils.io import validate_coordinate
 
 # DGGAL imports
 from dggal import *
@@ -59,8 +59,12 @@ class DGGALIVEA3HGrid(QObject):
             # Clear previous grid before drawing a new one
             self.removeMarker()
             self.dggal_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.dggal_marker.setStrokeColor(settings.dggal_ivea3hColor)
+            self.dggal_marker.setWidth(settings.gridWidth)
 
             canvas_extent = self.canvas.extent()
+            canvas_crs = QgsProject.instance().crs()
+
             scale = self.canvas.scale()
             resolution = self._get_dggal_resolution(scale)  
             if settings.zoomLevel:
@@ -68,63 +72,48 @@ class DGGALIVEA3HGrid(QObject):
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | DGGAL IVEA3H resolution:{resolution}"
                 )   
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-
-            # Define bbox in canvas CRS
-            canvas_extent_bbox = box(
-                canvas_extent.xMinimum(),
-                canvas_extent.yMinimum(),
-                canvas_extent.xMaximum(),
-                canvas_extent.yMaximum(),
-            )
-
-            # Transform extent to EPSG:4326 if needed
-            if epsg4326 != canvas_crs:
-                extent_geom = QgsGeometry.fromWkt(canvas_extent_bbox.wkt)
-                trans_to_4326 = QgsCoordinateTransform(
-                    canvas_crs, epsg4326, QgsProject.instance()
-                )
-                extent_geom.transform(trans_to_4326)
-                rect = extent_geom.boundingBox()
-                min_lon, min_lat, max_lon, max_lat = (
-                    rect.xMinimum(),
-                    rect.yMinimum(),
-                    rect.xMaximum(),
-                    rect.yMaximum(),
-                )
+            
+            if resolution <=3:
+                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
             else:
                 min_lon, min_lat, max_lon, max_lat = (
-                    canvas_extent_bbox.bounds[0],
-                    canvas_extent_bbox.bounds[1],
-                    canvas_extent_bbox.bounds[2],
-                    canvas_extent_bbox.bounds[3],
-                )
+                    canvas_extent.xMinimum(),
+                    canvas_extent.yMinimum(),
+                    canvas_extent.xMaximum(),
+                    canvas_extent.yMaximum(),
+                )   
+                 # Transform extent to EPSG:4326 if needed
+                if epsg4326 != canvas_crs:
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(canvas_extent)              
+                    min_lon, min_lat, max_lon, max_lat = (
+                        transformed_extent.xMinimum(),
+                        transformed_extent.yMinimum(),
+                        transformed_extent.xMaximum(),
+                        transformed_extent.yMaximum(),
+                    )       
 
-            # Validate resolution for the selected DGGS type
-
-            # Create geo extent from canvas extent
-            geo_extent = wholeWorld
-            if  min_lat < 90 and min_lat > -90 and max_lat < 90 and max_lat > -90:
-                ll = GeoPoint(min_lat, min_lon)
-                ur = GeoPoint(max_lat, max_lon)
-                geo_extent = GeoExtent(ll, ur)
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)  
+            ll = GeoPoint(min_lat, min_lon)
+            ur = GeoPoint(max_lat, max_lon)
+            geo_extent = GeoExtent(ll, ur)
 
             # Get zones for the current extent and resolution
             zones = self.dggrs.listZones(resolution, geo_extent)
-
             # Draw cells
             for zone in zones:
                 try:
                     zone_id = self.dggrs.getZoneTextID(zone)
                     # Convert zone to geometry using dggal_to_geo
                     cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
-                    # Check if cell intersects with the canvas extent
                     cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     if epsg4326 != canvas_crs:
-                        trans = QgsCoordinateTransform(
+                        trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        cell_geom.transform(trans)
+                        cell_geom.transform(trans_to_canvas)
                     self.dggal_marker.addGeometry(cell_geom, None)
                 except Exception:
                     continue
@@ -132,7 +121,6 @@ class DGGALIVEA3HGrid(QObject):
             self.canvas.refresh()
 
         except Exception as e:
-            print(e)
             return
 
     def enable_dggal(self, enabled: bool):

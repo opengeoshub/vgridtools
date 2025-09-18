@@ -69,7 +69,7 @@ class Settings:
 
         self.dggal_gnosisRes = int(qset.value("/vgrid/dggal_gnosisRes", 16))
         self.dggal_gnosisColor = QColor(
-            qset.value("/vgrid/dggal_gnosisColor", "#96acc7")
+            qset.value("/vgrid/dggal_gnosisColor", "#00008B")
         )
         self.dggal_gnosisColor.setAlpha(
             int(qset.value("/vgrid/dggal_gnosisColorOpacity", 255))
@@ -77,7 +77,7 @@ class Settings:
 
         self.dggal_isea3hRes = int(qset.value("/vgrid/dggal_isea3hRes", 21))
         self.dggal_isea3hColor = QColor(
-            qset.value("/vgrid/dggal_isea3hColor", "#96acc7")
+            qset.value("/vgrid/dggal_isea3hColor", "#00008B")
         )
         self.dggal_isea3hColor.setAlpha(
             int(qset.value("/vgrid/dggal_isea3hColorOpacity", 255))
@@ -85,7 +85,7 @@ class Settings:
 
         self.dggal_isea9rRes = int(qset.value("/vgrid/dggal_isea9rRes", 10))
         self.dggal_isea9rColor = QColor(
-            qset.value("/vgrid/dggal_isea9rColor", "#96acc7")
+            qset.value("/vgrid/dggal_isea9rColor", "#00008B")
         )
         self.dggal_isea9rColor.setAlpha(
             int(qset.value("/vgrid/dggal_isea9rColorOpacity", 255))
@@ -93,7 +93,7 @@ class Settings:
 
         self.dggal_ivea3hRes = int(qset.value("/vgrid/dggal_ivea3hRes", 21))
         self.dggal_ivea3hColor = QColor(
-            qset.value("/vgrid/dggal_ivea3hColor", "#96acc7")
+            qset.value("/vgrid/dggal_ivea3hColor", "#00008B")
         )
         self.dggal_ivea3hColor.setAlpha(
             int(qset.value("/vgrid/dggal_ivea3hColorOpacity", 255))
@@ -101,7 +101,7 @@ class Settings:
 
         self.dggal_ivea9rRes = int(qset.value("/vgrid/dggal_ivea9rRes", 10))
         self.dggal_ivea9rColor = QColor(
-            qset.value("/vgrid/dggal_ivea9rColor", "#96acc7")
+            qset.value("/vgrid/dggal_ivea9rColor", "#00008B")
         )
         self.dggal_ivea9rColor.setAlpha(
             int(qset.value("/vgrid/dggal_ivea9rColorOpacity", 255))
@@ -109,7 +109,7 @@ class Settings:
 
         self.dggal_rtea3hRes = int(qset.value("/vgrid/dggal_rtea3hRes", 21))
         self.dggal_rtea3hColor = QColor(
-            qset.value("/vgrid/dggal_rtea3hColor", "#96acc7")
+            qset.value("/vgrid/dggal_rtea3hColor", "#00008B")
         )
         self.dggal_rtea3hColor.setAlpha(
             int(qset.value("/vgrid/dggal_rtea3hColorOpacity", 255))
@@ -117,7 +117,7 @@ class Settings:
 
         self.dggal_rtea9rRes = int(qset.value("/vgrid/dggal_rtea9rRes", 10))
         self.dggal_rtea9rColor = QColor(
-            qset.value("/vgrid/dggal_rtea9rColor", "#96acc7")
+            qset.value("/vgrid/dggal_rtea9rColor", "#00008B")
         )
         self.dggal_rtea9rColor.setAlpha(
             int(qset.value("/vgrid/dggal_rtea9rColorOpacity", 255))
@@ -125,7 +125,7 @@ class Settings:
 
         self.dggal_rhealpixRes = int(qset.value("/vgrid/dggal_rhealpixRes", 10))
         self.dggal_rhealpixColor = QColor(
-            qset.value("/vgrid/dggal_rhealpixColor", "#96acc7")
+            qset.value("/vgrid/dggal_rhealpixColor", "#00008B")
         )
         self.dggal_rhealpixColor.setAlpha(
             int(qset.value("/vgrid/dggal_rhealpixColorOpacity", 255))
@@ -272,35 +272,35 @@ class SettingsWidget(QDialog, FORM_CLASS):
 
         # DGGAL_GNOSIS
         self.dggal_gnosisResSpinBox.setValue(16)
-        self.dggal_gnosisColorButton.setColor(QColor("#96acc7"))
+        self.dggal_gnosisColorButton.setColor(QColor("#00008B"))
 
         # DGGAL_ISEA3H
         self.dggal_isea3hResSpinBox.setValue(21)
-        self.dggal_isea3hColorButton.setColor(QColor("#96acc7"))
+        self.dggal_isea3hColorButton.setColor(QColor("#00008B"))
 
         # DGGAL_ISEA9R
         self.dggal_isea9rResSpinBox.setValue(10)
-        self.dggal_isea9rColorButton.setColor(QColor("#96acc7"))
+        self.dggal_isea9rColorButton.setColor(QColor("#00008B"))
 
         # DGGAL_IVEA3H
         self.dggal_ivea3hResSpinBox.setValue(21)
-        self.dggal_ivea3hColorButton.setColor(QColor("#96acc7"))
+        self.dggal_ivea3hColorButton.setColor(QColor("#00008B"))
 
         # DGGAL_IVEA9R
         self.dggal_ivea9rResSpinBox.setValue(10)
-        self.dggal_ivea9rColorButton.setColor(QColor("#96acc7"))
+        self.dggal_ivea9rColorButton.setColor(QColor("#00008B"))
 
         # DGGAL_RTEA3H
         self.dggal_rtea3hResSpinBox.setValue(21)
-        self.dggal_rtea3hColorButton.setColor(QColor("#96acc7"))
+        self.dggal_rtea3hColorButton.setColor(QColor("#00008B"))
 
         # DGGAL_RTEA9R
         self.dggal_rtea9rResSpinBox.setValue(10)
-        self.dggal_rtea9rColorButton.setColor(QColor("#96acc7"))
+        self.dggal_rtea9rColorButton.setColor(QColor("#00008B"))
 
         # DGGAL_RHEALPIX
         self.dggal_rhealpixResSpinBox.setValue(10)
-        self.dggal_rhealpixColorButton.setColor(QColor("#96acc7"))
+        self.dggal_rhealpixColorButton.setColor(QColor("#00008B"))
 
         # QTM
         self.qtmResSpinBox.setValue(18)

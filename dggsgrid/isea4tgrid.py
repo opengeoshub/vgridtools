@@ -15,6 +15,7 @@ from math import log2, floor
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
+from vgrid.utils.io import validate_coordinate
 
 if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
@@ -60,8 +61,12 @@ class ISEA4TGrid(QObject):
             # Clear previous grid before drawing a new one
             self.removeMarker()
             self.isea4t_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.isea4t_marker.setStrokeColor(settings.isea4tColor)
+            self.isea4t_marker.setWidth(settings.gridWidth)
 
             canvas_extent = self.canvas.extent()
+            canvas_crs = QgsProject.instance().crs()
+
             scale = self.canvas.scale()
             resolution = self._get_isea4t_resolution(scale)
             if settings.zoomLevel:
@@ -69,7 +74,6 @@ class ISEA4TGrid(QObject):
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | ISEA4T resolution:{resolution}"
                 )   
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
             
             if resolution <= 3:
                 isea4t_cells = get_isea4t_children_cells(ISEA4T_BASE_CELLS, resolution)
@@ -79,14 +83,14 @@ class ISEA4TGrid(QObject):
                     cell_polygon = isea4t2geo(isea4t_id)
                     cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     if epsg4326 != canvas_crs:
-                        trans = QgsCoordinateTransform(
+                        trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        cell_geom.transform(trans)
+                        cell_geom.transform(trans_to_canvas)
                     self.isea4t_marker.addGeometry(cell_geom, None)
             else:
                 # Define bbox in canvas CRS
-                canvas_extent_bbox = box(
+                min_lon, min_lat, max_lon, max_lat = (
                     canvas_extent.xMinimum(),
                     canvas_extent.yMinimum(),
                     canvas_extent.xMaximum(),
@@ -95,26 +99,16 @@ class ISEA4TGrid(QObject):
 
                 # Transform extent to EPSG:4326 if needed
                 if epsg4326 != canvas_crs:
-                    extent_geom = QgsGeometry.fromWkt(canvas_extent_bbox.wkt)
-                    trans_to_4326 = QgsCoordinateTransform(
-                        canvas_crs, epsg4326, QgsProject.instance()
-                    )
-                    extent_geom.transform(trans_to_4326)
-                    rect = extent_geom.boundingBox()
+                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
+                    transformed_extent = trans_to_4326.transform(canvas_extent)              
                     min_lon, min_lat, max_lon, max_lat = (
-                        rect.xMinimum(),
-                        rect.yMinimum(),
-                        rect.xMaximum(),
-                        rect.yMaximum(),
-                    )
-                else:
-                    min_lon, min_lat, max_lon, max_lat = (
-                        canvas_extent_bbox.bounds[0],
-                        canvas_extent_bbox.bounds[1],
-                        canvas_extent_bbox.bounds[2],
-                        canvas_extent_bbox.bounds[3],
-                    )
+                        transformed_extent.xMinimum(),
+                        transformed_extent.yMinimum(),
+                        transformed_extent.xMaximum(),
+                        transformed_extent.yMaximum(),
+                    )       
 
+                min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)  
                 extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
 
                 accuracy = ISEA4T_RES_ACCURACY_DICT.get(resolution)
@@ -134,10 +128,10 @@ class ISEA4TGrid(QObject):
                         cell_polygon = isea4t2geo(cell_id)
                         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                         if epsg4326 != canvas_crs:
-                            trans = QgsCoordinateTransform(
+                            trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
                             )
-                            cell_geom.transform(trans)
+                            cell_geom.transform(trans_to_canvas)
                         self.isea4t_marker.addGeometry(cell_geom, None)
                     except Exception:
                         continue

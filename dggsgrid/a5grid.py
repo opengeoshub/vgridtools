@@ -15,7 +15,7 @@ import traceback
 from ..utils import tr
 from ..utils.latlon import epsg4326
 from ..settings import settings
-
+from vgrid.utils.io import validate_coordinate
 # A5 converters
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.latlon2dggs import latlon2a5
@@ -50,8 +50,12 @@ class A5Grid(QObject):
             # Clear previous grid before drawing a new one
             self.removeMarker()
             self.a5_marker.reset(QgsWkbTypes.PolygonGeometry)
-
+            self.a5_marker.setStrokeColor(settings.a5Color)
+            self.a5_marker.setWidth(settings.gridWidth)
+            
             canvas_extent = self.canvas.extent()
+            canvas_crs = QgsProject.instance().crs()
+
             scale = self.canvas.scale()
             resolution = self._get_a5_resolution(scale)
             if settings.zoomLevel:
@@ -59,40 +63,29 @@ class A5Grid(QObject):
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | A5 resolution:{resolution}"
                 )
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            
             if resolution <= 2:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
             else:
-                canvas_extent_bbox = box(
-                    canvas_extent.xMinimum(),
-                    canvas_extent.yMinimum(),
-                    canvas_extent.xMaximum(),
-                    canvas_extent.yMaximum(),
+                min_lon, min_lat, max_lon, max_lat = (
+                    canvas_extent.xMinimum(),  
+                    canvas_extent.yMinimum(), 
+                    canvas_extent.xMaximum(),  
+                    canvas_extent.yMaximum(),  
                 )
-
                 # Transform extent to EPSG:4326 if needed
                 if epsg4326 != canvas_crs:
-                    # Build QgsGeometry rectangle and transform
-                    extent_geom = QgsGeometry.fromWkt(canvas_extent_bbox.wkt)
-                    trans_to_4326 = QgsCoordinateTransform(
-                        canvas_crs, epsg4326, QgsProject.instance()
-                    )
-                    extent_geom.transform(trans_to_4326)
-                    rect = extent_geom.boundingBox()
+                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
+                    transformed_extent = trans_to_4326.transform(canvas_extent)              
                     min_lon, min_lat, max_lon, max_lat = (
-                        rect.xMinimum(),
-                        rect.yMinimum(),
-                        rect.xMaximum(),
-                        rect.yMaximum(),
-                    )
-                else:
-                    min_lon, min_lat, max_lon, max_lat = (
-                        canvas_extent_bbox.bounds[0],
-                        canvas_extent_bbox.bounds[1],
-                        canvas_extent_bbox.bounds[2],
-                        canvas_extent_bbox.bounds[3],
-                    )
-
+                        transformed_extent.xMinimum(),
+                        transformed_extent.yMinimum(),
+                        transformed_extent.xMaximum(),
+                        transformed_extent.yMaximum(),
+                    )     
+            
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)  
+        
             # Determine lon/lat step based on resolution (aligned with processing a5)
             lon_width, lat_width = self._resolution_to_step(resolution)
             # Iterate over bbox grid
@@ -115,10 +108,10 @@ class A5Grid(QObject):
                             continue
                         geom = QgsGeometry.fromWkt(poly.wkt)
                         if epsg4326 != canvas_crs:
-                            trans = QgsCoordinateTransform(
+                            trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
                             )
-                            geom.transform(trans)
+                            geom.transform(trans_to_canvas)
                         self.a5_marker.addGeometry(geom, None)
                     except Exception:
                         pass

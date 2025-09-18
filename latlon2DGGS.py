@@ -2485,7 +2485,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
 
     def showSettings(self):
-        self.settings.showTab(0)
+        self.settings.showTab(1)
 
     def zoomTo(self):
         text = self.wgs84LineEdit.text().strip()

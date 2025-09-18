@@ -23,8 +23,8 @@ __revision__ = "$Format:%H$"
 import webbrowser
 import os
 from qgis.core import QgsApplication, QgsExpression
-from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtCore import Qt, QTimer, QUrl, QTranslator, QCoreApplication
+from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtCore import Qt, QTimer, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 import processing
 from qgis.PyQt.QtWidgets import (
@@ -32,13 +32,9 @@ from qgis.PyQt.QtWidgets import (
     QMenu,
     QWidgetAction,
     QCheckBox,
-    QApplication,
-    QToolButton,
 )
 from qgis.core import (
-    Qgis,
     QgsCoordinateTransform,
-    QgsVectorLayer,
     QgsRectangle,
     QgsPoint,
     QgsPointXY,
@@ -67,11 +63,12 @@ from .dggsgrid.dggal_ivea9rgrid import DGGALIVEA9RGrid
 from .dggsgrid.dggal_rtea3hgrid import DGGALRTEA3HGrid
 from .dggsgrid.dggal_rtea9rgrid import DGGALRTEA9RGrid
 from .dggsgrid.dggal_rhealpixgrid import DGGALRHEALPixGrid
-from .dggsgrid.qtmgrid import QTGrid
+# from .dggsgrid.qtmgrid import QTMGrid
 from .dggsgrid.olcgrid import OLCGrid
 from .dggsgrid.geohasgrid import GeohashGrid
 from .dggsgrid.tilecodegrid import TilecodeGrid
 from .dggsgrid.maidenheadgrid import MaidenheadGrid
+from .dggsgrid.georefgrid import GEOREFGrid
 from math import log2
 
 exprs = (
@@ -120,11 +117,12 @@ class VgridTools(object):
         self.dggal_rtea3hgrid = DGGALRTEA3HGrid(self, self.canvas, self.iface)
         self.dggal_rtea9rgrid = DGGALRTEA9RGrid(self, self.canvas, self.iface)
         self.dggal_rhealpixgrid = DGGALRHEALPixGrid(self, self.canvas, self.iface)
-        self.qtmgrid = QTGrid(self, self.canvas, self.iface)
+        # self.qtmgrid = QTMGrid(self, self.canvas, self.iface)
         self.olcgrid = OLCGrid(self, self.canvas, self.iface)
         self.geohashgrid = GeohashGrid(self, self.canvas, self.iface)
         self.tilecodegrid = TilecodeGrid(self, self.canvas, self.iface)
         self.maidenheadgrid = MaidenheadGrid(self, self.canvas, self.iface)
+        self.georefgrid = GEOREFGrid(self, self.canvas, self.iface)
 
         self.Vgrid_menu = None
         self.toolbar = self.iface.addToolBar(tr("Vgrid Toolbar"))
@@ -140,7 +138,6 @@ class VgridTools(object):
         """Display the current zoom level in the status bar"""
 
         scale = self.iface.mapCanvas().scale()
-
         # Convert the scale to the equivalent zoom level
         # (This is accurate enough for at least 2 decimal places)
         zoom = 29.1402 - log2(scale)
@@ -430,7 +427,7 @@ class VgridTools(object):
 
         # QTM
         # icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
-        # self.qtm_widget_action = QWidgetAction(self.dggs_menu)
+        # self.qtm_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
         # qtm_checkbox = QCheckBox("QTM")
         # qtm_checkbox.setIcon(icon)
         # qtm_checkbox.setChecked(False)
@@ -443,7 +440,7 @@ class VgridTools(object):
         #     else self.qtmgrid.enable_qtm(False)
         # )
         # self.qtm_widget_action.setDefaultWidget(qtm_checkbox)
-        # self.dggs_menu.addAction(self.qtm_widget_action)
+        # self.graticule_based_dggs_menu.addAction(self.qtm_widget_action)
 
         # OLC (Graticule-based DGGS)
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_olc.svg")
@@ -478,6 +475,23 @@ class VgridTools(object):
         )
         self.geohash_widget_action.setDefaultWidget(geohash_checkbox)
         self.graticule_based_dggs_menu.addAction(self.geohash_widget_action)
+
+        # GEOREF (Graticule-based DGGS)
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
+        self.georef_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
+        georef_checkbox = QCheckBox("GEOREF")
+        georef_checkbox.setIcon(icon)
+        georef_checkbox.setChecked(False)
+        georef_checkbox.toggled.connect(
+            lambda checked: (
+                self.georefgrid.enable_georef(checked),
+                self.georefgrid.georef_grid(),
+            )
+            if checked
+            else self.georefgrid.enable_georef(False)
+        )
+        self.georef_widget_action.setDefaultWidget(georef_checkbox)
+        self.graticule_based_dggs_menu.addAction(self.georef_widget_action)
 
         # Tilecode (Graticule-based DGGS)
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
@@ -654,137 +668,146 @@ class VgridTools(object):
         self.conversion_menu.addAction(self.raster2DGGSAction)
 
         # Add Generator actions
-        # H3 Grid
+        # H3 Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_h3.svg")
-        self.h3GridAction = QAction(icon, tr("H3 Grid"), self.iface.mainWindow())
-        self.h3GridAction.setObjectName("h3Grid")
-        self.h3GridAction.setToolTip(tr("H3 Grid"))
-        self.h3GridAction.triggered.connect(self.runH3Grid)
-        self.generator_menu.addAction(self.h3GridAction)
+        self.h3GenAction = QAction(icon, tr("H3"), self.iface.mainWindow())
+        self.h3GenAction.setObjectName("h3Gen")        
+        self.h3GenAction.setToolTip(tr("H3 Generator"))
+        self.h3GenAction.triggered.connect(self.runH3Gen)
+        self.generator_menu.addAction(self.h3GenAction)
 
-        # S2 Grid
+        # S2 Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_s2.svg")
-        self.s2GridAction = QAction(icon, tr("S2 Grid"), self.iface.mainWindow())
-        self.s2GridAction.setObjectName("s2Grid")
-        self.s2GridAction.setToolTip(tr("S2 Grid"))
-        self.s2GridAction.triggered.connect(self.runS2Grid)
-        self.generator_menu.addAction(self.s2GridAction)
+        self.s2GenAction = QAction(icon, tr("S2"), self.iface.mainWindow())
+        self.s2GenAction.setObjectName("s2Gen")
+        self.s2GenAction.setToolTip(tr("S2 Generator"))
+        self.s2GenAction.triggered.connect(self.runS2Gen)
+        self.generator_menu.addAction(self.s2GenAction)
 
-        # A5 Grid
+        # A5 Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_a5.svg")
-        self.a5GridAction = QAction(icon, tr("A5 Grid"), self.iface.mainWindow())
-        self.a5GridAction.setObjectName("a5Grid")
-        self.a5GridAction.setToolTip(tr("A5 Grid"))
-        self.a5GridAction.triggered.connect(self.runA5Grid)
-        self.generator_menu.addAction(self.a5GridAction)
+        self.a5GenAction = QAction(icon, tr("A5"), self.iface.mainWindow())
+        self.a5GenAction.setObjectName("a5Gen")
+        self.a5GenAction.setToolTip(tr("A5 Generator"))
+        self.a5GenAction.triggered.connect(self.runA5Gen)
+        self.generator_menu.addAction(self.a5GenAction)
 
-        # rHEALPix Grid
+        # rHEALPix Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_rhealpix.svg")
-        self.rhealpixGridAction = QAction(
-            icon, tr("rHEALPix Grid"), self.iface.mainWindow()
+        self.rhealpixGenAction = QAction(
+            icon, tr("rHEALPix"), self.iface.mainWindow()
         )
-        self.rhealpixGridAction.setObjectName("rhealpixGrid")
-        self.rhealpixGridAction.setToolTip(tr("rHEALPix Grid"))
-        self.rhealpixGridAction.triggered.connect(self.runRhealpixGrid)
-        self.generator_menu.addAction(self.rhealpixGridAction)
+        self.rhealpixGenAction.setObjectName("rhealpixGen")
+        self.rhealpixGenAction.setToolTip(tr("rHEALPix Generator"))
+        self.rhealpixGenAction.triggered.connect(self.runRhealpixGen)
+        self.generator_menu.addAction(self.rhealpixGenAction)
 
-        # ISEA4T Grid
+        # ISEA4T Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
-        self.isea4tGridAction = QAction(
-            icon, tr("ISEA4T Grid"), self.iface.mainWindow()
+        self.isea4tGenAction = QAction(
+            icon, tr("ISEA4T"), self.iface.mainWindow()
         )
-        self.isea4tGridAction.setObjectName("isea4tGrid")
-        self.isea4tGridAction.setToolTip(tr("ISEA4T Grid"))
-        self.isea4tGridAction.triggered.connect(self.runISEA4TGrid)
-        self.generator_menu.addAction(self.isea4tGridAction)
-
-        # QTM Grid
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
-        self.qtmGridAction = QAction(icon, tr("QTM Grid"), self.iface.mainWindow())
-        self.qtmGridAction.setObjectName("qtmGrid")
-        self.qtmGridAction.setToolTip(tr("QTM Grid"))
-        self.qtmGridAction.triggered.connect(self.runQTMGrid)
-        self.generator_menu.addAction(self.qtmGridAction)
-
-        # OLC Grid
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_olc.svg")
-        self.olcGridAction = QAction(icon, tr("OLC Grid"), self.iface.mainWindow())
-        self.olcGridAction.setObjectName("olcGrid")
-        self.olcGridAction.setToolTip(tr("OLC Grid"))
-        self.olcGridAction.triggered.connect(self.runOLCGrid)
-        self.generator_menu.addAction(self.olcGridAction)
-
-        # Geohash Grid
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.geohashGridAction = QAction(
-            icon, tr("Geohash Grid"), self.iface.mainWindow()
-        )
-        self.geohashGridAction.setObjectName("geohashGrid")
-        self.geohashGridAction.setToolTip(tr("Geohash Grid"))
-        self.geohashGridAction.triggered.connect(self.runGeohashGrid)
-        self.generator_menu.addAction(self.geohashGridAction)
-
-        # DGGAL Grid
+        self.isea4tGenAction.setObjectName("isea4tGen")
+        self.isea4tGenAction.setToolTip(tr("ISEA4T Generator"))
+        self.isea4tGenAction.triggered.connect(self.runISEA4TGen)
+        self.generator_menu.addAction(self.isea4tGenAction)
+    
+        # DGGAL Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggalGridAction = QAction(icon, tr("DGGAL Grid"), self.iface.mainWindow())
-        self.dggalGridAction.setObjectName("dggalGrid")
-        self.dggalGridAction.setToolTip(tr("DGGAL Grid"))
-        self.dggalGridAction.triggered.connect(self.runDGGALGrid)
-        self.generator_menu.addAction(self.dggalGridAction)
+        self.dggalGenAction = QAction(icon, tr("DGGAL"), self.iface.mainWindow())
+        self.dggalGenAction.setObjectName("dggalGen")
+        self.dggalGenAction.setToolTip(tr("DGGAL Generator"))
+        self.dggalGenAction.triggered.connect(self.runDGGALGen)
+        self.generator_menu.addAction(self.dggalGenAction)
 
-        # MGRS Grid
+
+        # QTM Generator
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
+        self.qtmGenAction = QAction(icon, tr("QTM"), self.iface.mainWindow())
+        self.qtmGenAction.setObjectName("qtmGen")
+        self.qtmGenAction.setToolTip(tr("QTM Generator"))
+        self.qtmGenAction.triggered.connect(self.runQTMGen)
+        self.generator_menu.addAction(self.qtmGenAction)
+
+        # OLC Generator
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_olc.svg")
+        self.olcGenAction = QAction(icon, tr("OLC"), self.iface.mainWindow())
+        self.olcGenAction.setObjectName("olcGen")
+        self.olcGenAction.setToolTip(tr("OLC Generator"))
+        self.olcGenAction.triggered.connect(self.runOLCGen)
+        self.generator_menu.addAction(self.olcGenAction)
+
+        # Geohash Generator
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
+        self.geohashGenAction = QAction(
+            icon, tr("Geohash"), self.iface.mainWindow()
+        )
+        self.geohashGenAction.setObjectName("geohashGen")
+        self.geohashGenAction.setToolTip(tr("Geohash Generator"))
+        self.geohashGenAction.triggered.connect(self.runGeohashGen)
+        self.generator_menu.addAction(self.geohashGenAction)
+
+        # GEOREF Generator
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
+        self.georefGenAction = QAction(icon, tr("GEOREF"), self.iface.mainWindow())
+        self.georefGenAction.setObjectName("georefGen")
+        self.georefGenAction.setToolTip(tr("GEOREF Generator"))
+        self.georefGenAction.triggered.connect(self.runGEOREFGen)
+        self.generator_menu.addAction(self.georefGenAction)
+
+        # MGRS Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_mgrs.svg")
-        self.mgrsGridAction = QAction(icon, tr("MGRS Grid"), self.iface.mainWindow())
-        self.mgrsGridAction.setObjectName("mgrsGrid")
-        self.mgrsGridAction.setToolTip(tr("MGRS Grid"))
-        self.mgrsGridAction.triggered.connect(self.runMGRSGrid)
-        self.generator_menu.addAction(self.mgrsGridAction)
+        self.mgrsGenAction = QAction(icon, tr("MGRS"), self.iface.mainWindow())
+        self.mgrsGenAction.setObjectName("mgrsGen")
+        self.mgrsGenAction.setToolTip(tr("MGRS Generator"))
+        self.mgrsGenAction.triggered.connect(self.runMGRSGen)
+        self.generator_menu.addAction(self.mgrsGenAction)
 
-        # GZD Grid
+        # GZD Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.gzdGridAction = QAction(icon, tr("GZD Grid"), self.iface.mainWindow())
-        self.gzdGridAction.setObjectName("gzdGrid")
-        self.gzdGridAction.setToolTip(tr("GZD Grid"))
-        self.gzdGridAction.triggered.connect(self.runGZDGrid)
-        self.generator_menu.addAction(self.gzdGridAction)
+        self.gzdGenAction = QAction(icon, tr("GZD"), self.iface.mainWindow())
+        self.gzdGenAction.setObjectName("gzdGen")
+        self.gzdGenAction.setToolTip(tr("GZD Generator"))
+        self.gzdGenAction.triggered.connect(self.runGZDGen)
+        self.generator_menu.addAction(self.gzdGenAction)
 
-        # Tilecode Grid
+        # Tilecode Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.tilecodeGridAction = QAction(
-            icon, tr("Tilecode Grid"), self.iface.mainWindow()
+        self.tilecodeGenAction = QAction(
+            icon, tr("Tilecode"), self.iface.mainWindow()
         )
-        self.tilecodeGridAction.setObjectName("tilecodeGrid")
-        self.tilecodeGridAction.setToolTip(tr("Tilecode Grid"))
-        self.tilecodeGridAction.triggered.connect(self.runTilecodeGrid)
-        self.generator_menu.addAction(self.tilecodeGridAction)
+        self.tilecodeGenAction.setObjectName("tilecodeGen")
+        self.tilecodeGenAction.setToolTip(tr("Tilecode Generator"))
+        self.tilecodeGenAction.triggered.connect(self.runTilecodeGen)
+        self.generator_menu.addAction(self.tilecodeGenAction)
 
-        # Quadkey Grid
+        # Quadkey Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.quadkeyGridAction = QAction(
-            icon, tr("Quadkey Grid"), self.iface.mainWindow()
+        self.quadkeyGenAction = QAction(
+            icon, tr("Quadkey"), self.iface.mainWindow()
         )
-        self.quadkeyGridAction.setObjectName("quadkeyGrid")
-        self.quadkeyGridAction.setToolTip(tr("Quadkey Grid"))
-        self.quadkeyGridAction.triggered.connect(self.runQuadkeyGrid)
-        self.generator_menu.addAction(self.quadkeyGridAction)
+        self.quadkeyGenAction.setObjectName("quadkeyGen")
+        self.quadkeyGenAction.setToolTip(tr("Quadkey Generator"))
+        self.quadkeyGenAction.triggered.connect(self.runQuadkeyGen)
+        self.generator_menu.addAction(self.quadkeyGenAction)
 
-        # Maidenhead Grid
+        # Maidenhead Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.maidenheadGridAction = QAction(
-            icon, tr("Maidenhead Grid"), self.iface.mainWindow()
+        self.maidenheadGenAction = QAction(
+            icon, tr("Maidenhead"), self.iface.mainWindow()
         )
-        self.maidenheadGridAction.setObjectName("maidenheadGrid")
-        self.maidenheadGridAction.setToolTip(tr("Maidenhead Grid"))
-        self.maidenheadGridAction.triggered.connect(self.runMaidenheadGrid)
-        self.generator_menu.addAction(self.maidenheadGridAction)
+        self.maidenheadGenAction.setObjectName("maidenheadGen")
+        self.maidenheadGenAction.setToolTip(tr("Maidenhead Generator"))
+        self.maidenheadGenAction.triggered.connect(self.runMaidenheadGen)
+        self.generator_menu.addAction(self.maidenheadGenAction)
 
-        # GARS Grid
+        # GARS Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.garsGridAction = QAction(icon, tr("GARS Grid"), self.iface.mainWindow())
-        self.garsGridAction.setObjectName("garsGrid")
-        self.garsGridAction.setToolTip(tr("GARS Grid"))
-        self.garsGridAction.triggered.connect(self.runGARSGrid)
-        self.generator_menu.addAction(self.garsGridAction)
+        self.garsGenAction = QAction(icon, tr("GARS"), self.iface.mainWindow())
+        self.garsGenAction.setObjectName("garsGen")
+        self.garsGenAction.setToolTip(tr("GARS Generator"))
+        self.garsGenAction.triggered.connect(self.runGARSGen)
+        self.generator_menu.addAction(self.garsGenAction)
 
         # Add Latlon2DGGS action
         icon = QIcon(os.path.dirname(__file__) + "/images/vgrid.svg")
@@ -870,8 +893,8 @@ class VgridTools(object):
             self.dggal_rtea9rgrid.cleanup()
         if hasattr(self, "dggal_rhealpixgrid") and self.dggal_rhealpixgrid:
             self.dggal_rhealpixgrid.cleanup()
-        if hasattr(self, "qtmgrid") and self.qtmgrid:
-            self.qtmgrid.cleanup()
+        # if hasattr(self, "qtmgrid") and self.qtmgrid:
+            # self.qtmgrid.cleanup()
         if hasattr(self, "olcgrid") and self.olcgrid:
             self.olcgrid.cleanup()
         if hasattr(self, "geohashgrid") and self.geohashgrid:
@@ -880,8 +903,8 @@ class VgridTools(object):
             self.tilecodegrid.cleanup()
         if hasattr(self, "maidenheadgrid") and self.maidenheadgrid:
             self.maidenheadgrid.cleanup()
-        if hasattr(self, "garsgrid") and self.garsgrid:
-            self.garsgrid.cleanup()
+        if hasattr(self, "georefgrid") and self.georefgrid:
+            self.georefgrid.cleanup()
 
         self.settingsDialog = None
         QgsApplication.processingRegistry().removeProvider(self.provider)
@@ -1021,65 +1044,69 @@ class VgridTools(object):
         """Run Raster to DGGS algorithm"""
         processing.execAlgorithmDialog("vgrid:raster2dggs", {})
 
-    def runH3Grid(self):
-        """Run H3 Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_h3", {})
+    def runH3Gen(self):
+        """Run H3 Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:h3_gen", {})
 
-    def runS2Grid(self):
-        """Run S2 Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_s2", {})
+    def runS2Gen(self):
+        """Run S2 Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:s2_gen", {})
 
-    def runA5Grid(self):
-        """Run A5 Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_a5", {})
+    def runA5Gen(self):
+        """Run A5 Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:a5_gen", {})
 
-    def runRhealpixGrid(self):
-        """Run rHEALPix Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_rhealpix", {})
+    def runRhealpixGen(self):
+        """Run rHEALPix Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:rhealpix_gen", {})
 
-    def runISEA4TGrid(self):
-        """Run ISEA4T Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_isea4t", {})
+    def runISEA4TGen(self):
+        """Run ISEA4T Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:isea4t_gen", {})
 
-    def runQTMGrid(self):
-        """Run QTM Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_qtm", {})
+    def runQTMGen(self):
+        """Run QTM Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:qtm_gen", {})
 
-    def runOLCGrid(self):
-        """Run OLC Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_olc", {})
+    def runOLCGen(self):
+        """Run OLC Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:olc_gen", {})
 
-    def runGeohashGrid(self):
-        """Run Geohash Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_geohash", {})
+    def runGEOREFGen(self):
+        """Run GEOREF Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:georef_gen", {})
 
-    def runDGGALGrid(self):
-        """Run DGGAL Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_dggal", {})
+    def runGeohashGen(self):
+        """Run Geohash Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:geohash_gen", {})
 
-    def runMGRSGrid(self):
-        """Run MGRS Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_mgrs", {})
+    def runDGGALGen(self):
+        """Run DGGAL Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:dggal_gen", {})
 
-    def runGZDGrid(self):
-        """Run GZD Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_gzd", {})
+    def runMGRSGen(self):
+        """Run MGRS Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:mgrs_gen", {})
 
-    def runTilecodeGrid(self):
-        """Run Tilecode Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_tilecode", {})
+    def runGZDGen(self):
+        """Run GZD Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:gzd_gen", {})
 
-    def runQuadkeyGrid(self):
-        """Run Quadkey Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_quadkey", {})
+    def runTilecodeGen(self):
+        """Run Tilecode Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:tilecode_gen", {})
 
-    def runMaidenheadGrid(self):
-        """Run Maidenhead Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_maidenhead", {})
+    def runQuadkeyGen(self):
+        """Run Quadkey Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:quadkey_gen", {})
 
-    def runGARSGrid(self):
-        """Run GARS Grid algorithm"""
-        processing.execAlgorithmDialog("vgrid:grid_gars", {})
+    def runMaidenheadGen(self):
+        """Run Maidenhead Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:maidenhead_gen", {})
+
+    def runGARSGen(self):
+        """Run GARS Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:gars_gen", {})
 
     def runDGGSResample(self):
         """Run DGGS Resample algorithm"""

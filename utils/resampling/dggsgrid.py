@@ -1,6 +1,7 @@
 from shapely.wkt import loads as load_wkt
 from shapely.geometry import Polygon, shape
 from shapely.ops import unary_union
+from vgrid.generator.geohashgrid import expand_geohash_bbox
 from qgis.core import (
     QgsVectorLayer,
     QgsFields,
@@ -20,9 +21,10 @@ from vgrid.utils.geometry import (
     s2_cell_to_polygon,
     rhealpix_cell_to_polygon,
 )
-import a5
+from vgrid.utils.constants import INITIAL_GEOHASHES
 from vgrid.conversion.latlon2dggs import latlon2a5
 from vgrid.conversion.dggs2geo.a52geo import a52geo
+from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.utils.antimeridian import fix_polygon
 import platform
 
@@ -722,13 +724,13 @@ def generate_geohash_grid(resolution, qgs_features, feedback=None):
 
     intersected_geohashes = {
         gh
-        for gh in geohashgrid.initial_geohashes
-        if geohashgrid.geohash_to_polygon(gh).intersects(unified_geom)
+        for gh in INITIAL_GEOHASHES
+        if geohash2geo(gh).intersects(unified_geom)
     }
 
     geohashes_geom = set()
     for gh in intersected_geohashes:
-        geohashgrid.expand_geohash_bbox(gh, resolution, geohashes_geom, unified_geom)
+        expand_geohash_bbox(gh, resolution, geohashes_geom, unified_geom)
 
     # Create QGIS features
     fields = QgsFields()

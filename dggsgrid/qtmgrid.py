@@ -19,11 +19,12 @@ from ..settings import settings
 
 # QTM imports
 from vgrid.dggs import qtm
+from vgrid.utils.io import validate_coordinate
 
 
-class QTGrid(QObject):
+class QTMGrid(QObject):
     def __init__(self, vgridtools, canvas, iface):
-        super(QTGrid, self).__init__()
+        super(QTMGrid, self).__init__()
         self.canvas = canvas
         self.vgridtools = vgridtools
         self.iface = iface
@@ -49,8 +50,12 @@ class QTGrid(QObject):
             # Clear previous grid before drawing a new one
             self.removeMarker()
             self.qtm_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.qtm_marker.setStrokeColor(settings.qtmColor)
+            self.qtm_marker.setWidth(settings.gridWidth)
 
             canvas_extent = self.canvas.extent()
+            canvas_crs = QgsProject.instance().crs()
+
             scale = self.canvas.scale()
             resolution = self._get_qtm_resolution(scale)
             if settings.zoomLevel:
@@ -58,10 +63,9 @@ class QTGrid(QObject):
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | QTM resolution:{resolution}"
                 )   
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-
+            
             # Define bbox in canvas CRS
-            extent_polygon_canvas = box(
+            min_lon, min_lat, max_lon, max_lat = (
                 canvas_extent.xMinimum(),
                 canvas_extent.yMinimum(),
                 canvas_extent.xMaximum(),
@@ -70,27 +74,16 @@ class QTGrid(QObject):
 
             # Transform extent to EPSG:4326 if needed
             if epsg4326 != canvas_crs:
-                extent_geom = QgsGeometry.fromWkt(extent_polygon_canvas.wkt)
-                trans_to_4326 = QgsCoordinateTransform(
-                    canvas_crs, epsg4326, QgsProject.instance()
-                )
-                extent_geom.transform(trans_to_4326)
-                rect = extent_geom.boundingBox()
+                trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
+                transformed_extent = trans_to_4326.transform(canvas_extent)              
                 min_lon, min_lat, max_lon, max_lat = (
-                    rect.xMinimum(),
-                    rect.yMinimum(),
-                    rect.xMaximum(),
-                    rect.yMaximum(),
-                )
-            else:
-                min_lon, min_lat, max_lon, max_lat = (
-                    extent_polygon_canvas.bounds[0],
-                    extent_polygon_canvas.bounds[1],
-                    extent_polygon_canvas.bounds[2],
-                    extent_polygon_canvas.bounds[3],
-                )
-
+                    transformed_extent.xMinimum(),
+                    transformed_extent.yMinimum(),
+                    transformed_extent.xMaximum(),
+                    transformed_extent.yMaximum(),
+                )       
             # Create extent bbox for intersection testing
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)  
             extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
 
             # QTM base facets (8 triangular faces)
@@ -145,10 +138,10 @@ class QTGrid(QObject):
                         if facet_geom.intersects(extent_bbox):
                             geom = QgsGeometry.fromWkt(facet_geom.wkt)
                             if epsg4326 != canvas_crs:
-                                trans = QgsCoordinateTransform(
+                                trans_to_canvas = QgsCoordinateTransform(
                                     epsg4326, canvas_crs, QgsProject.instance()
                                 )
-                                geom.transform(trans)
+                                geom.transform(trans_to_canvas)
                             self.qtm_marker.addGeometry(geom, None)
                 else:
                     for i, pf in enumerate(levelFacets[lvl - 1]):
@@ -163,16 +156,15 @@ class QTGrid(QObject):
                             if subfacet_geom.intersects(extent_bbox):
                                 geom = QgsGeometry.fromWkt(subfacet_geom.wkt)
                                 if epsg4326 != canvas_crs:
-                                    trans = QgsCoordinateTransform(
+                                    trans_to_canvas = QgsCoordinateTransform(
                                         epsg4326, canvas_crs, QgsProject.instance()
                                     )
-                                    geom.transform(trans)
+                                    geom.transform(trans_to_canvas)
                                 self.qtm_marker.addGeometry(geom, None)
 
             self.canvas.refresh()
 
-        except Exception as e:
-            print(e)
+        except Exception as e:  
             return
 
     def enable_qtm(self, enabled: bool):

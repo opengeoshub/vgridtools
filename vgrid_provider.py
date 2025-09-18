@@ -48,24 +48,24 @@ from .processing_provider.binning.quadkey_bin import QuadkeyBin
 from .processing_provider.binning.polygon_bin import PolygonBin
 
 
-from .processing_provider.generator.h3_grid import H3Grid
-from .processing_provider.generator.s2_grid import S2Grid
-from .processing_provider.generator.a5_grid import A5Grid
-from .processing_provider.generator.rhealpix_grid import rHEALPixGrid
-from .processing_provider.generator.isea4t_grid import ISEA4TGrid
+from .processing_provider.generator.h3gen import H3Gen
+from .processing_provider.generator.s2gen import S2Gen
+from .processing_provider.generator.a5gen import A5Gen  
+from .processing_provider.generator.rhealpixgen import rHEALPixGen
+from .processing_provider.generator.isea4tgen import ISEA4TGen
+from .processing_provider.generator.dggalgen import DGGALGen
 
-from .processing_provider.generator.qtm_grid import QTMGrid
+from .processing_provider.generator.qtmgen import QTMGen
 
-from .processing_provider.generator.olc_grid import OLCGrid
-from .processing_provider.generator.geohash_grid import GeohashGrid
-from .processing_provider.generator.georef_grid import GEOREFGrid
-from .processing_provider.generator.dggal_grid import DGGALGrid
-from .processing_provider.generator.mgrs_grid import MGRSGrid
-from .processing_provider.generator.gzd_grid import GZDGrid
-from .processing_provider.generator.tilecode_grid import TilecodeGrid
-from .processing_provider.generator.quadkey_grid import QuadkeyGrid
-from .processing_provider.generator.maidenhead_grid import MaidenheadGrid
-from .processing_provider.generator.gars_grid import GARSGrid
+from .processing_provider.generator.olcgen import OLCGen
+from .processing_provider.generator.geohashgen import GeohashGen
+from .processing_provider.generator.mgrsgen import MGRSGen
+from .processing_provider.generator.gzdgen import GZDGen
+from .processing_provider.generator.tilecodegen import TilecodeGen
+from .processing_provider.generator.quadkeygen import QuadkeyGen
+from .processing_provider.generator.maidenheadgen import MaidenheadGen
+from .processing_provider.generator.garsgen import GARSGen
+from .processing_provider.generator.georefgen import GEOREFGen
 
 
 class VgridProvider(QgsProcessingProvider):
@@ -111,25 +111,25 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(PolygonBin())
 
         # Generator algorithms
-        self.addAlgorithm(H3Grid())
-        self.addAlgorithm(S2Grid())
-        self.addAlgorithm(A5Grid())
-        self.addAlgorithm(rHEALPixGrid())
-        self.addAlgorithm(ISEA4TGrid())
-        self.addAlgorithm(QTMGrid())
+        self.addAlgorithm(H3Gen())
+        self.addAlgorithm(S2Gen())
+        self.addAlgorithm(A5Gen())
+        self.addAlgorithm(rHEALPixGen())
+        self.addAlgorithm(ISEA4TGen())
+        self.addAlgorithm(QTMGen())
 
-        self.addAlgorithm(OLCGrid())
-        self.addAlgorithm(GeohashGrid())
-        # self.addAlgorithm(GEOREFGrid())
-        self.addAlgorithm(DGGALGrid())
+        self.addAlgorithm(OLCGen())
+        self.addAlgorithm(GeohashGen())
+        self.addAlgorithm(GEOREFGen())
+        self.addAlgorithm(DGGALGen())
         ################################
-        self.addAlgorithm(MGRSGrid())
-        self.addAlgorithm(GZDGrid())
+        self.addAlgorithm(MGRSGen())
+        self.addAlgorithm(GZDGen())
         ################################
-        self.addAlgorithm(TilecodeGrid())
-        self.addAlgorithm(QuadkeyGrid())
-        self.addAlgorithm(MaidenheadGrid())
-        self.addAlgorithm(GARSGrid())
+        self.addAlgorithm(TilecodeGen())
+        self.addAlgorithm(QuadkeyGen())
+        self.addAlgorithm(MaidenheadGen())
+        self.addAlgorithm(GARSGen())
 
     def id(self):
         return "vgrid"
