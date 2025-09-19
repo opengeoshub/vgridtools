@@ -1,0 +1,108 @@
+site_name: VgridTools DGGS
+site_description: Vgrid DGGS Plugin for QGIS
+site_author: Thang Quach
+site_url: https://vgridtools.gishub.vn
+
+repo_url: https://github.com/opengeoshub/vgridtools
+
+copyright: "Copyright &copy; 2025 Thang Quach"
+
+theme:
+    palette:
+        - scheme: default
+          #   primary: blue
+          #   accent: indigo
+          toggle:
+              icon: material/toggle-switch-off-outline
+              name: Switch to dark mode
+        - scheme: slate
+          primary: indigo
+          accent: indigo
+          toggle:
+              icon: material/toggle-switch
+              name: Switch to light mode
+    name: material
+    icon:
+        repo: fontawesome/brands/github
+    logo: assets/logo.png
+    favicon: assets/favicon.ico
+    features:
+        - navigation.instant
+        - navigation.tracking
+        - navigation.top
+        - search.highlight
+        - search.share
+    custom_dir: "docs/overrides"
+    font:
+        text: Google Sans
+        code: Regular
+
+plugins:
+    - search
+    - mkdocstrings:
+          handlers:
+              python:
+                  options:
+                      docstring_style: google
+    # - git-revision-date
+    # - git-revision-date-localized:
+    #       enable_creation_date: true
+    #       type: timeago
+    #       fallback_to_build_date: true  
+    # - pdf-export
+    - mkdocs-jupyter:
+          include_source: True
+          ignore_h1_titles: True
+          execute: False
+          allow_errors: false        
+
+markdown_extensions:
+    - admonition
+    - abbr
+    - attr_list
+    - def_list
+    - footnotes
+    - meta
+    - md_in_html
+    - pymdownx.superfences
+    - pymdownx.highlight:
+          linenums: true
+    - pymdownx.arithmatex:
+          generic: true
+          block_tag: div
+          inline_tag: span
+    - toc:
+          permalink: true
+
+extra:
+    analytics:
+        provider: google
+        property: G-B1C88N45QG
+
+extra_css:
+    - https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css
+
+extra_javascript:
+    - https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js
+    - https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js
+    - javascripts/katex.js
+
+nav:
+    - Home: index.md
+    - Installation: installation.md 
+    - User manual:
+        - DGGS Visualization: manual/visualization.md
+        - Latlon to DGGS Tool: manual/latlon2dggs.md
+        - Vgrid Expressions: manual/expressions.md
+        - DGGS Conversion:
+            - Cell ID to DGGS: manual/conversion/cellid2dggs.md
+            - Vector to DGGS: manual/conversion/vector2dggs.md
+            - DGGS Compact: manual/conversion/dggscompact.md
+            - DGGS Expand: manual/conversion/dggsexpand.md
+            - Raster to DGGS:  manual/conversion/raster2dggs.md
+        - DGGS Binning: manual/binning.md
+        - DGGS Generator: manual/generator.md
+        - DGGS Resampling: manual/resampling.md
+        - DGGS Settings: manual/settings.md   
+    - Contributing: contributing.md
+    - Report Issues: https://github.com/opengeoshub/vgridtools/issues

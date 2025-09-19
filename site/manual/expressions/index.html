@@ -1,0 +1,1470 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Vgrid DGGS Plugin for QGIS">
+      
+      
+        <meta name="author" content="Thang Quach">
+      
+      
+        <link rel="canonical" href="https://vgridtools.gishub.vn/manual/expressions/">
+      
+      
+        <link rel="prev" href="../latlon2dggs/">
+      
+      
+        <link rel="next" href="../conversion/cellid2dggs/">
+      
+      
+      <link rel="icon" href="../../assets/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.20">
+    
+    
+      
+        <title>Vgrid Expressions - VgridTools DGGS</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.e53b48f4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Google+Sans:300,300i,400,400i,700,700i%7CRegular:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Google Sans";--md-code-font:"Regular"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-B1C88N45QG"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-B1C88N45QG",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-B1C88N45QG",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#vgrid-dggs-expressions-is-integrated-into-qgis-field-calculator" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="VgridTools DGGS" class="md-header__button md-logo" aria-label="VgridTools DGGS" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            VgridTools DGGS
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Vgrid Expressions
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 6H7c-3.31 0-6 2.69-6 6s2.69 6 6 6h10c3.31 0 6-2.69 6-6s-2.69-6-6-6m0 10H7c-2.21 0-4-1.79-4-4s1.79-4 4-4h10c2.21 0 4 1.79 4 4s-1.79 4-4 4M7 9c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 7H7a5 5 0 0 0-5 5 5 5 0 0 0 5 5h10a5 5 0 0 0 5-5 5 5 0 0 0-5-5m0 8a3 3 0 0 1-3-3 3 3 0 0 1 3-3 3 3 0 0 1 3 3 3 3 0 0 1-3 3"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/opengeoshub/vgridtools" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="VgridTools DGGS" class="md-nav__button md-logo" aria-label="VgridTools DGGS" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    VgridTools DGGS
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/opengeoshub/vgridtools" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.0.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Installation
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    User manual
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            User manual
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DGGS Visualization
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../latlon2dggs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Latlon to DGGS Tool
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Vgrid Expressions
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Vgrid Expressions
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#vgrid-dggs-expressions-is-integrated-into-qgis-field-calculator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Vgrid DGGS Expressions is integrated into QGIS field calculator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Vgrid DGGS Expressions is integrated into QGIS field calculator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#latlon2h3" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2h3
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2s2" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2s2
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2a5" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2a5
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2rhealpix" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2rhealpix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2isea4t" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2isea4t
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2isea3h" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2isea3h
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2dggal" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2dggal
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2qtm" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2qtm
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2olc" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2olc
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2geohash" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2geohash
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2georef" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2georef
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2mgrs" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2mgrs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2tilecode" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2tilecode
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2quadkey" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2quadkey
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2maidenhead" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2maidenhead
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2gars" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2gars
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_4" id="__nav_3_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    DGGS Conversion
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_4">
+            <span class="md-nav__icon md-icon"></span>
+            DGGS Conversion
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../conversion/cellid2dggs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Cell ID to DGGS
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../conversion/vector2dggs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Vector to DGGS
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../conversion/dggscompact/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DGGS Compact
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../conversion/dggsexpand/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DGGS Expand
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../conversion/raster2dggs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Raster to DGGS
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../binning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DGGS Binning
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../generator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DGGS Generator
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../resampling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DGGS Resampling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../settings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    DGGS Settings
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Contributing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/opengeoshub/vgridtools/issues" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Report Issues
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#vgrid-dggs-expressions-is-integrated-into-qgis-field-calculator" class="md-nav__link">
+    <span class="md-ellipsis">
+      Vgrid DGGS Expressions is integrated into QGIS field calculator
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Vgrid DGGS Expressions is integrated into QGIS field calculator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#latlon2h3" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2h3
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2s2" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2s2
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2a5" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2a5
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2rhealpix" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2rhealpix
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2isea4t" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2isea4t
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2isea3h" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2isea3h
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2dggal" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2dggal
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2qtm" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2qtm
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2olc" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2olc
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2geohash" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2geohash
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2georef" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2georef
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2mgrs" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2mgrs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2tilecode" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2tilecode
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2quadkey" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2quadkey
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2maidenhead" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2maidenhead
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#latlon2gars" class="md-nav__link">
+    <span class="md-ellipsis">
+      latlon2gars
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+
+
+
+                  
+
+
+  
+  
+
+
+  <h1>Vgrid Expressions</h1>
+
+<h2 id="vgrid-dggs-expressions-is-integrated-into-qgis-field-calculator">Vgrid DGGS Expressions is integrated into QGIS field calculator<a class="headerlink" href="#vgrid-dggs-expressions-is-integrated-into-qgis-field-calculator" title="Permanent link">&para;</a></h2>
+<li>
+    <a href="#expressions">Expressions</a>
+    <ul>
+        <li><a href="#latlon2h3">latlon2h3</a></li>
+        <li><a href="#latlon2s2">latlon2s2</a></li>
+        <li><a href="#latlon2a5">latlon2a5</a></li>
+        <li><a href="#latlon2rhealpix">latlon2rhealpix</a></li>
+        <li><a href="#latlon2isea4t">latlon2isea4t</a></li>
+        <li><a href="#latlon2isea3h">latlon2isea3h</a></li>
+        <li><a href="#latlon2dggal">latlon2dggal</a></li>
+        <li><a href="#latlon2qtm">latlon2qtm</a></li>
+        <li><a href="#latlon2olc">latlon2olc</a></li>
+        <li><a href="#latlon2geohash">latlon2geohash</a></li>
+        <li><a href="#latlon2georef">latlon2georef</a></li>
+        <li><a href="#latlon2mgrs">latlon2mgrs</a></li>
+        <li><a href="#latlon2tilecode">latlon2tilecode</a></li>
+        <li><a href="#latlon2quadkey">latlon2quadkey</a></li>
+        <li><a href="#latlon2maidenhead">latlon2maidenhead</a></li>
+        <li><a href="#latlon2gars">latlon2gars</a></li>
+    </ul>
+</li>
+
+<h3 id="latlon2h3">latlon2h3<a class="headerlink" href="#latlon2h3" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to H3 ID.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2h3(lat, long, resolution [0..15]) or latlon2h3($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2h3(10.775275567242561, 106.70679737574993, 13)→ '8d65b56628e46bf'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2h3.png">
+</div>
+
+<h3 id="latlon2s2">latlon2s2<a class="headerlink" href="#latlon2s2" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to S2 Token.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2s2(lat, long, resolution [0-->30]) or latlon2s2($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2s2(10.775275567242561, 106.70679737574993, 21)→ '31752f45cc94'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2s2.png">
+</div>
+
+<h3 id="latlon2a5">latlon2a5<a class="headerlink" href="#latlon2a5" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to A5 Hex.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2a5(lat, long, resolution [0-->29]) or latlon2a5($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2a5(10.775275567242561, 106.70679737574993, 16)→ '7a9408e938000000'</code> 
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2a5.png">
+</div>
+
+<h3 id="latlon2rhealpix">latlon2rhealpix<a class="headerlink" href="#latlon2rhealpix" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to rHEALPix ID.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2rhealpix(lat, long, resolution [0..15]) or latlon2rhealpix($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2rhealpix(10.775275567242561, 106.70679737574993, 12)→ 'R312603625535'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2rhealpix.png">
+</div>
+
+<h3 id="latlon2isea4t">latlon2isea4t<a class="headerlink" href="#latlon2isea4t" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to OpenEAGGR ISEA4T ID (Windows only).</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2isea4t(lat, long, resolution [0..39]) or latlon2isea4t($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2isea4t(10.775275567242561, 106.70679737574993, 20)→ '1310231333101123322130'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2isea4t.png">
+</div>
+
+<h3 id="latlon2isea3h">latlon2isea3h<a class="headerlink" href="#latlon2isea3h" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to OpenEAGGR ISEA3H ID (Windows only).</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2isea3h(lat, long, resolution [0..40]) or latlon2isea3h($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2isea3h(10.775275567242561, 106.70679737574993, 20)→ '132022636,-1020'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2isea3h.png">
+</div>
+
+<h3 id="latlon2dggal">latlon2dggal<a class="headerlink" href="#latlon2dggal" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to DGGAL ID.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2dggal(dggs_type, lat, long, resolution) or latlon2dggal(dggs_type, $y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2dggal('isea9r', 10.775275567242561, 106.70679737574993, 7)→ 'H7-629F2'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2dggal.png">
+</div>
+
+<h3 id="latlon2qtm">latlon2qtm<a class="headerlink" href="#latlon2qtm" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to QTM.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2qtm(lat, long, resolution [1..24]) or latlon2qtm($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2qtm(10.775275567242561, 106.70679737574993, 18)→ '420123231312110130'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2qtm.png">
+</div>
+
+<h3 id="latlon2olc">latlon2olc<a class="headerlink" href="#latlon2olc" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to Open Location Code (OLC)/ Google Plus Code.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2olc(lat, long, resolution [2,4,6,8,10,11..15])  or latlon2olc($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code> latlon2olc(10.775275567242561, 106.70679737574993, 11) → '7P28QPG4+4P7'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2olc.png">
+</div>
+
+<h3 id="latlon2geohash">latlon2geohash<a class="headerlink" href="#latlon2geohash" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to Geohash ID.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2geohash(lat, long, resolution [1..30]) or latlon2geohash($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2geohash(10.775275567242561, 106.70679737574993, 9)→ 'w3gvk1td8'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2geohash.png">
+</div>
+
+<h3 id="latlon2georef">latlon2georef<a class="headerlink" href="#latlon2georef" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to GEOREF ID.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2georef(lat, long, resolution [0..10]) or latlon2georef($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2georef(10.775275567242561, 106.70679737574993, 5)→ 'VGBL4240746516'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2georef.png">
+</div>
+
+<h3 id="latlon2mgrs">latlon2mgrs<a class="headerlink" href="#latlon2mgrs" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to MGRS ID.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2mgrs(lat, long, resolution [0..5]) or latlon2mgrs($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code> latlon2mgrs(10.775275567242561, 106.70679737574993, 4)→ '48PXS86629165'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2mgrs.png">
+</div>
+
+<h3 id="latlon2tilecode">latlon2tilecode<a class="headerlink" href="#latlon2tilecode" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to Tilecode ID.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2tilecode(lat, long, resolution [0..29])  or latlon2tilecode($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2tilecode(10.775275567242561, 106.70679737574993, 23)→ 'z23x6680752y3941728'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2tilecode.png">
+</div>
+
+<h3 id="latlon2quadkey">latlon2quadkey<a class="headerlink" href="#latlon2quadkey" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to Quadkey ID.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2quadkey(lat, long, resolution [0..29])  or latlon2quadkey($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2quadkey(10.775275567242561, 106.70679737574993, 23)→ '13223011131020212310000'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2quadkey.png">
+</div>
+
+<h3 id="latlon2maidenhead">latlon2maidenhead<a class="headerlink" href="#latlon2maidenhead" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to Maidenhead ID.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2maidenhead(lat, long, resolution [1..4]) or latlon2maidenhead($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2maidenhead(10.775275567242561, 106.70679737574993, 4)→ 'OK30is46' </code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2maidenhead.png">
+</div>
+
+<h3 id="latlon2gars">latlon2gars<a class="headerlink" href="#latlon2gars" title="Permanent link">&para;</a></h3>
+<p>Convert (lat, long) to GARS Code.</p>
+<h4>Syntax</h4>
+<li>
+<code>latlon2gars(lat, long, resolution [1..4] (30, 15, 5, 1 minutes)) or latlon2gars($y, $x, resolution)</span> in WGS84 CRS</code>
+</li>
+<h4>Example usage</h4>
+<li>
+<code>latlon2gars(10.775275567242561, 106.70679737574993, 4)→ '574JK1918'</code>
+</li>
+<p><br/></p>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2gars.png">
+</div>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2025 Thang Quach
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.top", "search.highlight", "search.share"], "search": "../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.f55a23d4.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+      
+        <script src="../../javascripts/katex.js"></script>
+      
+    
+  </body>
+</html>
