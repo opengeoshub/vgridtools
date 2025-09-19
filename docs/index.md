@@ -3,7 +3,10 @@
 
 Vgridtools supports a wide range of popular geodesic DGGS, including H3, S2, A5, rHEALPix, Open-EAGGR ISEA4T, ISEA3H, DGGRID, DGGAL, EASE-DGGS, QTM, along with graticule-based DGGS such as OLC, Geohash, MGRS, GEOREF, TileCode, Quadkey, Maidenhead, and GARS.
 
-Full Vgridtools DGGS documentation is available at [vgrid document](https://vgridtools.gishub.vn).
+[![logo](https://raw.githubusercontent.com/opengeoshub/vgridtools/refs/heads/main/images/vgridqgis.svg)](https://github.com/opengeoshub/vgridtools/blob/main/images/vgridqgis.svg)
+
+
+Full Vgridtools DGGS documentation is available at [vgridtools document](https://vgridtools.gishub.vn).
 
 To work with Vgrid DGGS directly in Python or CLI, install [vgrid](https://pypi.org/project/vgrid/). Full Vgrid  Python documentation is available at [vgrid document](https://vgrid.gishub.vn).
 
@@ -13,17 +16,6 @@ To visualize DGGS in Maplibre GL JS, try the [vgrid-maplibre](https://www.npmjs.
 
 For an interactive demo, visit the [Vgrid Homepage](https://vgrid.vn).
 
-<!-- PROJECT LOGO -->
-<p align="center">
-  <h3 align="center">Vgridtools</h3>
-  <p align="center">
-    <b><i>Vgrid DGGS Tools for QGIS</i><b>
-    <br />
-  </p>
-</p>
-<div align="center">
-  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggs.png">
-</div>
 
 [![image](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
