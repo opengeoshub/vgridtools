@@ -50,7 +50,7 @@ from .processing_provider.binning.polygon_bin import PolygonBin
 
 from .processing_provider.generator.h3gen import H3Gen
 from .processing_provider.generator.s2gen import S2Gen
-from .processing_provider.generator.a5gen import A5Gen  
+from .processing_provider.generator.a5gen import A5Gen
 from .processing_provider.generator.rhealpixgen import rHEALPixGen
 from .processing_provider.generator.isea4tgen import ISEA4TGen
 from .processing_provider.generator.dggalgen import DGGALGen

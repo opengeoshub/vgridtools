@@ -40,7 +40,8 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os, platform
+import os
+import platform
 
 if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
@@ -53,6 +54,7 @@ if platform.system() == "Windows":
     )
     from vgrid.utils.constants import ISEA4T_BASE_CELLS
     from vgrid.conversion.dggs2geo import isea4t2geo
+
     isea4t_dggs = Eaggr(Model.ISEA4T)
 
 from ...utils.imgs import Imgs
@@ -108,7 +110,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
         return "generator"
 
     def tags(self):
-        return self.tr("DGGS, ISEA4T, generator").split(",")      
+        return self.tr("DGGS, ISEA4T, generator").split(",")
 
     txt_en = "ISEA4T DGGS Generator"
     txt_vi = "ISEA4T DGGS Generator"
@@ -199,25 +201,29 @@ class ISEA4TGen(QgsProcessingAlgorithm):
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
-                        self.canvas_extent.yMinimum(), 
-                        self.canvas_extent.xMaximum(),  
-                        self.canvas_extent.yMaximum(),  
-                    )
+                    self.canvas_extent.xMinimum(),
+                    self.canvas_extent.yMinimum(),
+                    self.canvas_extent.xMaximum(),
+                    self.canvas_extent.yMaximum(),
+                )
                 # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:  
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)              
+                if epsg4326 != canvas_crs:
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )     
-            except Exception as e: 
+                    )
+            except Exception:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                min_lat, min_lon, max_lat, max_lon
+            )
             extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
 
         if platform.system() == "Windows":
@@ -279,7 +285,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
 
                     isea4t_cell = DggsCell(child)
                     isea4t_id = isea4t_cell.get_cell_id()
-                    cell_polygon = isea4t2geo(isea4t_id)                   
+                    cell_polygon = isea4t2geo(isea4t_id)
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     isea4t_feature = QgsFeature()
                     isea4t_feature.setGeometry(cell_geometry)

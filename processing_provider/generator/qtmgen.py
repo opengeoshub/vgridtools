@@ -19,7 +19,7 @@ __copyright__ = "(L) 2024, Thang Quach"
 from qgis.core import (
     QgsApplication,
     QgsProject,
-    QgsFeatureSink, 
+    QgsFeatureSink,
     QgsCoordinateTransform,
     QgsProcessingLayerPostProcessorInterface,
     QgsProcessingParameterExtent,
@@ -38,7 +38,7 @@ from qgis.core import (
     QgsVectorLayerSimpleLabeling,
 )
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
+from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
@@ -205,7 +205,7 @@ class QTMGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
-        
+
         canvas_crs = QgsProject.instance().crs()
 
         if self.canvas_extent is None or self.canvas_extent.isEmpty():
@@ -213,27 +213,30 @@ class QTMGen(QgsProcessingAlgorithm):
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
-                        self.canvas_extent.yMinimum(), 
-                        self.canvas_extent.xMaximum(),  
-                        self.canvas_extent.yMaximum(),  
-                    )
+                    self.canvas_extent.xMinimum(),
+                    self.canvas_extent.yMinimum(),
+                    self.canvas_extent.xMaximum(),
+                    self.canvas_extent.yMaximum(),
+                )
                 # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:  
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)              
+                if epsg4326 != canvas_crs:
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )     
-            except Exception as e: 
+                    )
+            except Exception:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                min_lat, min_lon, max_lat, max_lon
+            )
             extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
-
 
         QTMID = {}
         levelFacets = {}
@@ -471,7 +474,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         if layer_node:
             layer_node.setCustomProperty("showFeatureCount", True)
 
-        #iface.mapCanvas().setExtent(layer.extent())
+        # iface.mapCanvas().setExtent(layer.extent())
         iface.mapCanvas().refresh()
 
     # Hack to work around sip bug!

@@ -8,12 +8,16 @@ from qgis.core import (
 from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
+
 import h3
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.conversion.dggs2geo.h32geo import h32geo
-from math import log2    
+from math import log2
 from vgrid.utils.io import validate_coordinate
+from vgrid.utils.geometry import geodesic_buffer
+from vgrid.utils.antimeridian import fix_polygon
+
 
 class H3Grid(QObject):
     def __init__(self, vgridtools, canvas, iface):
@@ -48,14 +52,14 @@ class H3Grid(QObject):
 
             canvas_extent = self.canvas.extent()
             canvas_crs = QgsProject.instance().crs()
-            
+
             scale = self.canvas.scale()
             resolution = self._get_h3_resolution(scale)
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | H3 resolution:{resolution}"
-                )   
+                )
 
             if resolution == 0:
                 base_cells = h3.get_res0_cells()
@@ -64,15 +68,18 @@ class H3Grid(QObject):
                     # Progress bar for child cells
                     for child_cell in child_cells:
                         cell_polygon = h32geo(child_cell)
-                        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         if epsg4326 != canvas_crs:
                             trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
                             )
+                            if settings.fixAntimeridian:
+                                cell_polygon = fix_polygon(cell_polygon)
+                            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                             cell_geometry.transform(trans_to_canvas)
-                        self.h3_marker.addGeometry(cell_geometry, None)      
-            
-            else:                
+                        else:
+                            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                        self.h3_marker.addGeometry(cell_geometry, None)
+            else:
                 min_lon, min_lat, max_lon, max_lat = (
                     canvas_extent.xMinimum(),
                     canvas_extent.yMinimum(),
@@ -81,31 +88,43 @@ class H3Grid(QObject):
                 )
                 # Transform extent to EPSG:4326 if needed
                 if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(canvas_extent)              
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )       
+                    )
 
-                min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)  
+                min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                    min_lat, min_lon, max_lat, max_lon
+                )
+
+                # buffer the extent because the h3.geo_to_cells function only returns the cells that are center_within the extent
                 extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
+                distance = h3.average_hexagon_edge_length(resolution, unit="m")
+                extent_bbox = geodesic_buffer(extent_bbox, distance)
+
                 bbox_cells = h3.geo_to_cells(extent_bbox, resolution)
                 for bbox_cell in bbox_cells:
                     cell_polygon = h32geo(bbox_cell)
-                    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
+                        if settings.fixAntimeridian:
+                            cell_polygon = fix_polygon(cell_polygon)
+                        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         cell_geometry.transform(trans_to_canvas)
+                    else:
+                        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     self.h3_marker.addGeometry(cell_geometry, None)
-
             self.canvas.refresh()
 
-        except Exception as e:
+        except Exception:
             return
 
     def enable_h3(self, enabled: bool):
@@ -118,7 +137,6 @@ class H3Grid(QObject):
             self.h3_grid()
 
     def _get_h3_resolution(self, scale):
-        
         zoom = 29.1402 - log2(scale)
 
         if zoom <= 3.0:

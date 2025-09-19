@@ -1,7 +1,6 @@
 from shapely.geometry import Polygon, box
 from shapely.wkt import loads as wkt_loads
 import platform
-import geopandas as gpd
 from qgis.core import QgsFeature, QgsGeometry, QgsField, QgsFields, QgsWkbTypes
 from PyQt5.QtCore import QVariant
 import re
@@ -17,7 +16,6 @@ from vgrid.conversion.latlon2dggs import (
     latlon2isea3h,
     latlon2dggal,
     latlon2qtm,
-    latlon2ease,
     latlon2olc,
     latlon2geohash,
     latlon2tilecode,
@@ -30,7 +28,6 @@ from vgrid.utils.io import (
     validate_isea4t_resolution,
     validate_isea3h_resolution,
     validate_rhealpix_resolution,
-    validate_ease_resolution,
     validate_dggal_resolution,
     validate_qtm_resolution,
     validate_olc_resolution,
@@ -53,7 +50,6 @@ from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
 from vgrid.conversion.dggs2geo.isea3h2geo import isea3h2geo
 from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
-from vgrid.conversion.dggs2geo.ease2geo import ease2geo
 from vgrid.conversion.dggs2geo.olc2geo import olc2geo
 from vgrid.generator.olcgrid import olc_refine_cell
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
@@ -79,7 +75,7 @@ from vgrid.generator.geohashgrid import expand_geohash_bbox
 from vgrid.utils.constants import (
     ISEA4T_RES_ACCURACY_DICT,
     ISEA3H_RES_ACCURACY_DICT,
-    INITIAL_GEOHASHES,    
+    INITIAL_GEOHASHES,
 )
 
 if platform.system() == "Windows":
@@ -1034,7 +1030,7 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
     a5_features = []
     total_cells = len(a5_hexes_compact)
     if feedback:
-        feedback.pushInfo(f"Compacting cells")
+        feedback.pushInfo("Compacting cells")
         feedback.setProgress(0)
 
     for i, a5_hex_compact in enumerate(a5_hexes_compact):
@@ -1419,7 +1415,7 @@ def dggalcompact_from_qgsfeatures(qgs_features, feedback):
     dggal_features = []
     total_cells = len(dggal_ids_compact)
     if feedback:
-        feedback.pushInfo(f"Compacting cells")
+        feedback.pushInfo("Compacting cells")
         feedback.setProgress(0)
 
     for i, dggal_id_compact in enumerate(dggal_ids_compact):
@@ -2549,7 +2545,7 @@ def qtmcompact_from_qgsfeatures(qgs_features, feedback):
     qtm_features = []
     total_cells = len(qtm_ids_compact)
     if feedback:
-        feedback.pushInfo(f"Compacting cells")
+        feedback.pushInfo("Compacting cells")
         feedback.setProgress(0)
 
     for i, qtm_id_compact in enumerate(qtm_ids_compact):
@@ -2989,7 +2985,7 @@ def olccompact_from_qgsfeatures(qgs_features, feedback):
 
     total_cells = len(olc_ids_compact)
     if feedback:
-        feedback.pushInfo(f"Compacting cells")
+        feedback.pushInfo("Compacting cells")
         feedback.setProgress(0)
 
     for i, olc_id_compact in enumerate(olc_ids_compact):
@@ -3477,7 +3473,7 @@ def geohashcompact_from_qgsfeatures(qgs_features, feedback):
 
     total_cells = len(geohash_ids_compact)
     if feedback:
-        feedback.pushInfo(f"Compacting cells")
+        feedback.pushInfo("Compacting cells")
         feedback.setProgress(0)
 
     for i, geohash_id_compact in enumerate(geohash_ids_compact):
@@ -3784,7 +3780,7 @@ def tilecodecompact_from_qgsfeatures(qgs_features, feedback):
     total_cells = len(tilecode_ids_compact)
 
     if feedback:
-        feedback.pushInfo(f"Compacting cells")
+        feedback.pushInfo("Compacting cells")
         feedback.setProgress(0)
 
     for i, tilecode_id_compact in enumerate(tilecode_ids_compact):
@@ -4138,7 +4134,7 @@ def quadkeycompact_from_qgsfeatures(qgs_features, feedback):
 
     total_cells = len(quadkey_ids_compact)
     if feedback:
-        feedback.pushInfo(f"Compacting cells")
+        feedback.pushInfo("Compacting cells")
         feedback.setProgress(0)
 
     for i, quadkey_id_compact in enumerate(quadkey_ids_compact):

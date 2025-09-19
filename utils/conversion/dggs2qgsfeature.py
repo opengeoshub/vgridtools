@@ -1,4 +1,5 @@
-import re, os
+import re
+import os
 from shapely.geometry import Polygon, shape
 import json
 
@@ -60,7 +61,6 @@ from qgis.core import (
     QgsGeometry,
     QgsField,
     QgsFields,
-    QgsPointXY,
 )
 
 

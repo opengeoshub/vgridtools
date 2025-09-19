@@ -14,8 +14,9 @@
 __author__ = "Thang Quach"
 __date__ = "2024-11-20"
 __copyright__ = "(L) 2024 by Thang Quach"
-import math, os, base64, PIL.Image
-from math import atan, pi, sqrt, floor
+import os
+import base64
+import PIL.Image
 
 
 # Imagem para HTML

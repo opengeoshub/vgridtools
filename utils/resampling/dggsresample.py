@@ -31,14 +31,10 @@ if platform.system() == "Windows":
 from qgis.core import (
     QgsFeature,
     QgsField,
-    QgsFields,
     QgsGeometry,
     QgsVectorLayer,
-    QgsWkbTypes,
 )
 from qgis.PyQt.QtCore import QVariant
-from shapely.wkt import loads as load_wkt
-from numbers import Number
 
 
 geod = Geod(ellps="WGS84")
@@ -59,7 +55,7 @@ def get_nearest_resolution(
             break
         else:
             raise ValueError("No features provided.")
-    except Exception as e:
+    except Exception:
         if feedback:
             feedback.reportError(f"No valid DGGS IDs found in <{from_field}> field.")
         return

@@ -1,5 +1,3 @@
-import os
-import sys
 import importlib
 import subprocess
 from qgis.PyQt.QtWidgets import QMessageBox

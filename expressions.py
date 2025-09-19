@@ -20,7 +20,6 @@ from qgis.core import *
 from qgis.gui import *
 from qgis.utils import qgsfunction
 from vgrid.conversion import latlon2dggs
-from .utils import tr
 
 group_name = "DGGS Vgrid"
 

@@ -19,7 +19,7 @@ __copyright__ = "(L) 2024, Thang Quach"
 from qgis.core import (
     QgsApplication,
     QgsProject,
-    QgsFeatureSink, # type: ignore
+    QgsFeatureSink,  # type: ignore
     QgsProcessingLayerPostProcessorInterface,
     QgsProcessingParameterExtent,
     QgsProcessingParameterNumber,
@@ -191,26 +191,30 @@ class H3Gen(QgsProcessingAlgorithm):
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
-                        self.canvas_extent.yMinimum(), 
-                        self.canvas_extent.xMaximum(),  
-                        self.canvas_extent.yMaximum(),  
-                    )
+                    self.canvas_extent.xMinimum(),
+                    self.canvas_extent.yMinimum(),
+                    self.canvas_extent.xMaximum(),
+                    self.canvas_extent.yMaximum(),
+                )
                 # Transform extent to EPSG:4326 if needed
                 if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)              
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )     
-            except Exception as e: 
+                    )
+            except Exception:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)
-            extent_bbox = box(min_lon,min_lat,max_lon,max_lat)
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                min_lat, min_lon, max_lat, max_lon
+            )
+            extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
 
         if extent_bbox:
             feedback.pushInfo(f"Generating cells within extent: {extent_bbox}.")
@@ -249,7 +253,6 @@ class H3Gen(QgsProcessingAlgorithm):
                 )
                 sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)
 
-              
         else:
             base_cells = h3.get_res0_cells()
             total_base_cells = len(base_cells)
@@ -288,7 +291,6 @@ class H3Gen(QgsProcessingAlgorithm):
                         ]
                     )
                     sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)
-                    
 
         feedback.pushInfo("H3 DGGS generation completed.")
 

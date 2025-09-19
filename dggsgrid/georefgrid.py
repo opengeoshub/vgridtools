@@ -1,6 +1,4 @@
-from shapely.geometry import box
 from qgis.core import (
-    Qgis,
     QgsWkbTypes,
     QgsCoordinateTransform,
     QgsGeometry,
@@ -10,7 +8,7 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
-from math import log2, floor
+from math import log2
 import numpy as np
 
 from ..utils.latlon import epsg4326
@@ -166,5 +164,3 @@ class GEOREFGrid(QObject):
             self.georef_marker.deleteLater()
         except Exception:
             pass
-
-

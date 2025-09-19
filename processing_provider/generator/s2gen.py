@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-s2gen.py  
+s2gen.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -43,13 +43,13 @@ from qgis.utils import iface
 from PyQt5.QtCore import QVariant  # type: ignore
 import os
 from ...utils.imgs import Imgs
-from shapely.geometry import box
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from ...settings import settings
 from vgrid.utils.io import validate_coordinate
 from ...utils.latlon import epsg4326
 from vgrid.conversion.dggs2geo import s22geo
 from vgrid.dggs import s2
+
 
 class S2Gen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
@@ -182,38 +182,41 @@ class S2Gen(QgsProcessingAlgorithm):
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
-        canvas_crs = QgsProject.instance().crs()    
+        canvas_crs = QgsProject.instance().crs()
         if self.canvas_extent is None or self.canvas_extent.isEmpty():
-            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90            
+            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
-                        self.canvas_extent.yMinimum(), 
-                        self.canvas_extent.xMaximum(),  
-                        self.canvas_extent.yMaximum(),  
-                    )
+                    self.canvas_extent.xMinimum(),
+                    self.canvas_extent.yMinimum(),
+                    self.canvas_extent.xMaximum(),
+                    self.canvas_extent.yMaximum(),
+                )
                 # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:      
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    self.canvas_extent   = trans_to_4326.transform(self.canvas_extent)              
+                if epsg4326 != canvas_crs:
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    self.canvas_extent = trans_to_4326.transform(self.canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
+                        self.canvas_extent.xMinimum(),
                         self.canvas_extent.yMinimum(),
                         self.canvas_extent.xMaximum(),
                         self.canvas_extent.yMaximum(),
-                    )     
-            except Exception as e: 
+                    )
+            except Exception:
                 # min_lon, min_lat, max_lon, max_lat = -180.0, -85.05112878, 180.0, 85.05112878
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)
-
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                min_lat, min_lon, max_lat, max_lon
+            )
 
         region = s2.LatLngRect(
-                    s2.LatLng.from_degrees(min_lat, min_lon),
-                    s2.LatLng.from_degrees(max_lat, max_lon),
-                )  
+            s2.LatLng.from_degrees(min_lat, min_lon),
+            s2.LatLng.from_degrees(max_lat, max_lon),
+        )
 
         coverer = s2.RegionCoverer()
         coverer.min_level = self.resolution
@@ -224,8 +227,8 @@ class S2Gen(QgsProcessingAlgorithm):
         total_cells = len(cells)
 
         feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
-        
-        for idx, s2_cell_id in enumerate(cells):            
+
+        for idx, s2_cell_id in enumerate(cells):
             if feedback.isCanceled():
                 break
 
@@ -234,7 +237,7 @@ class S2Gen(QgsProcessingAlgorithm):
 
             s2_token = s2.CellId.to_token(s2_cell_id)
             cell_polygon = s22geo(s2_token)
-         
+
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             s2_feature = QgsFeature()
             s2_feature.setGeometry(cell_geometry)
@@ -301,7 +304,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         if layer_node:
             layer_node.setCustomProperty("showFeatureCount", True)
 
-        #iface.mapCanvas().setExtent(layer.extent())
+        # iface.mapCanvas().setExtent(layer.extent())
         iface.mapCanvas().refresh()
 
     # Hack to work around sip bug!

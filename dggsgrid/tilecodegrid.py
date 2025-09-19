@@ -1,6 +1,5 @@
 from shapely.geometry import box, Polygon
 from qgis.core import (
-    Qgis,
     QgsWkbTypes,
     QgsCoordinateTransform,
     QgsGeometry,
@@ -13,7 +12,6 @@ from qgis.PyQt.QtCore import pyqtSlot
 import traceback
 from math import log2, floor
 
-from ..utils import tr
 from ..utils.latlon import epsg4326
 from ..settings import settings
 
@@ -57,10 +55,15 @@ class TilecodeGrid(QObject):
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | Tilecode resolution:{resolution}"
-                )   
+                )
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             if resolution <= 4:
-                min_lon, min_lat, max_lon, max_lat = -180.0, -85.05112878, 180.0, 85.051128780
+                min_lon, min_lat, max_lon, max_lat = (
+                    -180.0,
+                    -85.05112878,
+                    180.0,
+                    85.051128780,
+                )
             else:
                 # Define bbox in canvas CRS
                 extent_polygon_canvas = box(
@@ -93,8 +96,8 @@ class TilecodeGrid(QObject):
                     )
 
             tiles = list(
-                    mercantile.tiles(min_lon, min_lat, max_lon, max_lat, resolution)
-                )
+                mercantile.tiles(min_lon, min_lat, max_lon, max_lat, resolution)
+            )
             # Iterate over each tile to create features
             for tile in tiles:
                 # Get the tile's bounding box in geographic coordinates
@@ -137,7 +140,7 @@ class TilecodeGrid(QObject):
             self.tilecode_grid()
 
     def _get_tilecode_resolution(self, scale):
-        # Map scale to zoom, then to Tilecode resolution    
+        # Map scale to zoom, then to Tilecode resolution
         zoom = 29.1402 - log2(scale)
         min_res, max_res, _ = settings.getResolution("Tilecode")
 

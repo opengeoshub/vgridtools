@@ -8,7 +8,6 @@ from qgis.core import (
     QgsFeatureSink,
     QgsProcessing,
     QgsProcessingAlgorithm,
-    QgsProcessingParameterField,
     QgsProcessingParameterNumber,
     QgsFields,
     QgsField,
@@ -22,11 +21,12 @@ from qgis.core import (
     QgsProcessingException,
 )
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
+from qgis.PyQt.QtCore import QCoreApplication
 from PyQt5.QtCore import QVariant
-import os, statistics
+import os
+import statistics
 import h3
-from shapely.geometry import Point, Polygon, shape
+from shapely.geometry import Polygon
 from ...utils.imgs import Imgs
 from collections import defaultdict, Counter
 from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure

@@ -42,7 +42,7 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-from qgis.core import QgsCoordinateTransform          
+from qgis.core import QgsCoordinateTransform
 import os
 from ...settings import settings
 from dggal import *
@@ -162,7 +162,7 @@ class DGGALGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        param = QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr(f"DGGAL"))
+        param = QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr("DGGAL"))
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
@@ -220,25 +220,29 @@ class DGGALGen(QgsProcessingAlgorithm):
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
-                        self.canvas_extent.yMinimum(), 
-                        self.canvas_extent.xMaximum(),  
-                        self.canvas_extent.yMaximum(),  
-                    )
+                    self.canvas_extent.xMinimum(),
+                    self.canvas_extent.yMinimum(),
+                    self.canvas_extent.xMaximum(),
+                    self.canvas_extent.yMaximum(),
+                )
                 # Transform extent to EPSG:4326 if needed
                 if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)              
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )     
-            except Exception as e: 
+                    )
+            except Exception:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-        min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon) 
+        min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+            min_lat, min_lon, max_lat, max_lon
+        )
         ll = GeoPoint(min_lat, min_lon)
         ur = GeoPoint(max_lat, max_lon)
         geo_extent = GeoExtent(ll, ur)
@@ -264,7 +268,9 @@ class DGGALGen(QgsProcessingAlgorithm):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             # Only check intersection if we have a valid extent
             if self.canvas_extent and not self.canvas_extent.isEmpty():
-                if not cell_geometry.intersects(QgsGeometry.fromRect(self.canvas_extent)):
+                if not cell_geometry.intersects(
+                    QgsGeometry.fromRect(self.canvas_extent)
+                ):
                     continue
             dggal_feature = QgsFeature()
             dggal_feature.setGeometry(cell_geometry)

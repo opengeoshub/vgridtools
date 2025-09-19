@@ -1,6 +1,5 @@
-from shapely.geometry import Polygon, box
+from shapely.geometry import box
 from qgis.core import (
-    Qgis,
     QgsWkbTypes,
     QgsCoordinateTransform,
     QgsGeometry,
@@ -18,7 +17,6 @@ from vgrid.utils.geometry import s2_cell_to_polygon
 
 # S2
 from vgrid.dggs import s2
-from vgrid.utils.antimeridian import fix_polygon
 
 
 class S2Grid(QObject):
@@ -57,17 +55,17 @@ class S2Grid(QObject):
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | S2 resolution:{resolution}"
-                )   
+                )
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             coverer = s2.RegionCoverer()
             coverer.min_level = resolution
             coverer.max_level = resolution
             if resolution <= 3:
-                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90             
+                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
                 region = s2.LatLngRect(
                     s2.LatLng.from_degrees(min_lat, min_lon),
                     s2.LatLng.from_degrees(max_lat, max_lon),
-                )          
+                )
             else:
                 canvas_extent_bbox = box(
                     canvas_extent.xMinimum(),
@@ -117,7 +115,7 @@ class S2Grid(QObject):
 
             self.canvas.refresh()
 
-        except Exception as e:
+        except Exception:
             return
 
     def enable_s2(self, enabled: bool):

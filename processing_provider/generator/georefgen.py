@@ -48,10 +48,10 @@ from ...utils.imgs import Imgs
 from ...utils.latlon import epsg4326
 from ...settings import settings
 import numpy as np
-from vgrid.dggs import georef
 from vgrid.utils.geometry import graticule_dggs_metrics
 from vgrid.conversion.latlon2dggs import latlon2georef
 from vgrid.conversion.dggs2geo import georef2geo
+
 
 class GEOREFGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
@@ -189,9 +189,9 @@ class GEOREFGen(QgsProcessingAlgorithm):
 
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
-        
+
         canvas_crs = QgsProject.instance().crs()
-      
+
         resolution_degrees = GEOREF_RESOLUTION_DEGREES.get(self.resolution)
 
         if self.canvas_extent is None or self.canvas_extent.isEmpty():
@@ -199,30 +199,33 @@ class GEOREFGen(QgsProcessingAlgorithm):
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
-                        self.canvas_extent.yMinimum(), 
-                        self.canvas_extent.xMaximum(),  
-                        self.canvas_extent.yMaximum(),  
-                    )
+                    self.canvas_extent.xMinimum(),
+                    self.canvas_extent.yMinimum(),
+                    self.canvas_extent.xMaximum(),
+                    self.canvas_extent.yMaximum(),
+                )
                 # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:  
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)              
+                if epsg4326 != canvas_crs:
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
-                        transformed_extent.yMaximum(),                    
-                    )     
-            except Exception as e: 
+                        transformed_extent.yMaximum(),
+                    )
+            except Exception:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
+        min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+            min_lat, min_lon, max_lat, max_lon
+        )
 
-        min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon) 
-      
         longitudes = np.arange(min_lon, max_lon, resolution_degrees)
         latitudes = np.arange(min_lat, max_lat, resolution_degrees)
-           
+
         # Total cells to process, for progress feedback
         total_cells = len(longitudes) * len(latitudes)
         cell_count = 0
@@ -230,8 +233,8 @@ class GEOREFGen(QgsProcessingAlgorithm):
         for lon in longitudes:
             for lat in latitudes:
                 if feedback.isCanceled():
-                    break      
-                georef_id = latlon2georef(lat, lon, self.resolution)      
+                    break
+                georef_id = latlon2georef(lat, lon, self.resolution)
                 cell_polygon = georef2geo(georef_id)
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                 georef_feature = QgsFeature()
@@ -271,7 +274,6 @@ class GEOREFGen(QgsProcessingAlgorithm):
             )
 
         return {self.OUTPUT: dest_id}
-
 
 
 class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):

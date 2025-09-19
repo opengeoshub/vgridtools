@@ -25,7 +25,6 @@ import os
 from qgis.core import QgsApplication, QgsExpression
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import Qt, QTimer, QCoreApplication
-from qgis.PyQt.QtGui import QIcon
 import processing
 from qgis.PyQt.QtWidgets import (
     QAction,
@@ -41,7 +40,6 @@ from qgis.core import (
     QgsGeometry,
     QgsWkbTypes,
     QgsProject,
-    QgsSettings,
 )
 from qgis.gui import QgsRubberBand
 
@@ -55,6 +53,8 @@ from .dggsgrid.a5grid import A5Grid
 from .dggsgrid.s2grid import S2Grid
 from .dggsgrid.rhealpixgrid import RhealpixGrid
 from .dggsgrid.isea4tgrid import ISEA4TGrid
+from .dggsgrid.isea3hgrid import ISEA3HGrid
+from .dggsgrid.easegrid import EASEGrid
 from .dggsgrid.dggal_gnosisgrid import DGGALGnosisGrid
 from .dggsgrid.dggal_isea3hgrid import DGGALISEA3HGrid
 from .dggsgrid.dggal_isea9rgrid import DGGALISEA9RGrid
@@ -63,12 +63,14 @@ from .dggsgrid.dggal_ivea9rgrid import DGGALIVEA9RGrid
 from .dggsgrid.dggal_rtea3hgrid import DGGALRTEA3HGrid
 from .dggsgrid.dggal_rtea9rgrid import DGGALRTEA9RGrid
 from .dggsgrid.dggal_rhealpixgrid import DGGALRHEALPixGrid
+
 # from .dggsgrid.qtmgrid import QTMGrid
 from .dggsgrid.olcgrid import OLCGrid
 from .dggsgrid.geohasgrid import GeohashGrid
+from .dggsgrid.georefgrid import GEOREFGrid
 from .dggsgrid.tilecodegrid import TilecodeGrid
 from .dggsgrid.maidenheadgrid import MaidenheadGrid
-from .dggsgrid.georefgrid import GEOREFGrid
+from .dggsgrid.garsgrid import GARSGrid
 from math import log2
 
 exprs = (
@@ -109,6 +111,8 @@ class VgridTools(object):
         self.s2grid = S2Grid(self, self.canvas, self.iface)
         self.rhealpixgrid = RhealpixGrid(self, self.canvas, self.iface)
         self.isea4tgrid = ISEA4TGrid(self, self.canvas, self.iface)
+        self.isea3hgrid = ISEA3HGrid(self, self.canvas, self.iface)
+        self.easegrid = EASEGrid(self, self.canvas, self.iface)
         self.dggal_gnosisgrid = DGGALGnosisGrid(self, self.canvas, self.iface)
         self.dggal_isea3hgrid = DGGALISEA3HGrid(self, self.canvas, self.iface)
         self.dggal_isea9rgrid = DGGALISEA9RGrid(self, self.canvas, self.iface)
@@ -120,9 +124,10 @@ class VgridTools(object):
         # self.qtmgrid = QTMGrid(self, self.canvas, self.iface)
         self.olcgrid = OLCGrid(self, self.canvas, self.iface)
         self.geohashgrid = GeohashGrid(self, self.canvas, self.iface)
+        self.georefgrid = GEOREFGrid(self, self.canvas, self.iface)
         self.tilecodegrid = TilecodeGrid(self, self.canvas, self.iface)
         self.maidenheadgrid = MaidenheadGrid(self, self.canvas, self.iface)
-        self.georefgrid = GEOREFGrid(self, self.canvas, self.iface)
+        self.garsgrid = GARSGrid(self, self.canvas, self.iface)
 
         self.Vgrid_menu = None
         self.toolbar = self.iface.addToolBar(tr("Vgrid Toolbar"))
@@ -289,6 +294,40 @@ class VgridTools(object):
         self.isea4t_widget_action.setDefaultWidget(isea4t_checkbox)
         self.geodesic_dggs_menu.addAction(self.isea4t_widget_action)
 
+        # ISEA3H
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_hex.svg")
+        self.isea3h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        isea3h_checkbox = QCheckBox("ISEA3H")
+        isea3h_checkbox.setIcon(icon)
+        isea3h_checkbox.setChecked(False)
+        isea3h_checkbox.toggled.connect(
+            lambda checked: (
+                self.isea3hgrid.enable_isea3h(checked),
+                self.isea3hgrid.isea3h_grid(),
+            )
+            if checked
+            else self.isea3hgrid.enable_isea3h(False)
+        )
+        self.isea3h_widget_action.setDefaultWidget(isea3h_checkbox)
+        self.geodesic_dggs_menu.addAction(self.isea3h_widget_action)
+
+        # EASE
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_ease.svg")
+        self.ease_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        ease_checkbox = QCheckBox("EASE")
+        ease_checkbox.setIcon(icon)
+        ease_checkbox.setChecked(False)
+        ease_checkbox.toggled.connect(
+            lambda checked: (
+                self.easegrid.enable_ease(checked),
+                self.easegrid.ease_grid(),
+            )
+            if checked
+            else self.easegrid.enable_ease(False)
+        )
+        self.ease_widget_action.setDefaultWidget(ease_checkbox)
+        self.geodesic_dggs_menu.addAction(self.ease_widget_action)
+
         # DGGAL Gnosis
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
         self.dggal_widget_action = QWidgetAction(self.geodesic_dggs_menu)
@@ -427,7 +466,7 @@ class VgridTools(object):
 
         # QTM
         # icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
-        # self.qtm_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
+        # self.qtm_widget_action = QWidgetAction(self.geodesic_dggs_menu)
         # qtm_checkbox = QCheckBox("QTM")
         # qtm_checkbox.setIcon(icon)
         # qtm_checkbox.setChecked(False)
@@ -440,7 +479,7 @@ class VgridTools(object):
         #     else self.qtmgrid.enable_qtm(False)
         # )
         # self.qtm_widget_action.setDefaultWidget(qtm_checkbox)
-        # self.graticule_based_dggs_menu.addAction(self.qtm_widget_action)
+        # self.geodesic_dggs_menu.addAction(self.qtm_widget_action)
 
         # OLC (Graticule-based DGGS)
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_olc.svg")
@@ -526,6 +565,23 @@ class VgridTools(object):
         )
         self.maidenhead_widget_action.setDefaultWidget(maidenhead_checkbox)
         self.graticule_based_dggs_menu.addAction(self.maidenhead_widget_action)
+
+        # GARS (Graticule-based DGGS)
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
+        self.gars_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
+        gars_checkbox = QCheckBox("GARS")
+        gars_checkbox.setIcon(icon)
+        gars_checkbox.setChecked(False)
+        gars_checkbox.toggled.connect(
+            lambda checked: (
+                self.garsgrid.enable_gars(checked),
+                self.garsgrid.gars_grid(),
+            )
+            if checked
+            else self.garsgrid.enable_gars(False)
+        )
+        self.gars_widget_action.setDefaultWidget(gars_checkbox)
+        self.graticule_based_dggs_menu.addAction(self.gars_widget_action)
 
         # Add Binning actions
         # H3 Bin
@@ -671,7 +727,7 @@ class VgridTools(object):
         # H3 Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_h3.svg")
         self.h3GenAction = QAction(icon, tr("H3"), self.iface.mainWindow())
-        self.h3GenAction.setObjectName("h3Gen")        
+        self.h3GenAction.setObjectName("h3Gen")
         self.h3GenAction.setToolTip(tr("H3 Generator"))
         self.h3GenAction.triggered.connect(self.runH3Gen)
         self.generator_menu.addAction(self.h3GenAction)
@@ -694,9 +750,7 @@ class VgridTools(object):
 
         # rHEALPix Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_rhealpix.svg")
-        self.rhealpixGenAction = QAction(
-            icon, tr("rHEALPix"), self.iface.mainWindow()
-        )
+        self.rhealpixGenAction = QAction(icon, tr("rHEALPix"), self.iface.mainWindow())
         self.rhealpixGenAction.setObjectName("rhealpixGen")
         self.rhealpixGenAction.setToolTip(tr("rHEALPix Generator"))
         self.rhealpixGenAction.triggered.connect(self.runRhealpixGen)
@@ -704,14 +758,12 @@ class VgridTools(object):
 
         # ISEA4T Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
-        self.isea4tGenAction = QAction(
-            icon, tr("ISEA4T"), self.iface.mainWindow()
-        )
+        self.isea4tGenAction = QAction(icon, tr("ISEA4T"), self.iface.mainWindow())
         self.isea4tGenAction.setObjectName("isea4tGen")
         self.isea4tGenAction.setToolTip(tr("ISEA4T Generator"))
         self.isea4tGenAction.triggered.connect(self.runISEA4TGen)
         self.generator_menu.addAction(self.isea4tGenAction)
-    
+
         # DGGAL Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
         self.dggalGenAction = QAction(icon, tr("DGGAL"), self.iface.mainWindow())
@@ -719,7 +771,6 @@ class VgridTools(object):
         self.dggalGenAction.setToolTip(tr("DGGAL Generator"))
         self.dggalGenAction.triggered.connect(self.runDGGALGen)
         self.generator_menu.addAction(self.dggalGenAction)
-
 
         # QTM Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
@@ -739,9 +790,7 @@ class VgridTools(object):
 
         # Geohash Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.geohashGenAction = QAction(
-            icon, tr("Geohash"), self.iface.mainWindow()
-        )
+        self.geohashGenAction = QAction(icon, tr("Geohash"), self.iface.mainWindow())
         self.geohashGenAction.setObjectName("geohashGen")
         self.geohashGenAction.setToolTip(tr("Geohash Generator"))
         self.geohashGenAction.triggered.connect(self.runGeohashGen)
@@ -773,9 +822,7 @@ class VgridTools(object):
 
         # Tilecode Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.tilecodeGenAction = QAction(
-            icon, tr("Tilecode"), self.iface.mainWindow()
-        )
+        self.tilecodeGenAction = QAction(icon, tr("Tilecode"), self.iface.mainWindow())
         self.tilecodeGenAction.setObjectName("tilecodeGen")
         self.tilecodeGenAction.setToolTip(tr("Tilecode Generator"))
         self.tilecodeGenAction.triggered.connect(self.runTilecodeGen)
@@ -783,9 +830,7 @@ class VgridTools(object):
 
         # Quadkey Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.quadkeyGenAction = QAction(
-            icon, tr("Quadkey"), self.iface.mainWindow()
-        )
+        self.quadkeyGenAction = QAction(icon, tr("Quadkey"), self.iface.mainWindow())
         self.quadkeyGenAction.setObjectName("quadkeyGen")
         self.quadkeyGenAction.setToolTip(tr("Quadkey Generator"))
         self.quadkeyGenAction.triggered.connect(self.runQuadkeyGen)
@@ -877,6 +922,10 @@ class VgridTools(object):
             self.rhealpixgrid.cleanup()
         if hasattr(self, "isea4tgrid") and self.isea4tgrid:
             self.isea4tgrid.cleanup()
+        if hasattr(self, "isea3hgrid") and self.isea3hgrid:
+            self.isea3hgrid.cleanup()
+        if hasattr(self, "easegrid") and self.easegrid:
+            self.easegrid.cleanup()
         if hasattr(self, "dggal_gnosisgrid") and self.dggal_gnosisgrid:
             self.dggal_gnosisgrid.cleanup()
         if hasattr(self, "dggal_isea3hgrid") and self.dggal_isea3hgrid:
@@ -894,17 +943,19 @@ class VgridTools(object):
         if hasattr(self, "dggal_rhealpixgrid") and self.dggal_rhealpixgrid:
             self.dggal_rhealpixgrid.cleanup()
         # if hasattr(self, "qtmgrid") and self.qtmgrid:
-            # self.qtmgrid.cleanup()
+        #     self.qtmgrid.cleanup()
         if hasattr(self, "olcgrid") and self.olcgrid:
             self.olcgrid.cleanup()
         if hasattr(self, "geohashgrid") and self.geohashgrid:
             self.geohashgrid.cleanup()
+        if hasattr(self, "georefgrid") and self.georefgrid:
+            self.georefgrid.cleanup()
         if hasattr(self, "tilecodegrid") and self.tilecodegrid:
             self.tilecodegrid.cleanup()
         if hasattr(self, "maidenheadgrid") and self.maidenheadgrid:
             self.maidenheadgrid.cleanup()
-        if hasattr(self, "georefgrid") and self.georefgrid:
-            self.georefgrid.cleanup()
+        if hasattr(self, "garsgrid") and self.garsgrid:
+            self.garsgrid.cleanup()
 
         self.settingsDialog = None
         QgsApplication.processingRegistry().removeProvider(self.provider)
@@ -965,20 +1016,20 @@ class VgridTools(object):
         self.crossRb.reset()
 
     def Vgrid_add_submenu(self, submenu):
-        if self.Vgrid_menu != None:
+        if self.Vgrid_menu is not None:
             self.Vgrid_menu.addMenu(submenu)
         else:
             self.iface.addPluginToMenu("&Vgrid", submenu.menuAction())
 
     def Vgrid_add_submenu2(self, submenu, icon):
-        if self.Vgrid_menu != None:
+        if self.Vgrid_menu is not None:
             submenu.setIcon(QIcon(icon))
             self.Vgrid_menu.addMenu(submenu)
         else:
             self.iface.addPluginToMenu("&Vgrid", submenu.menuAction())
 
     def Vgrid_add_submenu3(self, submenu, icon):
-        if self.dggs_menu != None:
+        if self.dggs_menu is not None:
             submenu.setIcon(QIcon(icon))
             self.dggs_menu.addMenu(submenu)
         else:

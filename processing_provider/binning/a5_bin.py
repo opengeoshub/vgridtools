@@ -8,7 +8,6 @@ from qgis.core import (
     QgsFeatureSink,
     QgsProcessing,
     QgsProcessingAlgorithm,
-    QgsProcessingParameterField,
     QgsProcessingParameterNumber,
     QgsFields,
     QgsField,
@@ -22,9 +21,10 @@ from qgis.core import (
     QgsProcessingException,
 )
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
+from qgis.PyQt.QtCore import QCoreApplication
 from PyQt5.QtCore import QVariant
-import os, statistics
+import os
+import statistics
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.latlon2dggs import latlon2a5
 from ...utils.imgs import Imgs

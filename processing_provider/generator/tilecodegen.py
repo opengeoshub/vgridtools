@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-tilecodegen.py          
+tilecodegen.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -19,7 +19,7 @@ __copyright__ = "(L) 2024, Thang Quach"
 from qgis.core import (
     QgsApplication,  # type: ignore
     QgsProject,
-    QgsCoordinateTransform, 
+    QgsCoordinateTransform,
     QgsFeatureSink,
     QgsProcessingLayerPostProcessorInterface,  # type: ignore
     QgsProcessingParameterExtent,
@@ -41,7 +41,7 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
-import os, random
+import os
 from ...utils.imgs import Imgs
 from shapely.geometry import Polygon
 from vgrid.dggs import mercantile
@@ -49,7 +49,7 @@ from vgrid.utils.geometry import graticule_dggs_metrics
 from ...settings import settings
 from vgrid.utils.io import validate_coordinate
 from ...utils.latlon import epsg4326
-    
+
 
 class TilecodeGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
@@ -183,35 +183,41 @@ class TilecodeGen(QgsProcessingAlgorithm):
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
 
-        canvas_crs = QgsProject.instance().crs()    
+        canvas_crs = QgsProject.instance().crs()
         if self.canvas_extent is None or self.canvas_extent.isEmpty():
             # min_lon, min_lat, max_lon, max_lat =  -180.0, -85.05112878, 180.0, 85.05112878
-            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90           
+            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
-                        self.canvas_extent.yMinimum(), 
-                        self.canvas_extent.xMaximum(),  
-                        self.canvas_extent.yMaximum(),  
-                    )
+                    self.canvas_extent.xMinimum(),
+                    self.canvas_extent.yMinimum(),
+                    self.canvas_extent.xMaximum(),
+                    self.canvas_extent.yMaximum(),
+                )
                 # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:  
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    self.canvas_extent   = trans_to_4326.transform(self.canvas_extent)              
+                if epsg4326 != canvas_crs:
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    self.canvas_extent = trans_to_4326.transform(self.canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
+                        self.canvas_extent.xMinimum(),
                         self.canvas_extent.yMinimum(),
                         self.canvas_extent.xMaximum(),
                         self.canvas_extent.yMaximum(),
-                    )     
-            except Exception as e: 
+                    )
+            except Exception:
                 # min_lon, min_lat, max_lon, max_lat = -180.0, -85.05112878, 180.0, 85.05112878
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-        min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)
+        min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+            min_lat, min_lon, max_lat, max_lon
+        )
 
-        tiles = list(mercantile.tiles(min_lon, min_lat, max_lon, max_lat, self.resolution))
+        tiles = list(
+            mercantile.tiles(min_lon, min_lat, max_lon, max_lat, self.resolution)
+        )
 
         total_cells = len(tiles)
         feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
@@ -261,7 +267,6 @@ class TilecodeGen(QgsProcessingAlgorithm):
                 ]
             )
             sink.addFeature(tilecode_feature, QgsFeatureSink.FastInsert)
-           
 
         feedback.pushInfo("Tilecode DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
@@ -307,7 +312,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         if layer_node:
             layer_node.setCustomProperty("showFeatureCount", True)
 
-        #iface.mapCanvas().setExtent(layer.extent())
+        # iface.mapCanvas().setExtent(layer.extent())
         iface.mapCanvas().refresh()
 
     # Hack to work around sip bug!

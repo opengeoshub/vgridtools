@@ -16,7 +16,7 @@ __author__ = "Thang Quach"
 __date__ = "2024-11-20"
 __copyright__ = "(L) 2024, Thang Quach"
 
-from qgis.core import ( 
+from qgis.core import (
     QgsApplication,
     QgsProject,
     QgsCoordinateTransform,
@@ -185,35 +185,41 @@ class QuadkeyGen(QgsProcessingAlgorithm):
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
 
-        canvas_crs = QgsProject.instance().crs()    
+        canvas_crs = QgsProject.instance().crs()
         if self.canvas_extent is None or self.canvas_extent.isEmpty():
             # min_lon, min_lat, max_lon, max_lat =  -180.0, -85.05112878, 180.0, 85.05112878
-            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90            
+            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
-                        self.canvas_extent.yMinimum(), 
-                        self.canvas_extent.xMaximum(),  
-                        self.canvas_extent.yMaximum(),  
-                    )
+                    self.canvas_extent.xMinimum(),
+                    self.canvas_extent.yMinimum(),
+                    self.canvas_extent.xMaximum(),
+                    self.canvas_extent.yMaximum(),
+                )
                 # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:  
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    self.canvas_extent   = trans_to_4326.transform(self.canvas_extent)              
+                if epsg4326 != canvas_crs:
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    self.canvas_extent = trans_to_4326.transform(self.canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
+                        self.canvas_extent.xMinimum(),
                         self.canvas_extent.yMinimum(),
                         self.canvas_extent.xMaximum(),
                         self.canvas_extent.yMaximum(),
-                    )     
-            except Exception as e: 
+                    )
+            except Exception:
                 # min_lon, min_lat, max_lon, max_lat = -180.0, -85.05112878, 180.0, 85.05112878
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-        min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)
+        min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+            min_lat, min_lon, max_lat, max_lon
+        )
 
-        tiles = list(mercantile.tiles(min_lon, min_lat, max_lon, max_lat, self.resolution))
+        tiles = list(
+            mercantile.tiles(min_lon, min_lat, max_lon, max_lat, self.resolution)
+        )
 
         total_cells = len(tiles)
         feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
@@ -263,7 +269,6 @@ class QuadkeyGen(QgsProcessingAlgorithm):
             )
             sink.addFeature(quadkey_feature, QgsFeatureSink.FastInsert)
 
-          
         feedback.pushInfo("Quadkey DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = settings.quadkeyColor
@@ -308,7 +313,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         if layer_node:
             layer_node.setCustomProperty("showFeatureCount", True)
 
-        #iface.mapCanvas().setExtent(layer.extent())
+        # iface.mapCanvas().setExtent(layer.extent())
         iface.mapCanvas().refresh()
 
     # Hack to work around sip bug!

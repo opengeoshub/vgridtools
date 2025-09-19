@@ -173,6 +173,7 @@ class Settings:
         self.zoomLevel = int(qset.value("/vgrid/zoomLevel", Qt.Checked))
         self.gridLabel = int(qset.value("/vgrid/gridLabel", Qt.Checked))
         self.persistentMarker = int(qset.value("/vgrid/persistentMarker", Qt.Checked))
+        self.fixAntimeridian = int(qset.value("/vgrid/fixAntimeridian", Qt.Checked))
         self.coordOrder = int(qset.value("/vgrid/coordOrder", CoordOrder.OrderYX))
         self.epsg4326Precision = int(qset.value("/vgrid/epsg4326Precision", 8))
 
@@ -342,6 +343,7 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.zoomLevelCheckBox.setCheckState(Qt.Checked)
         self.gridLabelCheckBox.setCheckState(Qt.Checked)
         self.persistentMarkerCheckBox.setCheckState(Qt.Checked)
+        self.fixAntimeridianCheckBox.setCheckState(Qt.Checked)
         self.coordOrderComboBox.setCurrentIndex(CoordOrder.OrderYX)
         self.epsg4326PrecisionSpinBox.setValue(8)
 
@@ -535,6 +537,9 @@ class SettingsWidget(QDialog, FORM_CLASS):
         qset.setValue(
             "/vgrid/persistentMarker", int(self.persistentMarkerCheckBox.checkState())
         )
+        qset.setValue(
+            "/vgrid/fixAntimeridian", int(self.fixAntimeridianCheckBox.checkState())
+        )
         qset.setValue("/vgrid/coordOrder", int(self.coordOrderComboBox.currentIndex()))
         qset.setValue(
             "/vgrid/epsg4326Precision", int(self.epsg4326PrecisionSpinBox.value())
@@ -641,6 +646,7 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.zoomLevelCheckBox.setCheckState(settings.zoomLevel)
         self.gridLabelCheckBox.setCheckState(settings.gridLabel)
         self.persistentMarkerCheckBox.setCheckState(settings.persistentMarker)
+        self.fixAntimeridianCheckBox.setCheckState(settings.fixAntimeridian)
         self.coordOrderComboBox.setCurrentIndex(settings.coordOrder)
         self.epsg4326PrecisionSpinBox.setValue(settings.epsg4326Precision)
 

@@ -1,6 +1,5 @@
 from shapely.geometry import box
 from qgis.core import (
-    Qgis,
     QgsWkbTypes,
     QgsCoordinateTransform,
     QgsGeometry,
@@ -11,10 +10,10 @@ from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
 from pyproj import Geod
-import geopandas as gpd
 from math import log2, floor
-    
+
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+
 geod = Geod(ellps="WGS84")
 rhealpix_dggs = RHEALPixDGGS()
 
@@ -23,6 +22,7 @@ from ..settings import settings
 
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.utils.geometry import rhealpix_cell_to_polygon
+from vgrid.utils.antimeridian import fix_polygon
 
 
 class RhealpixGrid(QObject):
@@ -64,20 +64,31 @@ class RhealpixGrid(QObject):
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | rHEALPix resolution:{resolution}"
-                )   
+                )
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             if resolution <= 2:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
-                rhealpix_cells  = rhealpix_dggs.grid(resolution)
+                rhealpix_cells = rhealpix_dggs.grid(resolution)
                 for rhealpix_cell in rhealpix_cells:
                     cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
-                    cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    # cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    # if epsg4326 != canvas_crs:
+                    #     trans = QgsCoordinateTransform(
+                    #         epsg4326, canvas_crs, QgsProject.instance()
+                    #     )
+                    #     cell_geom.transform(trans)
+                    # self.rhealpix_marker.addGeometry(cell_geom, None)
                     if epsg4326 != canvas_crs:
-                        trans = QgsCoordinateTransform(
+                        trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        cell_geom.transform(trans)
-                    self.rhealpix_marker.addGeometry(cell_geom, None)
+                        if settings.fixAntimeridian:
+                            cell_polygon = fix_polygon(cell_polygon)
+                        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                        cell_geometry.transform(trans_to_canvas)
+                    else:
+                        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    self.rhealpix_marker.addGeometry(cell_geometry, None)
             else:
                 # Define bbox in canvas CRS
                 canvas_extent_bbox = box(
@@ -152,17 +163,28 @@ class RhealpixGrid(QObject):
                     cell_polygon = rhealpix_cell_to_polygon(cell)
                     if not cell_polygon.intersects(extent_bbox):
                         continue
-                    cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    # cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    # if epsg4326 != canvas_crs:
+                    #     trans = QgsCoordinateTransform(
+                    #         epsg4326, canvas_crs, QgsProject.instance()
+                    #     )
+                    #     cell_geom.transform(trans)
+                    # self.rhealpix_marker.addGeometry(cell_geom, None)
                     if epsg4326 != canvas_crs:
-                        trans = QgsCoordinateTransform(
+                        trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        cell_geom.transform(trans)
-                    self.rhealpix_marker.addGeometry(cell_geom, None)
+                        if settings.fixAntimeridian:
+                            cell_polygon = fix_polygon(cell_polygon)
+                        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                        cell_geometry.transform(trans_to_canvas)
+                    else:
+                        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    self.rhealpix_marker.addGeometry(cell_geometry, None)
 
             self.canvas.refresh()
 
-        except Exception as e:
+        except Exception:
             return
 
     def enable_rhealpix(self, enabled: bool):
@@ -176,7 +198,7 @@ class RhealpixGrid(QObject):
 
     def _get_rhealpix_resolution(self, scale):
         # Map scale to zoom, then clamp to configured bounds
-        from math import log2    
+        from math import log2
 
         zoom = 29.1402 - log2(scale)
         min_res, max_res, _ = settings.getResolution("rHEALPix")

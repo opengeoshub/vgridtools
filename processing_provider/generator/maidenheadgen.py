@@ -273,34 +273,34 @@ class MaidenheadGen(QgsProcessingAlgorithm):
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
-                        self.canvas_extent.yMinimum(), 
-                        self.canvas_extent.xMaximum(),  
-                        self.canvas_extent.yMaximum(),  
-                    )
+                    self.canvas_extent.xMinimum(),
+                    self.canvas_extent.yMinimum(),
+                    self.canvas_extent.xMaximum(),
+                    self.canvas_extent.yMaximum(),
+                )
                 # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:      
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)              
+                if epsg4326 != canvas_crs:
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )     
-            except Exception as e: 
+                    )
+            except Exception:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                min_lat, min_lon, max_lat, max_lon
+            )
 
             min_x = max(0, int((min_lon - base_lon) / lon_width))
-            max_x = min(
-                x_cells, int((max_lon - base_lon) / lon_width) + 1
-            )
+            max_x = min(x_cells, int((max_lon - base_lon) / lon_width) + 1)
             min_y = max(0, int((min_lat - base_lat) / lat_width))
-            max_y = min(
-                y_cells, int((max_lat - base_lat) / lat_width) + 1
-            )
+            max_y = min(y_cells, int((max_lat - base_lat) / lat_width) + 1)
 
             # Total cells to process, for progress feedback
             total_cells = (max_x - min_x) * (max_y - min_y)

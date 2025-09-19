@@ -1,6 +1,5 @@
 from shapely.geometry import box
 from qgis.core import (
-    Qgis,
     QgsWkbTypes,
     QgsCoordinateTransform,
     QgsGeometry,
@@ -11,10 +10,10 @@ from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 from math import log2, floor
 
-from ..utils import tr
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.utils.constants import INITIAL_GEOHASHES
+
 # Geohash imports
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.utils.io import validate_coordinate
@@ -60,7 +59,7 @@ class GeohashGrid(QObject):
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | Geohash resolution:{resolution}"
-                )   
+                )
 
             if resolution <= 2:
                 for gh in INITIAL_GEOHASHES:
@@ -73,16 +72,20 @@ class GeohashGrid(QObject):
                     canvas_extent.yMaximum(),
                 )
                 if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(canvas_extent)              
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )       
-           
-                min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)  
+                    )
+
+                min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                    min_lat, min_lon, max_lat, max_lon
+                )
                 extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
                 intersected_geohashes = []
                 for gh in INITIAL_GEOHASHES:
@@ -93,11 +96,12 @@ class GeohashGrid(QObject):
                 # Expand each intersected geohash to the target resolution
                 for gh in intersected_geohashes:
                     self._expand_geohash_within_extent(
-                        gh, resolution, extent_bbox, canvas_crs)
+                        gh, resolution, extent_bbox, canvas_crs
+                    )
 
             self.canvas.refresh()
 
-        except Exception as e:
+        except Exception:
             return
 
     def _expand_geohash(self, gh, target_length, canvas_crs):

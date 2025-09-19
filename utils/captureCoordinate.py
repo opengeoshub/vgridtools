@@ -72,7 +72,7 @@ class CaptureCoordinate(QgsMapToolEmitPoint):
             )
             pt4326 = transform.transform(pt.x(), pt.y())
             self.capturePoint.emit(pt4326)
-        except Exception as e:
+        except Exception:
             pass
 
     def removeVertexMarker(self):

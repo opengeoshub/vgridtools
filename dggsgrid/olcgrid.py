@@ -1,6 +1,5 @@
-from shapely.geometry import box, Polygon
+from shapely.geometry import box
 from qgis.core import (
-    Qgis,
     QgsWkbTypes,
     QgsCoordinateTransform,
     QgsGeometry,
@@ -13,9 +12,11 @@ from qgis.PyQt.QtCore import pyqtSlot
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from math import log2
+
 # OLC imports
 from vgrid.generator.olcgrid import olc_grid as olc_grid_vgrid, olc_refine_cell
 from vgrid.utils.io import validate_coordinate
+
 
 class OLCGrid(QObject):
     def __init__(self, vgridtools, canvas, iface):
@@ -46,7 +47,7 @@ class OLCGrid(QObject):
             self.olc_marker.setWidth(settings.gridWidth)
 
             canvas_extent = self.canvas.extent()
-            canvas_crs = QgsProject.instance().crs()        
+            canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
             resolution = self._get_olc_resolution(scale)
@@ -54,7 +55,7 @@ class OLCGrid(QObject):
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | OLC resolution:{resolution}"
-                )   
+                )
 
             base_resolution = 2
             base_gdf = olc_grid_vgrid(base_resolution, verbose=False)
@@ -67,7 +68,7 @@ class OLCGrid(QObject):
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
                         geom.transform(trans_to_canvas)
-                    self.olc_marker.addGeometry(geom, None)     
+                    self.olc_marker.addGeometry(geom, None)
             else:
                 min_lon, min_lat, max_lon, max_lat = (
                     canvas_extent.xMinimum(),
@@ -76,16 +77,20 @@ class OLCGrid(QObject):
                     canvas_extent.yMaximum(),
                 )
                 if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(canvas_extent)              
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )       
+                    )
 
-                min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)  
+                min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                    min_lat, min_lon, max_lat, max_lon
+                )
                 extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
                 # Generate grid within bounding box using seed cell refinement
                 seed_cells = []
@@ -100,20 +105,27 @@ class OLCGrid(QObject):
                 for seed_cell in seed_cells:
                     seed_cell_poly = seed_cell["geometry"]
 
-                    if seed_cell_poly.contains(extent_bbox) and resolution == base_resolution:
+                    if (
+                        seed_cell_poly.contains(extent_bbox)
+                        and resolution == base_resolution
+                    ):
                         # Append the seed cell directly if fully contained and resolution matches
                         refined_records.append(seed_cell)
                     else:
                         # Refine the seed cell to the output resolution and add it to the output
                         refined_records.extend(
                             olc_refine_cell(
-                                seed_cell_poly.bounds, base_resolution, resolution, extent_bbox
+                                seed_cell_poly.bounds,
+                                base_resolution,
+                                resolution,
+                                extent_bbox,
                             )
                         )
 
                 # Filter to target resolution and remove duplicates
                 final_records = [
-                    record for record in refined_records 
+                    record
+                    for record in refined_records
                     if record["resolution"] == resolution
                 ]
 
@@ -125,7 +137,7 @@ class OLCGrid(QObject):
                     if olc_id not in seen_olc_ids:
                         unique_records.append(record)
                         seen_olc_ids.add(olc_id)
-                
+
                 for record in unique_records:
                     cell_polygon = record["geometry"]
                     geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -136,10 +148,9 @@ class OLCGrid(QObject):
                         geom.transform(trans_to_canvas)
                     self.olc_marker.addGeometry(geom, None)
             self.canvas.refresh()
-              
-        except Exception as e:
-            return
 
+        except Exception:
+            return
 
     def enable_olc(self, enabled: bool):
         self.olc_enabled = bool(enabled)
@@ -148,7 +159,7 @@ class OLCGrid(QObject):
 
     def _onExtentsChanged(self):
         self._extentTimer.start()
-   
+
     def _refreshOLCGridOnExtent(self):
         if self.olc_enabled:
             self.olc_grid()

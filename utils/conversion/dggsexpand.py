@@ -1,7 +1,5 @@
-import platform, re
-from shapely.wkt import loads
-from shapely.geometry import Polygon
-from vgrid.dggs import s2, olc, mercantile, qtm
+import platform
+from vgrid.dggs import s2, olc
 import h3
 import a5
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS

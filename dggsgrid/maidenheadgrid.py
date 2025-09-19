@@ -1,6 +1,5 @@
-from shapely.geometry import box, Polygon
+from shapely.geometry import Polygon
 from qgis.core import (
-    Qgis,
     QgsWkbTypes,
     QgsCoordinateTransform,
     QgsGeometry,
@@ -10,7 +9,6 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
-import traceback
 
 from math import log2, floor
 from ..utils.latlon import epsg4326
@@ -69,8 +67,8 @@ class MaidenheadGrid(QObject):
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | Maidenhead resolution:{resolution}"
-                )   
-            
+                )
+
             if resolution <= 1:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
             else:
@@ -82,16 +80,20 @@ class MaidenheadGrid(QObject):
                 )
                 # Transform extent to EPSG:4326 if needed
                 if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(canvas_extent)              
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )       
+                    )
 
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon) 
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                min_lat, min_lon, max_lat, max_lon
+            )
             # Get grid parameters for the resolution
             x_cells, y_cells, lon_width, lat_width = grid_params[resolution]
             base_lat, base_lon = -90.0, -180.0
@@ -147,7 +149,7 @@ class MaidenheadGrid(QObject):
 
             self.canvas.refresh()
 
-        except Exception as e:
+        except Exception:
             return
 
     def enable_maidenhead(self, enabled: bool):
@@ -159,7 +161,9 @@ class MaidenheadGrid(QObject):
         if self.maidenhead_enabled:
             self.maidenhead_grid()
 
-    def _get_maidenhead_resolution(self, scale):      # Map scale to zoom, then to Maidenhead resolution
+    def _get_maidenhead_resolution(
+        self, scale
+    ):  # Map scale to zoom, then to Maidenhead resolution
         zoom = 29.1402 - log2(scale)
         min_res, max_res, _ = settings.getResolution("Maidenhead")
         # Maidenhead resolution mapping - similar to other grids

@@ -1,6 +1,4 @@
-from shapely.geometry import box
 from qgis.core import (
-    Qgis,
     QgsWkbTypes,
     QgsCoordinateTransform,
     QgsGeometry,
@@ -10,12 +8,11 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
-import traceback
-
-from ..utils import tr
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.utils.io import validate_coordinate
+from vgrid.utils.antimeridian import fix_polygon
+
 # A5 converters
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.latlon2dggs import latlon2a5
@@ -52,7 +49,7 @@ class A5Grid(QObject):
             self.a5_marker.reset(QgsWkbTypes.PolygonGeometry)
             self.a5_marker.setStrokeColor(settings.a5Color)
             self.a5_marker.setWidth(settings.gridWidth)
-            
+
             canvas_extent = self.canvas.extent()
             canvas_crs = QgsProject.instance().crs()
 
@@ -63,29 +60,33 @@ class A5Grid(QObject):
                 self.iface.mainWindow().statusBar().showMessage(
                     f"Zoom Level: {zoom:.2f} | A5 resolution:{resolution}"
                 )
-            
+
             if resolution <= 2:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
             else:
                 min_lon, min_lat, max_lon, max_lat = (
-                    canvas_extent.xMinimum(),  
-                    canvas_extent.yMinimum(), 
-                    canvas_extent.xMaximum(),  
-                    canvas_extent.yMaximum(),  
+                    canvas_extent.xMinimum(),
+                    canvas_extent.yMinimum(),
+                    canvas_extent.xMaximum(),
+                    canvas_extent.yMaximum(),
                 )
                 # Transform extent to EPSG:4326 if needed
                 if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())
-                    transformed_extent = trans_to_4326.transform(canvas_extent)              
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )     
-            
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)  
-        
+                    )
+
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                min_lat, min_lon, max_lat, max_lon
+            )
+
             # Determine lon/lat step based on resolution (aligned with processing a5)
             lon_width, lat_width = self._resolution_to_step(resolution)
             # Iterate over bbox grid
@@ -102,17 +103,22 @@ class A5Grid(QObject):
                             lat += lat_width
                             continue
                         seen.add(a5_id)
-                        poly = a52geo(a5_id)
-                        if poly is None:
+                        cell_polygon = a52geo(a5_id)
+                        if cell_polygon is None:
                             lat += lat_width
                             continue
-                        geom = QgsGeometry.fromWkt(poly.wkt)
                         if epsg4326 != canvas_crs:
                             trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
                             )
-                            geom.transform(trans_to_canvas)
-                        self.a5_marker.addGeometry(geom, None)
+                            if settings.fixAntimeridian:
+                                cell_polygon = fix_polygon(cell_polygon)
+                            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                            cell_geometry.transform(trans_to_canvas)
+                        else:
+                            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                        self.a5_marker.addGeometry(cell_geometry, None)
+
                     except Exception:
                         pass
                     lat += lat_width
@@ -120,7 +126,7 @@ class A5Grid(QObject):
 
             self.canvas.refresh()
 
-        except Exception as e:
+        except Exception:
             return
 
     def enable_a5(self, enabled: bool):

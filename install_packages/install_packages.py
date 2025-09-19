@@ -22,6 +22,6 @@ def installer_func():
             dep = dep.strip().split("==")[0]
             try:
                 __import__(dep)
-            except ImportError as e:
+            except ImportError:
                 print("{} not available, installing".format(dep))
                 pip.main(["install", dep])

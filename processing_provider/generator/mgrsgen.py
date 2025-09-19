@@ -18,7 +18,6 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
-    QgsProject,
     QgsFeatureSink,
     QgsProcessingLayerPostProcessorInterface,
     QgsProcessingParameterString,
@@ -40,8 +39,7 @@ from qgis.core import (
 )
 
 from qgis.PyQt.QtGui import QIcon, QColor
-from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
-from qgis.core import QgsApplication
+from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant
 import os
@@ -159,7 +157,7 @@ class MGRSGen(QgsProcessingAlgorithm):
             return False
 
         if not is_valid_gzd(self.gzd):
-            feedback.reportError("Please input a valid GZD.")   
+            feedback.reportError("Please input a valid GZD.")
             return False
 
         return True

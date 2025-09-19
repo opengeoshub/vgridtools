@@ -46,7 +46,6 @@ import os
 from vgrid.dggs import olc
 from vgrid.generator.olcgrid import olc_grid, olc_refine_cell
 from vgrid.utils.geometry import graticule_dggs_metrics
-import geopandas as gpd
 
 from ...utils.imgs import Imgs
 from ...settings import settings
@@ -158,13 +157,11 @@ class OLCGen(QgsProcessingAlgorithm):
 
         # Get the extent parameter
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-        
+
         if self.resolution == 2 and (
             self.canvas_extent is not None and not self.canvas_extent.isEmpty()
         ):
-            feedback.reportError(
-                "When canvas extent is set, resolution must be > 2."
-            )
+            feedback.reportError("When canvas extent is set, resolution must be > 2.")
             return False
 
         if self.resolution > 4 and (
@@ -204,7 +201,7 @@ class OLCGen(QgsProcessingAlgorithm):
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
-        canvas_crs = QgsProject.instance().crs()        
+        canvas_crs = QgsProject.instance().crs()
 
         if self.canvas_extent is None or self.canvas_extent.isEmpty():
             # Define the boundaries of the world
@@ -284,29 +281,33 @@ class OLCGen(QgsProcessingAlgorithm):
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),  
-                        self.canvas_extent.yMinimum(), 
-                        self.canvas_extent.xMaximum(),  
-                        self.canvas_extent.yMaximum(),  
-                    )
+                    self.canvas_extent.xMinimum(),
+                    self.canvas_extent.yMinimum(),
+                    self.canvas_extent.xMaximum(),
+                    self.canvas_extent.yMaximum(),
+                )
                 # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:  
-                    trans_to_4326 = QgsCoordinateTransform(canvas_crs, epsg4326, QgsProject.instance())     
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)              
+                if epsg4326 != canvas_crs:
+                    trans_to_4326 = QgsCoordinateTransform(
+                        canvas_crs, epsg4326, QgsProject.instance()
+                    )
+                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
                     min_lon, min_lat, max_lon, max_lat = (
                         transformed_extent.xMinimum(),
                         transformed_extent.yMinimum(),
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
-                    )     
-            except Exception as e: 
+                    )
+            except Exception:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(min_lat, min_lon, max_lat, max_lon)
-            extent_bbox = box(min_lon, min_lat, max_lon, max_lat)  
-            
-            base_resolution = 2   
-            base_gdf = olc_grid(base_resolution, verbose=False)             
+            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+                min_lat, min_lon, max_lat, max_lon
+            )
+            extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
+
+            base_resolution = 2
+            base_gdf = olc_grid(base_resolution, verbose=False)
             # Step 2: Identify seed cells that intersect with the bounding box
             seed_cells = []
             for idx, base_cell in base_gdf.iterrows():
@@ -396,7 +397,7 @@ class OLCGen(QgsProcessingAlgorithm):
                     ]
                 )
                 sink.addFeature(olc_feature, QgsFeatureSink.FastInsert)
-      
+
         feedback.pushInfo("OLC DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = settings.olcColor

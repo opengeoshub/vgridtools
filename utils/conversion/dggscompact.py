@@ -1,6 +1,4 @@
-from shapely.wkt import loads
-from shapely.geometry import Polygon
-from vgrid.dggs import s2, olc, mercantile
+from vgrid.dggs import s2
 import h3
 import a5
 
@@ -65,7 +63,6 @@ from qgis.core import (
     QgsProcessingException,
 )
 from PyQt5.QtCore import QVariant
-from shapely.geometry import Polygon
 
 
 ##########################

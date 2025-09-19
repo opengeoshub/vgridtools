@@ -723,9 +723,7 @@ def generate_geohash_grid(resolution, qgs_features, feedback=None):
     unified_geom = unary_union(geometries)
 
     intersected_geohashes = {
-        gh
-        for gh in INITIAL_GEOHASHES
-        if geohash2geo(gh).intersects(unified_geom)
+        gh for gh in INITIAL_GEOHASHES if geohash2geo(gh).intersects(unified_geom)
     }
 
     geohashes_geom = set()
