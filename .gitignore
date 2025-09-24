@@ -3,3 +3,4 @@
 __pycache__/
 references/
 .ruff_cache/
+site/

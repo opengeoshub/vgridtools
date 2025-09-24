@@ -59,14 +59,6 @@ pip.main(['install', 'vgrid','--upgrade'])
 <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/vgridtools.png">
 </div>
 
-## DGGS Conversion
-
-- Cell ID to DGGS: see [Cell ID to DGGS](manual/conversion/cellid2dggs.md)
-- Vector to DGGS: see [Vector to DGGS](manual/conversion/vector2dggs.md)
-- Raster to DGGS: see [Raster to DGGS](manual/conversion/raster2dggs.md)
-- DGGS Compact: see [DGGS Compact](manual/conversion/dggscompact.md)
-- DGGS Expand: see [DGGS Expand](manual/conversion/dggsexpand.md)
-
 ## DGGS Visualization
 ### Visualize DGGSs interactively.
 
@@ -81,6 +73,13 @@ pip.main(['install', 'vgrid','--upgrade'])
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/latlon2dggstool.png">
 </div> 
 
+## DGGS Conversion
+
+- Cell ID to DGGS: see [Cell ID to DGGS](manual/conversion/cellid2dggs.md)
+- Vector to DGGS: see [Vector to DGGS](manual/conversion/vector2dggs.md)
+- Raster to DGGS: see [Raster to DGGS](manual/conversion/raster2dggs.md)
+- DGGS Compact: see [DGGS Compact](manual/conversion/dggscompact.md)
+- DGGS Expand: see [DGGS Expand](manual/conversion/dggsexpand.md)
 
 ## DGGS Binning
 ### Bin/ aggregate point layer into DGGS at a specified resolution.
@@ -101,10 +100,13 @@ pip.main(['install', 'vgrid','--upgrade'])
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsgenerator_h3.png">
 </div>
 
-
 ## Expressions
 
 See [Expressions](manual/expressions.md)
 
 ## Settings
+### Configure default resolution, stroke color, and other DGGS cartographic options.
 
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/settings.png">
+</div>
