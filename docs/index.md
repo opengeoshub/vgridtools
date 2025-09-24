@@ -17,6 +17,12 @@ To visualize DGGS in Maplibre GL JS, try the [vgrid-maplibre](https://www.npmjs.
 For an interactive demo, visit the [Vgrid Homepage](https://vgrid.vn).
 
 
+<div align="center">
+  <video src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsvisualization.mp4" autoplay muted loop playsinline controls style="max-width:100%; height:auto;"></video>
+</div>
+
+
+
 [![image](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 <!-- TABLE OF CONTENTS -->
