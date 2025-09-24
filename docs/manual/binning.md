@@ -1,5 +1,5 @@
-### Bin point layer into DGGS at a specific resolution.
-#### DGGS binning supports category-based statistics including count, sum, min, max, mean, median, standard deviation, variance, range, minority, majority, and variety
+### Bin/ aggregate point layer into DGGS at a specified resolution.
+#### DGGS binning supports category-based statistics including *count*, *sum*, *min*, *max*, *mean*, *median*, *standard deviation*, *variance*, *range*, *minority*, *majority*, and *variety*.
 <div align="center">
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsbinning.png">
 </div>
