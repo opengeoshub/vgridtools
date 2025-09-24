@@ -1,4 +1,6 @@
-Convert Vector layers in georaphic CRS to DGGS.
+### Vector to DGGS
+#### Convert vector layers (Point/ MultiPoint, Linestring/ Multilinestring, Polygon/ Multipolygon) in geographic CRS to DGGS.
+
 <div align="center">
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/vertor2dggs.png">
 </div>

@@ -1,4 +1,5 @@
 ## DGGS Resampling
+### Resample accross different DGGSs.
 <div align="center">
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsresampling.png">
 </div>

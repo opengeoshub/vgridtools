@@ -49,10 +49,16 @@ def latlon2h3(latitude, longitude, resolution, feature, parent):
     Convert (lat, long) to H3 ID.
     <h4>Syntax</h4>
       <li><span class = function>latlon2h3</span>(<span class = parameters>lat, long, resolution [0..15]</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate</li>
+      <li><span class = parameters>long</span>: longitude coordinate</li>
+      <li><span class = parameters>resolution</span>: H3 resolution [0..15]</li>
+    </ul>
     <h4>Example usage</h4>
-
     <ul>
       <li><span class = function>latlon2h3</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 13</span>)&rarr; '8d65b56628e46bf'</li>
+      <li>Point features: <span class = function>latlon2h3</span>(<span class = parameters>$y,$x,13</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2h3(latitude, longitude, resolution)
@@ -72,12 +78,19 @@ def latlon2s2(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to S2 Token.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2s2</span>(<span class = parameters>lat, long, resolution [0-..30]</span>)</li>
+      <li><span class = function>latlon2s2</span>(<span class = parameters>lat, long, resolution</span>)</li>   
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: S2 resolution [0..30]</li>    
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2s2</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 21</span>)&rarr; '31752f45cc94'</li>
-    </ul>
+      <li>Point features: <span class = function>latlon2s2</span>(<span class = parameters>$y,$x,21</span>)</li>
+    </ul> 
     """
     return latlon2dggs.latlon2s2(latitude, longitude, resolution)
 
@@ -96,11 +109,18 @@ def latlon2a5(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to A5 Hex Code.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2a5</span>(<span class = parameters>lat, long, resolution [0..29]</span>)</li>
+      <li><span class = function>latlon2a5</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: A5 resolution [0..29]</li>      
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2a5</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 16</span>)&rarr; '7a9408e938000000'</li>
+      <li>Point features: <span class = function>latlon2a5</span>(<span class = parameters>$y,$x,16</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2a5(latitude, longitude, resolution)
@@ -120,11 +140,18 @@ def latlon2rhealpix(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to rHEALPix ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2rhealpix</span>(<span class = parameters>lat, long, resolution [0..15]</span>)</li>
+      <li><span class = function>latlon2rhealpix</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: rHEALPix resolution [0..15]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2rhealpix</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 12</span>)&rarr; 'R312603625535'</li>
+      <li>Point features: <span class = function>latlon2rhealpix</span>(<span class = parameters>$y,$x,12</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2rhealpix(latitude, longitude, resolution)
@@ -144,11 +171,18 @@ def latlon2isea4t(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to OpenEAGGR ISEA4T ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2isea4t</span>(<span class = parameters>lat, long, resolution [0..39]</span>)</li>
+      <li><span class = function>latlon2isea4t</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: ISEA4T resolution [0..39]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2isea4t</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 20</span>)&rarr; '1310231333101123322130'</li>
+      <li>Point features: <span class = function>latlon2isea4t</span>(<span class = parameters>$y,$x,20</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2isea4t(latitude, longitude, resolution)
@@ -168,11 +202,18 @@ def latlon2isea3h(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to OpenEAGGR ISEA3H ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2isea3h</span>(<span class = parameters>lat, long, resolution [0..40]</span>)</li>
+      <li><span class = function>latlon2isea3h</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: ISEA3H resolution [0..40]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2isea3h</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 20</span>)&rarr; '132022636,-1020'</li>
+      <li>Point features: <span class = function>latlon2isea3h</span>(<span class = parameters>$y,$x,20</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2isea3h(latitude, longitude, resolution)
@@ -192,7 +233,7 @@ def latlon2isea3h(latitude, longitude, resolution, feature, parent):
 #   </style>
 #   Convert (lat, long) to EASE-DGGS.
 #   <h4>Syntax</h4>
-#     <li><span class = function>latlon2ease</span>(<span class = parameters>lat, long, resolution [0..6]</span>)</li>
+#     <li><span class = function>latlon2ease</span>(<span class = parameters>lat, long, resolution</span>)</li>
 #   <h4>Example usage</h4>
 
 #   <ul>
@@ -217,10 +258,18 @@ def latlon2dggal(dggs_type, latitude, longitude, resolution, feature, parent):
     Convert (lat, long) to DGGAL ID.
     <h4>Syntax</h4>
       <li><span class = function>latlon2dggal</span>(<span class = parameters>dggs_type, lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>dggs_type</span>: DGGS type (e.g., 'gnosis','isea3h','isea9r','ivea3h','ivea9r','rtea3h','rtea9r','rhealpix')</li>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: DGGS resolution</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2dggal</span>(<span class = parameters>'isea9r', 10.775276, 106.706797, 7</span>)&rarr; 'H7-629F2'</li>
+      <li>Point features: <span class = function>latlon2dggal</span>(<span class = parameters>'isea9r', $y, $x, 7</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2dggal(dggs_type, latitude, longitude, resolution)
@@ -240,11 +289,18 @@ def latlon2qtm(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to QTM ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2qtm</span>(<span class = parameters>lat, long, resolution [1..24]</span>)</li>
+      <li><span class = function>latlon2qtm</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: QTM resolution [1..24]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2qtm</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 18</span>)&rarr; '420123231312110130'</li>
+      <li>Point features: <span class = function>latlon2qtm</span>(<span class = parameters>$y,$x,18</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2qtm(latitude, longitude, resolution)
@@ -265,11 +321,18 @@ def latlon2olc(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to Open Location Code (OLC)/ Google Plus Code
     <h4>Syntax</h4>
-      <li><span class = function>latlon2olc</span>(<span class = parameters>lat, long, resolution [2,4,6,8,10,11..15]</span>)</li>
+      <li><span class = function>latlon2olc</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: OLC resolution [2,4,6,8,10,11..15]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2olc</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 11</span>)&rarr; '7P28QPG4+4P7'</li>
+      <li>Point features: <span class = function>latlon2olc</span>(<span class = parameters>$y,$x,11</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2olc(latitude, longitude, resolution)
@@ -289,11 +352,18 @@ def latlon2mgrs(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to MGRS ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2mgrs</span>(<span class = parameters>lat, long, resolution [0..5]</span>)</li>
+      <li><span class = function>latlon2mgrs</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: MGRS resolution [0..5]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2mgrs</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 4</span>)&rarr; '48PXS86629165'</li>
+      <li>Point features: <span class = function>latlon2mgrs</span>(<span class = parameters>$y,$x,4</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2mgrs(latitude, longitude, resolution)
@@ -313,11 +383,18 @@ def latlon2geohash(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to Geohash ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2geohash</span>(<span class = parameters>lat, long, resolution [1..30]</span>)</li>
+      <li><span class = function>latlon2geohash</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: Geohash resolution [1..30]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2geohash</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 9</span>)&rarr; 'w3gvk1td8'</li>
+      <li>Point features: <span class = function>latlon2geohash</span>(<span class = parameters>$y,$x,9</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2geohash(latitude, longitude, resolution)
@@ -337,11 +414,18 @@ def latlon2georef(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to GEOREF ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2georef</span>(<span class = parameters>lat, long, resolution [0..10]</span>)</li>
+      <li><span class = function>latlon2georef</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: GEOREF resolution [0..10]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2georef</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 5</span>)&rarr; 'VGBL4240746516'</li>
+      <li>Point features: <span class = function>latlon2georef</span>(<span class = parameters>$y,$x,5</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2georef(latitude, longitude, resolution)
@@ -361,11 +445,18 @@ def latlon2tilecode(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to Tilecode ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2tilecode</span>(<span class = parameters>lat, long, resolution [0..29]</span>)</li>
+      <li><span class = function>latlon2tilecode</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: Tilecode resolution [0..29]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2tilecode</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 23</span>)&rarr; 'z23x6680752y3941728'</li>
+      <li>Point features: <span class = function>latlon2tilecode</span>(<span class = parameters>$y,$x,23</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2tilecode(latitude, longitude, resolution)
@@ -385,12 +476,19 @@ def latlon2quadkey(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to Quadkey ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2quadkey</span>(<span class = parameters>lat, long, resolution [0..29]</span>)</li>
+      <li><span class = function>latlon2quadkey</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: Quadkey resolution [0..29]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2quadkey</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 23</span>)&rarr; '13223011131020212310000'</li>
-    </ul>
+      <li>Point features: <span class = function>latlon2quadkey</span>(<span class = parameters>$y,$x,23</span>)</li>
+    </ul> 
     """
     return latlon2dggs.latlon2quadkey(latitude, longitude, resolution)
 
@@ -409,11 +507,18 @@ def latlon2maidenhead(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to Maidenhead ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2maidenhead</span>(<span class = parameters>lat, long, resolution [1..4]</span>)</li>
+      <li><span class = function>latlon2maidenhead</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: Maidenhead resolution [1..4]</li>
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2maidenhead</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 4</span>)&rarr; 'OK30is46'</li>
+      <li>Point features: <span class = function>latlon2maidenhead</span>(<span class = parameters>$y,$x,4</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2maidenhead(latitude, longitude, resolution)
@@ -433,50 +538,65 @@ def latlon2gars(latitude, longitude, resolution, feature, parent):
     </style>
      Convert (lat, long) to GARS ID.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2gars</span>(<span class = parameters>lat, long, resolution [1..4] (30, 15, 5, 1 minutes)</span>)</li>
+      <li><span class = function>latlon2gars</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: GARS resolution [1..4] (30, 15, 5, 1 minutes)</li>  
+    </ul>
     <h4>Example usage</h4>
 
     <ul>
       <li><span class = function>latlon2gars</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 4</span>)&rarr; '574JK1918'</li>
+      <li>Point features: <span class = function>latlon2gars</span>(<span class = parameters>$y,$x,4</span>)</li>
     </ul>
     """
     return latlon2dggs.latlon2gars(latitude, longitude, resolution)
 
 
 @qgsfunction(args="auto", group=group_name)
-def compactness_skew(geometry: QgsGeometry, parent):
+def comp_skew(geometry: QgsGeometry, parent):
         """
-        Calculate a skew compactness
+        <style type="text/css">
+        .function {
+        color: #05688f;
+        font-weight: bold;
+        }
+        .parameters {
+        color: red;
+        font-style:italic
+        }
+        </style>
+        Calculate Skew Compactness
 
-        <p> A skew compactness compares the area of the maximum inscribed circle (A_mic) to the area of the minimum bounding circle (A_mbc). </p>
+        <p> Skew Compactness is the ratio of the area <b>A<sub>mic<sub></b> of the maximum inscribed circle to the area of the minimum bounding circle <b>A<sub>mbc<sub></b>. </p>
 
-        <p>Can be written as:</p>
-        <p>
-        Skew = A_mic / A_mbc
+        <p style="text-align: center;">
+        <b>comp_skew</b> = <b>A<sub>mic</sub></b> / <b>A<sub>mbc</sub></b>
         </p>
-
+        Where:
         <ul>
-            <li> Where <b>A_mic</b> is the area of the maximum inscribed circle of the geometry </li>
-            <li> Where <b>A_mbc</b> is the area of the minimum bounding circle of the geometry </li>
+            <li> <b>A<sub>mic</sub></b> is the area of the maximum inscribed circle of the geometry. </li>
+            <li> <b>A<sub>mbc</sub></b> is the area of the minimum bounding circle of the geometry. </li>
         </ul>
 
         Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact.
 
         <h4>Syntax</h4>
-        <p><b>compactness_skew</b>( <i>geometry</i> )</p>
+        <p><b>comp_skew</b>( <i>geometry</i> )</p>
 
         <h4>Arguments</h4>
         <p><i>geometry</i>: a polygon geometry</p>
 
         <h4>Example usage</h4>
         <ul>
-        <li><b>compactness_skew</b>( $geometry )  &rarr; [0;1]</li>
-        <li><b>compactness_skew</b>( geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))') ) &rarr; 0,2</li>
+        <li><b>comp_skew</b>( $geometry )  &rarr; [0..1]</li>
         </ul>
         """
         if geometry.type() != Qgis.GeometryType.Polygon:
             parent.setEvalErrorString(
-                "Only polygon geometry are supported for function `compactness_skew`"
+                "Only polygon geometry are supported for function `comp_skew`"
             )
             return
 
@@ -488,41 +608,48 @@ def compactness_skew(geometry: QgsGeometry, parent):
         return A_mic / A_mbc
 
 @qgsfunction(args="auto", group=group_name)
-def compactness_pp(geometry: QgsGeometry, parent):
-    """
-    Calculate a  <a href="https://en.wikipedia.org/wiki/Polsby%E2%80%93Popper_test">Polsby-Popper(PP) compactness</a> score
+def comp_pp(geometry: QgsGeometry, parent):
+    """<style type="text/css">
+      .function {
+      color: #05688f;
+      font-weight: bold;
+      }
+      .parameters {
+      color: red;
+      font-style:italic
+      }
+    </style>
+    Calculate Polsby-Popper(PP) Compactness
 
     <p>
-    The Polsby-Popper (polsby & Popper, 1991) is the ratio of the area(A) of the geometry to the area of a circle whose circumference is equal to the perimeter(P) of the geometry .
+      Polsby-Popper Compactness is the ratio of the area <b>A</b> of the geometry to the area of a circle whose circumference is equal to the perimeter <b>P</b> of the geometry.
     </p>
 
-    <p>Can be written as:</p>
-    <p>
-    4 * pi * (A / P*P )
+    <p style="text-align: center;">
+    <b>comp_pp</b> = 4 * π * (<b>A</b> / <b>P</b>²)
     </p>
-
+    Where:
     <ul>
-      <li> Where <b>A</b> is the area of the geometry </li>
-      <li> Where <b>P</b> is the perimeter of the geometry </li>
+      <li> <b>A</b> is the area of the geometry. </li>
+      <li> <b>P</b> is the perimeter of the geometry. </li>
     </ul>
 
-    a score of 0 indicating complete lack of compactness and a score of 1 indicating maximal compactness. Only a perfectly round geometry will reach a Polsby–Popper score of 1.
+    Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact. Only a perfectly round geometry will reach a Polsby–Popper score of 1.
 
     <h4>Syntax</h4>
-    <p><b>compactness_pp</b>( <i>geometry</i> )</p>
+    <p><span class = function>comp_pp</span>( <span class = parameters>geometry</span> )</p>
 
     <h4>Arguments</h4>
-    <p><i>geometry</i>: a polygon geometry</p>
+    <p><span class = parameters>geometry</span>: a polygon geometry</p>
 
     <h4>Example usage</h4>
     <ul>
-      <li><b>compactness_pp</b>( $geometry )  &rarr; [0;1]</li>
-      <li><b>compactness_pp</b>( geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))') ) &rarr; 0,698131&hellip;</li>
+      <li><span class = function>comp_pp</span>( <span class = parameters>$geometry</span> )  &rarr; [0..1]</li>
     </ul>
     """
     if geometry.type() != Qgis.GeometryType.Polygon:
         parent.setEvalErrorString(
-            "Only polygon geometry are supported for function `compactness_pp`"
+            "Only polygon geometry are supported for function `comp_pp`"
         )
         return
 
@@ -532,37 +659,47 @@ def compactness_pp(geometry: QgsGeometry, parent):
     return (FOUR_PI * A) / (P * P)
 
 @qgsfunction(args="auto", group=group_name)
-def compactness_schwartz(geometry: QgsGeometry, parent):
-    """
-    Calculate a schwartzberg compactness
-
-    <p>Can be written as:</p>
+def comp_schwartz(geometry: QgsGeometry, parent):
+    """<style type="text/css">
+      .function {
+      color: #05688f;
+      font-weight: bold;
+      }
+      .parameters {
+      color: red;
+      font-style:italic
+      }
+    </style>
+    Calculate Schwartzberg Compactness
     <p>
-    S = 1 / (P / (2pi * sqrt(A / pi)))
+        Schwartzberg Compactness is the ratio of the perimeter <b>P</b> of the geometry to the circumference of a circle whose area is equal to the area of the geometry.
     </p>
+    <p style="text-align: center;">
+    <b>comp_schwartz</b> = 1 / (<b>P</b> / (2π * √(<b>A</b> / π)))
+    </p>
+    Where:
     <ul>
-      <li> Where <b>A</b> is the area of the geometry </li>
-      <li> Where <b>P</b> is the perimeter of the geometry </li>
+      <li> <b>A</b> is the area of the geometry. </li>
+      <li> <b>P</b> is the perimeter of the geometry. </li>
     </ul>
 
 
     Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact.
 
     <h4>Syntax</h4>
-    <p><b>compactness_schwartz</b>( <i>geometry</i> )</p>
+    <p><span class = function>comp_schwartz</span>( <span class = parameters>geometry</span> )</p>
 
     <h4>Arguments</h4>
-    <p><i>geometry</i>: a polygon geometry</p>
+    <p><span class = parameters>geometry</span>: a polygon geometry</p>
 
     <h4>Example usage</h4>
     <ul>
-      <li><b>compactness_schwartz</b>( $geometry )  &rarr; [0;1]</li>
-      <li><b>compactness_schwartz</b>( geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))') ) &rarr; 0,8355&hellip;</li>
+      <li><span class = function>comp_schwartz</span>( <span class = parameters>$geometry</span> )  &rarr; [0..1]</li>
     </ul>
     """
     if geometry.type() != Qgis.GeometryType.Polygon:
         parent.setEvalErrorString(
-            "Only polygon geometry are supported for function `compactness_schwartz`"
+            "Only polygon geometry are supported for function `comp_schwartz`"
         )
         return
 
@@ -572,38 +709,46 @@ def compactness_schwartz(geometry: QgsGeometry, parent):
     return 1 / (P / (tau * sqrt(A / pi)))
 
 @qgsfunction(args="auto", group=group_name)
-def compactness_reock(geometry: QgsGeometry, parent):
-    """
-    Calculate a reock compactness
+def comp_reock(geometry: QgsGeometry, parent):
+    """<style type="text/css">
+      .function {
+      color: #05688f;
+      font-weight: bold;
+      }
+      .parameters {
+      color: red;
+      font-style:italic
+      }
+    </style>
+    Calculate Reock Compactness
 
-    <p> A reock compactness is the ratio between the area (A) of the geometry to the area of the minimum bounding circle (A_mbc)</p>
+    <p> Reock Compactness is the ratio between the area <b>A</b> of the geometry to the area of the minimum bounding circle <b>A<sub>mbc</sub></b></p>
 
-    <p>Can be written as:</p>
-    <p>
-    reock = A / A_mbc
+    <p style="text-align: center;">
+    <b>comp_reock</b> = <b>A</b> / <b>A<sub>mbc</sub></b>
     </p>
+    Where:
     <ul>
-      <li> Where <b>A</b> is the area of the geometry </li>
-      <li> Where <b>A_mbc</b> is the area of the minimum bounding circle of the geometry </li>
+      <li> <b>A</b> is the area of the geometry. </li>
+      <li> <b>A<sub>mbc</sub></b> is the area of the minimum bounding circle of the geometry. </li>
     </ul>
 
     Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact.
 
     <h4>Syntax</h4>
-    <p><b>compactness_reock</b>( <i>geometry</i> )</p>
+    <p><span class = function>comp_reock</span>( <span class = parameters>geometry</span> )</p>
 
     <h4>Arguments</h4>
-    <p><i>geometry</i>: a polygon geometry</p>
+    <p><span class = parameters>geometry</span>: a polygon geometry</p>
 
     <h4>Example usage</h4>
     <ul>
-      <li><b>compactness_reock</b>( $geometry )  &rarr; [0;1]</li>
-      <li><b>compactness_reock</b>( geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))') ) &rarr; 0,51189&hellip;</li>
+      <li><span class = function>comp_reock</span>( <span class = parameters>$geometry</span> )  &rarr; [0..1]</li>
     </ul>
     """
     if geometry.type() != Qgis.GeometryType.Polygon:
         parent.setEvalErrorString(
-            "Only polygon geometry are supported for function `compactness_reock`"
+            "Only polygon geometry are supported for function `comp_reock`"
         )
         return
 
@@ -613,80 +758,96 @@ def compactness_reock(geometry: QgsGeometry, parent):
     return A / A_mbc
 
 @qgsfunction(args="auto", group=group_name)
-def compactness_box_reock(geometry: QgsGeometry, parent):
-    """
-    Calculate a box reock compactness
+def comp_box_reock(geometry: QgsGeometry, parent):
+    """<style type="text/css">
+      .function {
+      color: #05688f;
+      font-weight: bold;
+      }
+      .parameters {
+      color: red;
+      font-style:italic
+      }
+    </style>
+    Calculate Box Reock Compactness
 
-    <p> A box reock compactness is the ratio between the area (A) of the geometry to the area of the minimum bounding box (A_bbox)</p>
+    <p> Box Reock Compactness is the ratio between the area <b>A</b> of the geometry to the area of its minimum bounding rectangle <b>A<sub>mbr</sub></b>.</p>
 
-    <p>Can be written as:</p>
-    <p>
-    box_reock = A / A_bbox
+    <p style="text-align: center;">
+    <b>comp_box_reock</b> = <b>A</b> / <b>A<sub>mbr</sub></b>
     </p>
+    Where:
     <ul>
-      <li> Where <b>A</b> is the area of the geometry </li>
-      <li> Where <b>A_bbox</b> is the area of the minimum bounding rectangle of the geometry </li>
+      <li> <b>A</b> is the area of the geometry. </li>
+      <li> <b>A<sub>mbr</sub></b> is the area of the minimum bounding rectangle of the geometry. </li>
     </ul>
 
     Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact.
 
     <h4>Syntax</h4>
-    <p><b>compactness_box_reock</b>( <i>geometry</i> )</p>
+    <p><span class = function>comp_box_reock</span>( <span class = parameters>geometry</span> )</p>
 
     <h4>Arguments</h4>
-    <p><i>geometry</i>: a polygon geometry</p>
+    <p><span class = parameters>geometry</span>: a polygon geometry</p>
 
     <h4>Example usage</h4>
     <ul>
-      <li><b>compactness_box_reock</b>( $geometry )  &rarr; [0;1]</li>
-      <li><b>compactness_box_reock</b>( geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))') ) &rarr; 1</li>
-      <li><b>compactness_box_reock</b>( geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 0))') ) &rarr; 0.5</li>
+      <li><span class = function>comp_box_reock</span>( <span class = parameters>$geometry</span> )  &rarr; [0..1]</li>
     </ul>
     """
     if geometry.type() != Qgis.GeometryType.Polygon:
         parent.setEvalErrorString(
-            "Only polygon geometry are supported for function `compactness_box_reock`"
+            "Only polygon geometry are supported for function `comp_box_reock`"
         )
         return
 
     A = geometry.area()
-    A_bbox = geometry.boundingBox().area()
+    A_mbr = geometry.boundingBox().area()
 
-    return A / A_bbox
+    return A / A_mbr
 
 
 @qgsfunction(args="auto", group=group_name)
-def compactness_lw(geometry: QgsGeometry, parent):
-    """
-    Calculate a Length-Width Compactness
+def comp_lw(geometry: QgsGeometry, parent):
+    """<style type="text/css">
+      .function {
+      color: #05688f;
+      font-weight: bold;
+      }
+      .parameters {
+      color: red;
+      font-style:italic
+      }
+    </style>
+    Calculate Length-Width Compactness
 
-    <p> Length-Width compactness compares the width and the length of a geometry using its bouding box</p> 
-    <p>Can be written as:</p>
-    <p>
-    lw =  W_bbox / L_bbox
+    <p>Length-Width Compactness is the ratio between the width <b>W<sub>mbr</sub></b> to the length <b>L<sub>mbr</sub></b> of the minimum bounding rectangle of the geometry</p>
+
+    <p style="text-align: center;">
+    <b>comp_lw</b> = <b>W<sub>mbr</sub></b> / <b>L<sub>mbr</sub></b>
     </p>
+    Where:
     <ul>
-      <li> Where <b>W_bbox</b> is the shorter side of the bounding box of the geometry </li>
-      <li> Where <b>L_bbox</b> the longer side of the bounding box of the geometry </li>
+      <li> <b>W<sub>mbr</sub></b> is the width of the minimum bounding rectangle of the geometry. </li>
+      <li> <b>L<sub>mbr</sub></b> is the length of the minimum bounding rectangle of the geometry. </li>
     </ul>
 
     Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact.
 
     <h4>Syntax</h4>
-    <p><b>compactness_lw</b>( <i>geometry</i> )</p>
+    <p><span class = function>comp_lw</span>( <span class = parameters>geometry</span> )</p>
 
     <h4>Arguments</h4>
-    <p><i>geometry</i>: a polygon geometry</p>
+    <p><span class = parameters>geometry</span>: a polygon geometry</p>
 
     <h4>Example usage</h4>
     <ul>
-      <li><b>compactness_lw</b>( $geometry )  &rarr; [0;1]</li>
-      <li><b>compactness_lw</b>( geom_from_wkt('POLYGON((0 0, 4 0, 4 2, 0 2, 0 0))') ) &rarr; 0.5</li>
+      <li><span class = function>comp_lw</span>( <span class = parameters>$geometry</span> )  &rarr; [0..1]</li>
     </ul>
     """
     if geometry.type() != Qgis.GeometryType.Polygon:
         parent.setEvalErrorString(
-            "Only polygon geometry are supported for function `compactness_lw`"
+            "Only polygon geometry are supported for function `comp_lw`"
         )
         return
 
@@ -700,37 +861,46 @@ def compactness_lw(geometry: QgsGeometry, parent):
 
 
 @qgsfunction(args="auto", group=group_name)
-def compactness_cvh(geometry: QgsGeometry, parent):
-    """
-    Calculate a convex hull compactness
+def comp_cvh(geometry: QgsGeometry, parent):
+    """<style type="text/css">
+      .function {
+      color: #05688f;
+      font-weight: bold;
+      }
+      .parameters {
+      color: red;
+      font-style:italic
+      }
+    </style>
+    Calculate Convex Hull Compactness
 
-    <p> A convex hull compactness is the ratio between the area (A) of the geometry to the area of its convex hull (A_cvh)</p>
+    <p>Convex Hull Compactness is the ratio between the area <b>A</b> of the geometry to the area of its convex hull <b>A<sub>cvh</sub></b></p>
 
-    <p>Can be written as:</p>
-    <p>
-    cvh = A / A_cvh
+    <p style="text-align: center;">
+    <b>comp_cvh</b> = <b>A</b> / <b>A<sub>cvh</sub></b>
     </p>
+    Where:
     <ul>
-      <li> Where <b>A</b> is the area of the geometry </li>
-      <li> Where <b>A_cvh</b> is the area of the convex hull of the geometry </li>
+      <li> <b>A</b> is the area of the geometry. </li>
+      <li> <b>A<sub>cvh</sub></b> is the area of the convex hull of the geometry. </li>
     </ul>
 
-    Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact.
+    Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact. Only a convex geometry will reach a Convex Hull Compactness score of 1. 
 
     <h4>Syntax</h4>
-    <p><b>compactness_cvh</b>( <i>geometry</i> )</p>
+    <p><span class = function>comp_cvh</span>( <span class = parameters>geometry</span> )</p>
 
     <h4>Arguments</h4>
-    <p><i>geometry</i>: a polygon geometry</p>
+    <p><span class = parameters>geometry</span>: a polygon geometry</p>
 
     <h4>Example usage</h4>
     <ul>
-      <li><b>compactness_cvh</b>( $geometry )  &rarr; [0;1]</li>
+      <li><span class = function>comp_cvh</span>( <span class = parameters>$geometry</span> )  &rarr; [0..1]</li>
     </ul>
     """
     if geometry.type() != Qgis.GeometryType.Polygon:
         parent.setEvalErrorString(
-            "Only polygon geometry are supported for function `compactness_cvh`"
+            "Only polygon geometry are supported for function `comp_cvh`"
         )
         return
 
@@ -744,42 +914,51 @@ def compactness_cvh(geometry: QgsGeometry, parent):
 
 
 @qgsfunction(args="auto", group=group_name)
-def compactness_x_sym(geometry: QgsGeometry, parent):
-    """
-    Calculate an X-Symmetry compactness score
+def comp_x_sym(geometry: QgsGeometry, parent):
+    """<style type="text/css">
+      .function {
+      color: #05688f;
+      font-weight: bold;
+      }
+      .parameters {
+      color: red;
+      font-style:italic
+      }
+    </style>
 
-    <p> X-Symmetry is the ratio between the overlapping area <b>A_O</b> of the geometry and its reflection across the horizontal axis and the original area <b>A_D</b>.</p>
+    Calculate X-Symmetry compactness
 
-    <p>Can be written as:</p>
-    <p>
-    x_sym = A_O / A_D
+    <p> X-Symmetry compactness is calculated by dividing the intersection area <b>A(I(G, G<sup>X</sup>))</b> of the geometry with its reflection across the horizontal axis (x-axis) by the area of the original geometry <b>A</b>. </p>
+    <p style="text-align: center;">
+    <b>comp_x_sym</b> = <b>A(I(G, G<sup>X</sup>))/A</b>
     </p>
+    Where:
     <ul>
-      <li> Where <b>A_O</b> is the intersection area of the geometry with its reflection across the horizontal axis passing through its centroid </li>
-      <li> Where <b>A_D</b> is the area of the original geometry </li>
+      <li> <b>A(I(G, G<sup>X</sup>))</b> is the intersection area of the original geometry with its reflection across the horizontal axis (x-axis). </li>
+      <li> <b>A</b> is the area of the original geometry. </li>
     </ul>
 
-    Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact.
+    Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact. 
 
     <h4>Syntax</h4>
-    <p><b>compactness_x_sym</b>( <i>geometry</i> )</p>
+          <li><span class = function>comp_x_sym</span>(<span class = parameters>geometry</span>)</li>   
 
     <h4>Arguments</h4>
-    <p><i>geometry</i>: a polygon geometry</p>
+    <p><span class = parameters>geometry</span>: a polygon geometry</p>
 
     <h4>Example usage</h4>
     <ul>
-      <li><b>compactness_x_sym</b>( $geometry )  &rarr; [0;1]</li>
+      <li><span class = function>comp_x_sym</span>( <span class = parameters>$geometry</span> )  &rarr; [0..1]</li>
     </ul>
     """
     if geometry.type() != Qgis.GeometryType.Polygon:
         parent.setEvalErrorString(
-            "Only polygon geometry are supported for function `compactness_x_sym`"
+            "Only polygon geometry are supported for function `comp_x_sym`"
         )
         return
 
-    A_D = geometry.area()
-    if A_D == 0:
+    A = geometry.area()
+    if A == 0:
         return None
 
     centroid_geom = geometry.centroid()
@@ -788,9 +967,10 @@ def compactness_x_sym(geometry: QgsGeometry, parent):
     # Reflect across the horizontal axis (x-axis) passing through the centroid
     reflected = _reflect_geometry_horizontally(geometry, centroid_point.y())
 
-    A_O = geometry.intersection(reflected).area()
+    A_X = geometry.intersection(reflected).area()
 
-    return A_O / A_D
+    return A_X / A
+
 
 def _reflect_geometry_horizontally(geometry: QgsGeometry, centroid_y: float) -> QgsGeometry:
     """Return a geometry reflected across the horizontal axis (y mirrored) about centroid_y.
