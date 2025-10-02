@@ -20,13 +20,18 @@ from qgis.core import  Qgis, qgsfunction, QgsGeometry, QgsCircle, QgsGeos, QgsPo
 from vgrid.conversion import latlon2dggs
 from math import tau, pi, sqrt
 FOUR_PI = 4 * pi
+try:
+  from shapely import maximum_inscribed_circle
+except ImportError:
+  from shapely.experimental import maximum_inscribed_circle
 
 group_name = "DGGS Vgrid"
 
 def maximum_inscribed_circle(geometry: QgsGeometry) -> QgsGeometry:
-    geos_geo = QgsGeos(geometry.get())
-    epsilon = 0.00000001
-    line_string = geos_geo.maximumInscribedCircle(epsilon)[0]
+    # geos_geo = QgsGeos(geometry.get())
+    # epsilon = 0.00000001
+    # line_string = geos_geo.maximumInscribedCircle(epsilon)[0]
+    line_string = maximum_inscribed_circle(geometry)
 
     return QgsGeometry(
         QgsCircle.fromCenterPoint(

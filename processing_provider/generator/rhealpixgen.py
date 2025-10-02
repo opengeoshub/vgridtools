@@ -188,10 +188,6 @@ class rHEALPixGen(QgsProcessingAlgorithm):
         canvas_crs = QgsProject.instance().crs()
         if self.canvas_extent is None or self.canvas_extent.isEmpty():
             min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
-            region = s2.LatLngRect(
-                s2.LatLng.from_degrees(min_lat, min_lon),
-                s2.LatLng.from_degrees(max_lat, max_lon),
-            )
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
