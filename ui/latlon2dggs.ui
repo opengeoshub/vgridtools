@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>410</width>
-    <height>585</height>
+    <width>441</width>
+    <height>622</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,9 +24,9 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>0</y>
-         <width>373</width>
-         <height>775</height>
+         <y>-56</y>
+         <width>404</width>
+         <height>1056</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -48,7 +48,7 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout">
           <item>
-           <spacer name="horizontalSpacer_2">
+           <spacer name="horizontalSpacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
@@ -157,7 +157,7 @@
            </layout>
           </item>
           <item row="1" column="0">
-           <widget class="QLabel" name="projectLabel_2">
+           <widget class="QLabel" name="projectLabel">
             <property name="text">
              <string>Project CRS</string>
             </property>
@@ -171,7 +171,7 @@
            </widget>
           </item>
           <item row="2" column="0">
-           <widget class="QLabel" name="projectLabel">
+           <widget class="QLabel" name="latlonLabel">
             <property name="text">
              <string>- (lat,lon)</string>
             </property>
@@ -195,7 +195,7 @@
            </layout>
           </item>
           <item row="3" column="0">
-           <widget class="QLabel" name="customLabel_2">
+           <widget class="QLabel" name="customcrsLabel">
             <property name="text">
              <string>Custom CRS</string>
             </property>
@@ -205,7 +205,7 @@
            <widget class="QgsProjectionSelectionWidget" name="customProjectionSelectionWidget"/>
           </item>
           <item row="4" column="0">
-           <widget class="QLabel" name="customLabel">
+           <widget class="QLabel" name="customlatlonLabel">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
               <horstretch>0</horstretch>
@@ -540,19 +540,19 @@
            </layout>
           </item>
           <item row="14" column="0">
-           <widget class="QLabel" name="dggal_isea3hLlabel">
+           <widget class="QLabel" name="dggal_isea4rLlabel">
             <property name="text">
-             <string>DGGAL_ISEA3H</string>
+             <string>DGGAL_ISEA4R</string>
             </property>
            </widget>
           </item>
           <item row="14" column="1">
-           <layout class="QHBoxLayout" name="horizontalLayout_20">
+           <layout class="QHBoxLayout" name="horizontalLayout_17">
             <item>
-             <widget class="QLineEdit" name="dggal_isea3hLineEdit"/>
+             <widget class="QLineEdit" name="dggal_isea4rLineEdit"/>
             </item>
             <item>
-             <widget class="QToolButton" name="dggal_isea3hCopyButton">
+             <widget class="QToolButton" name="dggal_isea4rCopyButton">
               <property name="toolTip">
                <string>Copy to clipboard</string>
               </property>
@@ -562,7 +562,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QToolButton" name="dggal_isea3hZoomtoButton">
+             <widget class="QToolButton" name="dggal_isea4rZoomtoButton">
               <property name="toolTip">
                <string>Zoom to</string>
               </property>
@@ -581,7 +581,7 @@
            </widget>
           </item>
           <item row="15" column="1">
-           <layout class="QHBoxLayout" name="horizontalLayout_4">
+           <layout class="QHBoxLayout" name="horizontalLayout_21">
             <item>
              <widget class="QLineEdit" name="dggal_isea9rLineEdit"/>
             </item>
@@ -608,19 +608,19 @@
            </layout>
           </item>
           <item row="16" column="0">
-           <widget class="QLabel" name="dggal_ivea3hLabel">
+           <widget class="QLabel" name="dggal_isea3hLabel">
             <property name="text">
-             <string>DGGAL_IVEA3H</string>
+             <string>DGGAL_ISEA3H</string>
             </property>
            </widget>
           </item>
           <item row="16" column="1">
-           <layout class="QHBoxLayout" name="horizontalLayout_6">
+           <layout class="QHBoxLayout" name="horizontalLayout_20">
             <item>
-             <widget class="QLineEdit" name="dggal_ivea3hLineEdit"/>
+             <widget class="QLineEdit" name="dggal_isea3hLineEdit"/>
             </item>
             <item>
-             <widget class="QToolButton" name="dggal_ivea3hCopyButton">
+             <widget class="QToolButton" name="dggal_isea3hCopyButton">
               <property name="toolTip">
                <string>Copy to clipboard</string>
               </property>
@@ -630,7 +630,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QToolButton" name="dggal_ivea3hZoomtoButton">
+             <widget class="QToolButton" name="dggal_isea3hZoomtoButton">
               <property name="toolTip">
                <string>Zoom to</string>
               </property>
@@ -642,13 +642,115 @@
            </layout>
           </item>
           <item row="17" column="0">
+           <widget class="QLabel" name="dggal_isea7hLabel">
+            <property name="text">
+             <string>DGGAL_ISEA7H</string>
+            </property>
+           </widget>
+          </item>
+          <item row="17" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_22">
+            <item>
+             <widget class="QLineEdit" name="dggal_isea7hLineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_isea7hCopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_isea7hZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="18" column="0">
+           <widget class="QLabel" name="dggal_isea7h_z7Label">
+            <property name="text">
+             <string>DGGAL_ISEA7H_Z7</string>
+            </property>
+           </widget>
+          </item>
+          <item row="18" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_24">
+            <item>
+             <widget class="QLineEdit" name="dggal_isea7h_z7LineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_isea7h_z7CopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_isea7h_z7ZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="19" column="0">
+           <widget class="QLabel" name="dggal_ivea4rLabel">
+            <property name="text">
+             <string>DGGAL_IVEA4R</string>
+            </property>
+           </widget>
+          </item>
+          <item row="19" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_4">
+            <item>
+             <widget class="QLineEdit" name="dggal_ivea4rLineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_ivea4CopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_ivea4rZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="20" column="0">
            <widget class="QLabel" name="dggal_ivea9rLabel">
             <property name="text">
              <string>DGGAL_IVEA9R</string>
             </property>
            </widget>
           </item>
-          <item row="17" column="1">
+          <item row="20" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_25">
             <item>
              <widget class="QLineEdit" name="dggal_ivea9rLineEdit"/>
@@ -675,20 +777,20 @@
             </item>
            </layout>
           </item>
-          <item row="18" column="0">
-           <widget class="QLabel" name="dggal_rtea3hLabel">
+          <item row="21" column="0">
+           <widget class="QLabel" name="dggal_ivea3hLabel">
             <property name="text">
-             <string>DGGAL_RTEA3H</string>
+             <string>DGGAL_IVEA3H</string>
             </property>
            </widget>
           </item>
-          <item row="18" column="1">
-           <layout class="QHBoxLayout" name="horizontalLayout_26">
+          <item row="21" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_6">
             <item>
-             <widget class="QLineEdit" name="dggal_rtea3hLineEdit"/>
+             <widget class="QLineEdit" name="dggal_ivea3hLineEdit"/>
             </item>
             <item>
-             <widget class="QToolButton" name="dggal_rtea3hCopyButton">
+             <widget class="QToolButton" name="dggal_ivea3hCopyButton">
               <property name="toolTip">
                <string>Copy to clipboard</string>
               </property>
@@ -698,7 +800,7 @@
              </widget>
             </item>
             <item>
-             <widget class="QToolButton" name="dggal_rtea3hZoomtoButton">
+             <widget class="QToolButton" name="dggal_ivea3hZoomtoButton">
               <property name="toolTip">
                <string>Zoom to</string>
               </property>
@@ -709,14 +811,116 @@
             </item>
            </layout>
           </item>
-          <item row="19" column="0">
+          <item row="22" column="0">
+           <widget class="QLabel" name="dggal_ivea7Label">
+            <property name="text">
+             <string>DGGAL_IVEA7H</string>
+            </property>
+           </widget>
+          </item>
+          <item row="22" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_34">
+            <item>
+             <widget class="QLineEdit" name="dggal_ivea7hLineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_ivea7hCopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_ivea7hZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="24" column="0">
+           <widget class="QLabel" name="dggal_ivea7h_z7Label">
+            <property name="text">
+             <string>DGGAL_IVEA7H_Z7</string>
+            </property>
+           </widget>
+          </item>
+          <item row="24" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_35">
+            <item>
+             <widget class="QLineEdit" name="dggal_ivea7h_z7LineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_ivea7h_z7CopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_ivea7h_z7ZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="25" column="0">
+           <widget class="QLabel" name="dggal_rtea4rLabel">
+            <property name="text">
+             <string>DGGAL_RTEA4R</string>
+            </property>
+           </widget>
+          </item>
+          <item row="25" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_36">
+            <item>
+             <widget class="QLineEdit" name="dggal_rtea4rLineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_rtea4rCopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_rtea4rZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="26" column="0">
            <widget class="QLabel" name="dggal_rtea9rLabel">
             <property name="text">
              <string>DGGAL_RTEA9R</string>
             </property>
            </widget>
           </item>
-          <item row="19" column="1">
+          <item row="26" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_28">
             <item>
              <widget class="QLineEdit" name="dggal_rtea9rLineEdit"/>
@@ -743,14 +947,150 @@
             </item>
            </layout>
           </item>
-          <item row="20" column="0">
-           <widget class="QLabel" name="dggal_rhealpixLabel">
+          <item row="27" column="0">
+           <widget class="QLabel" name="dggal_rtea3hLabel">
             <property name="text">
-             <string>DGGAL_RHEALPIX</string>
+             <string>DGGAL_RTEA3H</string>
             </property>
            </widget>
           </item>
-          <item row="20" column="1">
+          <item row="27" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_26">
+            <item>
+             <widget class="QLineEdit" name="dggal_rtea3hLineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_rtea3hCopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_rtea3hZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="29" column="0">
+           <widget class="QLabel" name="dggal_rtea7hLabel">
+            <property name="text">
+             <string>DGGAL_RTEA7H</string>
+            </property>
+           </widget>
+          </item>
+          <item row="29" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_37">
+            <item>
+             <widget class="QLineEdit" name="dggal_rtea7hLineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_rtea7hCopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_rtea7hZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="30" column="0">
+           <widget class="QLabel" name="dggal_rtea7h_z7Label">
+            <property name="text">
+             <string>DGGAL_RTEA7H_Z7</string>
+            </property>
+           </widget>
+          </item>
+          <item row="30" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_38">
+            <item>
+             <widget class="QLineEdit" name="dggal_rtea7h_z7LineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_rtea7h_z7CopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_rtea7h_z7ZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="31" column="0">
+           <widget class="QLabel" name="dggal_healpixLabel">
+            <property name="text">
+             <string>DGGAL_HEALPix</string>
+            </property>
+           </widget>
+          </item>
+          <item row="31" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_39">
+            <item>
+             <widget class="QLineEdit" name="dggal_healpixLineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_healpixCopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="dggal_healpixZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="32" column="0">
+           <widget class="QLabel" name="dggal_rhealpixLabel">
+            <property name="text">
+             <string>DGGAL_rHEALPix</string>
+            </property>
+           </widget>
+          </item>
+          <item row="32" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_27">
             <item>
              <widget class="QLineEdit" name="dggal_rhealpixLineEdit"/>
@@ -777,14 +1117,14 @@
             </item>
            </layout>
           </item>
-          <item row="21" column="0">
+          <item row="33" column="0">
            <widget class="QLabel" name="qtmLabel">
             <property name="text">
              <string>QTM</string>
             </property>
            </widget>
           </item>
-          <item row="21" column="1">
+          <item row="33" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_29">
             <item>
              <widget class="QLineEdit" name="qtmLineEdit"/>
@@ -811,14 +1151,14 @@
             </item>
            </layout>
           </item>
-          <item row="22" column="0">
+          <item row="34" column="0">
            <widget class="QLabel" name="olcLabel">
             <property name="text">
              <string>OLC</string>
             </property>
            </widget>
           </item>
-          <item row="22" column="1">
+          <item row="34" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_11">
             <property name="spacing">
              <number>4</number>
@@ -848,14 +1188,14 @@
             </item>
            </layout>
           </item>
-          <item row="23" column="0">
+          <item row="35" column="0">
            <widget class="QLabel" name="geohashLabel">
             <property name="text">
              <string>Geohash</string>
             </property>
            </widget>
           </item>
-          <item row="23" column="1">
+          <item row="35" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_13">
             <property name="spacing">
              <number>4</number>
@@ -885,14 +1225,14 @@
             </item>
            </layout>
           </item>
-          <item row="24" column="0">
+          <item row="36" column="0">
            <widget class="QLabel" name="georefLabel">
             <property name="text">
              <string>GEOREF</string>
             </property>
            </widget>
           </item>
-          <item row="24" column="1">
+          <item row="36" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_14">
             <property name="spacing">
              <number>4</number>
@@ -922,14 +1262,14 @@
             </item>
            </layout>
           </item>
-          <item row="25" column="0">
+          <item row="37" column="0">
            <widget class="QLabel" name="mgrsLabel">
             <property name="text">
              <string>MGRS</string>
             </property>
            </widget>
           </item>
-          <item row="25" column="1">
+          <item row="37" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_10">
             <property name="spacing">
              <number>4</number>
@@ -959,14 +1299,14 @@
             </item>
            </layout>
           </item>
-          <item row="26" column="0">
+          <item row="38" column="0">
            <widget class="QLabel" name="tilecodeLabel">
             <property name="text">
              <string>Tilecode</string>
             </property>
            </widget>
           </item>
-          <item row="26" column="1">
+          <item row="38" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_30">
             <item>
              <widget class="QLineEdit" name="tilecodeLineEdit"/>
@@ -993,14 +1333,14 @@
             </item>
            </layout>
           </item>
-          <item row="27" column="0">
+          <item row="39" column="0">
            <widget class="QLabel" name="quadkeyLabel">
             <property name="text">
              <string>Quadkey</string>
             </property>
            </widget>
           </item>
-          <item row="27" column="1">
+          <item row="39" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_31">
             <item>
              <widget class="QLineEdit" name="quadkeyLineEdit"/>
@@ -1027,14 +1367,14 @@
             </item>
            </layout>
           </item>
-          <item row="28" column="0">
+          <item row="40" column="0">
            <widget class="QLabel" name="maidenheadLabel">
             <property name="text">
              <string>Maidenhead</string>
             </property>
            </widget>
           </item>
-          <item row="28" column="1">
+          <item row="40" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_2">
             <property name="spacing">
              <number>4</number>
@@ -1064,14 +1404,21 @@
             </item>
            </layout>
           </item>
-          <item row="29" column="0">
+          <item row="42" column="0">
+           <widget class="QLabel" name="digipinLabel">
+            <property name="text">
+             <string>DIGIPIN</string>
+            </property>
+           </widget>
+          </item>
+          <item row="41" column="0">
            <widget class="QLabel" name="garsLabel">
             <property name="text">
              <string>GARS</string>
             </property>
            </widget>
           </item>
-          <item row="29" column="1">
+          <item row="41" column="1">
            <layout class="QHBoxLayout" name="horizontalLayout_32">
             <item>
              <widget class="QLineEdit" name="garsLineEdit"/>
@@ -1088,6 +1435,33 @@
             </item>
             <item>
              <widget class="QToolButton" name="garsZoomtoButton">
+              <property name="toolTip">
+               <string>Zoom to</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item row="42" column="1">
+           <layout class="QHBoxLayout" name="horizontalLayout_40">
+            <item>
+             <widget class="QLineEdit" name="digipinLineEdit"/>
+            </item>
+            <item>
+             <widget class="QToolButton" name="digipinCopyButton">
+              <property name="toolTip">
+               <string>Copy to clipboard</string>
+              </property>
+              <property name="text">
+               <string>...</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QToolButton" name="digipinZoomtoButton">
               <property name="toolTip">
                <string>Zoom to</string>
               </property>

@@ -57,11 +57,21 @@ from .dggsgrid.isea3hgrid import ISEA3HGrid
 from .dggsgrid.easegrid import EASEGrid
 from .dggsgrid.dggal_gnosisgrid import DGGALGnosisGrid
 from .dggsgrid.dggal_isea3hgrid import DGGALISEA3HGrid
+from .dggsgrid.dggal_isea4rgrid import DGGALISEA4RGrid
+from .dggsgrid.dggal_isea7hgrid import DGGALISEA7HGrid
+from .dggsgrid.dggal_isea7h_z7grid import DGGALISEA7H_Z7Grid
 from .dggsgrid.dggal_isea9rgrid import DGGALISEA9RGrid
 from .dggsgrid.dggal_ivea3hgrid import DGGALIVEA3HGrid
+from .dggsgrid.dggal_ivea4rgrid import DGGALIVEA4RGrid
+from .dggsgrid.dggal_ivea7hgrid import DGGALIVEA7HGrid
+from .dggsgrid.dggal_ivea7h_z7grid import DGGALIVEA7H_Z7Grid
 from .dggsgrid.dggal_ivea9rgrid import DGGALIVEA9RGrid
 from .dggsgrid.dggal_rtea3hgrid import DGGALRTEA3HGrid
+from .dggsgrid.dggal_rtea4rgrid import DGGALRTEA4RGrid
+from .dggsgrid.dggal_rtea7hgrid import DGGALRTEA7HGrid
+from .dggsgrid.dggal_rtea7h_z7grid import DGGALRTEA7H_Z7Grid
 from .dggsgrid.dggal_rtea9rgrid import DGGALRTEA9RGrid
+from .dggsgrid.dggal_healpixgrid import DGGALHEALPixGrid
 from .dggsgrid.dggal_rhealpixgrid import DGGALRHEALPixGrid
 
 # from .dggsgrid.qtmgrid import QTMGrid
@@ -71,6 +81,7 @@ from .dggsgrid.georefgrid import GEOREFGrid
 from .dggsgrid.tilecodegrid import TilecodeGrid
 from .dggsgrid.maidenheadgrid import MaidenheadGrid
 from .dggsgrid.garsgrid import GARSGrid
+from .dggsgrid.digipingrid import DIGIPINGrid
 from math import log2
 
 exprs = (
@@ -115,12 +126,22 @@ class VgridTools(object):
         self.easegrid = EASEGrid(self, self.canvas, self.iface)
         self.dggal_gnosisgrid = DGGALGnosisGrid(self, self.canvas, self.iface)
         self.dggal_isea3hgrid = DGGALISEA3HGrid(self, self.canvas, self.iface)
+        self.dggal_isea4rgrid = DGGALISEA4RGrid(self, self.canvas, self.iface)
+        self.dggal_isea7hgrid = DGGALISEA7HGrid(self, self.canvas, self.iface)
+        self.dggal_isea7h_z7grid = DGGALISEA7H_Z7Grid(self, self.canvas, self.iface)
         self.dggal_isea9rgrid = DGGALISEA9RGrid(self, self.canvas, self.iface)
         self.dggal_ivea3hgrid = DGGALIVEA3HGrid(self, self.canvas, self.iface)
+        self.dggal_ivea4rgrid = DGGALIVEA4RGrid(self, self.canvas, self.iface)
+        self.dggal_ivea7hgrid = DGGALIVEA7HGrid(self, self.canvas, self.iface)
+        self.dggal_ivea7h_z7grid = DGGALIVEA7H_Z7Grid(self, self.canvas, self.iface)
         self.dggal_ivea9rgrid = DGGALIVEA9RGrid(self, self.canvas, self.iface)
         self.dggal_rtea3hgrid = DGGALRTEA3HGrid(self, self.canvas, self.iface)
+        self.dggal_rtea4rgrid = DGGALRTEA4RGrid(self, self.canvas, self.iface)
+        self.dggal_rtea7hgrid = DGGALRTEA7HGrid(self, self.canvas, self.iface)
+        self.dggal_rtea7h_z7grid = DGGALRTEA7H_Z7Grid(self, self.canvas, self.iface)
         self.dggal_rtea9rgrid = DGGALRTEA9RGrid(self, self.canvas, self.iface)
         self.dggal_rhealpixgrid = DGGALRHEALPixGrid(self, self.canvas, self.iface)
+        self.dggal_healpixgrid = DGGALHEALPixGrid(self, self.canvas, self.iface)
         # self.qtmgrid = QTMGrid(self, self.canvas, self.iface)
         self.olcgrid = OLCGrid(self, self.canvas, self.iface)
         self.geohashgrid = GeohashGrid(self, self.canvas, self.iface)
@@ -128,6 +149,7 @@ class VgridTools(object):
         self.tilecodegrid = TilecodeGrid(self, self.canvas, self.iface)
         self.maidenheadgrid = MaidenheadGrid(self, self.canvas, self.iface)
         self.garsgrid = GARSGrid(self, self.canvas, self.iface)
+        self.digipingrid = DIGIPINGrid(self, self.canvas, self.iface)
 
         self.Vgrid_menu = None
         self.toolbar = self.iface.addToolBar(tr("Vgrid Toolbar"))
@@ -328,10 +350,10 @@ class VgridTools(object):
         self.ease_widget_action.setDefaultWidget(ease_checkbox)
         self.geodesic_dggs_menu.addAction(self.ease_widget_action)
 
-        # DGGAL Gnosis
+        # DGGAL GNOSIS
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
         self.dggal_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_checkbox = QCheckBox("DGGAL Gnosis")
+        dggal_checkbox = QCheckBox("DGGAL GNOSIS")
         dggal_checkbox.setIcon(icon)
         dggal_checkbox.setChecked(False)
         dggal_checkbox.toggled.connect(
@@ -344,6 +366,23 @@ class VgridTools(object):
         )
         self.dggal_widget_action.setDefaultWidget(dggal_checkbox)
         self.geodesic_dggs_menu.addAction(self.dggal_widget_action)
+
+        # DGGAL ISEA4R
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
+        self.dggal_isea4r_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_isea4r_checkbox = QCheckBox("DGGAL ISEA4R")
+        dggal_isea4r_checkbox.setIcon(icon)
+        dggal_isea4r_checkbox.setChecked(False)
+        dggal_isea4r_checkbox.toggled.connect(
+            lambda checked: (
+                self.dggal_isea4rgrid.enable_dggal(checked),
+                self.dggal_isea4rgrid.dggal_grid(),
+            )
+            if checked
+            else self.dggal_isea4rgrid.enable_dggal(False)
+        )
+        self.dggal_isea4r_widget_action.setDefaultWidget(dggal_isea4r_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_isea4r_widget_action)
 
         # DGGAL ISEA3H
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
@@ -361,6 +400,40 @@ class VgridTools(object):
         )
         self.dggal_isea3h_widget_action.setDefaultWidget(dggal_isea3h_checkbox)
         self.geodesic_dggs_menu.addAction(self.dggal_isea3h_widget_action)
+       
+        # DGGAL ISEA7H
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
+        self.dggal_isea7h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_isea7h_checkbox = QCheckBox("DGGAL ISEA7H")
+        dggal_isea7h_checkbox.setIcon(icon)
+        dggal_isea7h_checkbox.setChecked(False)
+        dggal_isea7h_checkbox.toggled.connect(
+            lambda checked: (
+                self.dggal_isea7hgrid.enable_dggal(checked),
+                self.dggal_isea7hgrid.dggal_grid(),
+            )
+            if checked
+            else self.dggal_isea7hgrid.enable_dggal(False)
+        )
+        self.dggal_isea7h_widget_action.setDefaultWidget(dggal_isea7h_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_isea7h_widget_action)
+
+        # DGGAL ISEA7H_Z7
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
+        self.dggal_isea7h_z7_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_isea7h_z7_checkbox = QCheckBox("DGGAL ISEA7H_Z7")
+        dggal_isea7h_z7_checkbox.setIcon(icon)
+        dggal_isea7h_z7_checkbox.setChecked(False)
+        dggal_isea7h_z7_checkbox.toggled.connect(
+            lambda checked: (
+                self.dggal_isea7h_z7grid.enable_dggal(checked),
+                self.dggal_isea7h_z7grid.dggal_grid(),
+            )
+            if checked
+            else self.dggal_isea7h_z7grid.enable_dggal(False)
+        )
+        self.dggal_isea7h_z7_widget_action.setDefaultWidget(dggal_isea7h_z7_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_isea7h_z7_widget_action)
 
         # DGGAL ISEA9R
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
@@ -379,22 +452,22 @@ class VgridTools(object):
         self.dggal_isea9r_widget_action.setDefaultWidget(dggal_isea9r_checkbox)
         self.geodesic_dggs_menu.addAction(self.dggal_isea9r_widget_action)
 
-        # DGGAL IVEA3H
+        # DGGAL IVEA4R
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_ivea3h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_ivea3h_checkbox = QCheckBox("DGGAL IVEA3H")
-        dggal_ivea3h_checkbox.setIcon(icon)
-        dggal_ivea3h_checkbox.setChecked(False)
-        dggal_ivea3h_checkbox.toggled.connect(
+        self.dggal_ivea4r_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_ivea4r_checkbox = QCheckBox("DGGAL IVEA4R")
+        dggal_ivea4r_checkbox.setIcon(icon)
+        dggal_ivea4r_checkbox.setChecked(False)
+        dggal_ivea4r_checkbox.toggled.connect(
             lambda checked: (
-                self.dggal_ivea3hgrid.enable_dggal(checked),
-                self.dggal_ivea3hgrid.dggal_grid(),
+                self.dggal_ivea4rgrid.enable_dggal(checked),
+                self.dggal_ivea4rgrid.dggal_grid(),
             )
             if checked
-            else self.dggal_ivea3hgrid.enable_dggal(False)
+            else self.dggal_ivea4rgrid.enable_dggal(False)
         )
-        self.dggal_ivea3h_widget_action.setDefaultWidget(dggal_ivea3h_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_ivea3h_widget_action)
+        self.dggal_ivea4r_widget_action.setDefaultWidget(dggal_ivea4r_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_ivea4r_widget_action)
 
         # DGGAL IVEA9R
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
@@ -413,22 +486,74 @@ class VgridTools(object):
         self.dggal_ivea9r_widget_action.setDefaultWidget(dggal_ivea9r_checkbox)
         self.geodesic_dggs_menu.addAction(self.dggal_ivea9r_widget_action)
 
-        # DGGAL RTEA3H
+        # DGGAL IVEA3H
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_rtea3h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_rtea3h_checkbox = QCheckBox("DGGAL RTEA3H")
-        dggal_rtea3h_checkbox.setIcon(icon)
-        dggal_rtea3h_checkbox.setChecked(False)
-        dggal_rtea3h_checkbox.toggled.connect(
+        self.dggal_ivea3h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_ivea3h_checkbox = QCheckBox("DGGAL IVEA3H")
+        dggal_ivea3h_checkbox.setIcon(icon)
+        dggal_ivea3h_checkbox.setChecked(False)
+        dggal_ivea3h_checkbox.toggled.connect(
             lambda checked: (
-                self.dggal_rtea3hgrid.enable_dggal(checked),
-                self.dggal_rtea3hgrid.dggal_grid(),
+                self.dggal_ivea3hgrid.enable_dggal(checked),
+                self.dggal_ivea3hgrid.dggal_grid(),
             )
             if checked
-            else self.dggal_rtea3hgrid.enable_dggal(False)
+            else self.dggal_ivea3hgrid.enable_dggal(False)
         )
-        self.dggal_rtea3h_widget_action.setDefaultWidget(dggal_rtea3h_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_rtea3h_widget_action)
+        self.dggal_ivea3h_widget_action.setDefaultWidget(dggal_ivea3h_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_ivea3h_widget_action)
+
+
+        # DGGAL IVEA7H
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
+        self.dggal_ivea7h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_ivea7h_checkbox = QCheckBox("DGGAL IVEA7H")
+        dggal_ivea7h_checkbox.setIcon(icon)
+        dggal_ivea7h_checkbox.setChecked(False)
+        dggal_ivea7h_checkbox.toggled.connect(
+            lambda checked: (
+                self.dggal_ivea7hgrid.enable_dggal(checked),
+                self.dggal_ivea7hgrid.dggal_grid(),
+            )
+            if checked
+            else self.dggal_ivea7hgrid.enable_dggal(False)
+        )
+        self.dggal_ivea7h_widget_action.setDefaultWidget(dggal_ivea7h_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_ivea7h_widget_action)
+
+        # DGGAL IVEA7H_Z7
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
+        self.dggal_ivea7h_z7_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_ivea7h_z7_checkbox = QCheckBox("DGGAL IVEA7H_Z7")
+        dggal_ivea7h_z7_checkbox.setIcon(icon)
+        dggal_ivea7h_z7_checkbox.setChecked(False)
+        dggal_ivea7h_z7_checkbox.toggled.connect(
+            lambda checked: (
+                self.dggal_ivea7h_z7grid.enable_dggal(checked),
+                self.dggal_ivea7h_z7grid.dggal_grid(),
+            )
+            if checked
+            else self.dggal_ivea7h_z7grid.enable_dggal(False)
+        )
+        self.dggal_ivea7h_z7_widget_action.setDefaultWidget(dggal_ivea7h_z7_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_ivea7h_z7_widget_action)
+
+        # DGGAL RTEA4R
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
+        self.dggal_rtea4r_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_rtea4r_checkbox = QCheckBox("DGGAL RTEA4R")
+        dggal_rtea4r_checkbox.setIcon(icon)
+        dggal_rtea4r_checkbox.setChecked(False)
+        dggal_rtea4r_checkbox.toggled.connect(
+            lambda checked: (
+                self.dggal_rtea4rgrid.enable_dggal(checked),
+                self.dggal_rtea4rgrid.dggal_grid(),
+            )
+            if checked
+            else self.dggal_rtea4rgrid.enable_dggal(False)
+        )
+        self.dggal_rtea4r_widget_action.setDefaultWidget(dggal_rtea4r_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_rtea4r_widget_action)
 
         # DGGAL RTEA9R
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
@@ -447,10 +572,80 @@ class VgridTools(object):
         self.dggal_rtea9r_widget_action.setDefaultWidget(dggal_rtea9r_checkbox)
         self.geodesic_dggs_menu.addAction(self.dggal_rtea9r_widget_action)
 
-        # DGGAL RHEALPix
+
+        # DGGAL RTEA3H
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
+        self.dggal_rtea3h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_rtea3h_checkbox = QCheckBox("DGGAL RTEA3H")
+        dggal_rtea3h_checkbox.setIcon(icon)
+        dggal_rtea3h_checkbox.setChecked(False)
+        dggal_rtea3h_checkbox.toggled.connect(
+            lambda checked: (
+                self.dggal_rtea3hgrid.enable_dggal(checked),
+                self.dggal_rtea3hgrid.dggal_grid(),
+            )
+            if checked
+            else self.dggal_rtea3hgrid.enable_dggal(False)
+        )
+        self.dggal_rtea3h_widget_action.setDefaultWidget(dggal_rtea3h_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_rtea3h_widget_action)
+
+
+        # DGGAL RTEA7H
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
+        self.dggal_rtea7h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_rtea7h_checkbox = QCheckBox("DGGAL RTEA7H")
+        dggal_rtea7h_checkbox.setIcon(icon)
+        dggal_rtea7h_checkbox.setChecked(False)
+        dggal_rtea7h_checkbox.toggled.connect(
+            lambda checked: (
+                self.dggal_rtea7hgrid.enable_dggal(checked),
+                self.dggal_rtea7hgrid.dggal_grid(),
+            )
+            if checked
+            else self.dggal_rtea7hgrid.enable_dggal(False)
+        )
+        self.dggal_rtea7h_widget_action.setDefaultWidget(dggal_rtea7h_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_rtea7h_widget_action)
+
+        # DGGAL RTEA7H_Z7
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
+        self.dggal_rtea7h_z7_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_rtea7h_z7_checkbox = QCheckBox("DGGAL RTEA7H_Z7")
+        dggal_rtea7h_z7_checkbox.setIcon(icon)
+        dggal_rtea7h_z7_checkbox.setChecked(False)
+        dggal_rtea7h_z7_checkbox.toggled.connect(
+            lambda checked: (
+                self.dggal_rtea7h_z7grid.enable_dggal(checked),
+                self.dggal_rtea7h_z7grid.dggal_grid(),
+            )
+            if checked
+            else self.dggal_rtea7h_z7grid.enable_dggal(False)
+        )
+        self.dggal_rtea7h_z7_widget_action.setDefaultWidget(dggal_rtea7h_z7_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_rtea7h_z7_widget_action)
+
+        # DGGAL HEALPix
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
+        self.dggal_healpix_widget_action = QWidgetAction(self.geodesic_dggs_menu)
+        dggal_healpix_checkbox = QCheckBox("DGGAL HEALPix")
+        dggal_healpix_checkbox.setIcon(icon)
+        dggal_healpix_checkbox.setChecked(False)
+        dggal_healpix_checkbox.toggled.connect(
+            lambda checked: (
+                self.dggal_healpixgrid.enable_dggal(checked),
+                self.dggal_healpixgrid.dggal_grid(),
+            )
+            if checked
+            else self.dggal_healpixgrid.enable_dggal(False)
+        )
+        self.dggal_healpix_widget_action.setDefaultWidget(dggal_healpix_checkbox)
+        self.geodesic_dggs_menu.addAction(self.dggal_healpix_widget_action)
+
+        # DGGAL rHEALPix    
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
         self.dggal_rhealpix_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_rhealpix_checkbox = QCheckBox("DGGAL RHEALPix")
+        dggal_rhealpix_checkbox = QCheckBox("DGGAL rHEALPix")
         dggal_rhealpix_checkbox.setIcon(icon)
         dggal_rhealpix_checkbox.setChecked(False)
         dggal_rhealpix_checkbox.toggled.connect(
@@ -463,6 +658,7 @@ class VgridTools(object):
         )
         self.dggal_rhealpix_widget_action.setDefaultWidget(dggal_rhealpix_checkbox)
         self.geodesic_dggs_menu.addAction(self.dggal_rhealpix_widget_action)
+
 
         # QTM
         # icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
@@ -582,6 +778,23 @@ class VgridTools(object):
         )
         self.gars_widget_action.setDefaultWidget(gars_checkbox)
         self.graticule_based_dggs_menu.addAction(self.gars_widget_action)
+
+        # DIGIPIN (Graticule-based DGGS)
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
+        self.digipin_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
+        digipin_checkbox = QCheckBox("DIGIPIN")
+        digipin_checkbox.setIcon(icon)
+        digipin_checkbox.setChecked(False)
+        digipin_checkbox.toggled.connect(
+            lambda checked: (
+                self.digipingrid.enable_digipin(checked),
+                self.digipingrid.digipin_grid(),
+            )
+            if checked
+            else self.digipingrid.enable_digipin(False)
+        )
+        self.digipin_widget_action.setDefaultWidget(digipin_checkbox)
+        self.graticule_based_dggs_menu.addAction(self.digipin_widget_action)
 
         # Add Binning actions
         # H3 Bin
@@ -854,6 +1067,8 @@ class VgridTools(object):
         self.garsGenAction.triggered.connect(self.runGARSGen)
         self.generator_menu.addAction(self.garsGenAction)
 
+        
+
         # Add Latlon2DGGS action
         icon = QIcon(os.path.dirname(__file__) + "/images/vgrid.svg")
         self.latlon2DGGSAction = QAction(
@@ -930,18 +1145,38 @@ class VgridTools(object):
             self.dggal_gnosisgrid.cleanup()
         if hasattr(self, "dggal_isea3hgrid") and self.dggal_isea3hgrid:
             self.dggal_isea3hgrid.cleanup()
+        if hasattr(self, "dggal_isea4rgrid") and self.dggal_isea4rgrid:
+            self.dggal_isea4rgrid.cleanup()
+        if hasattr(self, "dggal_isea7hgrid") and self.dggal_isea7hgrid:
+            self.dggal_isea7hgrid.cleanup()
+        if hasattr(self, "dggal_isea7h_z7grid") and self.dggal_isea7h_z7grid:
+            self.dggal_isea7h_z7grid.cleanup()
         if hasattr(self, "dggal_isea9rgrid") and self.dggal_isea9rgrid:
             self.dggal_isea9rgrid.cleanup()
         if hasattr(self, "dggal_ivea3hgrid") and self.dggal_ivea3hgrid:
             self.dggal_ivea3hgrid.cleanup()
+        if hasattr(self, "dggal_ivea4rgrid") and self.dggal_ivea4rgrid:
+            self.dggal_ivea4rgrid.cleanup()
+        if hasattr(self, "dggal_ivea7hgrid") and self.dggal_ivea7hgrid:
+            self.dggal_ivea7hgrid.cleanup()
+        if hasattr(self, "dggal_ivea7h_z7grid") and self.dggal_ivea7h_z7grid:
+            self.dggal_ivea7h_z7grid.cleanup()
         if hasattr(self, "dggal_ivea9rgrid") and self.dggal_ivea9rgrid:
             self.dggal_ivea9rgrid.cleanup()
         if hasattr(self, "dggal_rtea3hgrid") and self.dggal_rtea3hgrid:
             self.dggal_rtea3hgrid.cleanup()
+        if hasattr(self, "dggal_rtea4rgrid") and self.dggal_rtea4rgrid:
+            self.dggal_rtea4rgrid.cleanup()
+        if hasattr(self, "dggal_rtea7hgrid") and self.dggal_rtea7hgrid:
+            self.dggal_rtea7hgrid.cleanup()
+        if hasattr(self, "dggal_rtea7h_z7grid") and self.dggal_rtea7h_z7grid:
+            self.dggal_rtea7h_z7grid.cleanup()
         if hasattr(self, "dggal_rtea9rgrid") and self.dggal_rtea9rgrid:
             self.dggal_rtea9rgrid.cleanup()
         if hasattr(self, "dggal_rhealpixgrid") and self.dggal_rhealpixgrid:
             self.dggal_rhealpixgrid.cleanup()
+        if hasattr(self, "dggal_healpixgrid") and self.dggal_healpixgrid:
+            self.dggal_healpixgrid.cleanup()
         # if hasattr(self, "qtmgrid") and self.qtmgrid:
         #     self.qtmgrid.cleanup()
         if hasattr(self, "olcgrid") and self.olcgrid:

@@ -75,12 +75,12 @@ class Settings:
             int(qset.value("/vgrid/dggal_gnosisColorOpacity", 255))
         )
 
-        self.dggal_isea3hRes = int(qset.value("/vgrid/dggal_isea3hRes", 21))
-        self.dggal_isea3hColor = QColor(
-            qset.value("/vgrid/dggal_isea3hColor", "#00008B")
+        self.dggal_isea4rRes = int(qset.value("/vgrid/dggal_isea4rRes", 12))
+        self.dggal_isea4rColor = QColor(
+            qset.value("/vgrid/dggal_isea4rColor", "#00008B")
         )
-        self.dggal_isea3hColor.setAlpha(
-            int(qset.value("/vgrid/dggal_isea3hColorOpacity", 255))
+        self.dggal_isea4rColor.setAlpha(
+            int(qset.value("/vgrid/dggal_isea4rColorOpacity", 255))
         )
 
         self.dggal_isea9rRes = int(qset.value("/vgrid/dggal_isea9rRes", 10))
@@ -91,6 +91,47 @@ class Settings:
             int(qset.value("/vgrid/dggal_isea9rColorOpacity", 255))
         )
 
+        self.dggal_isea3hRes = int(qset.value("/vgrid/dggal_isea3hRes", 21))
+        self.dggal_isea3hColor = QColor(
+            qset.value("/vgrid/dggal_isea3hColor", "#00008B")
+        )
+        self.dggal_isea3hColor.setAlpha(
+            int(qset.value("/vgrid/dggal_isea3hColorOpacity", 255))
+        )
+
+        self.dggal_isea7hRes = int(qset.value("/vgrid/dggal_isea7hRes", 12))
+        self.dggal_isea7hColor = QColor(
+            qset.value("/vgrid/dggal_isea7hColor", "#00008B")
+        )
+        self.dggal_isea7hColor.setAlpha(
+            int(qset.value("/vgrid/dggal_isea7hColorOpacity", 255))
+        )
+
+        self.dggal_isea7h_z7Res = int(qset.value("/vgrid/dggal_isea7h_z7Res", 12))
+        self.dggal_isea7h_z7Color = QColor(
+            qset.value("/vgrid/dggal_isea7h_z7Color", "#00008B")
+        )
+        self.dggal_isea7h_z7Color.setAlpha(
+            int(qset.value("/vgrid/dggal_isea7h_z7ColorOpacity", 255))
+        )
+
+
+        self.dggal_ivea4rRes = int(qset.value("/vgrid/dggal_ivea4rRes", 15))
+        self.dggal_ivea4rColor = QColor(
+            qset.value("/vgrid/dggal_ivea4rColor", "#00008B")
+        )
+        self.dggal_ivea4rColor.setAlpha(
+            int(qset.value("/vgrid/dggal_ivea4rColorOpacity", 255))
+        )
+        self.dggal_ivea9rRes = int(qset.value("/vgrid/dggal_ivea9rRes", 10))
+        self.dggal_ivea9rColor = QColor(
+            qset.value("/vgrid/dggal_ivea9rColor", "#00008B")
+        )
+        self.dggal_ivea9rColor.setAlpha(
+            int(qset.value("/vgrid/dggal_ivea9rColorOpacity", 255))
+        )
+
+
         self.dggal_ivea3hRes = int(qset.value("/vgrid/dggal_ivea3hRes", 21))
         self.dggal_ivea3hColor = QColor(
             qset.value("/vgrid/dggal_ivea3hColor", "#00008B")
@@ -99,13 +140,38 @@ class Settings:
             int(qset.value("/vgrid/dggal_ivea3hColorOpacity", 255))
         )
 
-        self.dggal_ivea9rRes = int(qset.value("/vgrid/dggal_ivea9rRes", 10))
-        self.dggal_ivea9rColor = QColor(
-            qset.value("/vgrid/dggal_ivea9rColor", "#00008B")
+        self.dggal_ivea7hRes = int(qset.value("/vgrid/dggal_ivea7hRes", 12))
+        self.dggal_ivea7hColor = QColor(
+            qset.value("/vgrid/dggal_ivea7hColor", "#00008B")
         )
-        self.dggal_ivea9rColor.setAlpha(
-            int(qset.value("/vgrid/dggal_ivea9rColorOpacity", 255))
+        self.dggal_ivea7hColor.setAlpha(
+            int(qset.value("/vgrid/dggal_ivea7hColorOpacity", 255))
         )
+
+        self.dggal_ivea7h_z7Res = int(qset.value("/vgrid/dggal_ivea7h_z7Res", 12))
+        self.dggal_ivea7h_z7Color = QColor(
+            qset.value("/vgrid/dggal_ivea7h_z7Color", "#00008B")
+        )
+        self.dggal_ivea7h_z7Color.setAlpha(
+            int(qset.value("/vgrid/dggal_ivea7h_z7ColorOpacity", 255))
+        )
+
+
+        self.dggal_rtea4rRes = int(qset.value("/vgrid/dggal_rtea4rRes", 15))
+        self.dggal_rtea4rColor = QColor(
+            qset.value("/vgrid/dggal_rtea4rColor", "#00008B")
+        )
+        self.dggal_rtea4rColor.setAlpha(
+            int(qset.value("/vgrid/dggal_rtea4rColorOpacity", 255))
+        )
+        self.dggal_rtea9rRes = int(qset.value("/vgrid/dggal_rtea9rRes", 10))
+        self.dggal_rtea9rColor = QColor(
+            qset.value("/vgrid/dggal_rtea9rColor", "#00008B")
+        )
+        self.dggal_rtea9rColor.setAlpha(
+            int(qset.value("/vgrid/dggal_rtea9rColorOpacity", 255))
+        )
+
 
         self.dggal_rtea3hRes = int(qset.value("/vgrid/dggal_rtea3hRes", 21))
         self.dggal_rtea3hColor = QColor(
@@ -115,12 +181,28 @@ class Settings:
             int(qset.value("/vgrid/dggal_rtea3hColorOpacity", 255))
         )
 
-        self.dggal_rtea9rRes = int(qset.value("/vgrid/dggal_rtea9rRes", 10))
-        self.dggal_rtea9rColor = QColor(
-            qset.value("/vgrid/dggal_rtea9rColor", "#00008B")
+        self.dggal_rtea7hRes = int(qset.value("/vgrid/dggal_rtea7hRes", 12))
+        self.dggal_rtea7hColor = QColor(
+            qset.value("/vgrid/dggal_rtea7hColor", "#00008B")
         )
-        self.dggal_rtea9rColor.setAlpha(
-            int(qset.value("/vgrid/dggal_rtea9rColorOpacity", 255))
+        self.dggal_rtea7hColor.setAlpha(
+            int(qset.value("/vgrid/dggal_rtea7hColorOpacity", 255))
+        )
+
+        self.dggal_rtea7h_z7Res = int(qset.value("/vgrid/dggal_rtea7h_z7Res", 12))
+        self.dggal_rtea7h_z7Color = QColor(
+            qset.value("/vgrid/dggal_rtea7h_z7Color", "#00008B")
+        )
+        self.dggal_rtea7h_z7Color.setAlpha(
+            int(qset.value("/vgrid/dggal_rtea7h_z7ColorOpacity", 255))
+        )
+
+        self.dggal_healpixRes = int(qset.value("/vgrid/dggal_healpixRes", 16))
+        self.dggal_healpixColor = QColor(
+            qset.value("/vgrid/dggal_healpixColor", "#00008B")
+        )
+        self.dggal_healpixColor.setAlpha(
+            int(qset.value("/vgrid/dggal_healpixColorOpacity", 255))
         )
 
         self.dggal_rhealpixRes = int(qset.value("/vgrid/dggal_rhealpixRes", 10))
@@ -169,6 +251,11 @@ class Settings:
         self.garsColor = QColor(qset.value("/vgrid/garsColor", "#672a5c"))
         self.garsColor.setAlpha(int(qset.value("/vgrid/garsColorOpacity", 255)))
 
+        self.digipinRes = int(qset.value("/vgrid/digipinRes", 4))
+        self.digipinColor = QColor(qset.value("/vgrid/digipinColor", "#672a5c"))
+        self.digipinColor.setAlpha(int(qset.value("/vgrid/digipinColorOpacity", 255)))
+
+
         ### General Settings ###
         self.zoomLevel = int(qset.value("/vgrid/zoomLevel", Qt.Checked))
         self.gridLabel = int(qset.value("/vgrid/gridLabel", Qt.Checked))
@@ -198,14 +285,30 @@ class Settings:
             "ISEA4T": (0, 39, self.isea4tRes),
             "ISEA3H": (0, 40, self.isea3hRes),
             "EASE": (0, 6, self.easeRes),
+            
             "DGGAL_GNOSIS": (0, 28, self.dggal_gnosisRes),
-            "DGGAL_ISEA3H": (0, 33, self.dggal_isea3hRes),
+            
+            "DGGAL_ISEA4R": (0, 20, self.dggal_isea4rRes),
             "DGGAL_ISEA9R": (0, 16, self.dggal_isea9rRes),
-            "DGGAL_IVEA3H": (0, 33, self.dggal_ivea3hRes),
+            "DGGAL_ISEA3H": (0, 33, self.dggal_isea3hRes),
+            "DGGAL_ISEA7H": (0, 19, self.dggal_isea7hRes),
+            "DGGAL_ISEA7H_Z7": (0, 19, self.dggal_isea7h_z7Res),
+                       
+            "DGGAL_IVEA4R": (0, 20, self.dggal_ivea4rRes),
             "DGGAL_IVEA9R": (0, 16, self.dggal_ivea9rRes),
-            "DGGAL_RTEA3H": (0, 33, self.dggal_rtea3hRes),
+            "DGGAL_IVEA3H": (0, 33, self.dggal_ivea3hRes),
+            "DGGAL_IVEA7H": (0, 19, self.dggal_ivea7hRes),
+            "DGGAL_IVEA7H_Z7": (0, 19, self.dggal_ivea7h_z7Res),
+
+            "DGGAL_RTEA4R": (0, 20, self.dggal_rtea4rRes),
             "DGGAL_RTEA9R": (0, 16, self.dggal_rtea9rRes),
+            "DGGAL_RTEA3H": (0, 33, self.dggal_rtea3hRes),
+            "DGGAL_RTEA7H": (0, 19, self.dggal_rtea7hRes),
+            "DGGAL_RTEA7H_Z7": (0, 19, self.dggal_rtea7h_z7Res),
+
+            "DGGAL_HEALPIX": (0, 26, self.dggal_healpixRes),
             "DGGAL_RHEALPIX": (0, 16, self.dggal_rhealpixRes),
+            
             "QTM": (1, 24, self.qtmRes),
             "OLC": (2, 15, self.olcRes),
             "Geohash": (1, 12, self.geohashRes),
@@ -215,6 +318,7 @@ class Settings:
             "Quadkey": (0, 29, self.quadkeyRes),
             "Maidenhead": (1, 4, self.maidenheadRes),
             "GARS": (1, 4, self.garsRes),
+            "DIGIPIN": (1, 10, self.digipinRes),
         }
 
         return resolution_config.get(dggs_type)
@@ -275,29 +379,65 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.dggal_gnosisResSpinBox.setValue(16)
         self.dggal_gnosisColorButton.setColor(QColor("#00008B"))
 
-        # DGGAL_ISEA3H
-        self.dggal_isea3hResSpinBox.setValue(21)
-        self.dggal_isea3hColorButton.setColor(QColor("#00008B"))
+        # DGGAL_ISEA4R
+        self.dggal_isea4rResSpinBox.setValue(12)
+        self.dggal_isea4rColorButton.setColor(QColor("#00008B"))
 
         # DGGAL_ISEA9R
         self.dggal_isea9rResSpinBox.setValue(10)
         self.dggal_isea9rColorButton.setColor(QColor("#00008B"))
 
-        # DGGAL_IVEA3H
-        self.dggal_ivea3hResSpinBox.setValue(21)
-        self.dggal_ivea3hColorButton.setColor(QColor("#00008B"))
+        # DGGAL_ISEA3H
+        self.dggal_isea3hResSpinBox.setValue(21)
+        self.dggal_isea3hColorButton.setColor(QColor("#00008B"))
+        # DGGAL_ISEA7H
+        self.dggal_isea7hResSpinBox.setValue(11)
+        self.dggal_isea7hColorButton.setColor(QColor("#00008B"))
+        # DGGAL_ISEA7H_Z7
+        self.dggal_isea7h_z7ResSpinBox.setValue(11)
+        self.dggal_isea7h_z7ColorButton.setColor(QColor("#00008B"))
 
+
+        # DGGAL_IVEA4R
+        self.dggal_ivea4rResSpinBox.setValue(15)
+        self.dggal_ivea4rColorButton.setColor(QColor("#00008B"))
         # DGGAL_IVEA9R
         self.dggal_ivea9rResSpinBox.setValue(10)
         self.dggal_ivea9rColorButton.setColor(QColor("#00008B"))
+
+        # DGGAL_IVEA3H
+        self.dggal_ivea3hResSpinBox.setValue(21)
+        self.dggal_ivea3hColorButton.setColor(QColor("#00008B"))
+       
+        # DGGAL_IVEA7H
+        self.dggal_ivea7hResSpinBox.setValue(11)
+        self.dggal_ivea7hColorButton.setColor(QColor("#00008B"))
+        # DGGAL_IVEA7H_Z7
+        self.dggal_ivea7h_z7ResSpinBox.setValue(11)
+        self.dggal_ivea7h_z7ColorButton.setColor(QColor("#00008B"))
+
+        # DGGAL_RTEA4R
+        self.dggal_rtea4rResSpinBox.setValue(12)
+        self.dggal_rtea4rColorButton.setColor(QColor("#00008B"))
+
+        # DGGAL_RTEA9R
+        self.dggal_rtea9rResSpinBox.setValue(10)
+        self.dggal_rtea9rColorButton.setColor(QColor("#00008B"))
 
         # DGGAL_RTEA3H
         self.dggal_rtea3hResSpinBox.setValue(21)
         self.dggal_rtea3hColorButton.setColor(QColor("#00008B"))
 
-        # DGGAL_RTEA9R
-        self.dggal_rtea9rResSpinBox.setValue(10)
-        self.dggal_rtea9rColorButton.setColor(QColor("#00008B"))
+       # DGGAL_RTEA7H
+        self.dggal_rtea7hResSpinBox.setValue(11)
+        self.dggal_rtea7hColorButton.setColor(QColor("#00008B"))
+        # DGGAL_RTEA7H_Z7
+        self.dggal_rtea7h_z7ResSpinBox.setValue(11)
+        self.dggal_rtea7h_z7ColorButton.setColor(QColor("#00008B"))
+
+        # DGGAL_HEALPix
+        self.dggal_healpixResSpinBox.setValue(18)
+        self.dggal_healpixColorButton.setColor(QColor("#00008B"))
 
         # DGGAL_RHEALPIX
         self.dggal_rhealpixResSpinBox.setValue(10)
@@ -338,6 +478,10 @@ class SettingsWidget(QDialog, FORM_CLASS):
         # GARS
         self.garsResSpinBox.setValue(4)
         self.garsColorButton.setColor(QColor("#672a5c"))
+
+        # DIGIPIN
+        self.digipinResSpinBox.setValue(6)
+        self.digipinColorButton.setColor(QColor("#672a5c"))
 
         ### General Settings ###
         self.zoomLevelCheckBox.setCheckState(Qt.Checked)
@@ -412,14 +556,14 @@ class SettingsWidget(QDialog, FORM_CLASS):
         )
 
         qset.setValue(
-            "/vgrid/dggal_isea3hRes", int(self.dggal_isea3hResSpinBox.value())
+            "/vgrid/dggal_isea4rRes", int(self.dggal_isea4rResSpinBox.value())
         )
         qset.setValue(
-            "/vgrid/dggal_isea3hColor", self.dggal_isea3hColorButton.color().name()
+            "/vgrid/dggal_isea4rColor", self.dggal_isea4rColorButton.color().name()
         )
         qset.setValue(
-            "/vgrid/dggal_isea3hColorOpacity",
-            self.dggal_isea3hColorButton.color().alpha(),
+            "/vgrid/dggal_isea4rColorOpacity",
+            self.dggal_isea4rColorButton.color().alpha(),
         )
 
         qset.setValue(
@@ -434,14 +578,48 @@ class SettingsWidget(QDialog, FORM_CLASS):
         )
 
         qset.setValue(
-            "/vgrid/dggal_ivea3hRes", int(self.dggal_ivea3hResSpinBox.value())
+            "/vgrid/dggal_isea3hRes", int(self.dggal_isea3hResSpinBox.value())
         )
         qset.setValue(
-            "/vgrid/dggal_ivea3hColor", self.dggal_ivea3hColorButton.color().name()
+            "/vgrid/dggal_isea3hColor", self.dggal_isea3hColorButton.color().name()
         )
         qset.setValue(
-            "/vgrid/dggal_ivea3hColorOpacity",
-            self.dggal_ivea3hColorButton.color().alpha(),
+            "/vgrid/dggal_isea3hColorOpacity",
+            self.dggal_isea3hColorButton.color().alpha(),
+        )   
+
+        qset.setValue(
+            "/vgrid/dggal_isea7hRes", int(self.dggal_isea7hResSpinBox.value())
+        )
+        qset.setValue(
+            "/vgrid/dggal_isea7hColor", self.dggal_isea7hColorButton.color().name()
+        )
+        qset.setValue(
+            "/vgrid/dggal_isea7hColorOpacity",
+            self.dggal_isea7hColorButton.color().alpha(),
+        )   
+
+        qset.setValue(
+            "/vgrid/dggal_isea7h_z7Res", int(self.dggal_isea7h_z7ResSpinBox.value())
+        )
+        qset.setValue(
+            "/vgrid/dggal_isea7h_z7Color", self.dggal_isea7h_z7ColorButton.color().name()
+        )
+        qset.setValue(
+            "/vgrid/dggal_isea7h_z7ColorOpacity",
+            self.dggal_isea7h_z7ColorButton.color().alpha(),
+        )   
+
+
+        qset.setValue(
+            "/vgrid/dggal_ivea4rRes", int(self.dggal_ivea4rResSpinBox.value())
+        )
+        qset.setValue(
+            "/vgrid/dggal_ivea4rColor", self.dggal_ivea4rColorButton.color().name()
+        )
+        qset.setValue(
+            "/vgrid/dggal_ivea4rColorOpacity",
+            self.dggal_ivea4rColorButton.color().alpha(),
         )
 
         qset.setValue(
@@ -456,14 +634,48 @@ class SettingsWidget(QDialog, FORM_CLASS):
         )
 
         qset.setValue(
-            "/vgrid/dggal_rtea3hRes", int(self.dggal_rtea3hResSpinBox.value())
+            "/vgrid/dggal_ivea3hRes", int(self.dggal_ivea3hResSpinBox.value())
         )
         qset.setValue(
-            "/vgrid/dggal_rtea3hColor", self.dggal_rtea3hColorButton.color().name()
+            "/vgrid/dggal_ivea3hColor", self.dggal_ivea3hColorButton.color().name()
         )
         qset.setValue(
-            "/vgrid/dggal_rtea3hColorOpacity",
-            self.dggal_rtea3hColorButton.color().alpha(),
+            "/vgrid/dggal_ivea3hColorOpacity",
+            self.dggal_ivea3hColorButton.color().alpha(),
+        )
+
+        qset.setValue(
+            "/vgrid/dggal_ivea7hRes", int(self.dggal_ivea7hResSpinBox.value())
+        )
+        qset.setValue(
+            "/vgrid/dggal_ivea7hColor", self.dggal_ivea7hColorButton.color().name()
+        )
+        qset.setValue(
+            "/vgrid/dggal_ivea7hColorOpacity",
+            self.dggal_ivea7hColorButton.color().alpha(),
+        )
+      
+        qset.setValue(
+            "/vgrid/dggal_ivea7h_z7Res", int(self.dggal_ivea7h_z7ResSpinBox.value())
+        )
+        qset.setValue(
+            "/vgrid/dggal_ivea7h_z7Color", self.dggal_ivea7h_z7ColorButton.color().name()
+        )
+        qset.setValue(
+            "/vgrid/dggal_ivea7h_z7ColorOpacity",
+            self.dggal_ivea7h_z7ColorButton.color().alpha(),
+        )
+
+      
+        qset.setValue(
+            "/vgrid/dggal_rtea4rRes", int(self.dggal_rtea4rResSpinBox.value())
+        )
+        qset.setValue(
+            "/vgrid/dggal_rtea4rColor", self.dggal_rtea4rColorButton.color().name()
+        )
+        qset.setValue(
+            "/vgrid/dggal_rtea4rColorOpacity",
+            self.dggal_rtea4rColorButton.color().alpha(),
         )
 
         qset.setValue(
@@ -477,6 +689,53 @@ class SettingsWidget(QDialog, FORM_CLASS):
             self.dggal_rtea9rColorButton.color().alpha(),
         )
 
+        qset.setValue(
+            "/vgrid/dggal_rtea3hRes", int(self.dggal_rtea3hResSpinBox.value())
+        )
+        qset.setValue(
+            "/vgrid/dggal_rtea3hColor", self.dggal_rtea3hColorButton.color().name()
+            )
+        qset.setValue(
+            "/vgrid/dggal_rtea3hColorOpacity",
+            self.dggal_rtea3hColorButton.color().alpha(),
+        )
+
+        qset.setValue(
+            "/vgrid/dggal_rtea7hRes", int(self.dggal_rtea7hResSpinBox.value())
+        )
+        qset.setValue(
+            "/vgrid/dggal_rtea7hColor", self.dggal_rtea7hColorButton.color().name()
+        )   
+        qset.setValue(
+            "/vgrid/dggal_rtea7hColorOpacity",
+            self.dggal_rtea7hColorButton.color().alpha(),
+        )
+
+        qset.setValue(
+            "/vgrid/dggal_rtea7h_z7Res", int(self.dggal_rtea7h_z7ResSpinBox.value())
+        )
+
+        qset.setValue(
+            "/vgrid/dggal_rtea7h_z7Color", self.dggal_rtea7h_z7ColorButton.color().name()
+        )
+        qset.setValue(
+            "/vgrid/dggal_rtea7h_z7ColorOpacity",
+            self.dggal_rtea7h_z7ColorButton.color().alpha(),
+        )
+
+       
+        qset.setValue(
+            "/vgrid/dggal_healpixRes", int(self.dggal_healpixResSpinBox.value())
+        )
+        qset.setValue(
+            "/vgrid/dggal_healpixColor", self.dggal_healpixColorButton.color().name()
+        )
+        qset.setValue(
+            "/vgrid/dggal_healpixColorOpacity",
+            self.dggal_healpixColorButton.color().alpha(),
+        )
+
+       
         qset.setValue(
             "/vgrid/dggal_rhealpixRes", int(self.dggal_rhealpixResSpinBox.value())
         )
@@ -530,6 +789,11 @@ class SettingsWidget(QDialog, FORM_CLASS):
         qset.setValue("/vgrid/garsRes", int(self.garsResSpinBox.value()))
         qset.setValue("/vgrid/garsColor", self.garsColorButton.color().name())
         qset.setValue("/vgrid/garsColorOpacity", self.garsColorButton.color().alpha())
+
+        qset.setValue("/vgrid/digipinRes", int(self.digipinResSpinBox.value()))
+        qset.setValue("/vgrid/digipinColor", self.digipinColorButton.color().name())
+        qset.setValue("/vgrid/digipinColorOpacity", self.digipinColorButton.color().alpha())
+
 
         ### General Settings ###
         qset.setValue("/vgrid/zoomLevel", int(self.zoomLevelCheckBox.checkState()))
@@ -594,24 +858,45 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.dggal_gnosisResSpinBox.setValue(settings.dggal_gnosisRes)
         self.dggal_gnosisColorButton.setColor(settings.dggal_gnosisColor)
 
-        self.dggal_isea3hResSpinBox.setValue(settings.dggal_isea3hRes)
-        self.dggal_isea3hColorButton.setColor(settings.dggal_isea3hColor)
-
+        self.dggal_isea4rResSpinBox.setValue(settings.dggal_isea4rRes)
+        self.dggal_isea4rColorButton.setColor(settings.dggal_isea4rColor)
         self.dggal_isea9rResSpinBox.setValue(settings.dggal_isea9rRes)
         self.dggal_isea9rColorButton.setColor(settings.dggal_isea9rColor)
 
-        self.dggal_ivea3hResSpinBox.setValue(settings.dggal_ivea3hRes)
-        self.dggal_ivea3hColorButton.setColor(settings.dggal_ivea3hColor)
+        self.dggal_isea3hResSpinBox.setValue(settings.dggal_isea3hRes)
+        self.dggal_isea3hColorButton.setColor(settings.dggal_isea3hColor)
+        self.dggal_isea7hResSpinBox.setValue(settings.dggal_isea7hRes)
+        self.dggal_isea7hColorButton.setColor(settings.dggal_isea7hColor)
+        self.dggal_isea7h_z7ResSpinBox.setValue(settings.dggal_isea7h_z7Res)
+        self.dggal_isea7h_z7ColorButton.setColor(settings.dggal_isea7h_z7Color)
 
+
+        self.dggal_ivea4rResSpinBox.setValue(settings.dggal_ivea4rRes)
+        self.dggal_ivea4rColorButton.setColor(settings.dggal_ivea4rColor)
         self.dggal_ivea9rResSpinBox.setValue(settings.dggal_ivea9rRes)
         self.dggal_ivea9rColorButton.setColor(settings.dggal_ivea9rColor)
 
-        self.dggal_rtea3hResSpinBox.setValue(settings.dggal_rtea3hRes)
-        self.dggal_rtea3hColorButton.setColor(settings.dggal_rtea3hColor)
+        self.dggal_ivea3hResSpinBox.setValue(settings.dggal_ivea3hRes)
+        self.dggal_ivea3hColorButton.setColor(settings.dggal_ivea3hColor)
+        self.dggal_ivea7hResSpinBox.setValue(settings.dggal_ivea7hRes)
+        self.dggal_ivea7hColorButton.setColor(settings.dggal_ivea7hColor)
+        self.dggal_ivea7h_z7ResSpinBox.setValue(settings.dggal_ivea7h_z7Res)
+        self.dggal_ivea7h_z7ColorButton.setColor(settings.dggal_ivea7h_z7Color)
 
+        self.dggal_rtea4rResSpinBox.setValue(settings.dggal_rtea4rRes)
+        self.dggal_rtea4rColorButton.setColor(settings.dggal_rtea4rColor)
         self.dggal_rtea9rResSpinBox.setValue(settings.dggal_rtea9rRes)
         self.dggal_rtea9rColorButton.setColor(settings.dggal_rtea9rColor)
 
+        self.dggal_rtea3hResSpinBox.setValue(settings.dggal_rtea3hRes)
+        self.dggal_rtea3hColorButton.setColor(settings.dggal_rtea3hColor)
+        self.dggal_rtea7hResSpinBox.setValue(settings.dggal_rtea7hRes)
+        self.dggal_rtea7hColorButton.setColor(settings.dggal_rtea7hColor)
+        self.dggal_rtea7h_z7ResSpinBox.setValue(settings.dggal_rtea7h_z7Res)
+        self.dggal_rtea7h_z7ColorButton.setColor(settings.dggal_rtea7h_z7Color)
+
+        self.dggal_healpixResSpinBox.setValue(settings.dggal_healpixRes)
+        self.dggal_healpixColorButton.setColor(settings.dggal_healpixColor)
         self.dggal_rhealpixResSpinBox.setValue(settings.dggal_rhealpixRes)
         self.dggal_rhealpixColorButton.setColor(settings.dggal_rhealpixColor)
 
@@ -641,6 +926,9 @@ class SettingsWidget(QDialog, FORM_CLASS):
 
         self.garsResSpinBox.setValue(settings.garsRes)
         self.garsColorButton.setColor(settings.garsColor)
+
+        self.digipinResSpinBox.setValue(settings.digipinRes)
+        self.digipinColorButton.setColor(settings.digipinColor)
 
         ### General Settings ###
         self.zoomLevelCheckBox.setCheckState(settings.zoomLevel)

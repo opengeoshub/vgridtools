@@ -1144,7 +1144,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             label = "→ {}".format(latlon)
         else:
             label = "→ {}".format(xy)
-        self.customLabel.setText(label)
+        self.customlatlonLabel.setText(label)
 
     def copyWGS84(self):
         s = self.wgs84LineEdit.text()
