@@ -20,6 +20,7 @@ from vgrid.conversion.latlon2dggs import (
     latlon2geohash,
     latlon2tilecode,
     latlon2quadkey,
+    latlon2digipin,
 )
 from vgrid.utils.io import (
     validate_h3_resolution,
@@ -34,6 +35,7 @@ from vgrid.utils.io import (
     validate_geohash_resolution,
     validate_tilecode_resolution,
     validate_quadkey_resolution,
+    validate_digipin_resolution,
 )
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
@@ -55,6 +57,8 @@ from vgrid.generator.olcgrid import olc_refine_cell
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
 from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
+from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
+from vgrid.dggs.digipin import BOUNDS
 from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
 from vgrid.utils.geometry import (
     graticule_dggs_metrics,
@@ -69,6 +73,7 @@ from vgrid.conversion.dggscompact.olccompact import olc_compact
 from vgrid.conversion.dggscompact.geohashcompact import geohash_compact
 from vgrid.conversion.dggscompact.tilecodecompact import tilecode_compact
 from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
+from vgrid.conversion.dggscompact.digipincompact import digipin_compact
 from vgrid.conversion.dggscompact.a5compact import a5_compact
 from vgrid.dggs import qtm
 from vgrid.generator.geohashgrid import expand_geohash_bbox
@@ -4384,3 +4389,380 @@ def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=
         quadkey_features = quadkeycompact_from_qgsfeatures(quadkey_features, feedback)
 
     return quadkey_features
+
+#######################
+# QgsFeatures to DIGIPIN
+#######################
+
+def qgsfeature2digipin(
+    feature, resolution, predicate=None, compact=None, feedback=None
+):
+    resolution = validate_digipin_resolution(resolution)
+    geometry = feature.geometry()
+    if geometry.wkbType() == QgsWkbTypes.Point:
+        return point2digipin(feature, resolution, feedback)
+    elif geometry.wkbType() == QgsWkbTypes.LineString:
+        return polyline2digipin(feature, resolution, None, None, feedback)
+    elif geometry.wkbType() == QgsWkbTypes.Polygon:
+        return polygon2digipin(feature, resolution, predicate, compact, feedback)
+
+
+def point2digipin(feature, resolution, feedback):
+    if feedback and feedback.isCanceled():
+        return []
+
+    feature_geometry = feature.geometry()
+    point = feature_geometry.asPoint()
+    digipin_id = latlon2digipin(point.y(), point.x(), resolution)
+    cell_polygon = digipin2geo(digipin_id)
+    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+        graticule_dggs_metrics(cell_polygon)
+    )
+
+    # Create a single QGIS feature
+    digipin_feature = QgsFeature()
+    digipin_feature.setGeometry(cell_geometry)
+
+    # Get all attributes from the input feature
+    original_attributes = feature.attributes()
+    original_fields = feature.fields()
+
+    # Define new digipin-related attributes
+    new_fields = QgsFields()
+    new_fields.append(QgsField("digipin", QVariant.String))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("cell_width", QVariant.Double))
+    new_fields.append(QgsField("cell_height", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+    # Combine original fields and new fields
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+
+    digipin_feature.setFields(all_fields)
+
+    # Combine original attributes with new attributes
+    new_attributes = [
+        digipin_id,
+        resolution,
+        center_lat,
+        center_lon,
+        cell_width,
+        cell_height,
+        cell_area,
+        cell_perimeter,
+    ]
+    all_attributes = original_attributes + new_attributes
+
+    digipin_feature.setAttributes(all_attributes)
+
+    return [digipin_feature]
+
+
+def digipincompact_from_qgsfeatures(qgs_features, feedback):
+    original_fields = qgs_features[0].fields()
+
+    digipin_ids = [f["digipin"] for f in qgs_features if f["digipin"]]
+
+    digipin_ids_compact = digipin_compact(digipin_ids)
+    digipin_features = []
+
+    total_cells = len(digipin_ids_compact)
+    if feedback:
+        feedback.pushInfo("Compacting cells")
+        feedback.setProgress(0)
+
+    for i, digipin_id_compact in enumerate(digipin_ids_compact):
+        if feedback and feedback.isCanceled():
+            return []
+        
+        cell_polygon = digipin2geo(digipin_id_compact)
+        clean_id = digipin_id_compact.replace('-', '')
+        cell_resolution = len(clean_id)
+
+        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+            graticule_dggs_metrics(cell_polygon)
+        )
+
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+        digipin_feature = QgsFeature()
+        digipin_feature.setFields(original_fields)
+        digipin_feature.setGeometry(cell_geometry)
+
+        digipin_feature["digipin"] = digipin_id_compact
+        digipin_feature["resolution"] = cell_resolution
+        digipin_feature["center_lat"] = center_lat
+        digipin_feature["center_lon"] = center_lon
+        digipin_feature["cell_width"] = cell_width
+        digipin_feature["cell_height"] = cell_height
+        digipin_feature["cell_area"] = cell_area
+        digipin_feature["cell_perimeter"] = cell_perimeter
+        digipin_features.append(digipin_feature)
+        if feedback and i % 100 == 0:
+            feedback.setProgress(int(100 * i / total_cells))
+
+    if feedback:
+        feedback.setProgress(100)
+
+    return digipin_features
+
+
+def polyline2digipin(feature, resolution, predicate=None, compact=None, feedback=None):
+    digipin_features = []
+    feature_geometry = feature.geometry()
+    feature_rect = feature_geometry.boundingBox()
+    min_lon = feature_rect.xMinimum()
+    min_lat = feature_rect.yMinimum()
+    max_lon = feature_rect.xMaximum()
+    max_lat = feature_rect.yMaximum()
+
+    # Constrain to DIGIPIN bounds (India region)
+    min_lat = max(min_lat, BOUNDS['minLat'])
+    min_lon = max(min_lon, BOUNDS['minLon'])
+    max_lat = min(max_lat, BOUNDS['maxLat'])
+    max_lon = min(max_lon, BOUNDS['maxLon'])
+    
+    # Calculate sampling density based on resolution (following digipingrid.py approach)
+    # Each level divides the cell by 4 (2x2 grid)
+    base_width = 9.0  # degrees at resolution 1
+    factor = 0.25 ** (resolution - 1)  # each level divides by 4
+    sample_width = base_width * factor
+    
+    seen_cells = set()
+    
+    # Calculate approximate number of cells for progress tracking
+    lat_range = max_lat - min_lat
+    lon_range = max_lon - min_lon
+    estimated_cells = int((lat_range * lon_range) / (sample_width * sample_width))
+    
+    if feedback:
+        feedback.pushInfo(f"Processing feature {feature.id()}")
+        feedback.setProgress(0)
+
+    cell_count = 0
+    
+    # Sample points across the bounding box
+    lon = min_lon
+    while lon <= max_lon:
+        lat = min_lat
+        while lat <= max_lat:
+            if feedback and feedback.isCanceled():
+                return []                
+            # Get DIGIPIN code for this point at the specified resolution
+            digipin_id = latlon2digipin(lat, lon, resolution)
+            
+            if digipin_id == 'Out of Bound':
+                lat += sample_width
+                continue
+                
+            if digipin_id in seen_cells:
+                lat += sample_width
+                continue
+                
+            seen_cells.add(digipin_id)
+            
+            # Get the bounds for this DIGIPIN cell
+            cell_polygon = digipin2geo(digipin_id)
+            
+            if isinstance(cell_polygon, str):  # Error like 'Invalid DIGIPIN'
+                lat += sample_width
+                continue          
+            
+            # Convert to QgsGeometry for intersection check
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            
+            # Check if cell intersects with polyline
+            if cell_geometry.intersects(feature_geometry):
+                digipin_feature = QgsFeature()
+                digipin_feature.setGeometry(cell_geometry)
+
+                center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+                    graticule_dggs_metrics(cell_polygon)
+                )
+
+                original_attributes = feature.attributes()
+                original_fields = feature.fields()
+
+                new_fields = QgsFields()
+                new_fields.append(QgsField("digipin", QVariant.String))
+                new_fields.append(QgsField("resolution", QVariant.Int))
+                new_fields.append(QgsField("center_lat", QVariant.Double))
+                new_fields.append(QgsField("center_lon", QVariant.Double))
+                new_fields.append(QgsField("cell_width", QVariant.Double))
+                new_fields.append(QgsField("cell_height", QVariant.Double))
+                new_fields.append(QgsField("cell_area", QVariant.Double))
+                new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+                all_fields = QgsFields()
+                for field in original_fields:
+                    all_fields.append(field)
+                for field in new_fields:
+                    all_fields.append(field)
+
+                digipin_feature.setFields(all_fields)
+
+                new_attributes = [
+                    digipin_id,
+                    resolution,
+                    center_lat,
+                    center_lon,
+                    cell_width,
+                    cell_height,
+                    cell_area,
+                    cell_perimeter,
+                ]
+                all_attributes = original_attributes + new_attributes
+
+                digipin_feature.setAttributes(all_attributes)
+
+                digipin_features.append(digipin_feature)
+                cell_count += 1        
+            
+            lat += sample_width
+            if feedback and cell_count % 100 == 0:
+                feedback.setProgress(int(100 * cell_count / estimated_cells))
+        lon += sample_width
+        
+    if feedback:
+        feedback.setProgress(100)
+
+    if compact:
+        digipin_features = digipincompact_from_qgsfeatures(digipin_features, feedback)
+
+    return digipin_features
+
+
+def polygon2digipin(feature, resolution, predicate=None, compact=None, feedback=None):
+    digipin_features = []
+    feature_geometry = feature.geometry()
+    feature_rect = feature_geometry.boundingBox()
+    min_lon = feature_rect.xMinimum()
+    min_lat = feature_rect.yMinimum()
+    max_lon = feature_rect.xMaximum()
+    max_lat = feature_rect.yMaximum()
+
+    # Constrain to DIGIPIN bounds (India region)
+    min_lat = max(min_lat, BOUNDS['minLat'])
+    min_lon = max(min_lon, BOUNDS['minLon'])
+    max_lat = min(max_lat, BOUNDS['maxLat'])
+    max_lon = min(max_lon, BOUNDS['maxLon'])
+    
+    # Calculate sampling density based on resolution (following digipingrid.py approach)
+    # Each level divides the cell by 4 (2x2 grid)
+    base_width = 9.0  # degrees at resolution 1
+    factor = 0.25 ** (resolution - 1)  # each level divides by 4
+    sample_width = base_width * factor
+    
+    seen_cells = set()
+    
+    # Calculate approximate number of cells for progress tracking
+    lat_range = max_lat - min_lat
+    lon_range = max_lon - min_lon
+    estimated_cells = int((lat_range * lon_range) / (sample_width * sample_width))
+    
+    if feedback:
+        feedback.pushInfo(f"Processing feature {feature.id()}")
+        feedback.setProgress(0)
+
+    cell_count = 0
+    
+    # Sample points across the bounding box
+    lon = min_lon
+    while lon <= max_lon:
+        lat = min_lat
+        while lat <= max_lat:
+            if feedback and feedback.isCanceled():
+                return []                
+            # Get DIGIPIN code for this point at the specified resolution
+            digipin_id = latlon2digipin(lat, lon, resolution)
+            
+            if digipin_id == 'Out of Bound':
+                lat += sample_width
+                continue
+                
+            if digipin_id in seen_cells:
+                lat += sample_width
+                continue
+                
+            seen_cells.add(digipin_id)
+            
+            # Get the bounds for this DIGIPIN cell
+            cell_polygon = digipin2geo(digipin_id)
+            
+            if isinstance(cell_polygon, str):  # Error like 'Invalid DIGIPIN'
+                lat += sample_width
+                continue           
+            # Convert to QgsGeometry for intersection check
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            
+            # Predicate-based filtering
+            if not check_predicate(cell_geometry, feature_geometry, predicate):
+                lat += sample_width
+                continue
+
+            digipin_feature = QgsFeature()
+            digipin_feature.setGeometry(cell_geometry)
+
+            center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+                graticule_dggs_metrics(cell_polygon)
+            )
+
+            original_attributes = feature.attributes()
+            original_fields = feature.fields()
+
+            new_fields = QgsFields()
+            new_fields.append(QgsField("digipin", QVariant.String))
+            new_fields.append(QgsField("resolution", QVariant.Int))
+            new_fields.append(QgsField("center_lat", QVariant.Double))
+            new_fields.append(QgsField("center_lon", QVariant.Double))
+            new_fields.append(QgsField("cell_width", QVariant.Double))
+            new_fields.append(QgsField("cell_height", QVariant.Double))
+            new_fields.append(QgsField("cell_area", QVariant.Double))
+            new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+
+            all_fields = QgsFields()
+            for field in original_fields:
+                all_fields.append(field)
+            for field in new_fields:
+                all_fields.append(field)
+
+            digipin_feature.setFields(all_fields)
+
+            new_attributes = [
+                digipin_id,
+                resolution,
+                center_lat,
+                center_lon,
+                cell_width,
+                cell_height,
+                cell_area,
+                cell_perimeter,
+            ]
+            all_attributes = original_attributes + new_attributes
+
+            digipin_feature.setAttributes(all_attributes)
+
+            digipin_features.append(digipin_feature)
+            cell_count += 1
+                
+            lat += sample_width
+        lon += sample_width
+        
+        if feedback and cell_count % 100 == 0:
+            feedback.setProgress(int(100 * cell_count / estimated_cells))
+
+    if feedback:
+        feedback.setProgress(100)
+
+    if compact:
+        digipin_features = digipincompact_from_qgsfeatures(digipin_features, feedback)
+
+    return digipin_features
+
+

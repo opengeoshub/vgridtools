@@ -306,8 +306,8 @@ class Settings:
             "DGGAL_RTEA7H": (0, 19, self.dggal_rtea7hRes),
             "DGGAL_RTEA7H_Z7": (0, 19, self.dggal_rtea7h_z7Res),
 
-            "DGGAL_HEALPIX": (0, 26, self.dggal_healpixRes),
-            "DGGAL_RHEALPIX": (0, 16, self.dggal_rhealpixRes),
+            "DGGAL_HEALPix": (0, 26, self.dggal_healpixRes),
+            "DGGAL_rHEALPix": (0, 16, self.dggal_rhealpixRes),
             
             "QTM": (1, 24, self.qtmRes),
             "OLC": (2, 15, self.olcRes),

@@ -101,6 +101,7 @@ exprs = (
     latlon2quadkey,
     latlon2maidenhead,
     latlon2gars,
+    latlon2digipin  
 )
 
 

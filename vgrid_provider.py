@@ -46,6 +46,7 @@ from .processing_provider.binning.tilecode_bin import TilecodeBin
 from .processing_provider.binning.quadkey_bin import QuadkeyBin
 
 from .processing_provider.binning.polygon_bin import PolygonBin
+from .processing_provider.binning.digipin_bin import DigipinBin
 
 
 from .processing_provider.generator.h3gen import H3Gen
@@ -66,7 +67,7 @@ from .processing_provider.generator.quadkeygen import QuadkeyGen
 from .processing_provider.generator.maidenheadgen import MaidenheadGen
 from .processing_provider.generator.garsgen import GARSGen
 from .processing_provider.generator.georefgen import GEOREFGen
-
+from .processing_provider.generator.digipingen import DIGIPINGen
 
 class VgridProvider(QgsProcessingProvider):
     def __init__(self):
@@ -109,6 +110,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(QuadkeyBin())
 
         self.addAlgorithm(PolygonBin())
+        self.addAlgorithm(DigipinBin())
 
         # Generator algorithms
         self.addAlgorithm(H3Gen())
@@ -130,7 +132,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(QuadkeyGen())
         self.addAlgorithm(MaidenheadGen())
         self.addAlgorithm(GARSGen())
-
+        self.addAlgorithm(DIGIPINGen())
     def id(self):
         return "vgrid"
 

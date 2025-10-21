@@ -13,12 +13,12 @@ from math import log2
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.utils.io import validate_coordinate
+from vgrid.utils.io import validate_digipin_coordinate
 
 # DIGIPIN imports
 from vgrid.conversion.latlon2dggs import latlon2digipin
 from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
-from vgrid.utils.io import validate_digipin_resolution
-from vgrid.dggs.digipin import BOUNDS
+from vgrid.utils.io import validate_digipin_coordinate
 
 
 
@@ -72,7 +72,7 @@ class DIGIPINGrid(QObject):
                 canvas_extent.xMaximum(),
                 canvas_extent.yMaximum(),
             )
-
+           
             # Transform to EPSG:4326 if needed
             if epsg4326 != canvas_crs:
                 trans_to_4326 = QgsCoordinateTransform(
@@ -86,16 +86,9 @@ class DIGIPINGrid(QObject):
                     transformed_extent.yMaximum(),
                 )
 
-            # Validate and construct extent bbox
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+            min_lat, min_lon, max_lat, max_lon = validate_digipin_coordinate(
                 min_lat, min_lon, max_lat, max_lon
             )
-
-            # Constrain to DIGIPIN bounds (India region)
-            min_lat = max(min_lat, BOUNDS['minLat'])
-            min_lon = max(min_lon, BOUNDS['minLon'])
-            max_lat = min(max_lat, BOUNDS['maxLat'])
-            max_lon = min(max_lon, BOUNDS['maxLon'])
 
             # Calculate sampling density based on resolution
             # Each level divides the cell by 4 (2x2 grid)
@@ -125,25 +118,11 @@ class DIGIPINGrid(QObject):
                         seen_cells.add(digipin_code)
 
                         # Get the bounds for this DIGIPIN cell
-                        cell_bounds = digipin2geo(digipin_code)
+                        cell_polygon = digipin2geo(digipin_code)
 
-                        if isinstance(cell_bounds, str):  # Error like 'Invalid DIGIPIN'
+                        if isinstance(cell_polygon, str):  # Error like 'Invalid DIGIPIN'
                             lat += sample_width
                             continue
-
-                        cell_min_lat = cell_bounds.minLat
-                        cell_max_lat = cell_bounds.maxLat
-                        cell_min_lon = cell_bounds.minLon
-                        cell_max_lon = cell_bounds.maxLon
-
-                        # Create polygon for this cell
-                        cell_polygon = Polygon([
-                            [cell_min_lon, cell_min_lat],
-                            [cell_max_lon, cell_min_lat],
-                            [cell_max_lon, cell_max_lat],
-                            [cell_min_lon, cell_max_lat],
-                            [cell_min_lon, cell_min_lat]
-                        ])
 
                         # Convert to QgsGeometry and add to rubber band
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -177,29 +156,27 @@ class DIGIPINGrid(QObject):
 
     def _get_digipin_resolution(self, scale):
         # Map scale to zoom, then to DIGIPIN resolution
-        zoom = 29.1402 - log2(scale)
-        res = 1
-        if zoom >= 8:
-            res = 1
-        if zoom >= 10:
-            res = 2
-        if zoom >= 11:
-            res = 3
-        if zoom >= 12:
-            res = 4
-        if zoom >= 13:
-            res = 5
-        if zoom >= 14:
-            res = 6
-        if zoom >= 15:
-            res = 7
-        if zoom >= 16:
-            res = 8
-        if zoom >= 17:
-            res = 9
-        if zoom >= 18:
-            res = 10
-        return res
+        zoom = 29.1402 - log2(scale)        
+        # Map zoom levels to DIGIPIN precision (1-10 characters)
+        if zoom < 4:
+            return 1
+        if zoom < 6:
+            return 2
+        if zoom < 8:
+            return 3
+        if zoom < 10:
+            return 4
+        if zoom < 12:
+            return 5
+        if zoom < 14:
+            return 6
+        if zoom < 16:
+            return 7
+        if zoom < 18:
+            return 8
+        if zoom < 20:
+            return 9
+        return 10
 
     @pyqtSlot()
     def removeMarker(self):

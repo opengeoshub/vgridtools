@@ -41,20 +41,36 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "S2",
         "A5",
         "rHEALPix",
+
         "DGGAL_GNOSIS",
-        "DGGAL_ISEA3H",
+        
+        "DGGAL_ISEA4R",
         "DGGAL_ISEA9R",
-        "DGGAL_IVEA3H",
+        "DGGAL_ISEA3H",
+        "DGGAL_ISEA7H",
+        "DGGAL_ISEA7H_Z7",
+
+        "DGGAL_IVEA4R",
         "DGGAL_IVEA9R",
-        "DGGAL_RTEA3H",
+        "DGGAL_IVEA3H",
+        "DGGAL_IVEA7H",
+        "DGGAL_IVEA7H_Z7",
+        
+        "DGGAL_RTEA4R",
         "DGGAL_RTEA9R",
-        "DGGAL_RHEALPIX",
+        "DGGAL_RTEA3H",
+        "DGGAL_RTEA7H",
+        "DGGAL_RTEA7H_Z7",
+        "DGGAL_HEALPix",
+        "DGGAL_rHEALPix",
+
         "QTM",
         "OLC",
         "Geohash",
         "Tilecode",
-        "Quadkey",
-    ]
+        "Quadkey",          
+        "DIGIPIN",
+    ]   
 
     if platform.system() == "Windows":
         index = DGGS_TYPES.index("rHEALPix") + 1
@@ -287,19 +303,30 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             "rhealpix": qgsfeature2rhealpix,
             "isea4t": qgsfeature2isea4t,
             "isea3h": qgsfeature2isea3h,
-            "dggal_gnosis": qgsfeature2dggal,
-            "dggal_isea3h": qgsfeature2dggal,
-            "dggal_isea9r": qgsfeature2dggal,
-            "dggal_ivea3h": qgsfeature2dggal,
-            "dggal_ivea9r": qgsfeature2dggal,
-            "dggal_rtea3h": qgsfeature2dggal,
-            "dggal_rtea9r": qgsfeature2dggal,
-            "dggal_rhealpix": qgsfeature2dggal,
             "qtm": qgsfeature2qtm,
             "olc": qgsfeature2olc,
-            "geohash": qgsfeature2geohash,  # Need to check polyline/ polygon2geohash
+            "geohash": qgsfeature2geohash,
             "tilecode": qgsfeature2tilecode,
             "quadkey": qgsfeature2quadkey,
+            "digipin": qgsfeature2digipin,
+            "dggal_gnosis": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("gnosis", feature, resolution, predicate, compact, feedback),
+            "dggal_isea4r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("isea4r", feature, resolution, predicate, compact, feedback),
+            "dggal_isea9r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("isea9r", feature, resolution, predicate, compact, feedback),
+            "dggal_isea3h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("isea3h", feature, resolution, predicate, compact, feedback),
+            "dggal_isea7h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("isea7h", feature, resolution, predicate, compact, feedback),
+            "dggal_isea7h_z7": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("isea7h_z7", feature, resolution, predicate, compact, feedback),
+            "dggal_ivea4r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("ivea4r", feature, resolution, predicate, compact, feedback),
+            "dggal_ivea9r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("ivea9r", feature, resolution, predicate, compact, feedback),
+            "dggal_ivea3h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("ivea3h", feature, resolution, predicate, compact, feedback),
+            "dggal_ivea7h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("ivea7h", feature, resolution, predicate, compact, feedback),
+            "dggal_ivea7h_z7": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("ivea7h_z7", feature, resolution, predicate, compact, feedback),
+            "dggal_rtea4r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rtea4r", feature, resolution, predicate, compact, feedback),
+            "dggal_rtea9r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rtea9r", feature, resolution, predicate, compact, feedback),
+            "dggal_rtea3h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rtea3h", feature, resolution, predicate, compact, feedback),
+            "dggal_rtea7h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rtea7h", feature, resolution, predicate, compact, feedback),
+            "dggal_rtea7h_z7": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rtea7h_z7", feature, resolution, predicate, compact, feedback),
+            "dggal_healpix": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("healpix", feature, resolution, predicate, compact, feedback),
+            "dggal_rhealpix": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rhealpix", feature, resolution, predicate, compact, feedback),
         }
         return True
 
@@ -316,122 +343,57 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             cell_polygons = []
             multi_cell_polygons = []
 
-            # Handle DGGAL types specially - they need the dggal_type as first parameter
-            if self.dggs_type.startswith("dggal_"):
-                dggal_type = self.dggs_type.replace("dggal_", "")
-
-                # Handle MultiPoint geometry
-                if feature_geom.wkbType() == QgsWkbTypes.MultiPoint:
-                    for point in feature_geom.asMultiPoint():
-                        point_feature = QgsFeature(feature)  # Copy original feature
-                        point_feature.setGeometry(
-                            QgsGeometry.fromPointXY(point)
-                        )  # Set individual point geometry
-                        cell_polygons = conversion_function(
-                            dggal_type,
-                            point_feature,
-                            self.resolution,
-                            self.predicate,
-                            self.compact,
-                            feedback,
-                        )
-                        multi_cell_polygons.extend(cell_polygons)
-                    return multi_cell_polygons
-
-                # Handle MultiLineString geometry
-                elif feature_geom.wkbType() == QgsWkbTypes.MultiLineString:
-                    for line in feature_geom.asMultiPolyline():
-                        line_feature = QgsFeature(feature)
-                        line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
-                        cell_polygons = conversion_function(
-                            dggal_type,
-                            line_feature,
-                            self.resolution,
-                            self.predicate,
-                            self.compact,
-                            feedback,
-                        )
-                        multi_cell_polygons.extend(cell_polygons)
-                    return multi_cell_polygons
-
-                # Handle MultiPolygon geometry
-                elif feature_geom.wkbType() == QgsWkbTypes.MultiPolygon:
-                    for polygon in feature_geom.asMultiPolygon():
-                        polygon_feature = QgsFeature(feature)
-                        polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
-                        cell_polygons = conversion_function(
-                            dggal_type,
-                            polygon_feature,
-                            self.resolution,
-                            self.predicate,
-                            self.compact,
-                            feedback,
-                        )
-                        multi_cell_polygons.extend(cell_polygons)
-                    return multi_cell_polygons
-
-                else:  # Single part features
-                    return conversion_function(
-                        dggal_type,
-                        feature,
+            # Handle MultiPoint geometry
+            if feature_geom.wkbType() == QgsWkbTypes.MultiPoint:
+                for point in feature_geom.asMultiPoint():
+                    point_feature = QgsFeature(feature)  # Copy original feature
+                    point_feature.setGeometry(
+                        QgsGeometry.fromPointXY(point)
+                    )  # Set individual point geometry
+                    cell_polygons = conversion_function(
+                        point_feature,
                         self.resolution,
                         self.predicate,
                         self.compact,
                         feedback,
                     )
+                    multi_cell_polygons.extend(cell_polygons)
+                return multi_cell_polygons
 
-            else:
-                # Handle MultiPoint geometry
-                if feature_geom.wkbType() == QgsWkbTypes.MultiPoint:
-                    for point in feature_geom.asMultiPoint():
-                        point_feature = QgsFeature(feature)  # Copy original feature
-                        point_feature.setGeometry(
-                            QgsGeometry.fromPointXY(point)
-                        )  # Set individual point geometry
-                        cell_polygons = conversion_function(
-                            point_feature,
-                            self.resolution,
-                            self.predicate,
-                            self.compact,
-                            feedback,
-                        )
-                        multi_cell_polygons.extend(cell_polygons)
-                    return multi_cell_polygons
-
-                # Handle MultiLineString geometry
-                elif feature_geom.wkbType() == QgsWkbTypes.MultiLineString:
-                    for line in feature_geom.asMultiPolyline():
-                        line_feature = QgsFeature(feature)
-                        line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
-                        cell_polygons = conversion_function(
-                            line_feature,
-                            self.resolution,
-                            self.predicate,
-                            self.compact,
-                            feedback,
-                        )
-                        multi_cell_polygons.extend(cell_polygons)
-                    return multi_cell_polygons
-
-                # Handle MultiPolygon geometry
-                elif feature_geom.wkbType() == QgsWkbTypes.MultiPolygon:
-                    for polygon in feature_geom.asMultiPolygon():
-                        polygon_feature = QgsFeature(feature)
-                        polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
-                        cell_polygons = conversion_function(
-                            polygon_feature,
-                            self.resolution,
-                            self.predicate,
-                            self.compact,
-                            feedback,
-                        )
-                        multi_cell_polygons.extend(cell_polygons)
-                    return multi_cell_polygons
-
-                else:  # Single part features
-                    return conversion_function(
-                        feature, self.resolution, self.predicate, self.compact, feedback
+            # Handle MultiLineString geometry
+            elif feature_geom.wkbType() == QgsWkbTypes.MultiLineString:
+                for line in feature_geom.asMultiPolyline():
+                    line_feature = QgsFeature(feature)
+                    line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
+                    cell_polygons = conversion_function(
+                        line_feature,
+                        self.resolution,
+                        self.predicate,
+                        self.compact,
+                        feedback,
                     )
+                    multi_cell_polygons.extend(cell_polygons)
+                return multi_cell_polygons
+
+            # Handle MultiPolygon geometry
+            elif feature_geom.wkbType() == QgsWkbTypes.MultiPolygon:
+                for polygon in feature_geom.asMultiPolygon():
+                    polygon_feature = QgsFeature(feature)
+                    polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
+                    cell_polygons = conversion_function(
+                        polygon_feature,
+                        self.resolution,
+                        self.predicate,
+                        self.compact,
+                        feedback,
+                    )
+                    multi_cell_polygons.extend(cell_polygons)
+                return multi_cell_polygons
+
+            else:  # Single part features
+                return conversion_function(
+                    feature, self.resolution, self.predicate, self.compact, feedback
+                )
 
         except Exception as e:
             self.num_bad += 1

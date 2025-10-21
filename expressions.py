@@ -561,6 +561,37 @@ def latlon2gars(latitude, longitude, resolution, feature, parent):
 
 
 @qgsfunction(args="auto", group=group_name)
+def latlon2digipin(latitude, longitude, resolution, feature, parent):
+    """<style type="text/css">
+      .function {
+      color: #05688f;
+      font-weight: bold;
+      }
+      .parameters {
+      color: red;
+      font-style:italic
+      }
+    </style>
+     Convert (lat, long) to DIGIPIN ID.
+    <h4>Syntax</h4>
+      <li><span class = function>latlon2digipin</span>(<span class = parameters>lat, long, resolution</span>)</li>
+    <h4>Arguments</h4>
+    <ul>
+      <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
+      <li><span class = parameters>long</span>: longitude coordinate field or value</li>
+      <li><span class = parameters>resolution</span>: DIGIPIN resolution [1..10]</li>  
+    </ul>
+    <h4>Example usage</h4>
+
+    <ul>
+      <li><span class = function>latlon2digipin</span>(<span class = parameters>17.414718, 78.482992, 10</span>)&rarr; '422-2PL-9857'</li>
+      <li>Point features: <span class = function>latlon2digipin</span>(<span class = parameters>$y,$x,10</span>)</li>
+    </ul>
+    """
+    return latlon2dggs.latlon2digipin(latitude, longitude, resolution)
+
+
+@qgsfunction(args="auto", group=group_name)
 def comp_skew(geometry: QgsGeometry, parent):
         """
         <style type="text/css">

@@ -54,13 +54,30 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         "Geohash",
         "Tilecode",
         "Quadkey",
+        
         "DGGAL_GNOSIS",
-        "DGGAL_ISEA3H",
+        
+        "DGGAL_ISEA4R",
         "DGGAL_ISEA9R",
-        "DGGAL_IVEA3H",
+        "DGGAL_ISEA3H",
+        "DGGAL_ISEA7H",
+        "DGGAL_ISEA7H_Z7",
+
+        "DGGAL_IVEA4R",
         "DGGAL_IVEA9R",
-        "DGGAL_RTEA3H",
+        "DGGAL_IVEA3H",
+        "DGGAL_IVEA7H",
+        "DGGAL_IVEA7H_Z7",
+        
+        "DGGAL_RTEA4R",
         "DGGAL_RTEA9R",
+        "DGGAL_RTEA3H",
+        "DGGAL_RTEA7H",
+        "DGGAL_RTEA7H_Z7",
+        "DGGAL_HEALPix",
+        "DGGAL_rHEALPix",
+        
+        "DIGIPIN",
     ]
 
     if platform.system() == "Windows":
@@ -168,13 +185,25 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
             "geohash": geohashcompact,
             "tilecode": tilecodecompact,
             "quadkey": quadkeycompact,
-            "dggal_gnosis": dggalcompact,
-            "dggal_isea3h": dggalcompact,
-            "dggal_isea9r": dggalcompact,
-            "dggal_ivea3h": dggalcompact,
-            "dggal_ivea9r": dggalcompact,
-            "dggal_rtea3h": dggalcompact,
-            "dggal_rtea9r": dggalcompact,
+            "dggal_gnosis": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "gnosis"),
+            "dggal_isea4r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "isea4r"),
+            "dggal_isea9r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "isea9r"),
+            "dggal_isea3h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "isea3h"),
+            "dggal_isea7h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "isea7h"),
+            "dggal_isea7h_z7": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "isea7h_z7"),
+            "dggal_ivea4r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea4r"),
+            "dggal_ivea9r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea9r"),
+            "dggal_ivea3h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea3h"),
+            "dggal_ivea7h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea7h"),
+            "dggal_ivea7h_z7": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea7h_z7"),
+            "dggal_rtea4r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea4r"),
+            "dggal_rtea9r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea9r"),
+            "dggal_rtea3h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea3h"),
+            "dggal_rtea7h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea7h"),
+            "dggal_rtea7h_z7": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea7h_z7"),
+            "dggal_healpix": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "healpix"),
+            "dggal_rhealpix": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rhealpix"),
+            "digipin": digipincompact,
         }
         if platform.system() == "Windows":
             self.DGGS_TYPE_functions["isea4t"] = isea4tcompact

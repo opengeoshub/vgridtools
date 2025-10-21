@@ -54,19 +54,36 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         "S2",
         "A5",
         "rHEALPix",
+        
         "DGGAL_GNOSIS",
-        "DGGAL_ISEA3H",
+        
+        "DGGAL_ISEA4R",
         "DGGAL_ISEA9R",
-        "DGGAL_IVEA3H",
+        "DGGAL_ISEA3H",
+        "DGGAL_ISEA7H",
+        "DGGAL_ISEA7H_Z7",
+       
+        "DGGAL_IVEA4R",
         "DGGAL_IVEA9R",
-        "DGGAL_RTEA3H",
+        "DGGAL_IVEA3H",
+        "DGGAL_IVEA7H",
+        "DGGAL_IVEA7H_Z7",
+       
+        "DGGAL_RTEA4R",
         "DGGAL_RTEA9R",
-        "DGGAL_RHEALPIX",
+        "DGGAL_RTEA3H",
+        "DGGAL_RTEA7H",
+        "DGGAL_RTEA7H_Z7",
+       
+        "DGGAL_HEALPix",
+        "DGGAL_rHEALPix",
+       
         "QTM",
         "OLC",
         "Geohash",
         "Tilecode",
         "Quadkey",
+        "DIGIPIN",
     ]
     DGGS_RESOLUTION = {
         "H3": (-1, 15, 10),
@@ -74,18 +91,29 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         "A5": (-1, 29, 15),
         "rHEALPix": (-1, 15, 11),
         "DGGAL_GNOSIS": (-1, 28, 18),
-        "DGGAL_ISEA3H": (-1, 33, 22),
+        "DGGAL_ISEA4R": (-1, 16, 11),
         "DGGAL_ISEA9R": (-1, 16, 11),
-        "DGGAL_IVEA3H": (-1, 33, 22),
+        "DGGAL_ISEA3H": (-1, 33, 22),
+        "DGGAL_ISEA7H": (-1, 33, 22),
+        "DGGAL_ISEA7H_Z7": (-1, 33, 22),
+        "DGGAL_IVEA4R": (-1, 16, 11),
         "DGGAL_IVEA9R": (-1, 16, 11),
-        "DGGAL_RTEA3H": (-1, 33, 22),
+        "DGGAL_IVEA3H": (-1, 33, 22),
+        "DGGAL_IVEA7H": (-1, 33, 22),
+        "DGGAL_IVEA7H_Z7": (-1, 33, 22),
+        "DGGAL_RTEA4R": (-1, 16, 11),
         "DGGAL_RTEA9R": (-1, 16, 11),
-        "DGGAL_RHEALPIX": (-1, 16, 11),
+        "DGGAL_RTEA3H": (-1, 33, 22),
+        "DGGAL_RTEA7H": (-1, 33, 22),
+        "DGGAL_RTEA7H_Z7": (-1, 33, 22),
+        "DGGAL_HEALPix": (-1, 16, 11),
+        "DGGAL_rHEALPix": (-1, 16, 11),
         "QTM": (-1, 24, 12),
         "OLC": (-1, 13, 10),
         "Geohash": (-1, 10, 9),
         "Tilecode": (-1, 26, 15),
         "Quadkey": (-1, 26, 15),
+        "DIGIPIN": (-1, 10, 9),
     }
     if platform.system() == "Windows":
         index = DGGS_TYPES.index("rHEALPix") + 1
@@ -133,7 +161,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
 
     def tags(self):
         return self.tr(
-            "raster, H3, S2, A5, rHEALPix, ISEA4T, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS, DGGAL_GNOSIS, DGGAL_ISEA3H, DGGAL_ISEA9R, DGGAL_IVEA3H, DGGAL_IVEA9R, DGGAL_RTEA3H, DGGAL_RTEA9R, DGGAL_RHEALPIX, QTM"
+            "raster, H3, S2, A5, rHEALPix, ISEA4T, EASE, OLC, OpenLocationCode, Google Plus Codes, MGRS, Geohash, GEOREF, Tilecode, Maidenhead, GARS, DIGIPIN, DGGAL_GNOSIS, DGGAL_ISEA4R, DGGAL_ISEA9R, DGGAL_ISEA3H, DGGAL_ISEA7H, DGGAL_ISEA7H_Z7, DGGAL_IVEA4R, DGGAL_IVEA9R, DGGAL_IVEA3H, DGGAL_IVEA7H, DGGAL_IVEA7H_Z7, DGGAL_RTEA4R, DGGAL_RTEA9R, DGGAL_RTEA3H, DGGAL_RTEA7H, DGGAL_RTEA7H_Z7, DGGAL_HEALPix, DGGAL_rHEALPix, QTM"
         ).split(",")
 
     txt_en = "Raster to DGGS"
@@ -222,6 +250,10 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         elif dggs_type == "quadkey":
             resolutions = range(27)
             cell_area = lambda res: quadkey_metrics(res)[2]  # avg_area
+        elif dggs_type == "digipin":
+            resolutions = range(1, 11)
+            # For DIGIPIN, we'll use a simplified approach since there's no specific metrics function
+            cell_area = lambda res: 1000000 / (10 ** res)  # Simplified area calculation
         elif dggs_type.startswith("dggal_"):
             dggal_type = dggs_type.replace("dggal_", "")
             resolutions = range(34)  # DGGAL typically supports 0-15
@@ -324,14 +356,25 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             "geohash": raster2geohash,
             "tilecode": raster2tilecode,
             "quadkey": raster2quadkey,
-            "dggal_gnosis": raster2dggal,
-            "dggal_isea3h": raster2dggal,
-            "dggal_isea9r": raster2dggal,
-            "dggal_ivea3h": raster2dggal,
-            "dggal_ivea9r": raster2dggal,
-            "dggal_rtea3h": raster2dggal,
-            "dggal_rtea9r": raster2dggal,
-            "dggal_rhealpix": raster2dggal,
+            "digipin": raster2digipin,
+            "dggal_gnosis": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "gnosis"),
+            "dggal_isea4r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "isea4r"),
+            "dggal_isea9r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "isea9r"),
+            "dggal_isea3h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "isea3h"),
+            "dggal_isea7h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "isea7h"),
+            "dggal_isea7h_z7": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "isea7h_z7"),
+            "dggal_ivea4r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "ivea4r"),
+            "dggal_ivea9r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "ivea9r"),
+            "dggal_ivea3h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "ivea3h"),
+            "dggal_ivea7h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "ivea7h"),
+            "dggal_ivea7h_z7": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "ivea7h_z7"),
+            "dggal_rtea4r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rtea4r"),
+            "dggal_rtea9r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rtea9r"),
+            "dggal_rtea3h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rtea3h"),
+            "dggal_rtea7h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rtea7h"),
+            "dggal_rtea7h_z7": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rtea7h_z7"),
+            "dggal_healpix": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "healpix"),
+            "dggal_rhealpix": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rhealpix"),
         }
         if platform.system() == "Windows":
             self.DGGS_TYPE_functions["isea4t"] = raster2isea4t
@@ -349,15 +392,8 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             f"Processing raster: {raster_layer.name()} at resolution: {self.resolution}"
         )
 
-        # Handle DGGAL types specially - they need the dggal_type as parameter
-        if self.dggs_type.startswith("dggal_"):
-            dggal_type = self.dggs_type.replace("dggal_", "")
-            memory_layer = conversion_function(
-                raster_layer, self.resolution, feedback, dggal_type
-            )
-        else:
-            # conversion_function returns a memory layer (QgsVectorLayer)
-            memory_layer = conversion_function(raster_layer, self.resolution, feedback)
+        # conversion_function returns a memory layer (QgsVectorLayer)
+        memory_layer = conversion_function(raster_layer, self.resolution, feedback)
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():
             raise QgsProcessingException(

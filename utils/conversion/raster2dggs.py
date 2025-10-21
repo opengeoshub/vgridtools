@@ -1321,3 +1321,131 @@ def raster2dggal(
         feedback.pushInfo(f"Raster to DGGAL {dggal_type.upper()} completed.")
 
     return mem_layer
+
+
+##########################
+# DIGIPIN
+#########################
+def raster2digipin(
+    raster_layer: QgsRasterLayer, resolution, feedback=None
+) -> QgsVectorLayer:
+    if not raster_layer.isValid():
+        raise ValueError("Invalid raster layer.")
+
+    provider = raster_layer.dataProvider()
+    extent = raster_layer.extent()
+    width, height = raster_layer.width(), raster_layer.height()
+    crs = raster_layer.crs()
+    band_count = provider.bandCount()
+
+    pixel_size_x = extent.width() / width
+    pixel_size_y = extent.height() / height
+
+    digipin_ids = set()
+    total_pixels = width * height
+    processed_pixels = 0
+
+    for row in range(height):
+        for col in range(width):
+            if feedback and feedback.isCanceled():
+                return None
+
+            x = extent.xMinimum() + col * pixel_size_x
+            y = extent.yMaximum() - row * pixel_size_y
+            try:
+                digipin_id = latlon2digipin(y, x, resolution)
+                digipin_ids.add(digipin_id)
+            except Exception:
+                continue
+
+            processed_pixels += 1
+            if feedback and processed_pixels % 10000 == 0:
+                feedback.setProgress(int(100 * processed_pixels / total_pixels))
+
+    if feedback:
+        feedback.pushInfo(f"{len(digipin_ids)} pixels processed.")
+        feedback.setProgress(0)
+        feedback.pushInfo("Generating DIGIPIN DGGS...")
+
+    mem_layer = QgsVectorLayer(f"Polygon?crs={crs.authid()}", "DIGIPIN Grid", "memory")
+    mem_provider = mem_layer.dataProvider()
+
+    fields = QgsFields()
+    fields.append(QgsField("digipin", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("cell_width", QVariant.Double))
+    fields.append(QgsField("cell_height", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    for i in range(band_count):
+        fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
+
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    for i, digipin_id in enumerate(digipin_ids):
+        if feedback and feedback.isCanceled():
+            return None
+
+        try:
+            from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
+            cell_polygon = digipin2geo(digipin_id)
+            if not cell_polygon:
+                continue
+
+            # Get center point for raster value extraction
+            center_point = cell_polygon.centroid
+            center_lon, center_lat = center_point.x, center_point.y
+            qgis_center_point = QgsPointXY(center_lon, center_lat)
+
+            ident = provider.identify(qgis_center_point, QgsRaster.IdentifyFormatValue)
+            if not ident.isValid():
+                continue
+
+            results = ident.results()
+            if all(
+                results.get(i + 1) is None or math.isnan(results.get(i + 1, float("nan")))
+                for i in range(band_count)
+            ):
+                continue
+
+            center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+                graticule_dggs_metrics(cell_polygon)
+            )
+
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            feature = QgsFeature()
+            feature.setGeometry(cell_geom)
+            attr_values = [
+                digipin_id,
+                resolution,
+                center_lat,
+                center_lon,
+                cell_width,
+                cell_height,
+                cell_area,
+                cell_perimeter,
+            ]
+            attr_values.extend(results.get(i + 1, None) for i in range(band_count))
+            feature.setAttributes(attr_values)
+
+            mem_provider.addFeatures([feature])
+
+        except Exception as e:
+            if feedback:
+                feedback.pushInfo(
+                    f"Warning: Could not process DIGIPIN ID {digipin_id}: {str(e)}"
+                )
+            continue
+
+        if feedback and i % 100 == 0:
+            feedback.setProgress(int(100 * i / len(digipin_ids)))
+
+    if feedback:
+        feedback.setProgress(100)
+        feedback.pushInfo("Raster to DIGIPIN DGGS completed.")
+
+    return mem_layer

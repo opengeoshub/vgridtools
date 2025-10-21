@@ -31,6 +31,7 @@ from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggscompact.a5compact import a5_compact
 from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_compact
+from vgrid.conversion.dggscompact.dggalcompact import dggal_compact
 from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
 from vgrid.conversion.dggscompact.qtmcompact import qtm_compact, get_qtm_resolution
 from vgrid.conversion.dggs2geo.olc2geo import olc2geo
@@ -45,9 +46,9 @@ from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
 from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
 from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
 from vgrid.dggs.tilecode import tilecode_resolution, quadkey_resolution
-from vgrid.conversion.dggscompact.dggalcompact import dggal_compact
 from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
-
+from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
+from vgrid.conversion.dggscompact.digipincompact import digipin_compact 
 from vgrid.conversion.dggscompact import *
 from pyproj import Geod
 
@@ -1048,5 +1049,88 @@ def dggalcompact(
         if feedback:
             feedback.setProgress(100)
             feedback.pushInfo(f"DGGAL {dggal_type.upper()} Compact completed.")
+
+        return mem_layer
+
+
+##########################
+# DIGIPIN
+# ########################
+def digipincompact(
+    digipin_layer: QgsVectorLayer, DIGIPINID_field=None, feedback=None
+) -> QgsVectorLayer:
+    if not DIGIPINID_field:
+        DIGIPINID_field = "digipin"
+
+    fields = QgsFields()
+    fields.append(QgsField("digipin", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("cell_width", QVariant.Double))
+    fields.append(QgsField("cell_height", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    crs = digipin_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "digipin_compacted", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    digipin_ids = [
+        feature[DIGIPINID_field]
+        for feature in digipin_layer.getFeatures()
+        if feature[DIGIPINID_field]
+    ]
+
+    if digipin_ids:
+        try:
+            digipin_ids_compact = digipin_compact(digipin_ids)
+        except:
+            raise QgsProcessingException(
+                "Compact cells failed. Please check your DIGIPIN ID field."
+            )
+
+        total_cells = len(digipin_ids_compact)
+
+        for i, digipin_id_compact in enumerate(digipin_ids_compact):
+            if feedback:
+                feedback.setProgress(int((i / total_cells) * 100))
+                if feedback.isCanceled():
+                    return None
+            try:                
+                cell_polygon = digipin2geo(digipin_id_compact)
+                clean_id = digipin_id_compact.replace('-', '')
+                resolution = len(clean_id)
+                center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+                    graticule_dggs_metrics(cell_polygon)
+                )
+
+                cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                digipin_feature = QgsFeature(fields)
+                digipin_feature.setGeometry(cell_geom)
+
+                attributes = {
+                    "digipin": digipin_id_compact,
+                    "resolution": resolution,
+                    "center_lat": center_lat,
+                    "center_lon": center_lon,
+                    "cell_width": cell_width,
+                    "cell_height": cell_height,
+                    "cell_area": cell_area,
+                    "cell_perimeter": cell_perimeter,
+                }
+                digipin_feature.setAttributes([attributes[field.name()] for field in fields])
+                mem_provider.addFeatures([digipin_feature])
+            except Exception as e:
+                if feedback:
+                    feedback.pushInfo(
+                        f"Warning: Could not process DIGIPIN ID {digipin_id_compact}: {str(e)}"
+                    )
+                continue
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("DIGIPIN Compact completed.")
 
         return mem_layer

@@ -43,6 +43,8 @@ from vgrid.conversion.dggscompact.quadkeycompact import quadkey_expand
 from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
 from vgrid.conversion.dggscompact.dggalcompact import dggal_expand
 from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
+from vgrid.conversion.dggscompact.digipincompact import digipin_expand
+from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
 from vgrid.utils.constants import DGGAL_TYPES
 from dggal import *
 
@@ -1195,5 +1197,103 @@ def dggalexpand(
         if feedback:
             feedback.setProgress(100)
             feedback.pushInfo(f"DGGAL {dggal_type.upper()} expansion completed.")
+
+    return mem_layer
+
+
+##########################
+# DIGIPIN
+#########################
+def digipinexpand(
+    digipin_layer: QgsVectorLayer, resolution: int, DIGIPINID_field=None, feedback=None
+) -> QgsVectorLayer:
+    if not DIGIPINID_field:
+        DIGIPINID_field = "digipin"
+
+    fields = QgsFields()
+    fields.append(QgsField("digipin", QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("cell_width", QVariant.Double))
+    fields.append(QgsField("cell_height", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    crs = digipin_layer.crs().toWkt()
+    mem_layer = QgsVectorLayer("Polygon?crs=" + crs, "digipin_expanded", "memory")
+    mem_provider = mem_layer.dataProvider()
+    mem_provider.addAttributes(fields)
+    mem_layer.updateFields()
+
+    digipin_ids = [
+        feature[DIGIPINID_field]
+        for feature in digipin_layer.getFeatures()
+        if feature[DIGIPINID_field]
+    ]
+    digipin_ids = list(set(digipin_ids))
+
+    if digipin_ids:
+        try:
+            max_res = max(len(digipin_id.replace('-', '')) for digipin_id in digipin_ids)
+            if resolution <= max_res:
+                if feedback:
+                    feedback.reportError(
+                        f"Target expand resolution ({resolution}) must > {max_res}."
+                    )
+                    return None
+            
+            digipin_ids_expand = digipin_expand(digipin_ids, resolution)
+                    
+        except Exception as e:
+            raise QgsProcessingException(
+                f"Expand cells failed. Please check your DIGIPIN ID field. Error: {str(e)}"
+            )
+
+        total_cells = len(digipin_ids_expand)
+
+        for i, digipin_id_expand in enumerate(digipin_ids_expand):
+            if feedback:
+                feedback.setProgress(int((i / total_cells) * 100))
+                if feedback.isCanceled():
+                    return None
+            
+            try:
+                from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
+                cell_polygon = digipin2geo(digipin_id_expand)
+                
+                if not cell_polygon.is_valid:
+                    continue
+                
+                center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+                    graticule_dggs_metrics(cell_polygon)
+                )
+
+                cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+                digipin_feature = QgsFeature(fields)
+                digipin_feature.setGeometry(cell_geom)
+
+                attributes = {
+                    "digipin": digipin_id_expand,
+                    "resolution": resolution,
+                    "center_lat": center_lat,
+                    "center_lon": center_lon,
+                    "cell_width": cell_width,
+                    "cell_height": cell_height,
+                    "cell_area": cell_area,
+                    "cell_perimeter": cell_perimeter,
+                }
+                digipin_feature.setAttributes([attributes[field.name()] for field in fields])
+                mem_provider.addFeatures([digipin_feature])
+                
+            except Exception as e:
+                if feedback:
+                    feedback.pushInfo(
+                        f"Warning: Could not process DIGIPIN ID {digipin_id_expand}: {str(e)}"
+                    )
+                continue
+
+        if feedback:
+            feedback.setProgress(100)
+            feedback.pushInfo("DIGIPIN expansion completed.")
 
     return mem_layer

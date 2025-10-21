@@ -26,9 +26,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
+        <y>-299</y>
         <width>468</width>
-        <height>1036</height>
+        <height>1030</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_11">
@@ -825,7 +825,7 @@
                <item>
                 <widget class="QLabel" name="dggal_healpixLabel">
                  <property name="text">
-                  <string>DGGAL_HEALPIX [0..26]</string>
+                  <string>DGGAL_HEALPix [0..26]</string>
                  </property>
                 </widget>
                </item>
@@ -849,7 +849,7 @@
                <item>
                 <widget class="QLabel" name="dggal_rhealpixLabel">
                  <property name="text">
-                  <string>DGGAL_RHEALPIX [0..16]</string>
+                  <string>DGGAL_rHEALPix [0..16]</string>
                  </property>
                 </widget>
                </item>
