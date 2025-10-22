@@ -24,7 +24,7 @@
        <property name="geometry">
         <rect>
          <x>0</x>
-         <y>-56</y>
+         <y>0</y>
          <width>404</width>
          <height>1056</height>
         </rect>
@@ -722,7 +722,7 @@
              <widget class="QLineEdit" name="dggal_ivea4rLineEdit"/>
             </item>
             <item>
-             <widget class="QToolButton" name="dggal_ivea4CopyButton">
+             <widget class="QToolButton" name="dggal_ivea4rCopyButton">
               <property name="toolTip">
                <string>Copy to clipboard</string>
               </property>

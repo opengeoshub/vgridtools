@@ -86,10 +86,6 @@ class DIGIPINGrid(QObject):
                     transformed_extent.yMaximum(),
                 )
 
-            min_lat, min_lon, max_lat, max_lon = validate_digipin_coordinate(
-                min_lat, min_lon, max_lat, max_lon
-            )
-
             # Calculate sampling density based on resolution
             # Each level divides the cell by 4 (2x2 grid)
             base_width = 9.0  # degrees at resolution 1
@@ -105,20 +101,20 @@ class DIGIPINGrid(QObject):
                 while lat <= max_lat:
                     try:
                         # Get DIGIPIN code for this point at the specified resolution
-                        digipin_code = latlon2digipin(lat, lon, resolution)
+                        digipin_id = latlon2digipin(lat, lon, resolution)
 
-                        if digipin_code == 'Out of Bound':
+                        if digipin_id == 'Out of Bound':
                             lat += sample_width
                             continue
 
-                        if digipin_code in seen_cells:
+                        if digipin_id in seen_cells:
                             lat += sample_width
                             continue
 
-                        seen_cells.add(digipin_code)
+                        seen_cells.add(digipin_id)
 
                         # Get the bounds for this DIGIPIN cell
-                        cell_polygon = digipin2geo(digipin_code)
+                        cell_polygon = digipin2geo(digipin_id)
 
                         if isinstance(cell_polygon, str):  # Error like 'Invalid DIGIPIN'
                             lat += sample_width
@@ -158,23 +154,23 @@ class DIGIPINGrid(QObject):
         # Map scale to zoom, then to DIGIPIN resolution
         zoom = 29.1402 - log2(scale)        
         # Map zoom levels to DIGIPIN precision (1-10 characters)
-        if zoom < 4:
+        if zoom < 5:
             return 1
-        if zoom < 6:
+        if zoom < 7:
             return 2
-        if zoom < 8:
+        if zoom < 9:
             return 3
-        if zoom < 10:
+        if zoom < 11:
             return 4
-        if zoom < 12:
+        if zoom < 13:
             return 5
-        if zoom < 14:
+        if zoom < 15:
             return 6
-        if zoom < 16:
+        if zoom < 17:
             return 7
-        if zoom < 18:
+        if zoom < 19:
             return 8
-        if zoom < 20:
+        if zoom < 21:
             return 9
         return 10
 
