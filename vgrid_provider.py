@@ -28,8 +28,7 @@ from .processing_provider.conversion.qgsfeature2dggs import Vector2DGGS
 from .processing_provider.conversion.raster2dggs import Raster2DGGS
 from .processing_provider.conversion.dggsexpand import DGGSExpand
 from .processing_provider.conversion.dggscompact import DGGSCompact
-
-from .processing_provider.resampling.dggsresample import DGGSResample
+from .processing_provider.conversion.dggsresample import DGGSResample
 
 from .processing_provider.binning.h3_bin import H3Bin
 from .processing_provider.binning.s2_bin import S2Bin
@@ -68,6 +67,7 @@ from .processing_provider.generator.maidenheadgen import MaidenheadGen
 from .processing_provider.generator.garsgen import GARSGen
 from .processing_provider.generator.georefgen import GEOREFGen
 from .processing_provider.generator.digipingen import DIGIPINGen
+from .processing_provider.utils.fix_antimeridian import FixAntimeridian
 
 class VgridProvider(QgsProcessingProvider):
     def __init__(self):
@@ -90,8 +90,6 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(DGGSCompact())
         self.addAlgorithm(DGGSExpand())
         self.addAlgorithm(Raster2DGGS())
-
-        # Resampling algorithms
         self.addAlgorithm(DGGSResample())
 
         # Binning algorithms
@@ -133,6 +131,8 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(MaidenheadGen())
         self.addAlgorithm(GARSGen())
         self.addAlgorithm(DIGIPINGen())
+        self.addAlgorithm(FixAntimeridian())
+    
     def id(self):
         return "vgrid"
 

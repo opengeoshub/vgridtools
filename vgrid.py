@@ -47,6 +47,7 @@ from .vgrid_provider import VgridProvider
 from .expressions import *
 from .settings import SettingsWidget, settings
 from .latlon2dggs import LatLon2DGGSWidget
+from .dggsclient import DGGSClientWidget
 from .utils import tr
 from .dggsgrid.h3grid import H3Grid
 from .dggsgrid.a5grid import A5Grid
@@ -107,6 +108,7 @@ exprs = (
 
 class VgridTools(object):
     latlon2DGGSDialog = None
+    dggsClientDialog = None
 
     def __init__(
         self,
@@ -201,6 +203,22 @@ class VgridTools(object):
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
         self.Vgrid_add_submenu2(self.graticule_based_dggs_menu, icon)
 
+        # Create DGGS Client submenu
+        self.dggs_client_menu = QMenu("DGGS Client")
+        dggs_client_icon = QIcon(os.path.dirname(__file__) + "/images/dggsclient/ogc.png")
+        self.Vgrid_add_submenu2(self.dggs_client_menu, dggs_client_icon)
+
+        # Create GNOSIS Map Server action
+        gnosis_icon = QIcon(os.path.dirname(__file__) + "/images/dggsclient/gnosis.svg")
+        self.gnosisMapServerAction = QAction(
+            gnosis_icon, tr("GNOSIS Map Server"), self.iface.mainWindow()
+        )
+        self.gnosisMapServerAction.setObjectName("gnosisMapServer")
+        self.gnosisMapServerAction.setToolTip(tr("GNOSIS Map Server"))
+        self.gnosisMapServerAction.triggered.connect(self.showDGGSClient)
+        self.dggs_client_menu.addAction(self.gnosisMapServerAction)
+
+
         # Create Lat Lon to DGGS action (direct call, no submenu)
         latlon2dggs_icon = QIcon(os.path.dirname(__file__) + "/images/vgrid.svg")
         self.latlon2dggsAction = QAction(
@@ -230,17 +248,11 @@ class VgridTools(object):
         binning_icon = QIcon(os.path.dirname(__file__) + "/images/binning/binning.svg")
         self.Vgrid_add_submenu2(self.binning_menu, binning_icon)
 
-        # Create Resampling action
-        resampling_icon = QIcon(
-            os.path.dirname(__file__) + "/images/resampling/dggsresample.svg"
-        )
-        self.resamplingAction = QAction(
-            resampling_icon, tr("Resampling"), self.iface.mainWindow()
-        )
-        self.resamplingAction.setObjectName("resampling")
-        self.resamplingAction.setToolTip(tr("DGGS Resample"))
-        self.resamplingAction.triggered.connect(self.runDGGSResample)
-        self.Vgrid_menu.addAction(self.resamplingAction)
+        # Create Utils submenu
+        self.utils_menu = QMenu("Utils")
+        utils_icon = QIcon(os.path.dirname(__file__) + "/images/utils/utils.png")
+        self.Vgrid_add_submenu2(self.utils_menu, utils_icon)
+
 
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_h3.svg")
         self.h3_widget_action = QWidgetAction(self.geodesic_dggs_menu)
@@ -927,6 +939,18 @@ class VgridTools(object):
         self.dggsExpandAction.triggered.connect(self.runDGGSExpand)
         self.conversion_menu.addAction(self.dggsExpandAction)
 
+        # DGGS Resample
+        icon = QIcon(
+            os.path.dirname(__file__) + "/images/conversion/dggsresample.svg"
+        )
+        self.dggsResampleAction = QAction(
+            icon, tr("DGGS Resample"), self.iface.mainWindow()
+        )
+        self.dggsResampleAction.setObjectName("dggsResample")
+        self.dggsResampleAction.setToolTip(tr("DGGS Resample"))
+        self.dggsResampleAction.triggered.connect(self.runDGGSResample)
+        self.conversion_menu.addAction(self.dggsResampleAction)
+
         # Raster to DGGS
         icon = QIcon(os.path.dirname(__file__) + "/images/conversion/raster2dggs.png")
         self.raster2DGGSAction = QAction(
@@ -936,6 +960,17 @@ class VgridTools(object):
         self.raster2DGGSAction.setToolTip(tr("Raster to DGGS"))
         self.raster2DGGSAction.triggered.connect(self.runRaster2DGGS)
         self.conversion_menu.addAction(self.raster2DGGSAction)
+
+        # Add Utils actions
+        # Fix Antimeridian
+        icon = QIcon(os.path.dirname(__file__) + "/images/utils/antimeridian.svg")
+        self.fixAntimeridianAction = QAction(
+            icon, tr("Fix Antimeridian"), self.iface.mainWindow()
+        )
+        self.fixAntimeridianAction.setObjectName("fixAntimeridian")
+        self.fixAntimeridianAction.setToolTip(tr("Fix Antimeridian"))
+        self.fixAntimeridianAction.triggered.connect(self.runFixAntimeridian)
+        self.utils_menu.addAction(self.fixAntimeridianAction)
 
         # Add Generator actions
         # H3 Generator
@@ -1118,14 +1153,22 @@ class VgridTools(object):
         if self.Vgrid_menu is not None:
             self.iface.mainWindow().menuBar().removeAction(self.Vgrid_menu.menuAction())
 
-        self.iface.removeToolBarIcon(self.latlon2DGGSAction)
-        self.iface.removeToolBarIcon(self.settingsAction)
-        del self.toolbar
+        if  self.latlon2DGGSAction:
+            self.iface.removeToolBarIcon(self.latlon2DGGSAction)
+        if  self.settingsAction:
+            self.iface.removeToolBarIcon(self.settingsAction)
+        if  self.toolbar:
+            self.iface.mainWindow().removeToolBar(self.toolbar)
+            self.toolbar = None
 
         if self.latlon2DGGSDialog:
             self.latlon2DGGSDialog.removeMarker()
             self.iface.removeDockWidget(self.latlon2DGGSDialog)
             self.latlon2DGGSDialog = None
+
+        if self.dggsClientDialog:
+            self.dggsClientDialog.close()
+            self.dggsClientDialog = None
 
         # Cleanup H3 grid rubber bands and signals
         if self.h3grid:
@@ -1205,6 +1248,15 @@ class VgridTools(object):
             self.latlon2DGGSDialog.setFloating(True)
             self.iface.addDockWidget(Qt.RightDockWidgetArea, self.latlon2DGGSDialog)
         self.latlon2DGGSDialog.show()
+
+    def showDGGSClient(self):
+        """Display the DGGS Client Dialog box."""
+        if self.dggsClientDialog is None:
+            self.dggsClientDialog = DGGSClientWidget(
+                self, self.settingsDialog, self.iface, self.iface.mainWindow()
+            )
+
+        self.dggsClientDialog.show()
 
     def settings(self):
         """Show the settings dialog box"""
@@ -1398,6 +1450,10 @@ class VgridTools(object):
     def runDGGSResample(self):
         """Run DGGS Resample algorithm"""
         processing.execAlgorithmDialog("vgrid:dggsresample", {})
+
+    def runFixAntimeridian(self):
+        """Run Fix Antimeridian algorithm"""
+        processing.execAlgorithmDialog("vgrid:fixantimeridian", {})
 
     def VgridHome(self):
         webbrowser.open("https://vgrid.vn")

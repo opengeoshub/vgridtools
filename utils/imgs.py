@@ -93,8 +93,8 @@ class Imgs:
     social_BW = (
         """<a target="_blank" rel="noopener noreferrer" href="https://github.com/thangqd"><img title="Github" src="data:image/png;base64,"""
         + dic_color["github"]
-        + """"></a> <a target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/thang.quachdong/"><img title="Facebook" src="data:image/png;base64,"""
-        + dic_color["face"]
+        # + """"></a> <a target="_blank" rel="noopener noreferrer" href="https://www.facebook.com/thang.quachdong/"><img title="Facebook" src="data:image/png;base64,"""
+        # + dic_color["face"]
         + """"></a> <a target="_blank" rel="noopener noreferrer" href="https://www.linkedin.com/in/thangqd/"><img title="Linkedin" src="data:image/png;base64,"""
         + dic_color["linkedin"]
         + """"></a> """

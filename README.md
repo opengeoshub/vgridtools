@@ -135,6 +135,16 @@ Convert raster layers in geographic CRS to DGGS.
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsexpand_isea4t.png">
 </div>
 
+### DGGS Resampling
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsresampling.png">
+</div>
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsresampling_h32s2.png">
+</div>
+
+
 ## DGGS Binning
 ### Binning point layer to DGGS.
 <div align="center">
@@ -143,15 +153,6 @@ Convert raster layers in geographic CRS to DGGS.
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsbinning_h3.png">
-</div>
-
-## DGGS Resampling
-<div align="center">
-  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsresampling.png">
-</div>
-
-<div align="center">
-  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsresampling_h32s2.png">
 </div>
 
 ## DGGS Generator

@@ -2,7 +2,7 @@
 name=Vgrid
 qgisMinimumVersion=3.40
 description= Vgrid DGGS and Cell-based Geocoding Tools. Vgrid supports H3, S2, A5, rHEALPix, ISEA4T, ISEA3H, EASE-DGGS, DGGAL, DGGRID, QTM, OLC/ OpenLocationCode/ Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS, and DIGIPIN. - Vgridtools Installation instruction: Vgridtools Installation instruction: https://vgridtools.gishub.vn/installation
-about= - DGGS Visualization - Zoom To Latlon - Expressions to convert (lat, long, resolution) to DGGS ID and calculate the compactness of polygon features - Convert Cell ID to DGGS - Convert Vector to DGGS -DGGS Compact - DGGS Expand - Convert Raster to DGGS - DGGS Binning - DGGS Resampling - DGGS Generator
+about= - DGGS Visualization - Zoom To Latlon - Expressions to convert (lat, long, resolution) to DGGS ID and calculate the compactness of polygon features - Convert Cell ID to DGGS - Convert Vector to DGGS -DGGS Compact - DGGS Expand - Convert Raster to DGGS - DGGS Resampling - DGGS Binning -  DGGS Generator
 version=25.10.22
 author=Thang Quach
 owner=thangqd
