@@ -48,6 +48,7 @@ from .expressions import *
 from .settings import SettingsWidget, settings
 from .latlon2dggs import LatLon2DGGSWidget
 from .dggsclient import DGGSClientWidget
+from .dggsjson2geojson import DGGSJSON2GeoJSONWidget
 from .utils import tr
 from .dggsgrid.h3grid import H3Grid
 from .dggsgrid.a5grid import A5Grid
@@ -109,6 +110,7 @@ exprs = (
 class VgridTools(object):
     latlon2DGGSDialog = None
     dggsClientDialog = None
+    dggsJson2GeoJsonDialog = None
 
     def __init__(
         self,
@@ -962,7 +964,7 @@ class VgridTools(object):
         self.conversion_menu.addAction(self.raster2DGGSAction)
 
         # Add Utils actions
-        # Fix Antimeridian
+        # Fix Antimeridian action
         icon = QIcon(os.path.dirname(__file__) + "/images/utils/antimeridian.svg")
         self.fixAntimeridianAction = QAction(
             icon, tr("Fix Antimeridian"), self.iface.mainWindow()
@@ -971,6 +973,18 @@ class VgridTools(object):
         self.fixAntimeridianAction.setToolTip(tr("Fix Antimeridian"))
         self.fixAntimeridianAction.triggered.connect(self.runFixAntimeridian)
         self.utils_menu.addAction(self.fixAntimeridianAction)
+        
+        # DGGS-JSON to GeoJSON action
+        dggs_json_icon = QIcon(os.path.dirname(__file__) + "/images/conversion/conversion.svg")
+        self.dggsJson2GeoJsonAction = QAction(
+            dggs_json_icon, tr("DGGS-JSON to GeoJSON"), self.iface.mainWindow()
+        )
+        self.dggsJson2GeoJsonAction.setObjectName("dggsJson2GeoJson")
+        self.dggsJson2GeoJsonAction.setToolTip(tr("Convert DGGS-JSON to GeoJSON"))
+        self.dggsJson2GeoJsonAction.triggered.connect(self.showDGGSJSON2GeoJSON)
+        self.utils_menu.addAction(self.dggsJson2GeoJsonAction)
+
+        
 
         # Add Generator actions
         # H3 Generator
@@ -1169,6 +1183,10 @@ class VgridTools(object):
         if self.dggsClientDialog:
             self.dggsClientDialog.close()
             self.dggsClientDialog = None
+
+        if self.dggsJson2GeoJsonDialog:
+            self.dggsJson2GeoJsonDialog.close()
+            self.dggsJson2GeoJsonDialog = None
 
         # Cleanup H3 grid rubber bands and signals
         if self.h3grid:
@@ -1454,6 +1472,15 @@ class VgridTools(object):
     def runFixAntimeridian(self):
         """Run Fix Antimeridian algorithm"""
         processing.execAlgorithmDialog("vgrid:fixantimeridian", {})
+
+    def showDGGSJSON2GeoJSON(self):
+        """Display the DGGS-JSON to GeoJSON Dialog box."""
+        if self.dggsJson2GeoJsonDialog is None:
+            self.dggsJson2GeoJsonDialog = DGGSJSON2GeoJSONWidget(
+                self, self.settingsDialog, self.iface, self.iface.mainWindow()
+            )
+
+        self.dggsJson2GeoJsonDialog.show()
 
     def VgridHome(self):
         webbrowser.open("https://vgrid.vn")
