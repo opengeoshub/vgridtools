@@ -137,7 +137,7 @@ class EASEGrid(QObject):
                             ]
                         )
 
-                        if settings.fixAntimeridian:
+                        if settings.splitAntimeridian:    
                             poly = fix_polygon(poly)
 
                         geom = QgsGeometry.fromWkt(poly.wkt)

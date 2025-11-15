@@ -231,7 +231,7 @@ class A5Bin(QgsProcessingAlgorithm):
         # Generate geometries and update progress
         total_a5_bins = len(a5_bins)
         for i, a5_hex in enumerate(a5_bins.keys()):
-            cell_polygon = a52geo(a5_hex)  # Fix antimeridian
+            cell_polygon = a52geo(a5_hex)  
             a5_geometries[a5_hex] = cell_polygon
 
             # Update progress after each geometry is generated

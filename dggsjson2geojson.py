@@ -10,16 +10,16 @@
 """
 
 import os
-from qgis.PyQt.QtWidgets import QWidget, QApplication, QDialog, QDialogButtonBox, QFileDialog, QMessageBox
+from qgis.PyQt.QtWidgets import  QApplication, QDialog, QDialogButtonBox, QFileDialog, QMessageBox
 from qgis.PyQt.uic import loadUiType
-from qgis.core import QgsProject, QgsVectorLayer
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtWidgets
 from urllib.parse import urlparse
 import requests, json
 from dggal import *
 from vgrid.utils.geometry import dggal_generatezonefeature
 FORM_CLASS, _ = loadUiType(os.path.join(os.path.dirname(__file__), "ui/dggsjon2geojson.ui"))
 from PyQt5.QtCore import Qt
+from qgis.core import QgsProject       
 
 
 class DGGSJSON2GeoJSONWidget(QDialog, FORM_CLASS):
@@ -28,8 +28,6 @@ class DGGSJSON2GeoJSONWidget(QDialog, FORM_CLASS):
         self.setupUi(self)
         self.iface = iface
         self.canvas = iface.mapCanvas()
-        self.vgridtools = vgridtools
-        self.settings = settingsDialog
         self.set_status_bar(self.status,self.LblStatus)
         self.BtnApplyClose.button(QDialogButtonBox.Close).setAutoDefault(False)
                 
@@ -37,6 +35,10 @@ class DGGSJSON2GeoJSONWidget(QDialog, FORM_CLASS):
         self.BtnInputFolder.clicked.connect(self.read_json)
         self.BtnApplyClose.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.run)
         self.BtnApplyClose.button(QtWidgets.QDialogButtonBox.Close).clicked.connect(self.form_clear)
+        # Connect selection change signal to enable/disable ChkSelected
+        self.lsDGGSJSON.itemSelectionChanged.connect(self.on_selection_changed)
+        # Initially disable ChkSelected
+        self.ChkSelected.setEnabled(False)
 
 
     def read_json(self):
@@ -79,12 +81,27 @@ class DGGSJSON2GeoJSONWidget(QDialog, FORM_CLASS):
             # Warn the user if an invalid folder was selected
             QMessageBox.warning(None, "Choose Folder", "Please choose a valid folder, not a disk like C:/.")
 
+    def on_selection_changed(self):
+        # Enable ChkSelected if at least 1 item is selected
+        selected_items = self.lsDGGSJSON.selectedItems()
+        self.ChkSelected.setEnabled(len(selected_items) > 0)
+        # If no items are selected, uncheck ChkSelected
+        if len(selected_items) == 0:
+            self.ChkSelected.setChecked(False)
+
     def run(self):
         item_count = 0
         error_count = 0
         items = []
-        for index in range(self.lsDGGSJSON.count()):
-            items.append(self.lsDGGSJSON.item(index))
+        
+        # If ChkSelected is checked, only process selected items
+        if self.ChkSelected.isChecked():
+            items = self.lsDGGSJSON.selectedItems()
+        else:
+            # Otherwise, process all items
+            for index in range(self.lsDGGSJSON.count()):
+                items.append(self.lsDGGSJSON.item(index))
+        
         self.txtError.clear()
         self.lsDGGSJSON.blockSignals(True)
         self.LinInputFolder.setEnabled(False)
@@ -92,7 +109,8 @@ class DGGSJSON2GeoJSONWidget(QDialog, FORM_CLASS):
         self.status_bar.setEnabled(False)
 
         for item in items:
-            self.lsDGGSJSON.setCurrentRow(item_count)
+            # Set current row to the actual row of the item being processed
+            self.lsDGGSJSON.setCurrentItem(item)
             input_dggsjson_name = item.text()
 
             temp_file_name = item.text()
@@ -354,6 +372,8 @@ class DGGSJSON2GeoJSONWidget(QDialog, FORM_CLASS):
         self.lsDGGSJSON.clear()
         self.txtError.clear()
         self.LblStatus.clear()
+        self.ChkSelected.setChecked(False)
+        self.ChkSelected.setEnabled(False)
         self.set_status_bar(self.status,self.LblStatus)
 
           # Set default output folder

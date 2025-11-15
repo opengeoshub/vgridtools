@@ -67,7 +67,7 @@ from .processing_provider.generator.maidenheadgen import MaidenheadGen
 from .processing_provider.generator.garsgen import GARSGen
 from .processing_provider.generator.georefgen import GEOREFGen
 from .processing_provider.generator.digipingen import DIGIPINGen
-from .processing_provider.utils.fix_antimeridian import FixAntimeridian
+from .processing_provider.utils.split_antimeridian import SplitAltimeridian
 
 class VgridProvider(QgsProcessingProvider):
     def __init__(self):
@@ -131,7 +131,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(MaidenheadGen())
         self.addAlgorithm(GARSGen())
         self.addAlgorithm(DIGIPINGen())
-        self.addAlgorithm(FixAntimeridian())
+        self.addAlgorithm(SplitAltimeridian())
     
     def id(self):
         return "vgrid"

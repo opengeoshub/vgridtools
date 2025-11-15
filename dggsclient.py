@@ -10,7 +10,7 @@
 """
 
 import os
-from qgis.PyQt.QtWidgets import QWidget, QApplication, QDialog,QDialogButtonBox, QTableWidgetItem, QFileDialog, QMessageBox, QMenu
+from qgis.PyQt.QtWidgets import QWidget, QApplication, QDialog,QDialogButtonBox, QTableWidgetItem, QFileDialog, QMessageBox, QMenu, QSpinBox
 from qgis.PyQt.uic import loadUiType
 from qgis.core import QgsProject, QgsVectorLayer       
 from owslib.ogcapi import *  
@@ -22,6 +22,12 @@ from urllib.request import urlopen
 import json
 import ssl
 import urllib.request
+import re
+
+try:
+    from vgrid.utils.constants import DGGAL_TYPES
+except ImportError:
+    DGGAL_TYPES = {}
 
 FORM_CLASS, _ = loadUiType(os.path.join(os.path.dirname(__file__), "ui/dggsclient.ui"))
 
@@ -51,7 +57,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
             home_path = os.path.expanduser('~')
         self.LinOutputFolder.setText(home_path)
 
-        columns = ['Zone ID', 'Data', 'DGGS-JSON', 'Zone Geometry']
+        columns = ['Zone ID', 'Data', 'DGGS-JSON', 'Zone depth','Zone geometry']
         self.TblZones.setColumnCount(len(columns))
         self.TblZones.setHorizontalHeaderLabels(columns)
         self.TblZones.resizeColumnsToContents()
@@ -62,8 +68,6 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
         self.Filter.setEnabled(False)
         self.Filter.valueChanged.connect(self.updateDGGSTable)
 
-        # self.TblZones.setDragDropMode(QAbstractItemView.DragOnly)
-        # self.TblZones.setDragEnabled(True)
 
         self.cboServerName.currentIndexChanged.connect(self.updateURL)
         self.cboServerName.setCurrentIndex(-1)
@@ -139,8 +143,10 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
         self.TblZones.setRowCount(0)
         self.Filter.clear()
         self.TxtURL.clear()
+        self.TxtAPI.clear()
         self.LblStatus.clear()
         self.LblZones.clear()
+        self.set_status_bar(self.status,self.LblStatus)
         # Clear comboboxes
         self._updating_combos = True
         self.cboCollections.clear()
@@ -266,10 +272,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
         # Update status - loading
-        self.LblStatus.setText("Loading collections...")
-        self.status_bar.setValue(0)
-        self.status_bar.setFormat("0%")
-        
+        self.LblStatus.setText("Loading collections...")        
         try:
             url_collections = url.rstrip('/') + '/collections?f=json'
             collections_response = urlopen(url_collections)
@@ -297,9 +300,12 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                                 collection_id = href_parts[collections_idx + 1]
                                 if (collections_idx + 2 >= len(href_parts) and collection_id and 
                                     ':' not in collection_id):
+                                    # Extract title from collection, if available
+                                    title = col.get('title', '')
                                     collections.append({
                                         'id': collection_id,
-                                        'href': href
+                                        'href': href,
+                                        'title': title
                                     })
                         except ValueError:
                             pass
@@ -310,11 +316,13 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 total_collections = len(collections)
                 for i, col in enumerate(collections):
                     self.cboCollections.addItem(col['id'], col['id'])  # Store ID as data
+                    # Set title as tooltip if available
+                    if col.get('title'):
+                        self.cboCollections.setItemData(i, col['title'], QtCore.Qt.ToolTipRole)
                     # Update progress
                     if total_collections > 0:
                         percent = int(((i + 1) / total_collections) * 100)
                         self.status_bar.setValue(percent)
-                        self.status_bar.setFormat(str(percent) + "%")
                 self._updating_combos = False
                 self.cboCollections.setCurrentIndex(-1)
                 
@@ -360,14 +368,13 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
         if not base_url:
             return
         
-        dggs_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs"
+        dggs_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs?f=json"
         # Update API endpoint URL
         self.TxtAPI.setText(dggs_url)
         
         # Update status - loading
         self.LblStatus.setText("Loading DGGS items...")
-        self.status_bar.setValue(0)
-        self.status_bar.setFormat("0%")
+        self.set_status_bar(self.status,self.LblStatus)
         
         try:
             response = urlopen(dggs_url)
@@ -388,21 +395,28 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 for i, item in enumerate(dggs_items):
                     # Get DGGS ID - could be 'id', 'name', or in 'properties'
                     dggs_id = None
+                    title = None
                     if isinstance(item, dict):
                         dggs_id = item.get('id') or item.get('name')
                         if not dggs_id and 'properties' in item:
                             dggs_id = item['properties'].get('id') or item['properties'].get('name')
+                        # Extract title from item, if available
+                        title = item.get('title', '')
+                        if not title and 'properties' in item:
+                            title = item['properties'].get('title', '')
                     elif isinstance(item, str):
                         dggs_id = item
                     
                     if dggs_id:
                         self.cboDGGS.addItem(dggs_id, dggs_id)
+                        # Set title as tooltip if available
+                        if title:
+                            self.cboDGGS.setItemData(i, title, QtCore.Qt.ToolTipRole)
                     
                     # Update progress
                     if total_items > 0:
                         percent = int(((i + 1) / total_items) * 100)
                         self.status_bar.setValue(percent)
-                        self.status_bar.setFormat(str(percent) + "%")
                 
                 self._updating_combos = False
                 self.cboDGGS.setCurrentIndex(-1)
@@ -439,15 +453,13 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
         if not base_url:
             return
         
-        zones_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones"
+        zones_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones?f=json"
         # Update API endpoint URL
         self.TxtAPI.setText(zones_url)
         
         # Update status - loading
         self.LblStatus.setText("Loading zones...")
-        self.status_bar.setValue(0)
-        self.status_bar.setFormat("0%")
-        
+        self.set_status_bar(self.status,self.LblStatus)
         try:
             response = urlopen(zones_url)
             if response is not None:
@@ -463,7 +475,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 elif isinstance(data_json, list):
                     zones = data_json
                 
-                # Populate TblZones with 4 columns: Zone ID, Map, Data, Zone Geometry
+                # Populate TblZones with 5 columns: Zone ID, Data, DGGS-JSON, Zone depth, Zone Geometry
                 total_zones = len(zones)
                 if len(zones) > 0:
                     for i, zone in enumerate(zones):
@@ -488,7 +500,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                         
                         # Create items for each column
                         # Column 0: Zone ID (as hyperlink)
-                        zone_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id
+                        zone_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id + '?f=json'
                         zone_id_item = QTableWidgetItem(str(zone_id))
                         zone_id_item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
                         # Store zone URL in item data
@@ -516,13 +528,36 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                         dggs_json_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id + '/data.json'
                         dggs_json_item = QTableWidgetItem("DGGS-JSON")
                         dggs_json_item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
-                        # Store URL in item data
+                        # Store base URL (without zone-depth parameter) in item data for later updates
                         dggs_json_item.setData(QtCore.Qt.UserRole, dggs_json_url)
+                        # Store collection_id, dggs_id, zone_id for URL updates
+                        dggs_json_item.setData(QtCore.Qt.UserRole + 2, {'collection_id': collection_id, 'dggs_id': dggs_id, 'zone_id': zone_id, 'base_url': base_url})
                         # Style as link (blue color)
                         dggs_json_item.setForeground(QColor(0, 0, 255))  # Blue color
                         self.TblZones.setItem(i, 2, dggs_json_item)
                         
-                        # Column 3: Zone Geometry (as hyperlink)
+                        # Column 3: Zone depth (as embedded spinbox)
+                        zone_depth_spinbox = QSpinBox()
+                        zone_depth_spinbox.setMinimum(-1)  # -1 represents blank/empty
+                        # Get min_res and max_res from DGGAL_TYPES based on selected DGGS
+                        dggs_type_lower = dggs_id.lower()
+                        if DGGAL_TYPES and dggs_type_lower in DGGAL_TYPES:
+                            min_res = DGGAL_TYPES[dggs_type_lower]["min_res"]
+                            max_res = DGGAL_TYPES[dggs_type_lower]["max_res"]
+                            zone_depth_spinbox.setMaximum(max_res)
+                        else:
+                            # Fallback to default range if not found
+                            zone_depth_spinbox.setMaximum(10)
+                        zone_depth_spinbox.setSpecialValueText("")  # Display empty string when value is -1
+                        zone_depth_spinbox.setValue(-1)  # Default to blank
+                        zone_depth_spinbox.setMinimumWidth(80)
+                        # Connect value change signal to update DGGS-JSON URL
+                        zone_depth_spinbox.valueChanged.connect(
+                            lambda value, row=i, col=2: self.onZoneDepthChanged(value, row, col)
+                        )
+                        self.TblZones.setCellWidget(i, 3, zone_depth_spinbox)
+                        
+                        # Column 4: Zone Geometry (as hyperlink)
                         geometry_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id + '.geojson'
                         geometry_item = QTableWidgetItem("GeoJSON")
                         geometry_item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
@@ -530,13 +565,12 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                         geometry_item.setData(QtCore.Qt.UserRole, geometry_url)
                         # Style as link (blue color)
                         geometry_item.setForeground(QColor(0, 0, 255))  # Blue color
-                        self.TblZones.setItem(i, 3, geometry_item)
+                        self.TblZones.setItem(i, 4, geometry_item)
                         
                         # Update progress
                         if total_zones > 0:
                             percent = int(((i + 1) / total_zones) * 100)
                             self.status_bar.setValue(percent)
-                            self.status_bar.setFormat(str(percent) + "%")
                     
                     message = str(len(zones)) + " zones loaded"
                     self.LblZones.setText(message)
@@ -566,11 +600,124 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
         if newname != None:
             self.LinOutputFolder.setText(newname)
 
+    def onZoneDepthChanged(self, value, row, col):
+        """Update DGGS-JSON URL when zone depth value changes"""
+        # Get the DGGS-JSON item from column 2 (col parameter)
+        dggs_json_item = self.TblZones.item(row, col)
+        if dggs_json_item is None:
+            return
+        
+        # Get stored URL components
+        url_data = dggs_json_item.data(QtCore.Qt.UserRole + 2)
+        if url_data:
+            base_url = url_data['base_url']
+            collection_id = url_data['collection_id']
+            dggs_id = url_data['dggs_id']
+            zone_id = url_data['zone_id']
+            
+            # Build base URL without zone-depth parameter
+            base_dggs_json_url = (base_url.rstrip('/') + "/collections/" + collection_id + 
+                                "/dggs/" + dggs_id + "/zones/" + zone_id + '/data.json')
+            
+            # Get max_res from DGGAL_TYPES for validation
+            dggs_type_lower = dggs_id.lower()
+            max_res = 10  # Default fallback
+            if DGGAL_TYPES and dggs_type_lower in DGGAL_TYPES:
+                max_res = DGGAL_TYPES[dggs_type_lower]["max_res"]
+            
+            # Add zone-depth parameter if value is not blank (0 to max_res)
+            if value >= 0 and value <= max_res:
+                dggs_json_url = base_dggs_json_url + '?zone-depth=' + str(value)
+            else:
+                # Blank value: use base URL without zone-depth parameter
+                dggs_json_url = base_dggs_json_url
+            
+            # Update the stored URL
+            dggs_json_item.setData(QtCore.Qt.UserRole, dggs_json_url)
+        else:
+            # Fallback: get base URL from item data and update zone-depth parameter
+            current_url = dggs_json_item.data(QtCore.Qt.UserRole)
+            if current_url:
+                # Remove existing zone-depth parameter if present
+                # Remove zone-depth parameter from URL
+                base_url = re.sub(r'[?&]zone-depth=\d+', '', current_url)
+                # Clean up: if base_url ends with ? or has &&, fix it
+                base_url = re.sub(r'[?&]+$', '', base_url)
+                base_url = base_url.replace('&&', '&').replace('?&', '?')
+                
+                # Get max_res from DGGAL_TYPES for validation (fallback case)
+                # Try to extract dggs_id from URL if available
+                max_res = 10  # Default fallback
+                # Parse dggs_id from URL if possible
+                if '/dggs/' in current_url:
+                    parts = current_url.split('/dggs/')
+                    if len(parts) > 1:
+                        dggs_part = parts[1].split('/')[0].split('?')[0]
+                        dggs_type_lower = dggs_part.lower()
+                        if DGGAL_TYPES and dggs_type_lower in DGGAL_TYPES:
+                            max_res = DGGAL_TYPES[dggs_type_lower]["max_res"]
+                
+                # Add zone-depth parameter if value is not blank (0 to max_res)
+                if value >= 0 and value <= max_res:
+                    # Check if base URL already has parameters
+                    if '?' in base_url:
+                        dggs_json_url = base_url + '&zone-depth=' + str(value)
+                    else:
+                        dggs_json_url = base_url + '?zone-depth=' + str(value)
+                else:
+                    dggs_json_url = base_url
+                
+                dggs_json_item.setData(QtCore.Qt.UserRole, dggs_json_url)
+            else:
+                dggs_json_url = None
+        
+        # Update TxtAPI based on currently selected row's zone depth
+        current_row = self.TblZones.currentRow()
+        # Also check selected ranges as fallback
+        selected_ranges = self.TblZones.selectedRanges()
+        selected_row = -1
+        if selected_ranges and len(selected_ranges) > 0:
+            selected_row = selected_ranges[0].topRow()
+        # Use currentRow if available, otherwise use selected ranges
+        active_row = current_row if current_row >= 0 else selected_row
+        
+        # If the changed row is the selected row, update TxtAPI
+        if active_row >= 0 and active_row == row:
+            # Get the max_res from DGGAL_TYPES for validation
+            dggs_json_item = self.TblZones.item(row, col)
+            max_res = 10  # Default fallback
+            if dggs_json_item:
+                url_data = dggs_json_item.data(QtCore.Qt.UserRole + 2)
+                if url_data and 'dggs_id' in url_data:
+                    dggs_type_lower = url_data['dggs_id'].lower()
+                    if DGGAL_TYPES and dggs_type_lower in DGGAL_TYPES:
+                        max_res = DGGAL_TYPES[dggs_type_lower]["max_res"]
+            
+            # Only update if zone depth is not blank (0 to max_res)
+            if value >= 0 and value <= max_res:
+                current_api_url = self.TxtAPI.text()
+                if current_api_url:
+                    # Remove existing zone-depth parameter if present
+                    if '&zone-depth=' in current_api_url:
+                        base_url = current_api_url.split('&zone-depth=')[0].split('?zone-depth=')[0]
+                    elif '?zone-depth=' in current_api_url:
+                        base_url = current_api_url.split('?zone-depth=')[0]
+                    else:
+                        base_url = current_api_url
+                    
+                    # Add zone-depth parameter to URL
+                    if '?' in base_url:
+                        updated_url = base_url + '&zone-depth=' + str(value)
+                    else:
+                        updated_url = base_url + '?zone-depth=' + str(value)
+                    self.TxtAPI.setText(updated_url)
+            # If value is -1 (blank), keep TxtAPI as is (do nothing)
+
     def onTableItemClicked(self, item):
         """Handle clicks on table items - open URLs for Zone ID, Data, DGGS-JSON and GeoJSON columns"""
         column = item.column()
-        # Check if clicked on Zone ID (column 0), Data (column 1), DGGS-JSON (column 2) or GeoJSON (column 3)
-        if column == 0 or column == 1 or column == 2 or column == 3:
+        # Check if clicked on Zone ID (column 0), Data (column 1), DGGS-JSON (column 2) or GeoJSON (column 4)
+        if column == 0 or column == 1 or column == 2 or column == 4:
             url = item.data(QtCore.Qt.UserRole)
             if url:
                 url_obj = QUrl(url)
@@ -579,6 +726,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
 
     def onZoneSelectionChanged(self):
         """Handle zone row selection - update TxtAPI with zone URL"""
+        self.set_status_bar(self.status,self.LblStatus)
         selected_items = self.TblZones.selectedItems()
         if selected_items and len(selected_items) > 0:
             # Get the first selected row
@@ -598,7 +746,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 base_url = self.TxtURL.text().strip()
                 if base_url and collection_id and dggs_id and zone_id:
                     # Construct zone URL: /collections/{collection_id}/dggs/{dggs_id}/zones/{zone_id}
-                    zone_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id
+                    zone_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id+'?f=json'
                     self.TxtAPI.setText(zone_url)
 
     def showContextMenu(self, position):
@@ -628,69 +776,17 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
             return
         
         # Create context menu
-        menu = QMenu(self)
-        
-        # Action 1: Download Data
-        # action_download_data = menu.addAction("Download Data")
-        # action_download_data.triggered.connect(lambda: self.downloadZoneData(zone_id, collection_id, dggs_id, base_url))
-        
-        # Action 2: Download Zone Geometry
-        # action_download_geometry = menu.addAction("Download Zone Geometry")
-        # action_download_geometry.triggered.connect(lambda: self.downloadZoneGeometry(zone_id, collection_id, dggs_id, base_url))
-        
-        # Action 3: Download and Load into QGIS
-        action_download_load = menu.addAction("Download Zone Geometry")
+        menu = QMenu(self)        
+        # Download zone geometry and Load into QGIS
+        action_download_load = menu.addAction("Download zone geometry")
         action_download_load.triggered.connect(lambda: self.downloadAndLoadZone(zone_id, collection_id, dggs_id, base_url))
         
         # Show menu at cursor position
         menu.exec_(self.TblZones.viewport().mapToGlobal(position))
 
-    def downloadZoneData(self, zone_id, collection_id, dggs_id, base_url):
-        """Download zone data"""
-        try:
-            data_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id + '/data'
-            
-            # Get output folder
-            outdir = self.LinOutputFolder.displayText()
-            if not outdir:
-                outdir = os.path.expanduser('~')
-            
-            filename = os.path.join(outdir, zone_id + "_data.json")
-            
-            # Download the file
-            ssl._create_default_https_context = ssl._create_unverified_context
-            urllib.request.urlretrieve(data_url, filename)
-            
-            QMessageBox.information(None, "Download Complete", "Data downloaded to:\n" + filename)
-            MessageBar = self.iface.messageBar()
-            MessageBar.pushMessage("Data downloaded successfully", 0, 2)
-        except Exception as e:
-            QMessageBox.warning(None, "Download Error", "Failed to download data:\n" + str(e))
-
-    def downloadZoneGeometry(self, zone_id, collection_id, dggs_id, base_url):
-        """Download zone geometry as GeoJSON"""
-        try:
-            geometry_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id + '.geojson'
-            
-            # Get output folder
-            outdir = self.LinOutputFolder.displayText()
-            if not outdir:
-                outdir = os.path.expanduser('~')
-            
-            filename = os.path.join(outdir, zone_id + ".geojson")
-            
-            # Download the file
-            ssl._create_default_https_context = ssl._create_unverified_context
-            urllib.request.urlretrieve(geometry_url, filename)
-            
-            QMessageBox.information(None, "Download Complete", "Zone geometry downloaded to:\n" + filename)
-            MessageBar = self.iface.messageBar()
-            MessageBar.pushMessage("Zone geometry downloaded successfully", 0, 2)
-        except Exception as e:
-            QMessageBox.warning(None, "Download Error", "Failed to download zone geometry:\n" + str(e))
-
     def downloadAndLoadZone(self, zone_id, collection_id, dggs_id, base_url):
         """Download zone geometry and load into QGIS"""
+        self.set_status_bar(self.status,self.LblStatus) 
         try:
             geometry_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id + '.geojson'
             

@@ -964,15 +964,15 @@ class VgridTools(object):
         self.conversion_menu.addAction(self.raster2DGGSAction)
 
         # Add Utils actions
-        # Fix Antimeridian action
+        # Split at Antimeridian action
         icon = QIcon(os.path.dirname(__file__) + "/images/utils/antimeridian.svg")
-        self.fixAntimeridianAction = QAction(
-            icon, tr("Fix Antimeridian"), self.iface.mainWindow()
+        self.splitAntimeridianAction = QAction(
+            icon, tr("Split at Antimeridian"), self.iface.mainWindow()
         )
-        self.fixAntimeridianAction.setObjectName("fixAntimeridian")
-        self.fixAntimeridianAction.setToolTip(tr("Fix Antimeridian"))
-        self.fixAntimeridianAction.triggered.connect(self.runFixAntimeridian)
-        self.utils_menu.addAction(self.fixAntimeridianAction)
+        self.splitAntimeridianAction.setObjectName("splitAntimeridian")
+        self.splitAntimeridianAction.setToolTip(tr("Split at Antimeridian"))
+        self.splitAntimeridianAction.triggered.connect(self.runSplitAtAntimeridian)
+        self.utils_menu.addAction(self.splitAntimeridianAction)
         
         # DGGS-JSON to GeoJSON action
         dggs_json_icon = QIcon(os.path.dirname(__file__) + "/images/conversion/conversion.svg")
@@ -1469,9 +1469,9 @@ class VgridTools(object):
         """Run DGGS Resample algorithm"""
         processing.execAlgorithmDialog("vgrid:dggsresample", {})
 
-    def runFixAntimeridian(self):
-        """Run Fix Antimeridian algorithm"""
-        processing.execAlgorithmDialog("vgrid:fixantimeridian", {})
+    def runSplitAtAntimeridian(self):
+        """Run Split at Antimeridian algorithm"""
+        processing.execAlgorithmDialog("vgrid:splitantimeridian", {})
 
     def showDGGSJSON2GeoJSON(self):
         """Display the DGGS-JSON to GeoJSON Dialog box."""

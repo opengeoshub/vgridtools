@@ -26,7 +26,7 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-299</y>
+        <y>0</y>
         <width>468</width>
         <height>1030</height>
        </rect>
@@ -38,7 +38,7 @@
        <item>
         <widget class="QTabWidget" name="tabWidget">
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="General">
           <attribute name="title">
@@ -193,9 +193,9 @@
              </widget>
             </item>
             <item row="3" column="0">
-             <widget class="QCheckBox" name="fixAntimeridianCheckBox">
+             <widget class="QCheckBox" name="splitAntimeridianCheckBox">
               <property name="text">
-               <string>Fix antimeridian during DGGS visualization</string>
+               <string>Split at antimeridian during DGGS visualization</string>
               </property>
               <property name="checked">
                <bool>true</bool>

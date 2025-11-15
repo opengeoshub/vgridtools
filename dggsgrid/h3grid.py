@@ -72,7 +72,7 @@ class H3Grid(QObject):
                             trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
                             )
-                            if settings.fixAntimeridian:
+                            if settings.splitAntimeridian:    
                                 cell_polygon = fix_polygon(cell_polygon)
                             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                             cell_geometry.transform(trans_to_canvas)
@@ -115,7 +115,7 @@ class H3Grid(QObject):
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        if settings.fixAntimeridian:
+                        if settings.splitAntimeridian:    
                             cell_polygon = fix_polygon(cell_polygon)
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         cell_geometry.transform(trans_to_canvas)

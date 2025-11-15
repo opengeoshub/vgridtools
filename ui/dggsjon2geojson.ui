@@ -3,7 +3,7 @@
  <class>hcmgis_csv2shp_form</class>
  <widget class="QDialog" name="hcmgis_csv2shp_form">
   <property name="windowModality">
-   <enum>Qt::ApplicationModal</enum>
+   <enum>Qt::NonModal</enum>
   </property>
   <property name="enabled">
    <bool>true</bool>
@@ -13,7 +13,7 @@
     <x>0</x>
     <y>0</y>
     <width>513</width>
-    <height>409</height>
+    <height>396</height>
    </rect>
   </property>
   <property name="font">
@@ -28,9 +28,12 @@
   <property name="windowTitle">
    <string>DGGS-JSON to GeoJSON Converter</string>
   </property>
+  <property name="sizeGripEnabled">
+   <bool>true</bool>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="label_2">
+    <widget class="QLabel" name="LblInput">
      <property name="text">
       <string>Input DGGS-JSON Folder</string>
      </property>
@@ -98,10 +101,30 @@
     </widget>
    </item>
    <item>
-    <widget class="QListWidget" name="lsDGGSJSON"/>
+    <widget class="QListWidget" name="lsDGGSJSON">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="showDropIndicator" stdset="0">
+      <bool>false</bool>
+     </property>
+     <property name="dragEnabled">
+      <bool>false</bool>
+     </property>
+     <property name="dragDropMode">
+      <enum>QAbstractItemView::DragDrop</enum>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::ExtendedSelection</enum>
+     </property>
+    </widget>
    </item>
    <item>
-    <layout class="QGridLayout" name="gridLayout_2"/>
+    <widget class="QCheckBox" name="ChkSelected">
+     <property name="text">
+      <string>Selected files only</string>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QLabel" name="LblStatus">
@@ -124,14 +147,18 @@
     </widget>
    </item>
    <item>
-    <widget class="QLabel" name="label">
+    <widget class="QLabel" name="LglError">
      <property name="text">
       <string>Errors Log</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QTextEdit" name="txtError"/>
+    <widget class="QTextEdit" name="txtError">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="BtnApplyClose">

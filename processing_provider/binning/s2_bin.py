@@ -249,7 +249,7 @@ class S2Bin(QgsProcessingAlgorithm):
             # Close the polygon by adding the first vertex again
             shapely_vertices.append(shapely_vertices[0])  # Closing the polygon
             # Create a Shapely Polygon
-            cell_polygon = fix_polygon(Polygon(shapely_vertices))  # Fix antimeridian
+            cell_polygon = fix_polygon(Polygon(shapely_vertices))  # Split at antimeridian
             # coords = [(lng, lat) for lat, lng in s2.cell_to_boundary(s2_token)]
             s2_geometries[s2_token] = cell_polygon
 
