@@ -57,13 +57,14 @@ from vgrid.utils.geometry import geodesic_dggs_metrics, dggal_to_geo
 from vgrid.utils.constants import DGGAL_TYPES
 from vgrid.utils.io import validate_dggal_resolution
 from vgrid.utils.io import validate_coordinate
+from vgrid.utils.antimeridian import fix_polygon
 
 
 class DGGALGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     DGGS_TYPE = "DGGS_TYPE"
     RESOLUTION = "RESOLUTION"
-    COMPACT = "COMPACT"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
     LOC = QgsApplication.locale()[:2]
@@ -158,7 +159,9 @@ class DGGALGen(QgsProcessingAlgorithm):
         self.addParameter(param)
 
         param = QgsProcessingParameterBoolean(
-            self.COMPACT, self.tr("Compact"), defaultValue=False
+            self.SPLIT_ANTIMERIDIAN,
+            self.tr("Split at Antimeridian"),
+            defaultValue=False,
         )
         self.addParameter(param)
 
@@ -170,7 +173,9 @@ class DGGALGen(QgsProcessingAlgorithm):
         self.dggs_type = list(DGGAL_TYPES.keys())[dggs_type_index]
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-        self.compact = self.parameterAsBoolean(parameters, self.COMPACT, context)
+        self.split_antimeridian = self.parameterAsBoolean(
+            parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
 
         # Validate resolution for the selected DGGS type
         self.resolution = validate_dggal_resolution(self.dggs_type, self.resolution)
@@ -249,12 +254,6 @@ class DGGALGen(QgsProcessingAlgorithm):
 
         zones = dggrs.listZones(self.resolution, geo_extent)
 
-        # Only compact if requested and zones exist
-        if self.compact:
-            compacted_zones = dggrs.compactZones(zones)
-            if compacted_zones is not None:
-                zones = compacted_zones
-
         total_cells = len(zones)
         feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
         for idx, zone in enumerate(zones):
@@ -265,6 +264,9 @@ class DGGALGen(QgsProcessingAlgorithm):
             cell_resolution = dggrs.getZoneLevel(zone)
             # Convert zone to geometry using dggal2geo
             cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
+            # Apply antimeridian fix if requested
+            if self.split_antimeridian:
+                cell_polygon = fix_polygon(cell_polygon)
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             # Only check intersection if we have a valid extent
             if self.canvas_extent and not self.canvas_extent.isEmpty():

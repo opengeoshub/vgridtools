@@ -26,6 +26,7 @@ from qgis.core import (  # type: ignore
     QgsProcessingParameterNumber,
     QgsProcessingException,
     QgsProcessingParameterFeatureSink,
+    QgsProcessingParameterBoolean,
     QgsProcessingAlgorithm,
     QgsFields,
     QgsField,
@@ -36,17 +37,20 @@ from qgis.core import (  # type: ignore
     QgsVectorLayer,
     QgsPalLayerSettings,
     QgsVectorLayerSimpleLabeling,
+    QgsProcessingUtils,
 )
 from qgis.PyQt.QtGui import QIcon, QColor  # type: ignore
 from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from PyQt5.QtCore import QVariant  # type: ignore
 import os
+import processing  # type: ignore
 
 from vgrid.utils.geometry import rhealpix_cell_to_polygon, geodesic_dggs_metrics
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from ...utils.imgs import Imgs  # type: ignore
 from shapely.geometry import box
+from shapely.wkt import loads as wkt_loads
 from ...settings import settings  # type: ignore
 from vgrid.utils.io import validate_coordinate
 from ...utils.latlon import epsg4326
@@ -239,7 +243,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                 rhealpix_feature.setGeometry(seed_cell_geometry)
 
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(cell_polygon, num_edges)
+                    geodesic_dggs_metrics(seed_cell_polygon, num_edges)
                 )
                 rhealpix_feature.setAttributes(
                     [

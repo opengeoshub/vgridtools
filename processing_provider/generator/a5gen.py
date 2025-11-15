@@ -25,6 +25,7 @@ from qgis.core import (
     QgsProcessingParameterNumber,
     QgsProcessingException,
     QgsProcessingParameterFeatureSink,
+    QgsProcessingParameterBoolean,
     QgsProcessingAlgorithm,
     QgsFields,
     QgsField,
@@ -49,11 +50,13 @@ from ...settings import settings
 from vgrid.utils.io import validate_coordinate
 from qgis.core import QgsCoordinateTransform
 from ...utils.latlon import epsg4326
+from vgrid.utils.antimeridian import fix_polygon
 
 
 class A5Gen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
     LOC = QgsApplication.locale()[:2]
@@ -139,6 +142,13 @@ class A5Gen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        param = QgsProcessingParameterBoolean(
+            self.SPLIT_ANTIMERIDIAN,
+            self.tr("Split at Antimeridian"),
+            defaultValue=False,
+        )
+        self.addParameter(param)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "A5")
         self.addParameter(param)
 
@@ -146,6 +156,9 @@ class A5Gen(QgsProcessingAlgorithm):
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         # Get the extent parameter
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
+        self.split_antimeridian = self.parameterAsBoolean(
+            parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
         if self.resolution > 8 and (
             self.canvas_extent is None or self.canvas_extent.isEmpty()
         ):
@@ -278,6 +291,9 @@ class A5Gen(QgsProcessingAlgorithm):
                         # Only add if this A5 hex code hasn't been seen before
                         if a5_hex not in seen_a5_hex:
                             seen_a5_hex.add(a5_hex)
+                            # Apply antimeridian fix if requested
+                            if self.split_antimeridian:
+                                cell_polygon = fix_polygon(cell_polygon)
                             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                             a5_feature = QgsFeature()
                             a5_feature.setGeometry(cell_geometry)

@@ -38,6 +38,110 @@
    </item>
    <item row="9" column="0" colspan="2">
     <layout class="QGridLayout" name="gridLayout">
+     <item row="1" column="2">
+      <widget class="QPushButton" name="BtnConnect">
+       <property name="text">
+        <string>Connect</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="lblDGGS">
+       <property name="text">
+        <string>DGGS</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1" colspan="2">
+      <widget class="QComboBox" name="cboServerName">
+       <property name="focusPolicy">
+        <enum>Qt::WheelFocus</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1" colspan="2">
+      <widget class="QComboBox" name="cboDGGS">
+       <property name="focusPolicy">
+        <enum>Qt::WheelFocus</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="0" colspan="3">
+      <widget class="QLabel" name="LblZones">
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
+       <property name="text">
+        <string>Zones</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="13" column="0" colspan="2">
+      <widget class="QLineEdit" name="LinOutputFolder">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="mouseTracking">
+        <bool>true</bool>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::NoFocus</enum>
+       </property>
+       <property name="acceptDrops">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="13" column="2">
+      <widget class="QPushButton" name="BtnOutputFolder">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>100</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <weight>50</weight>
+         <bold>false</bold>
+        </font>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::ClickFocus</enum>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
+       <property name="text">
+        <string>Browse...</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="lblDGGSProvider">
+       <property name="text">
+        <string>DGGS Provider</string>
+       </property>
+      </widget>
+     </item>
      <item row="1" column="0">
       <widget class="QLabel" name="lblServerURL">
        <property name="text">
@@ -45,13 +149,27 @@
        </property>
       </widget>
      </item>
+     <item row="12" column="0" colspan="3">
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Select a folder to save data</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
+      <widget class="QLabel" name="lblAPI">
+       <property name="text">
+        <string>API Endpoint</string>
+       </property>
+      </widget>
+     </item>
      <item row="6" column="1" colspan="2">
       <widget class="QLineEdit" name="TxtAPI"/>
      </item>
-     <item row="0" column="1" colspan="2">
-      <widget class="QComboBox" name="cboServerName">
-       <property name="focusPolicy">
-        <enum>Qt::WheelFocus</enum>
+     <item row="4" column="0">
+      <widget class="QLabel" name="lblCollections">
+       <property name="text">
+        <string>Collections</string>
        </property>
       </widget>
      </item>
@@ -101,34 +219,6 @@
        </property>
       </widget>
      </item>
-     <item row="5" column="1" colspan="2">
-      <widget class="QComboBox" name="cboDGGS">
-       <property name="focusPolicy">
-        <enum>Qt::WheelFocus</enum>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="lblDGGS">
-       <property name="text">
-        <string>DGGS</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="TxtURL">
-       <property name="readOnly">
-        <bool>false</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="15" column="0" colspan="3">
-      <widget class="QProgressBar" name="status">
-       <property name="value">
-        <number>0</number>
-       </property>
-      </widget>
-     </item>
      <item row="8" column="0" colspan="3">
       <widget class="QgsFilterLineEdit" name="Filter">
        <property name="toolTip">
@@ -148,96 +238,6 @@
        </property>
       </widget>
      </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="lblCollections">
-       <property name="text">
-        <string>Collections</string>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="0" colspan="3">
-      <widget class="QLabel" name="LblZones">
-       <property name="layoutDirection">
-        <enum>Qt::LeftToRight</enum>
-       </property>
-       <property name="text">
-        <string>Zones</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="13" column="2">
-      <widget class="QPushButton" name="BtnOutputFolder">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>100</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="font">
-        <font>
-         <weight>50</weight>
-         <bold>false</bold>
-        </font>
-       </property>
-       <property name="focusPolicy">
-        <enum>Qt::ClickFocus</enum>
-       </property>
-       <property name="layoutDirection">
-        <enum>Qt::LeftToRight</enum>
-       </property>
-       <property name="text">
-        <string>Browse...</string>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="2">
-      <widget class="QPushButton" name="BtnConnect">
-       <property name="text">
-        <string>Connect</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="lblDGGSProvider">
-       <property name="text">
-        <string>DGGS Provider</string>
-       </property>
-      </widget>
-     </item>
-     <item row="13" column="0" colspan="2">
-      <widget class="QLineEdit" name="LinOutputFolder">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="mouseTracking">
-        <bool>true</bool>
-       </property>
-       <property name="focusPolicy">
-        <enum>Qt::NoFocus</enum>
-       </property>
-       <property name="acceptDrops">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
      <item row="14" column="0" colspan="3">
       <widget class="QLabel" name="LblStatus">
        <property name="text">
@@ -245,17 +245,17 @@
        </property>
       </widget>
      </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="lblAPI">
-       <property name="text">
-        <string>API Endpoint</string>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="TxtURL">
+       <property name="readOnly">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
-     <item row="12" column="0" colspan="3">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>Select a folder to save data</string>
+     <item row="15" column="0" colspan="3">
+      <widget class="QProgressBar" name="status">
+       <property name="value">
+        <number>0</number>
        </property>
       </widget>
      </item>

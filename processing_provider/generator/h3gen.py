@@ -25,6 +25,7 @@ from qgis.core import (
     QgsProcessingParameterNumber,
     QgsProcessingException,
     QgsProcessingParameterFeatureSink,
+    QgsProcessingParameterBoolean,
     QgsProcessingAlgorithm,
     QgsFields,
     QgsField,
@@ -52,11 +53,13 @@ from ...settings import settings
 from ...utils.latlon import epsg4326
 from vgrid.utils.io import validate_coordinate
 from vgrid.conversion.dggs2geo import h32geo
+from vgrid.utils.antimeridian import fix_polygon
 
 
 class H3Gen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
     LOC = QgsApplication.locale()[:2]
@@ -143,12 +146,22 @@ class H3Gen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        param = QgsProcessingParameterBoolean(
+            self.SPLIT_ANTIMERIDIAN,
+            self.tr("Split at Antimeridian"),
+            defaultValue=False,
+        )
+        self.addParameter(param)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "H3")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
+        self.split_antimeridian = self.parameterAsBoolean(
+            parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
         if self.resolution > 4 and (
             self.canvas_extent is None or self.canvas_extent.isEmpty()
         ):
@@ -228,6 +241,9 @@ class H3Gen(QgsProcessingAlgorithm):
                 progress = int((idx / total_cells) * 100)
                 feedback.setProgress(progress)
                 cell_polygon = h32geo(bbox_cell)
+                # Apply antimeridian fix if requested
+                if self.split_antimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                 # if not cell_geometry.intersects(QgsGeometry.fromRect(self.canvas_extent)):
                 #     continue
@@ -268,6 +284,9 @@ class H3Gen(QgsProcessingAlgorithm):
                     if feedback.isCanceled():
                         break
                     cell_polygon = h32geo(child_cell)
+                    # Apply antimeridian fix if requested
+                    if self.split_antimeridian:
+                        cell_polygon = fix_polygon(cell_polygon)
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     h3_feature = QgsFeature()
                     h3_feature.setGeometry(cell_geometry)
