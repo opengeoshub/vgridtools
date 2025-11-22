@@ -109,6 +109,9 @@ class DGGALRHEALPixGrid(QObject):
                     zone_id = self.dggrs.getZoneTextID(zone)
                     # Convert zone to geometry using dggal_to_geo
                     cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
+                    if settings.splitAntimeridian:    
+                        cell_polygon = fix_polygon(cell_polygon)
+
                     # Check if cell intersects with the canvas extent
                     # cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     # if epsg4326 != canvas_crs:
@@ -121,8 +124,6 @@ class DGGALRHEALPixGrid(QObject):
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        if settings.splitAntimeridian:    
-                            cell_polygon = fix_polygon(cell_polygon)
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         cell_geometry.transform(trans_to_canvas)
                     else:

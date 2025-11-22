@@ -107,12 +107,12 @@ class A5Grid(QObject):
                         if cell_polygon is None:
                             lat += lat_width
                             continue
+                        if settings.splitAntimeridian:    
+                            cell_polygon = fix_polygon(cell_polygon)
                         if epsg4326 != canvas_crs:
                             trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
-                            )
-                            if settings.splitAntimeridian:
-                                cell_polygon = fix_polygon(cell_polygon)
+                            )                            
                             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                             cell_geometry.transform(trans_to_canvas)
                         else:

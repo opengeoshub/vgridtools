@@ -15,8 +15,7 @@ from ..settings import settings
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from math import log2
 from vgrid.utils.io import validate_coordinate
-from vgrid.utils.geometry import geodesic_buffer
-from vgrid.utils.antimeridian import fix_polygon
+from vgrid.utils.geometry import geodesic_buffer    
 
 
 class H3Grid(QObject):
@@ -67,13 +66,13 @@ class H3Grid(QObject):
                     child_cells = h3.cell_to_children(cell, resolution)
                     # Progress bar for child cells
                     for child_cell in child_cells:
-                        cell_polygon = h32geo(child_cell)
+                        if settings.splitAntimeridian:    
+                            cell_polygon = h32geo(child_cell, fix_antimeridian='split')
+                        else: cell_polygon = h32geo(child_cell, fix_antimeridian='shift_west')
                         if epsg4326 != canvas_crs:
                             trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
-                            )
-                            if settings.splitAntimeridian:    
-                                cell_polygon = fix_polygon(cell_polygon)
+                            )                           
                             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                             cell_geometry.transform(trans_to_canvas)
                         else:
@@ -110,13 +109,14 @@ class H3Grid(QObject):
 
                 bbox_cells = h3.geo_to_cells(extent_bbox, resolution)
                 for bbox_cell in bbox_cells:
-                    cell_polygon = h32geo(bbox_cell)
+                    if settings.splitAntimeridian:
+                        cell_polygon = h32geo(bbox_cell, fix_antimeridian='split')
+                    else:   
+                        cell_polygon = h32geo(bbox_cell, fix_antimeridian='shift_west')  
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        if settings.splitAntimeridian:    
-                            cell_polygon = fix_polygon(cell_polygon)
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         cell_geometry.transform(trans_to_canvas)
                     else:

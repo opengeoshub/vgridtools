@@ -40,7 +40,7 @@ if platform.system() == "Windows":
     from vgrid.dggs.eaggr.enums.model import Model
     from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
     from vgrid.conversion.latlon2dggs import latlon2isea4t
-    from vgrid.utils.geometry import fix_isea4t_antimeridian_cells, fix_isea4t_wkt
+    from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
 
     isea4t_dggs = Eaggr(Model.ISEA4T)
 
@@ -246,22 +246,22 @@ class ISEA4TBin(QgsProcessingAlgorithm):
             # Generate geometries and update progress
             total_isea4t_bins = len(isea4t_bins)
             for i, isea4t_id in enumerate(isea4t_bins.keys()):
-                cell_to_shape = isea4t_dggs.convert_dggs_cell_outline_to_shape_string(
-                    DggsCell(isea4t_id), ShapeStringFormat.WKT
-                )
-                cell_to_shape_fixed = loads(fix_isea4t_wkt(cell_to_shape))
-                if (
-                    isea4t_id.startswith("00")
-                    or isea4t_id.startswith("09")
-                    or isea4t_id.startswith("14")
-                    or isea4t_id.startswith("04")
-                    or isea4t_id.startswith("19")
-                ):
-                    cell_to_shape_fixed = fix_isea4t_antimeridian_cells(
-                        cell_to_shape_fixed
-                    )
+                # cell_to_shape = isea4t_dggs.convert_dggs_cell_outline_to_shape_string(
+                #     DggsCell(isea4t_id), ShapeStringFormat.WKT
+                # )
+                cell_polygon = isea4t2geo(isea4t_id)
+                # if (
+                #     isea4t_id.startswith("00")
+                #     or isea4t_id.startswith("09")
+                #     or isea4t_id.startswith("14")
+                #     or isea4t_id.startswith("04")
+                #     or isea4t_id.startswith("19")
+                # ):
+                #     cell_to_shape_fixed = fix_isea4t_antimeridian_cells(
+                #         cell_to_shape_fixed
+                #     )
 
-                cell_polygon = Polygon(list(cell_to_shape_fixed.exterior.coords))
+                # cell_polygon = Polygon(list(cell_to_shape_fixed.exterior.coords))
 
                 isea4t_geometries[isea4t_id] = cell_polygon
                 # Update progress after each geometry is generated

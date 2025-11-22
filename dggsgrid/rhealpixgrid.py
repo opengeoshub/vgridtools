@@ -21,8 +21,7 @@ from ..utils.latlon import epsg4326
 from ..settings import settings
 
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.utils.geometry import rhealpix_cell_to_polygon
-from vgrid.utils.antimeridian import fix_polygon
+from vgrid.conversion.dggs2geo import rhealpix2geo
 
 
 class RhealpixGrid(QObject):
@@ -70,7 +69,12 @@ class RhealpixGrid(QObject):
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
                 rhealpix_cells = rhealpix_dggs.grid(resolution)
                 for rhealpix_cell in rhealpix_cells:
-                    cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
+                    rhealpix_id = str(rhealpix_cell)
+                    # Apply antimeridian fix if requested
+                    if settings.splitAntimeridian:
+                        cell_polygon = rhealpix2geo(rhealpix_id, fix_antimeridian='split')
+                    else:
+                        cell_polygon = rhealpix2geo(rhealpix_id, fix_antimeridian='shift_east')
                     # cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     # if epsg4326 != canvas_crs:
                     #     trans = QgsCoordinateTransform(
@@ -82,8 +86,6 @@ class RhealpixGrid(QObject):
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        if settings.splitAntimeridian:    
-                            cell_polygon = fix_polygon(cell_polygon)
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         cell_geometry.transform(trans_to_canvas)
                     else:
@@ -129,13 +131,18 @@ class RhealpixGrid(QObject):
                 seed_cell = self._rhealpix_dggs.cell_from_point(
                     resolution, seed_point, plane=False
                 )
-                seed_cell_polygon = rhealpix_cell_to_polygon(seed_cell)
+                seed_cell_id = str(seed_cell)
+                # Apply antimeridian fix if requested for intersection check
+                if settings.splitAntimeridian:
+                    seed_cell_polygon = rhealpix2geo(seed_cell_id, fix_antimeridian='split')
+                else:
+                    seed_cell_polygon = rhealpix2geo(seed_cell_id, fix_antimeridian='shift_east')
 
                 cells_to_draw_ids = set()
 
                 # If one cell fully contains the bbox, just draw it
                 if seed_cell_polygon.contains(extent_bbox):
-                    cells_to_draw_ids.add(str(seed_cell))
+                    cells_to_draw_ids.add(seed_cell_id)
                 else:
                     # BFS over neighbors to cover bbox extent
                     covered_ids = set()
@@ -147,7 +154,11 @@ class RhealpixGrid(QObject):
                             continue
                         covered_ids.add(current_id)
 
-                        cell_polygon = rhealpix_cell_to_polygon(current_cell)
+                        # Apply antimeridian fix if requested for intersection check
+                        if settings.splitAntimeridian:
+                            cell_polygon = rhealpix2geo(current_id, fix_antimeridian='split')
+                        else:
+                            cell_polygon = rhealpix2geo(current_id, fix_antimeridian='shift_east')
                         if cell_polygon.intersects(extent_bbox):
                             cells_to_draw_ids.add(current_id)
                             neighbors = current_cell.neighbors(plane=False)
@@ -158,9 +169,11 @@ class RhealpixGrid(QObject):
 
                 # Draw collected cells
                 for cell_id in cells_to_draw_ids:
-                    rhealpix_uids = (cell_id[0],) + tuple(map(int, cell_id[1:]))
-                    cell = self._rhealpix_dggs.cell(rhealpix_uids)
-                    cell_polygon = rhealpix_cell_to_polygon(cell)
+                    # Apply antimeridian fix if requested
+                    if settings.splitAntimeridian:
+                        cell_polygon = rhealpix2geo(cell_id, fix_antimeridian='split')
+                    else:
+                        cell_polygon = rhealpix2geo(cell_id, fix_antimeridian='shift_east') 
                     if not cell_polygon.intersects(extent_bbox):
                         continue
                     # cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -174,8 +187,6 @@ class RhealpixGrid(QObject):
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        if settings.splitAntimeridian:    
-                            cell_polygon = fix_polygon(cell_polygon)
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         cell_geometry.transform(trans_to_canvas)
                     else:

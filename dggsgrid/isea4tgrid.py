@@ -14,8 +14,7 @@ from math import log2, floor
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
-from vgrid.utils.io import validate_coordinate
-from vgrid.utils.antimeridian import fix_polygon
+from vgrid.utils.io import validate_coordinate  
 
 if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
@@ -81,13 +80,14 @@ class ISEA4TGrid(QObject):
                 for child in isea4t_cells:
                     isea4t_cell = DggsCell(child)
                     isea4t_id = isea4t_cell.get_cell_id()
-                    cell_polygon = isea4t2geo(isea4t_id)
+                    if settings.splitAntimeridian:
+                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='split')
+                    else:
+                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='shift_west')
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                        if settings.splitAntimeridian:    
-                            cell_polygon = fix_polygon(cell_polygon)
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         cell_geometry.transform(trans_to_canvas)
                     else:
@@ -134,13 +134,14 @@ class ISEA4TGrid(QObject):
                 # Draw cells
                 for cell_id in cells_to_draw:
                     try:
-                        cell_polygon = isea4t2geo(cell_id)
+                        if settings.splitAntimeridian:
+                            cell_polygon = isea4t2geo(cell_id, fix_antimeridian='split')
+                        else:
+                            cell_polygon = isea4t2geo(cell_id, fix_antimeridian='shift_west')
                         if epsg4326 != canvas_crs:
                             trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
                             )
-                            if settings.splitAntimeridian:    
-                                cell_polygon = fix_polygon(cell_polygon)
                             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                             cell_geometry.transform(trans_to_canvas)
                         else:

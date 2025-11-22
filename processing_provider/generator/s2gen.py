@@ -26,6 +26,7 @@ from qgis.core import (
     QgsProcessingParameterNumber,
     QgsProcessingException,
     QgsProcessingParameterFeatureSink,
+    QgsProcessingParameterBoolean,
     QgsProcessingAlgorithm,
     QgsFields,
     QgsField,
@@ -54,6 +55,8 @@ from vgrid.dggs import s2
 class S2Gen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
+    SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
     LOC = QgsApplication.locale()[:2]
@@ -140,6 +143,20 @@ class S2Gen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        param = QgsProcessingParameterBoolean(
+            self.SHIFT_ANTIMERIDIAN,
+            self.tr("Shift at Antimeridian"),
+            defaultValue=True,
+        )
+        self.addParameter(param)
+
+        param = QgsProcessingParameterBoolean(
+            self.SPLIT_ANTIMERIDIAN,
+            self.tr("Split at Antimeridian"),
+            defaultValue=False,
+        )
+        self.addParameter(param)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "S2")
         self.addParameter(param)
 
@@ -147,6 +164,12 @@ class S2Gen(QgsProcessingAlgorithm):
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         # Get the extent parameter
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
+        self.shift_antimeridian = self.parameterAsBoolean(
+            parameters, self.SHIFT_ANTIMERIDIAN, context
+        )
+        self.split_antimeridian = self.parameterAsBoolean(
+            parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
         if self.resolution > 8 and (
             self.canvas_extent is None or self.canvas_extent.isEmpty()
         ):
@@ -236,7 +259,13 @@ class S2Gen(QgsProcessingAlgorithm):
             feedback.setProgress(progress)
 
             s2_token = s2.CellId.to_token(s2_cell_id)
-            cell_polygon = s22geo(s2_token)
+            # Apply antimeridian fix if requested
+            if self.shift_antimeridian:
+                cell_polygon = s22geo(s2_token, fix_antimeridian='shift_east')
+            elif self.split_antimeridian:
+                cell_polygon = s22geo(s2_token, fix_antimeridian='split')
+            else:
+                cell_polygon = s22geo(s2_token)
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             s2_feature = QgsFeature()

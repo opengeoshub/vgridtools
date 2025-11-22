@@ -111,7 +111,7 @@ class SplitAltimeridian(QgsProcessingFeatureBasedAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + reference + footer
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVectorPolygon]
+        return [QgsProcessing.TypeVectorPolygon, QgsProcessing.TypeVectorLine]
 
     def outputName(self):
         return self.tr("split_antimeridian")
@@ -126,7 +126,7 @@ class SplitAltimeridian(QgsProcessingFeatureBasedAlgorithm):
         # Input vector layer
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.INPUT, self.tr("Input (multi)polygon layer with EPSG:4326 CRS"), [QgsProcessing.TypeVectorPolygon]
+                self.INPUT, self.tr("Input (multi)polygon layer with EPSG:4326 CRS"),[QgsProcessing.TypeVectorPolygon, QgsProcessing.TypeVectorLine]
             )
         )
         

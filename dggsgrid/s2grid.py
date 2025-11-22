@@ -13,7 +13,7 @@ from math import log2, floor
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
-from vgrid.utils.geometry import s2_cell_to_polygon
+from vgrid.conversion.dggs2geo.s22geo import s22geo
 
 # S2
 from vgrid.dggs import s2
@@ -104,7 +104,11 @@ class S2Grid(QObject):
 
             cells = coverer.get_covering(region)
             for cell_id in cells:
-                cell_polygon = s2_cell_to_polygon(cell_id)
+                s2_token = s2.CellId.to_token(cell_id)
+                if settings.splitAntimeridian:
+                    cell_polygon = s22geo(s2_token, fix_antimeridian='split')
+                else:
+                    cell_polygon = s22geo(s2_token, fix_antimeridian='shift_east')  
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 if epsg4326 != canvas_crs:
                     trans = QgsCoordinateTransform(

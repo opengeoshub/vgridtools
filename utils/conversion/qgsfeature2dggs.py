@@ -44,7 +44,7 @@ rhealpix_dggs = RHEALPixDGGS(
     ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3
 )
 
-from vgrid.utils.geometry import s2_cell_to_polygon, rhealpix_cell_to_polygon
+from vgrid.utils.geometry import rhealpix_cell_to_polygon
 from vgrid.utils.geometry import geodesic_buffer
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
@@ -490,7 +490,7 @@ def polyline2s2(feature, resolution, predicate=None, compact=None, feedback=None
         if feedback and feedback.isCanceled():
             return []
 
-        cell_polygon = s2_cell_to_polygon(cell_id)
+        cell_polygon = s22geo(cell_id)
         if not check_predicate(cell_polygon, shapely_geom, "intersects"):
             continue
 
@@ -590,7 +590,7 @@ def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None)
         if feedback and feedback.isCanceled():
             return []
 
-        cell_polygon = s2_cell_to_polygon(cell_id)
+        cell_polygon = s22geo(cell_id)
         if not check_predicate(cell_polygon, shapely_geom, predicate):
             continue
 

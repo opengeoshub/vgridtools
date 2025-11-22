@@ -15,17 +15,16 @@ from vgrid.dggs import s2, qtm, olc, mercantile
 from vgrid.generator.olcgrid import olc_refine_cell
 from vgrid.utils.geometry import (
     geodesic_buffer,
-    fix_h3_antimeridian_cells,
     geodesic_dggs_metrics,
     graticule_dggs_metrics,
-    s2_cell_to_polygon,
     rhealpix_cell_to_polygon,
 )
 from vgrid.utils.constants import INITIAL_GEOHASHES
 from vgrid.conversion.latlon2dggs import latlon2a5
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
-from vgrid.utils.antimeridian import fix_polygon
+from vgrid.conversion.dggs2geo.s22geo import s22geo
+from vgrid.conversion.dggs2geo.h32geo import h32geo 
 import platform
 
 if platform.system() == "Windows":
@@ -33,10 +32,7 @@ if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
     from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
     from vgrid.dggs.eaggr.enums.shape_string_format import ShapeStringFormat
-    from vgrid.utils.geometry import (
-        isea4t_cell_to_polygon,
-        fix_isea4t_antimeridian_cells,
-    )
+    from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
     from vgrid.utils.constants import ISEA4T_RES_ACCURACY_DICT
     from vgrid.generator.isea4tgrid import get_isea4t_children_cells_within_bbox
 
@@ -94,11 +90,7 @@ def generate_h3_grid(resolution, qgs_features, feedback=None):
                 return None
             feedback.setProgress(int((idx / total) * 100))
 
-        hex_boundary = h3.cell_to_boundary(h3_cell)
-        filtered_boundary = fix_h3_antimeridian_cells(hex_boundary)
-        reversed_boundary = [(lon, lat) for lat, lon in filtered_boundary]
-        cell_polygon = Polygon(reversed_boundary)
-
+        cell_polygon = h32geo(h3_cell)
         if not cell_polygon.intersects(unified_geom):
             continue
 
@@ -184,7 +176,7 @@ def generate_s2_grid(resolution, qgs_features, feedback=None):
                 return None
             feedback.setProgress(int((idx / total) * 100))
 
-        cell_polygon = s2_cell_to_polygon(cell_id)
+        cell_polygon = s22geo(cell_id)
         if not cell_polygon.intersects(unified_geom):
             continue
 
@@ -362,14 +354,8 @@ def generate_isea4t_grid(resolution, qgs_features, feedback=None):
             return None
 
         isea4t_cell = DggsCell(child)
-        cell_polygon = isea4t_cell_to_polygon(isea4t_cell)
+        cell_polygon = isea4t2geo(isea4t_cell.get_cell_id())
         isea4t_id = isea4t_cell.get_cell_id()
-
-        if resolution == 0:
-            cell_polygon = fix_polygon(cell_polygon)
-        elif isea4t_id.startswith(("00", "09", "14", "04", "19")):
-            cell_polygon = fix_isea4t_antimeridian_cells(cell_polygon)
-
         if not cell_polygon.intersects(unified_geom):
             continue
 

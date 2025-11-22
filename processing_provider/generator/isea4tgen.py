@@ -12,7 +12,7 @@ isea4tgen.py
 """
 #  Need to be checked and tested
 
-__author__ = "Thang Quach"
+__author__ = "Thang Quach"  # type: ignore
 __date__ = "2024-11-20"
 __copyright__ = "(L) 2024, Thang Quach"
 
@@ -25,6 +25,7 @@ from qgis.core import (
     QgsProcessingParameterExtent,
     QgsProcessingParameterNumber,
     QgsProcessingParameterFeatureSink,
+    QgsProcessingParameterBoolean,
     QgsProcessingAlgorithm,
     QgsFields,
     QgsField,
@@ -69,6 +70,8 @@ from ...utils.latlon import epsg4326
 class ISEA4TGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
+    SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
     LOC = QgsApplication.locale()[:2]
@@ -155,12 +158,33 @@ class ISEA4TGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        param = QgsProcessingParameterBoolean(
+            self.SHIFT_ANTIMERIDIAN,
+            self.tr("Shift at Antimeridian"),
+            defaultValue=True,
+        )
+        self.addParameter(param)
+
+        param = QgsProcessingParameterBoolean(
+            self.SPLIT_ANTIMERIDIAN,
+            self.tr("Split at Antimeridian"),
+            defaultValue=False,
+        )
+        self.addParameter(param)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "ISEA4T")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        # Get the extent parameter
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
+        self.shift_antimeridian = self.parameterAsBoolean(
+            parameters, self.SHIFT_ANTIMERIDIAN, context
+        )
+        self.split_antimeridian = self.parameterAsBoolean(
+            parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
         if self.resolution > 8 and (
             self.canvas_extent is None or self.canvas_extent.isEmpty()
         ):
@@ -250,7 +274,13 @@ class ISEA4TGen(QgsProcessingAlgorithm):
 
                     isea4t_cell = DggsCell(child)
                     isea4t_id = isea4t_cell.get_cell_id()
-                    cell_polygon = isea4t2geo(isea4t_id)
+                    # Apply antimeridian fix if requested
+                    if self.shift_antimeridian:
+                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='shift_west')
+                    elif self.split_antimeridian:
+                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='split')
+                    else:
+                        cell_polygon = isea4t2geo(isea4t_id)
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     isea4t_feature = QgsFeature()
                     isea4t_feature.setGeometry(cell_geometry)
@@ -285,7 +315,13 @@ class ISEA4TGen(QgsProcessingAlgorithm):
 
                     isea4t_cell = DggsCell(child)
                     isea4t_id = isea4t_cell.get_cell_id()
-                    cell_polygon = isea4t2geo(isea4t_id)
+                    # Apply antimeridian fix if requested
+                    if self.shift_antimeridian:
+                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='shift_west')
+                    elif self.split_antimeridian:
+                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='split')
+                    else:
+                        cell_polygon = isea4t2geo(isea4t_id)
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     isea4t_feature = QgsFeature()
                     isea4t_feature.setGeometry(cell_geometry)

@@ -53,13 +53,13 @@ from ...settings import settings
 from ...utils.latlon import epsg4326
 from vgrid.utils.io import validate_coordinate
 from vgrid.conversion.dggs2geo import h32geo
-from vgrid.utils.antimeridian import fix_polygon
 
 
 class H3Gen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
+    SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
     LOC = QgsApplication.locale()[:2]
@@ -147,6 +147,13 @@ class H3Gen(QgsProcessingAlgorithm):
         self.addParameter(param)
 
         param = QgsProcessingParameterBoolean(
+            self.SHIFT_ANTIMERIDIAN,
+            self.tr("Shift at Atimeridian"),
+            defaultValue=True,
+        )
+        self.addParameter(param)
+
+        param = QgsProcessingParameterBoolean(
             self.SPLIT_ANTIMERIDIAN,
             self.tr("Split at Antimeridian"),
             defaultValue=False,
@@ -161,6 +168,9 @@ class H3Gen(QgsProcessingAlgorithm):
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
         self.split_antimeridian = self.parameterAsBoolean(
             parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
+        self.shift_antimeridian = self.parameterAsBoolean(
+            parameters, self.SHIFT_ANTIMERIDIAN, context
         )
         if self.resolution > 4 and (
             self.canvas_extent is None or self.canvas_extent.isEmpty()
@@ -240,10 +250,13 @@ class H3Gen(QgsProcessingAlgorithm):
                     break
                 progress = int((idx / total_cells) * 100)
                 feedback.setProgress(progress)
-                cell_polygon = h32geo(bbox_cell)
                 # Apply antimeridian fix if requested
-                if self.split_antimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
+                if self.shift_antimeridian:
+                    cell_polygon = h32geo(bbox_cell, fix_antimeridian='shift_west')
+                elif self.split_antimeridian:
+                    cell_polygon = h32geo(bbox_cell, fix_antimeridian='split')
+                else:
+                    cell_polygon = h32geo(bbox_cell)
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                 # if not cell_geometry.intersects(QgsGeometry.fromRect(self.canvas_extent)):
                 #     continue
@@ -283,10 +296,13 @@ class H3Gen(QgsProcessingAlgorithm):
                 for child_cell in child_cells:
                     if feedback.isCanceled():
                         break
-                    cell_polygon = h32geo(child_cell)
                     # Apply antimeridian fix if requested
-                    if self.split_antimeridian:
-                        cell_polygon = fix_polygon(cell_polygon)
+                    if self.shift_antimeridian:
+                        cell_polygon = h32geo(child_cell, fix_antimeridian='shift_west')
+                    elif self.split_antimeridian:
+                        cell_polygon = h32geo(child_cell, fix_antimeridian='split')
+                    else:
+                        cell_polygon = h32geo(child_cell)
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     h3_feature = QgsFeature()
                     h3_feature.setGeometry(cell_geometry)

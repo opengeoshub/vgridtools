@@ -12,7 +12,7 @@ rhealpixgen.py
 """
 #  Need to be checked and tested
 
-__author__ = "Thang Quach"
+__author__ = "Thang Quach"  # type: ignore
 __date__ = "2024-11-20"
 __copyright__ = "(L) 2024, Thang Quach"
 
@@ -37,7 +37,6 @@ from qgis.core import (  # type: ignore
     QgsVectorLayer,
     QgsPalLayerSettings,
     QgsVectorLayerSimpleLabeling,
-    QgsProcessingUtils,
 )
 from qgis.PyQt.QtGui import QIcon, QColor  # type: ignore
 from qgis.PyQt.QtCore import QCoreApplication, Qt
@@ -46,7 +45,7 @@ from PyQt5.QtCore import QVariant  # type: ignore
 import os
 import processing  # type: ignore
 
-from vgrid.utils.geometry import rhealpix_cell_to_polygon, geodesic_dggs_metrics
+from vgrid.utils.geometry import geodesic_dggs_metrics
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from ...utils.imgs import Imgs  # type: ignore
 from shapely.geometry import box
@@ -54,6 +53,7 @@ from shapely.wkt import loads as wkt_loads
 from ...settings import settings  # type: ignore
 from vgrid.utils.io import validate_coordinate
 from ...utils.latlon import epsg4326
+from vgrid.conversion.dggs2geo import rhealpix2geo
 
 rhealpix_dggs = RHEALPixDGGS()  # type: ignore
 
@@ -61,6 +61,8 @@ rhealpix_dggs = RHEALPixDGGS()  # type: ignore
 class rHEALPixGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
+    SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
     LOC = QgsApplication.locale()[:2]
@@ -147,12 +149,33 @@ class rHEALPixGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        param = QgsProcessingParameterBoolean(
+            self.SHIFT_ANTIMERIDIAN,
+            self.tr("Shift at Antimeridian"),
+            defaultValue=True,
+        )
+        self.addParameter(param)
+
+        param = QgsProcessingParameterBoolean(
+            self.SPLIT_ANTIMERIDIAN,
+            self.tr("Split at Antimeridian"),
+            defaultValue=False,
+        )
+        self.addParameter(param)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "rHEALPix")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        # Get the extent parameter
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
+        self.shift_antimeridian = self.parameterAsBoolean(
+            parameters, self.SHIFT_ANTIMERIDIAN, context
+        )
+        self.split_antimeridian = self.parameterAsBoolean(
+            parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
         if self.resolution > 5 and (
             self.canvas_extent is None or self.canvas_extent.isEmpty()
         ):
@@ -230,7 +253,13 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                 self.resolution, seed_point, plane=False
             )
             seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
-            seed_cell_polygon = rhealpix_cell_to_polygon(seed_cell)
+            # Apply antimeridian fix if requested
+            if self.shift_antimeridian:
+                seed_cell_polygon = rhealpix2geo(seed_cell_id, fix_antimeridian='shift_east')
+            elif self.split_antimeridian:
+                seed_cell_polygon = rhealpix2geo(seed_cell_id, fix_antimeridian='split')
+            else:
+                seed_cell_polygon = rhealpix2geo(seed_cell_id)
 
             if seed_cell_polygon.contains(extent_bbox):
                 num_edges = 4
@@ -274,10 +303,10 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                         continue
                     # Add current cell to the covered set
                     covered_cells.add(current_cell_id)
-                    # Convert current cell to polygon
-                    cell_polygon = rhealpix_cell_to_polygon(current_cell)
+                    # Quick intersection check using temporary conversion (without antimeridian fix for speed)
+                    temp_cell_polygon = rhealpix2geo(current_cell_id)
                     # Skip cells that do not intersect the bounding box
-                    if not cell_polygon.intersects(extent_bbox):
+                    if not temp_cell_polygon.intersects(extent_bbox):
                         continue
                     # Get neighbors and add to queue
                     neighbors = current_cell.neighbors(plane=False)
@@ -294,17 +323,24 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                     progress = int((idx / len(covered_cells)) * 100)
                     feedback.setProgress(progress)
 
-                    rhealpix_uids = (cover_cell[0],) + tuple(map(int, cover_cell[1:]))
-                    cell = rhealpix_dggs.cell(rhealpix_uids)
-                    cell_polygon = rhealpix_cell_to_polygon(cell)
+                    cell_id = str(cover_cell)
+                    # Apply antimeridian fix if requested
+                    if self.shift_antimeridian:
+                        cell_polygon = rhealpix2geo(cell_id, fix_antimeridian='shift_east')
+                    elif self.split_antimeridian:
+                        cell_polygon = rhealpix2geo(cell_id, fix_antimeridian='split')
+                    else:
+                        cell_polygon = rhealpix2geo(cell_id)
+                    
                     if cell_polygon.intersects(extent_bbox):
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         rhealpix_feature = QgsFeature()
                         rhealpix_feature.setGeometry(cell_geometry)
 
-                        cell_id = str(cover_cell)
+                        rhealpix_uids = (cover_cell[0],) + tuple(map(int, cover_cell[1:]))
+                        cell = rhealpix_dggs.cell(rhealpix_uids)
                         num_edges = 4
-                        if seed_cell.ellipsoidal_shape() == "dart":
+                        if cell.ellipsoidal_shape() == "dart":
                             num_edges = 3
 
                         (
@@ -337,13 +373,21 @@ class rHEALPixGen(QgsProcessingAlgorithm):
             for idx, cell in enumerate(rhealpix_grid):
                 progress = int((idx / total_cells) * 100)
                 feedback.setProgress(progress)
-                cell_polygon = rhealpix_cell_to_polygon(cell)
+                
+                rhealpix_id = str(cell)
+                # Apply antimeridian fix if requested
+                if self.shift_antimeridian:
+                    cell_polygon = rhealpix2geo(rhealpix_id, fix_antimeridian='shift_east')
+                elif self.split_antimeridian:
+                    cell_polygon = rhealpix2geo(rhealpix_id, fix_antimeridian='split')
+                else:
+                    cell_polygon = rhealpix2geo(rhealpix_id)
+                
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
                 rhealpix_feature = QgsFeature()
                 rhealpix_feature.setGeometry(cell_geometry)
 
-                rhealpix_id = str(cell)
                 num_edges = 4
                 if cell.ellipsoidal_shape() == "dart":
                     num_edges = 3

@@ -80,7 +80,10 @@ class ISEA3HGrid(QObject):
                 for child in isea3h_cells:
                     isea3h_cell = DggsCell(child)
                     isea3h_id = isea3h_cell.get_cell_id()
-                    cell_polygon = isea3h2geo(isea3h_id)
+                    if settings.splitAntimeridian:
+                        cell_polygon = isea3h2geo(isea3h_id, fix_antimeridian='split')
+                    else:
+                        cell_polygon = isea3h2geo(isea3h_id, fix_antimeridian='shift_west') 
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
@@ -131,7 +134,10 @@ class ISEA3HGrid(QObject):
                 # Draw cells
                 for cell_id in cells_to_draw:
                     try:
-                        cell_polygon = isea3h2geo(cell_id)
+                        if settings.splitAntimeridian:
+                            cell_polygon = isea3h2geo(cell_id, fix_antimeridian='split')
+                        else:
+                            cell_polygon = isea3h2geo(cell_id, fix_antimeridian='shift_west')       
                         if epsg4326 != canvas_crs:
                             trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
