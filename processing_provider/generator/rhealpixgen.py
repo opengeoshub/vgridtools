@@ -45,6 +45,7 @@ from PyQt5.QtCore import QVariant  # type: ignore
 import os
 import processing  # type: ignore
 
+from collections import deque
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from ...utils.imgs import Imgs  # type: ignore
@@ -288,80 +289,76 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                 sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)
 
             else:
-                # Initialize sets and queue
-                covered_cells = (
-                    set()
-                )  # Cells that have been processed (by their unique ID)
-                queue = [seed_cell]  # Queue for BFS exploration
+                # Store intersecting cells with their polygons and cell objects
+                intersecting_cells = {}  # {cell_id: (cell, polygon)}
+                covered_cells = set()  # Cells that have been processed (by their unique ID)
+                queue = deque([seed_cell])  # Queue for BFS exploration
+                
                 while queue:
-                    current_cell = queue.pop()
-                    current_cell_id = str(
-                        current_cell
-                    )  # Unique identifier for the current cell
+                    current_cell = queue.popleft()  # BFS: FIFO
+                    current_cell_id = str(current_cell)  # Unique identifier for the current cell
 
                     if current_cell_id in covered_cells:
                         continue
                     # Add current cell to the covered set
                     covered_cells.add(current_cell_id)
-                    # Quick intersection check using temporary conversion (without antimeridian fix for speed)
-                    temp_cell_polygon = rhealpix2geo(current_cell_id)
+                    
+                    # Apply antimeridian fix if requested (apply once during BFS)
+                    if self.shift_antimeridian:
+                        cell_polygon = rhealpix2geo(current_cell_id, fix_antimeridian='shift_east')
+                    elif self.split_antimeridian:
+                        cell_polygon = rhealpix2geo(current_cell_id, fix_antimeridian='split')
+                    else:
+                        cell_polygon = rhealpix2geo(current_cell_id)
+                    
                     # Skip cells that do not intersect the bounding box
-                    if not temp_cell_polygon.intersects(extent_bbox):
-                        continue
-                    # Get neighbors and add to queue
-                    neighbors = current_cell.neighbors(plane=False)
-                    for _, neighbor in neighbors.items():
-                        neighbor_id = str(
-                            neighbor
-                        )  # Unique identifier for the neighbor
-                        if neighbor_id not in covered_cells:
-                            queue.append(neighbor)
+                    if cell_polygon.intersects(extent_bbox):
+                        # Store for later processing (no double conversion)
+                        intersecting_cells[current_cell_id] = (current_cell, cell_polygon)
+                        
+                        # Get neighbors and add to queue
+                        neighbors = current_cell.neighbors(plane=False)
+                        for _, neighbor in neighbors.items():
+                            neighbor_id = str(neighbor)  # Unique identifier for the neighbor
+                            if neighbor_id not in covered_cells:
+                                queue.append(neighbor)
+                    
                     if feedback.isCanceled():
                         break
 
-                for idx, cover_cell in enumerate(covered_cells):
-                    progress = int((idx / len(covered_cells)) * 100)
+                # Process only intersecting cells (no double conversion)
+                # Note: fix_antimeridian already applied when creating polygon in BFS loop
+                for idx, (cell_id, (cell, cell_polygon)) in enumerate(intersecting_cells.items()):
+                    progress = int((idx / len(intersecting_cells)) * 100)
                     feedback.setProgress(progress)
 
-                    cell_id = str(cover_cell)
-                    # Apply antimeridian fix if requested
-                    if self.shift_antimeridian:
-                        cell_polygon = rhealpix2geo(cell_id, fix_antimeridian='shift_east')
-                    elif self.split_antimeridian:
-                        cell_polygon = rhealpix2geo(cell_id, fix_antimeridian='split')
-                    else:
-                        cell_polygon = rhealpix2geo(cell_id)
-                    
-                    if cell_polygon.intersects(extent_bbox):
-                        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                        rhealpix_feature = QgsFeature()
-                        rhealpix_feature.setGeometry(cell_geometry)
+                    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                    rhealpix_feature = QgsFeature()
+                    rhealpix_feature.setGeometry(cell_geometry)
 
-                        rhealpix_uids = (cover_cell[0],) + tuple(map(int, cover_cell[1:]))
-                        cell = rhealpix_dggs.cell(rhealpix_uids)
-                        num_edges = 4
-                        if cell.ellipsoidal_shape() == "dart":
-                            num_edges = 3
+                    num_edges = 4
+                    if cell.ellipsoidal_shape() == "dart":
+                        num_edges = 3
 
-                        (
+                    (
+                        center_lat,
+                        center_lon,
+                        avg_edge_len,
+                        cell_area,
+                        cell_perimeter,
+                    ) = geodesic_dggs_metrics(cell_polygon, num_edges)
+                    rhealpix_feature.setAttributes(
+                        [
+                            cell_id,
+                            self.resolution,
                             center_lat,
                             center_lon,
                             avg_edge_len,
                             cell_area,
                             cell_perimeter,
-                        ) = geodesic_dggs_metrics(cell_polygon, num_edges)
-                        rhealpix_feature.setAttributes(
-                            [
-                                cell_id,
-                                self.resolution,
-                                center_lat,
-                                center_lon,
-                                avg_edge_len,
-                                cell_area,
-                                cell_perimeter,
-                            ]
-                        )
-                        sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)
+                        ]
+                    )
+                    sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)
 
                     if feedback.isCanceled():
                         break

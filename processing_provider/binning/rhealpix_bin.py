@@ -33,7 +33,7 @@ from ...settings import settings
 from vgrid.conversion.latlon2dggs import latlon2rhealpix
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
-from vgrid.utils.geometry import rhealpix_cell_to_polygon
+from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
 
 
 class rHEALPixBin(QgsProcessingAlgorithm):
@@ -241,9 +241,7 @@ class rHEALPixBin(QgsProcessingAlgorithm):
         # Generate geometries and update progress
         total_rhealpix_bins = len(rhealpix_bins)
         for i, rhealpix_id in enumerate(rhealpix_bins.keys()):
-            rhealpix_uids = (rhealpix_id[0],) + tuple(map(int, rhealpix_id[1:]))
-            rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
-            cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
+            cell_polygon = rhealpix2geo(rhealpix_id)
             rhealpix_geometries[rhealpix_id] = cell_polygon
             # Update progress after each geometry is generated
             feedback.setProgress(int((i + 1) / total_rhealpix_bins * 100))

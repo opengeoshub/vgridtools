@@ -33,14 +33,14 @@ import a5
 from vgrid.utils.geometry import (
     graticule_dggs_metrics,
     geodesic_dggs_metrics,
-    rhealpix_cell_to_polygon,
-    isea3h_cell_to_polygon,
 )
 from vgrid.utils.constants import ISEA3H_ACCURACY_RES_DICT
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
+from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
+from vgrid.conversion.dggs2geo.isea3h2geo import isea3h2geo
 from vgrid.conversion.dggs2geo.ease2geo import ease2geo
 from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
 from vgrid.conversion.dggs2geo.olc2geo import olc2geo
@@ -228,7 +228,7 @@ def rhealpix2qgsfeature(feature, rhealpix_id):
     rhealpix_uids = (rhealpix_id[0],) + tuple(map(int, rhealpix_id[1:]))
     rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
     resolution = rhealpix_cell.resolution
-    cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
+    cell_polygon = rhealpix2geo(rhealpix_id)
 
     num_edges = 4
     if rhealpix_cell.ellipsoidal_shape() == "dart":
@@ -336,7 +336,7 @@ def isea4t2qgsfeature(feature, isea4t_id):
 def isea3h2qgsfeature(feature, isea3h_id):
     if platform.system() == "Windows":
         isea3h_cell = DggsCell(isea3h_id)
-        cell_polygon = isea3h_cell_to_polygon(isea3h_cell)
+        cell_polygon = isea3h2geo(isea3h_id)
         cell_centroid = cell_polygon.centroid
         center_lat = round(cell_centroid.y, 7)
         center_lon = round(cell_centroid.x, 7)

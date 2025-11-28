@@ -15,7 +15,7 @@ from ..settings import settings
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from math import log2
 from vgrid.utils.io import validate_coordinate
-from vgrid.utils.geometry import geodesic_buffer    
+from vgrid.utils.geometry import geodesic_buffer
 
 
 class H3Grid(QObject):

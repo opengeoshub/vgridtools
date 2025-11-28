@@ -2,8 +2,6 @@ import platform
 from vgrid.dggs import s2, olc
 import h3
 import a5
-from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 
 if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
@@ -18,12 +16,12 @@ if platform.system() == "Windows":
 from vgrid.utils.geometry import (
     graticule_dggs_metrics,
     geodesic_dggs_metrics,
-    rhealpix_cell_to_polygon,
 )
 
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
+from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
 from vgrid.conversion.dggscompact.a5compact import a5_expand
 from vgrid.conversion.dggscompact.rhealpixcompact import (
     get_rhealpix_resolution,
@@ -51,7 +49,6 @@ from dggal import *
 from pyproj import Geod
 
 geod = Geod(ellps="WGS84")
-E = WGS84_ELLIPSOID
 
 from qgis.core import (
     QgsVectorLayer,
@@ -96,10 +93,10 @@ def h3expand(
     if h3_ids:
         try:
             max_res = max(h3.get_resolution(h3_id) for h3_id in h3_ids)
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
+                        f"Target expand resolution ({resolution}) must >= {max_res}."
                     )
                     return None
             h3_ids_expand = h3.uncompact_cells(h3_ids, resolution)
@@ -183,10 +180,10 @@ def s2expand(
         s2_ids = list(set(s2_ids))
         if s2_ids:
             max_res = max(s2_id.level() for s2_id in s2_ids)
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
+                        f"Target expand resolution ({resolution}) must >= {max_res}."
                     )
                     return None
             expanded_cells = []
@@ -276,10 +273,10 @@ def a5expand(
             max_res = max(
                 a5.get_resolution(a5.hex_to_u64(a5_hex)) for a5_hex in a5_hexes
             )
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
+                        f"Target expand resolution ({resolution}) must >= {max_res}."
                     )
                     return None
             a5_hexes_expand = a5_expand(a5_hexes, resolution)
@@ -338,8 +335,6 @@ def rhealpixexpand(
     rHealPixID_field=None,
     feedback=None,
 ) -> QgsVectorLayer:
-    rhealpix_dggs = RHEALPixDGGS()
-
     if not rHealPixID_field:
         rHealPixID_field = "rhealpix"
 
@@ -368,7 +363,7 @@ def rhealpixexpand(
     if rhealpix_ids:
         try:
             max_res = max(
-                get_rhealpix_resolution(rhealpix_dggs, rhealpix_id)
+                get_rhealpix_resolution(rhealpix_id)
                 for rhealpix_id in rhealpix_ids
             )
         except Exception as e:
@@ -376,16 +371,16 @@ def rhealpixexpand(
                 f"Error determining cell resolution from rHEALPix cell Ids: {e}"
             )
 
-        if resolution <= max_res:
+        if resolution < max_res:
             if feedback:
                 feedback.reportError(
-                    f"Target expand resolution ({resolution}) must > {max_res}."
+                    f"Target expand resolution ({resolution}) must >= {max_res}."
                 )
             return None
 
         try:
             rhealpix_cells_expand = rhealpix_expand(
-                rhealpix_dggs, rhealpix_ids, resolution
+                rhealpix_ids, resolution
             )
         except:
             raise QgsProcessingException(
@@ -400,12 +395,11 @@ def rhealpixexpand(
                 if feedback.isCanceled():
                     return None
 
-            cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell_expand)
+            rhealpix_id_expand = str(rhealpix_cell_expand)
+            cell_polygon = rhealpix2geo(rhealpix_id_expand)
 
             if not cell_polygon.is_valid:
                 continue
-
-            rhealpix_id_expand = str(rhealpix_cell_expand)
             num_edges = 3 if rhealpix_cell_expand.ellipsoidal_shape() == "dart" else 4
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
                 geodesic_dggs_metrics(cell_polygon, num_edges)
@@ -469,11 +463,11 @@ def isea4texpand(
 
         if isea4t_ids:
             max_res = max(len(isea4t_id) - 2 for isea4t_id in isea4t_ids)
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
-                    )
+                        f"Target expand resolution ({resolution}) must >= {max_res}."
+                    )   
                 return None
 
             try:
@@ -563,10 +557,10 @@ def isea3hexpand(
                 f"Error determining cell resolution from rHEALPix cell Ids: {e}"
             )
 
-        if resolution <= max_res:
+        if resolution < max_res:
             if feedback:
                 feedback.reportError(
-                    f"Target expand resolution ({resolution}) must > {max_res}."
+                    f"Target expand resolution ({resolution}) must >= {max_res}."
                 )
             return None
 
@@ -651,11 +645,11 @@ def qtmexpand(
     if qtm_ids:
         try:
             max_res = max(len(qtm_id) for qtm_id in qtm_ids)
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
-                    )
+                        f"Target expand resolution ({resolution}) must >= {max_res}."
+                    )   
                     return None
             qtm_ids_expand = qtm_expand(qtm_ids, resolution)
         except:
@@ -737,11 +731,11 @@ def olcexpand(
     if olc_ids:
         try:
             max_res = max(olc.decode(olc_id).codeLength for olc_id in olc_ids)
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
-                    )
+                        f"Target expand resolution ({resolution}) must >= {max_res}."
+                    )           
                     return None
             olc_ids_expand = olc_expand(olc_ids, resolution)
         except:
@@ -828,11 +822,11 @@ def geohashexpand(
     if geohash_ids:
         try:
             max_res = max(len(geohash_id) for geohash_id in geohash_ids)
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
-                    )
+                        f"Target expand resolution ({resolution}) must >= {max_res}."
+                    )   
                     return None
             geohash_ids_expand = geohash_expand(geohash_ids, resolution)
         except:
@@ -925,10 +919,10 @@ def tilecodeexpand(
     if tilecode_ids:
         try:
             max_res = max(len(tilecode_id) for tilecode_id in tilecode_ids)
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
+                        f"Target expand resolution ({resolution}) must >= {max_res}."
                     )
                     return None
             tilecode_ids_expand = tilecode_expand(tilecode_ids, resolution)
@@ -1019,10 +1013,10 @@ def quadkeyexpand(
     if quadkey_ids:
         try:
             max_res = max(len(quadkey_id) for quadkey_id in quadkey_ids)
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
+                        f"Target expand resolution ({resolution}) must >= {max_res}."
                     )
                     return None
             quadkey_ids_expand = quadkey_expand(quadkey_ids, resolution)
@@ -1133,11 +1127,11 @@ def dggalexpand(
                 except:
                     continue
 
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
-                    )
+                        f"Target expand resolution ({resolution}) must >=  {max_res}."
+                    )               
                     return None
 
             dggal_ids_expand = dggal_expand(dggal_type, dggal_ids, resolution)
@@ -1235,10 +1229,10 @@ def digipinexpand(
     if digipin_ids:
         try:
             max_res = max(len(digipin_id.replace('-', '')) for digipin_id in digipin_ids)
-            if resolution <= max_res:
+            if resolution < max_res:
                 if feedback:
                     feedback.reportError(
-                        f"Target expand resolution ({resolution}) must > {max_res}."
+                        f"Target expand resolution ({resolution}) must >= {max_res}."
                     )
                     return None
             
@@ -1258,7 +1252,6 @@ def digipinexpand(
                     return None
             
             try:
-                from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
                 cell_polygon = digipin2geo(digipin_id_expand)
                 
                 if not cell_polygon.is_valid:

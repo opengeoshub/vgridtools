@@ -22,13 +22,13 @@ if platform.system() == "Windows":
     isea4t_dggs = Eaggr(Model.ISEA4T)
 
 from vgrid.utils.geometry import (
-    rhealpix_cell_to_polygon,
     graticule_dggs_metrics,
     geodesic_dggs_metrics,
 )
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
+from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo 
 from vgrid.conversion.dggscompact.a5compact import a5_compact
 from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_compact
 from vgrid.conversion.dggscompact.dggalcompact import dggal_compact
@@ -99,9 +99,7 @@ def h3compact(
         try:
             h3_ids_compact = h3.compact_cells(h3_ids)
         except:
-            raise QgsProcessingException(
-                "Compact cells failed. Please check your H3 ID field."
-            )
+            h3_ids_compact = h3_ids # to handle "Input cells must all share the same resolution."
 
         total_cells = len(h3_ids_compact)
 
@@ -342,7 +340,7 @@ def rhealpixcompact(
 
     if rhealpix_ids:
         try:
-            rhealpix_ids_compact = rhealpix_compact(rhealpix_dggs, rhealpix_ids)
+            rhealpix_ids_compact = rhealpix_compact(rhealpix_ids)
         except:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your rHEALPix ID field."
@@ -356,11 +354,11 @@ def rhealpixcompact(
                 if feedback.isCanceled():
                     return None
             try:
+                cell_polygon = rhealpix2geo(rhealpix_id_compact)
                 rhealpix_uids = (rhealpix_id_compact[0],) + tuple(
                     map(int, rhealpix_id_compact[1:])
                 )
                 rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
-                cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
             except:
                 raise QgsProcessingException(
                     "Compact cells failed. Please check your rHEALPix ID field."

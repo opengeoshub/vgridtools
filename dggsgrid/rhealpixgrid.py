@@ -1,4 +1,5 @@
 from shapely.geometry import box
+from collections import deque
 from qgis.core import (
     QgsWkbTypes,
     QgsCoordinateTransform,
@@ -140,15 +141,20 @@ class RhealpixGrid(QObject):
 
                 cells_to_draw_ids = set()
 
+                # Store intersecting cells with their polygons
+                intersecting_cells = {}  # {cell_id: polygon}
+                
                 # If one cell fully contains the bbox, just draw it
                 if seed_cell_polygon.contains(extent_bbox):
                     cells_to_draw_ids.add(seed_cell_id)
+                    intersecting_cells[seed_cell_id] = seed_cell_polygon
                 else:
                     # BFS over neighbors to cover bbox extent
                     covered_ids = set()
-                    queue = [seed_cell]
+                    queue = deque([seed_cell])  # Use deque for BFS
+                    
                     while queue:
-                        current_cell = queue.pop()
+                        current_cell = queue.popleft()  # BFS: FIFO
                         current_id = str(current_cell)
                         if current_id in covered_ids:
                             continue
@@ -159,23 +165,23 @@ class RhealpixGrid(QObject):
                             cell_polygon = rhealpix2geo(current_id, fix_antimeridian='split')
                         else:
                             cell_polygon = rhealpix2geo(current_id, fix_antimeridian='shift_east')
+                        
                         if cell_polygon.intersects(extent_bbox):
+                            # Store for later drawing (no double conversion)
+                            intersecting_cells[current_id] = cell_polygon
                             cells_to_draw_ids.add(current_id)
+                            
                             neighbors = current_cell.neighbors(plane=False)
                             for _, neighbor in neighbors.items():
                                 neighbor_id = str(neighbor)
                                 if neighbor_id not in covered_ids:
                                     queue.append(neighbor)
 
-                # Draw collected cells
+                # Draw collected cells (no double conversion)
+                # Note: fix_antimeridian already applied when creating polygon in BFS loop
                 for cell_id in cells_to_draw_ids:
-                    # Apply antimeridian fix if requested
-                    if settings.splitAntimeridian:
-                        cell_polygon = rhealpix2geo(cell_id, fix_antimeridian='split')
-                    else:
-                        cell_polygon = rhealpix2geo(cell_id, fix_antimeridian='shift_east') 
-                    if not cell_polygon.intersects(extent_bbox):
-                        continue
+                    # Use stored polygon (should always be available)
+                    cell_polygon = intersecting_cells[cell_id]
                     # cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     # if epsg4326 != canvas_crs:
                     #     trans = QgsCoordinateTransform(

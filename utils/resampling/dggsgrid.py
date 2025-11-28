@@ -17,14 +17,14 @@ from vgrid.utils.geometry import (
     geodesic_buffer,
     geodesic_dggs_metrics,
     graticule_dggs_metrics,
-    rhealpix_cell_to_polygon,
 )
 from vgrid.utils.constants import INITIAL_GEOHASHES
 from vgrid.conversion.latlon2dggs import latlon2a5
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
-from vgrid.conversion.dggs2geo.h32geo import h32geo 
+from vgrid.conversion.dggs2geo.h32geo import h32geo
+from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo 
 import platform
 
 if platform.system() == "Windows":
@@ -236,7 +236,8 @@ def generate_rhealpix_grid(rhealpix_dggs, resolution, qgs_features, feedback=Non
 
     seed_point = (unified_geom.centroid.x, unified_geom.centroid.y)
     seed_cell = rhealpix_dggs.cell_from_point(resolution, seed_point, plane=False)
-    seed_cell_polygon = rhealpix_cell_to_polygon(seed_cell)
+    seed_cell_id = str(seed_cell)
+    seed_cell_polygon = rhealpix2geo(seed_cell_id)
 
     cells_to_process = []
     if seed_cell_polygon.contains(unified_geom):
@@ -251,7 +252,7 @@ def generate_rhealpix_grid(rhealpix_dggs, resolution, qgs_features, feedback=Non
                 continue
             covered.add(cid)
 
-            poly = rhealpix_cell_to_polygon(current)
+            poly = rhealpix2geo(cid)
             if not poly.intersects(unified_geom):
                 continue
 
@@ -271,7 +272,8 @@ def generate_rhealpix_grid(rhealpix_dggs, resolution, qgs_features, feedback=Non
         if feedback and feedback.isCanceled():
             return None
 
-        cell_polygon = rhealpix_cell_to_polygon(cell)
+        cell_id = str(cell)
+        cell_polygon = rhealpix2geo(cell_id)
         if not cell_polygon.intersects(unified_geom):
             continue
 

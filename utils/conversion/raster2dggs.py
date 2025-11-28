@@ -26,13 +26,13 @@ from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
 from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
 from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
+from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
 from vgrid.utils.constants import DGGAL_TYPES
 from dggal import *
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.utils.geometry import (
     graticule_dggs_metrics,
     geodesic_dggs_metrics,
-    rhealpix_cell_to_polygon,
 )
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 
@@ -460,7 +460,7 @@ def raster2rhealpix(
         ):
             continue
 
-        cell_polygon = rhealpix_cell_to_polygon(rhealpix_cell)
+        cell_polygon = rhealpix2geo(rhealpix_id)
         if not cell_polygon:
             continue
         num_edges = 3 if rhealpix_cell.ellipsoidal_shape() == "dart" else 4

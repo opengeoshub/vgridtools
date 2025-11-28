@@ -49,11 +49,6 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         "S2",
         "A5",
         "rHEALPix",
-        "QTM",
-        "OLC",
-        "Geohash",
-        "Tilecode",
-        "Quadkey",
         
         "DGGAL_GNOSIS",
         
@@ -76,7 +71,12 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         "DGGAL_RTEA7H_Z7",
         "DGGAL_HEALPix",
         "DGGAL_rHEALPix",
-        
+
+        "QTM",
+        "OLC",
+        "Geohash",
+        "Tilecode",
+        "Quadkey",
         "DIGIPIN",
     ]
 
@@ -221,14 +221,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
 
         feedback.pushInfo(f"Compacting {self.dggs_type.upper()}")
 
-        # Handle DGGAL types specially - they need the dggal_type as parameter
-        if self.dggs_type.startswith("dggal_"):
-            dggal_type = self.dggs_type.replace("dggal_", "")
-            memory_layer = conversion_function(
-                dggs_layer, self.dggs_field, feedback, dggal_type
-            )
-        else:
-            memory_layer = conversion_function(dggs_layer, self.dggs_field, feedback)
+        memory_layer = conversion_function(dggs_layer, self.dggs_field, feedback)
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():
             raise QgsProcessingException(
