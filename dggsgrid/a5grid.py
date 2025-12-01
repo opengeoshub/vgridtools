@@ -17,6 +17,7 @@ from vgrid.utils.antimeridian import fix_polygon
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.latlon2dggs import latlon2a5
 from math import log2, floor
+from vgrid.utils.constants import DGGS_TYPES
 
 
 class A5Grid(QObject):
@@ -142,11 +143,10 @@ class A5Grid(QObject):
         # Map scale to approximate zoom, then to A5 resolution similar cadence as H3
 
         zoom = 29.1402 - log2(scale)
-        min_res, max_res, _ = settings.getResolution("A5")
+        min_res = DGGS_TYPES['a5']["min_res"]
+        max_res = DGGS_TYPES['a5']["max_res"]
 
-        res = max(min_res, int(floor(zoom)))
-        if res > max_res:
-            return max_res
+        res = min(max_res, max(min_res, int(floor(zoom*0.9))))
         return res
 
     def _resolution_to_step(self, resolution):

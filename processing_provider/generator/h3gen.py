@@ -53,6 +53,7 @@ from ...settings import settings
 from ...utils.latlon import epsg4326
 from vgrid.utils.io import validate_coordinate
 from vgrid.conversion.dggs2geo import h32geo
+from vgrid.utils.constants import DGGS_TYPES
 
 
 class H3Gen(QgsProcessingAlgorithm):
@@ -134,7 +135,9 @@ class H3Gen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        min_res, max_res, _ = settings.getResolution("H3")
+        min_res = DGGS_TYPES['h3']["min_res"]
+        max_res = DGGS_TYPES['h3']["max_res"]
+
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),

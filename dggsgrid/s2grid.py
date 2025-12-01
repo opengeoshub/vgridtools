@@ -13,6 +13,7 @@ from math import log2, floor
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
+from vgrid.utils.constants import DGGS_TYPES
 from vgrid.conversion.dggs2geo.s22geo import s22geo
 
 # S2
@@ -133,12 +134,10 @@ class S2Grid(QObject):
 
     def _get_s2_resolution(self, scale):
         # Map scale to approximate zoom, then to S2 resolution by flooring zoom
-        zoom = 29.1402 - log2(scale)
-        # Respect configured bounds
-        min_res, max_res, _ = settings.getResolution("S2")
-        res = max(min_res, int(floor(zoom)))
-        if res > max_res:
-            return max_res
+        zoom = 29.1402 - log2(scale)    
+        min_res = DGGS_TYPES['s2']["min_res"]
+        max_res = DGGS_TYPES['s2']["max_res"]
+        res = min(max_res, max(min_res, int(floor(zoom))) )   
         return res
 
     @pyqtSlot()

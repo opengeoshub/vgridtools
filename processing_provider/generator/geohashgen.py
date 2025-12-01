@@ -49,7 +49,8 @@ from ...settings import settings
 from vgrid.utils.constants import INITIAL_GEOHASHES
 from vgrid.utils.io import validate_coordinate
 from ...utils.latlon import epsg4326
-
+from vgrid.utils.constants import DGGS_TYPES
+    
 
 class GeohashGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
@@ -128,7 +129,8 @@ class GeohashGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        min_res, max_res, _ = settings.getResolution("Geohash")
+        min_res = DGGS_TYPES['geohash']["min_res"]
+        max_res = DGGS_TYPES['geohash']["max_res"]
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),

@@ -146,11 +146,7 @@ class DGGALRTEA9RGrid(QObject):
         min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
         max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
 
-        res = max(min_res, int(floor(zoom * 1.7)))
-
-        # Respect configured bounds (DGGAL typically supports 0-33)
-        if res > max_res:
-            return max_res
+        res = min(max_res, max(min_res, int(floor(zoom)*0.6)) )
         return res
 
     def enable_dggal(self, enabled: bool):

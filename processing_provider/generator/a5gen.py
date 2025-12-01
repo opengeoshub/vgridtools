@@ -51,6 +51,7 @@ from vgrid.utils.io import validate_coordinate
 from qgis.core import QgsCoordinateTransform
 from ...utils.latlon import epsg4326
 from vgrid.utils.antimeridian import fix_polygon
+from vgrid.utils.constants import DGGS_TYPES
 
 
 class A5Gen(QgsProcessingAlgorithm):
@@ -130,7 +131,8 @@ class A5Gen(QgsProcessingAlgorithm):
             self.EXTENT, self.tr("Canvas extent"), optional=True
         )
         self.addParameter(param)
-        min_res, max_res, _ = settings.getResolution("A5")
+        min_res = DGGS_TYPES['a5']["min_res"]
+        max_res = DGGS_TYPES['a5']["max_res"]
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),

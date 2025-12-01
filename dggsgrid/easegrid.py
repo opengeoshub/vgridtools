@@ -137,7 +137,7 @@ class EASEGrid(QObject):
                             ]
                         )
 
-                        if settings.splitAntimeridian:    
+                        if settings.splitAntimeridian:        
                             poly = fix_polygon(poly)
 
                         geom = QgsGeometry.fromWkt(poly.wkt)
@@ -177,9 +177,9 @@ class EASEGrid(QObject):
             res = 3
         if zoom >= 16:
             res = 4
-        if zoom >= 18:
-            res = 5
         if zoom >= 20:
+            res = 5
+        if zoom >= 23:
             res = 6
         return res
 

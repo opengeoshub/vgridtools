@@ -17,6 +17,7 @@ from ..settings import settings
 # QTM imports
 from vgrid.dggs import qtm
 from vgrid.utils.io import validate_coordinate
+from vgrid.utils.constants import DGGS_TYPES
 
 
 class QTMGrid(QObject):
@@ -180,13 +181,10 @@ class QTMGrid(QObject):
     def _get_qtm_resolution(self, scale):
         # Map scale to zoom, then to QTM resolution
         zoom = 29.1402 - log2(scale)
-        min_res, max_res, _ = settings.getResolution("QTM")
+        min_res = DGGS_TYPES['qtm']["min_res"]
+        max_res = DGGS_TYPES['qtm']["max_res"]
 
-        res = max(min_res, int(floor(zoom)))
-
-        # Get QTM resolution bounds from settings
-        if res > max_res:
-            return max_res
+        res = min(max_res, max(min_res, int(floor(zoom))) )   
         return res
 
     @pyqtSlot()

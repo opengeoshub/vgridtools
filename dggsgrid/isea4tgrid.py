@@ -15,7 +15,8 @@ from math import log2, floor
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.utils.io import validate_coordinate  
-
+from vgrid.utils.constants import DGGS_TYPES
+    
 if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
     from vgrid.dggs.eaggr.shapes.dggs_cell import DggsCell
@@ -167,10 +168,9 @@ class ISEA4TGrid(QObject):
     def _get_isea4t_resolution(self, scale):
         # Map scale to zoom, then to ISEA4T resolution
         zoom = 29.1402 - log2(scale)
-        min_res, max_res, _ = settings.getResolution("ISEA4T")
-        res = max(min_res, int(floor(zoom)))
-        if res > max_res:
-            return max_res
+        min_res = DGGS_TYPES['isea4t']["min_res"]
+        max_res = DGGS_TYPES['isea4t']["max_res"]
+        res = min(max_res, max(min_res, int(floor(zoom)*0.95)))
         return res
 
     @pyqtSlot()

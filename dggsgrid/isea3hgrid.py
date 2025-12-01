@@ -15,6 +15,7 @@ from math import log2, floor
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.utils.io import validate_coordinate
+from vgrid.utils.constants import DGGS_TYPES
 
 if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
@@ -167,12 +168,10 @@ class ISEA3HGrid(QObject):
     def _get_isea3h_resolution(self, scale):
         # Map scale to zoom, then to isea3h resolution
         zoom = 29.1402 - log2(scale)
-        min_res, max_res, _ = settings.getResolution("ISEA3H")
+        min_res = DGGS_TYPES['isea3h']["min_res"]
+        max_res = DGGS_TYPES['isea3h']["max_res"]
         # ISEA3H resolution mapping - similar to other grids
-        res = max(min_res, int(floor(zoom * 1.2)))
-
-        if res > max_res:
-            return max_res
+        res = min(max_res, max(min_res, int(floor(zoom * 1.2))) )
         return res
 
     @pyqtSlot()

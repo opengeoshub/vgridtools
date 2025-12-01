@@ -17,6 +17,7 @@ from ..settings import settings
 # Maidenhead imports
 from vgrid.dggs import maidenhead
 from vgrid.utils.io import validate_coordinate
+from vgrid.utils.constants import DGGS_TYPES
 
 # Grid parameters for different resolutions
 grid_params = {
@@ -165,12 +166,10 @@ class MaidenheadGrid(QObject):
         self, scale
     ):  # Map scale to zoom, then to Maidenhead resolution
         zoom = 29.1402 - log2(scale)
-        min_res, max_res, _ = settings.getResolution("Maidenhead")
+        min_res = DGGS_TYPES['maidenhead']["min_res"]
+        max_res = DGGS_TYPES['maidenhead']["max_res"]
         # Maidenhead resolution mapping - similar to other grids
-        res = max(min_res, int(floor(zoom / 3.1)))
-
-        if res > max_res:
-            return max_res
+        res = min(max_res, max(min_res, int(floor(zoom)*0.3)))
         return res
 
     @pyqtSlot()

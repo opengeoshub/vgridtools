@@ -41,9 +41,7 @@ class GARSGrid(QObject):
     def _onExtentsChanged(self):
         self._extentTimer.start()
 
-    def gars_grid(self):
-        # try:
-        # Clear previous grid before drawing a new one
+    def gars_grid(self):       
         self.removeMarker()
         self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.gars_marker.setStrokeColor(settings.garsColor)
@@ -109,9 +107,6 @@ class GARSGrid(QObject):
                         continue
 
             self.canvas.refresh()
-
-    # except Exception as e:
-    #     return
 
     def enable_gars(self, enabled: bool):
         self.gars_enabled = bool(enabled)

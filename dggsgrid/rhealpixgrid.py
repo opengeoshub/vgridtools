@@ -23,6 +23,7 @@ from ..settings import settings
 
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.conversion.dggs2geo import rhealpix2geo
+from vgrid.utils.constants import DGGS_TYPES
 
 
 class RhealpixGrid(QObject):
@@ -218,10 +219,9 @@ class RhealpixGrid(QObject):
         from math import log2
 
         zoom = 29.1402 - log2(scale)
-        min_res, max_res, _ = settings.getResolution("rHEALPix")
-        res = max(min_res, int(floor(zoom / 1.7)))
-        if res > max_res:
-            return max_res
+        min_res = DGGS_TYPES['rhealpix']["min_res"]
+        max_res = DGGS_TYPES['rhealpix']["max_res"]
+        res = min(max_res, max(min_res, int(floor(zoom*0.6))) )
         return res
 
     @pyqtSlot()

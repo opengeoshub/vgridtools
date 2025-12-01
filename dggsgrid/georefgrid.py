@@ -17,9 +17,10 @@ from vgrid.utils.io import validate_coordinate
 from vgrid.utils.constants import GEOREF_RESOLUTION_DEGREES
 from vgrid.conversion.latlon2dggs import latlon2georef
 from vgrid.conversion.dggs2geo import georef2geo
+from vgrid.utils.constants import DGGS_TYPES
+from math import floor  
 
-
-class GEOREFGrid(QObject):
+class GEOREFGrid(QObject):  
     def __init__(self, vgridtools, canvas, iface):
         super(GEOREFGrid, self).__init__()
         self.canvas = canvas
@@ -139,7 +140,7 @@ class GEOREFGrid(QObject):
         elif zoom <= 24:
             return 5
         return 6
-
+        
     @pyqtSlot()
     def removeMarker(self):
         self.georef_marker.reset(QgsWkbTypes.PolygonGeometry)

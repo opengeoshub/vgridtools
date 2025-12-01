@@ -49,7 +49,7 @@ from vgrid.utils.geometry import graticule_dggs_metrics
 from ...settings import settings
 from ...utils.latlon import epsg4326
 from vgrid.utils.io import validate_coordinate
-from vgrid.utils.constants import GARS_RESOLUTION_MINUTES
+from vgrid.utils.constants import DGGS_TYPES
 
 
 class GARSGen(QgsProcessingAlgorithm):
@@ -129,7 +129,8 @@ class GARSGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        min_res, max_res, _ = settings.getResolution("GARS")
+        min_res = DGGS_TYPES['gars']["min_res"]
+        max_res = DGGS_TYPES['gars']["max_res"]
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}] (30, 15, 5, 1 minutes)"),

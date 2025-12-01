@@ -17,6 +17,7 @@ from vgrid.utils.constants import INITIAL_GEOHASHES
 # Geohash imports
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.utils.io import validate_coordinate
+from vgrid.utils.constants import DGGS_TYPES
 
 
 class GeohashGrid(QObject):
@@ -156,12 +157,9 @@ class GeohashGrid(QObject):
         # Map scale to zoom, then to Geohash resolution
 
         zoom = 29.1402 - log2(scale)
-        min_res, max_res, _ = settings.getResolution("Geohash")
-        res = max(min_res, int(floor(zoom / 2.2)))
-
-        # Get Geohash resolution bounds from settings
-        if res > max_res:
-            return max_res
+        min_res = DGGS_TYPES['geohash']["min_res"]
+        max_res = DGGS_TYPES['geohash']["max_res"]
+        res = min(max_res, max(min_res, int(floor(zoom)*0.45)) )
         return res
 
     @pyqtSlot()

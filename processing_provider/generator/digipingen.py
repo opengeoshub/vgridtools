@@ -52,6 +52,7 @@ from vgrid.utils.geometry import graticule_dggs_metrics
 from ...utils.imgs import Imgs
 from ...settings import settings
 from ...utils.latlon import epsg4326
+from vgrid.utils.constants import DGGS_TYPES
 
 
 class DIGIPINGen(QgsProcessingAlgorithm):
@@ -131,7 +132,8 @@ class DIGIPINGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        min_res, max_res, _ = settings.getResolution("DIGIPIN")
+        min_res = DGGS_TYPES['digipin']["min_res"]
+        max_res = DGGS_TYPES['digipin']["max_res"]
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),

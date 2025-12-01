@@ -112,14 +112,6 @@ class DGGALRHEALPixGrid(QObject):
                     if settings.splitAntimeridian:    
                         cell_polygon = fix_polygon(cell_polygon)
 
-                    # Check if cell intersects with the canvas extent
-                    # cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
-                    # if epsg4326 != canvas_crs:
-                    #     trans_to_canvas = QgsCoordinateTransform(
-                    #         epsg4326, canvas_crs, QgsProject.instance()
-                    #     )
-                    #     cell_geom.transform(trans_to_canvas)
-                    # self.dggal_marker.addGeometry(cell_geom, None)
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
@@ -153,10 +145,7 @@ class DGGALRHEALPixGrid(QObject):
         zoom = 29.1402 - log2(scale)
         min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
         max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
-        res = max(min_res, int(floor(zoom / 1.7)))
-
-        if res > max_res:
-            return max_res
+        res = min(max_res, max(min_res, int(floor(zoom)*0.6)) )
         return res
 
     @pyqtSlot()

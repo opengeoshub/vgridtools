@@ -146,11 +146,8 @@ class DGGALISEA7HGrid(QObject):
         min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
         max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
 
-        res = max(min_res, int(floor(zoom * 0.7)))
+        res = min(max_res, max(min_res, int(floor(zoom * 0.65))) )
 
-        # Respect configured bounds
-        if res > max_res:
-            return max_res
         return res
 
     @pyqtSlot()
