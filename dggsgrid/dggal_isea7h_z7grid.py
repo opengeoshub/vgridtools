@@ -24,7 +24,6 @@ from vgrid.utils.constants import DGGAL_TYPES
 app = Application(appGlobals=globals())
 pydggal_setup(app)
 
-
 class DGGALISEA7H_Z7Grid(QObject):
     def __init__(self, vgridtools, canvas, iface):
         super(DGGALISEA7H_Z7Grid, self).__init__()
@@ -65,7 +64,7 @@ class DGGALISEA7H_Z7Grid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self._get_dggal_resolution(scale)
+            resolution = self.dggrs.getLevelFromScaleDenominator(scale,relativeDepth=6,mmPerPixel = 0.28)
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -146,8 +145,7 @@ class DGGALISEA7H_Z7Grid(QObject):
         min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
         max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
 
-        res = min(max_res, max(min_res, int(floor(zoom * 0.65))) )
-
+        res = min(max_res, max(min_res, floor(zoom * 0.65)))
         return res
 
     @pyqtSlot()
@@ -174,4 +172,3 @@ class DGGALISEA7H_Z7Grid(QObject):
             self.dggal_marker.deleteLater()
         except Exception:
             pass
-

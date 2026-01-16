@@ -12,14 +12,10 @@ from qgis.PyQt.QtCore import pyqtSlot
 from math import log2
 from ..utils.latlon import epsg4326
 from ..settings import settings
-from vgrid.utils.io import validate_coordinate
-from vgrid.utils.io import validate_digipin_coordinate
 
 # DIGIPIN imports
 from vgrid.conversion.latlon2dggs import latlon2digipin
 from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
-from vgrid.utils.io import validate_digipin_coordinate
-
 
 
 class DIGIPINGrid(QObject):

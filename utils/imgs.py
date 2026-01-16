@@ -16,7 +16,14 @@ __date__ = "2024-11-20"
 __copyright__ = "(L) 2024 by Thang Quach"
 import os
 import base64
-import PIL.Image
+
+# Optional PIL import - plugin will work without it, but image resizing won't be available
+try:
+    import PIL.Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    PIL = None
 
 
 # Imagem para HTML
@@ -31,6 +38,8 @@ def img2html(path_file):
 
 # Redimensionar Imagem
 def ImgResize(path_file, lado, resized):
+    if not PIL_AVAILABLE:
+        raise ImportError("PIL (Pillow) is not installed. Image resizing is not available.")
     caminho, arquivo = os.path.split(path_file)
     img = PIL.Image.open(path_file)
     altura = img.size[1]
@@ -51,6 +60,8 @@ def ImgResize(path_file, lado, resized):
 
 # Image to HTML resized
 def img2html_resized(path_file, lado=500, resized="reduzido.jpg"):
+    if not PIL_AVAILABLE:
+        raise ImportError("PIL (Pillow) is not installed. Image resizing is not available.")
     if os.path.isfile(path_file):
         caminho, arquivo = os.path.split(path_file)
         path_file_reduced = ImgResize(path_file, lado, resized)

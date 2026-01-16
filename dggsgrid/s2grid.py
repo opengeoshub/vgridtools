@@ -15,6 +15,7 @@ from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.utils.constants import DGGS_TYPES
 from vgrid.conversion.dggs2geo.s22geo import s22geo
+from vgrid.utils.geometry import get_s2_resolution_from_scale_denominator
 
 # S2
 from vgrid.dggs import s2
@@ -51,7 +52,8 @@ class S2Grid(QObject):
 
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
-            resolution = self._get_s2_resolution(scale)
+            # resolution = self._get_s2_resolution(scale)
+            resolution = get_s2_resolution_from_scale_denominator(scale,relative_depth=8,mm_per_pixel = 0.28)
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -137,7 +139,7 @@ class S2Grid(QObject):
         zoom = 29.1402 - log2(scale)    
         min_res = DGGS_TYPES['s2']["min_res"]
         max_res = DGGS_TYPES['s2']["max_res"]
-        res = min(max_res, max(min_res, int(floor(zoom))) )   
+        res = min(max_res, max(min_res, floor(zoom)))   
         return res
 
     @pyqtSlot()

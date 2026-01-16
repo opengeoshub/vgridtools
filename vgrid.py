@@ -974,6 +974,16 @@ class VgridTools(object):
         self.splitAntimeridianAction.triggered.connect(self.runSplitAtAntimeridian)
         self.utils_menu.addAction(self.splitAntimeridianAction)
         
+        # Shift at Antimeridian action
+        icon = QIcon(os.path.dirname(__file__) + "/images/utils/shift_antimeridian.png")
+        self.shiftAntimeridianAction = QAction(
+            icon, tr("Shift at Antimeridian"), self.iface.mainWindow()
+        )
+        self.shiftAntimeridianAction.setObjectName("shiftAntimeridian")
+        self.shiftAntimeridianAction.setToolTip(tr("Shift at Antimeridian"))
+        self.shiftAntimeridianAction.triggered.connect(self.runShiftAtAntimeridian)
+        self.utils_menu.addAction(self.shiftAntimeridianAction)
+        
         # DGGS-JSON to GeoJSON action
         dggs_json_icon = QIcon(os.path.dirname(__file__) + "/images/conversion/conversion.svg")
         self.dggsJson2GeoJsonAction = QAction(
@@ -1253,6 +1263,8 @@ class VgridTools(object):
             self.maidenheadgrid.cleanup()
         if hasattr(self, "garsgrid") and self.garsgrid:
             self.garsgrid.cleanup()
+        if hasattr(self, "digipingrid") and self.digipingrid:
+            self.digipingrid.cleanup()
 
         self.settingsDialog = None
         QgsApplication.processingRegistry().removeProvider(self.provider)
@@ -1472,6 +1484,10 @@ class VgridTools(object):
     def runSplitAtAntimeridian(self):
         """Run Split at Antimeridian algorithm"""
         processing.execAlgorithmDialog("vgrid:splitantimeridian", {})
+
+    def runShiftAtAntimeridian(self):
+        """Run Shift at Antimeridian algorithm"""
+        processing.execAlgorithmDialog("vgrid:shiftantimeridian", {})
 
     def showDGGSJSON2GeoJSON(self):
         """Display the DGGS-JSON to GeoJSON Dialog box."""

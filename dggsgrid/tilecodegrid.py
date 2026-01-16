@@ -19,6 +19,7 @@ from ..settings import settings
 from vgrid.dggs import mercantile
 
 from vgrid.utils.constants import DGGS_TYPES
+from vgrid.utils.geometry import get_tilecode_resolution_from_scale_denominator
 
 
 class TilecodeGrid(QObject):
@@ -52,7 +53,8 @@ class TilecodeGrid(QObject):
 
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
-            resolution = self._get_tilecode_resolution(scale)
+            # resolution = self._get_tilecode_resolution(scale)
+            resolution = get_tilecode_resolution_from_scale_denominator(scale,relative_depth=8,mm_per_pixel = 0.28)
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -148,7 +150,7 @@ class TilecodeGrid(QObject):
         max_res = DGGS_TYPES['tilecode']["max_res"]
 
         # Tilecode resolution mapping - similar to other grids
-        res = max(min_res, int(floor(zoom * 1.1)))
+        res = max(min_res, floor(zoom * 1.1))
 
         if res > max_res:
             return max_res

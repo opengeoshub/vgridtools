@@ -11,8 +11,8 @@ from qgis.PyQt.QtCore import pyqtSlot
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
-from math import log2
-
+from math import log2, floor        
+from vgrid.utils.constants import DGGS_TYPES
 # OLC imports
 from vgrid.generator.olcgrid import olc_grid as olc_grid_vgrid, olc_refine_cell
 from vgrid.utils.io import validate_coordinate
@@ -175,13 +175,17 @@ class OLCGrid(QObject):
             return 6
         elif zoom <= 18:
             return 8
-        elif zoom <= 22:
+        elif zoom <= 21:
             return 10
-        elif zoom <= 26:
+        elif zoom <= 23:
             return 11
-        elif zoom <= 30:
+        elif zoom <= 25:
             return 12
-        return 13
+        elif zoom <= 27:
+            return 13
+        elif zoom <= 29:
+            return 14
+        return 15
 
     @pyqtSlot()
     def removeMarker(self):

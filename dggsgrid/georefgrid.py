@@ -19,6 +19,7 @@ from vgrid.conversion.latlon2dggs import latlon2georef
 from vgrid.conversion.dggs2geo import georef2geo
 from vgrid.utils.constants import DGGS_TYPES
 from math import floor  
+from vgrid.utils.geometry import get_georef_resolution_from_scale_denominator
 
 class GEOREFGrid(QObject):  
     def __init__(self, vgridtools, canvas, iface):
@@ -56,6 +57,7 @@ class GEOREFGrid(QObject):
 
             scale = self.canvas.scale()
             resolution = self._get_georef_resolution(scale)
+            # resolution = get_georef_resolution_from_scale_denominator(scale,relative_depth=2,mm_per_pixel = 0.28)
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -124,22 +126,31 @@ class GEOREFGrid(QObject):
         if self.georef_enabled:
             self.georef_grid()
 
+    # def _get_georef_resolution_old(self, scale):
+    #     # Map scale to zoom, then to GEOREF resolution (0..10)
+    #     zoom = 29.1402 - log2(scale)
+    #     if zoom <= 6:
+    #         return 0
+    #     elif zoom <= 10:
+    #         return 1
+    #     elif zoom <= 15:
+    #         return 2
+    #     elif zoom <= 19:
+    #         return 3
+    #     elif zoom <= 22:
+    #         return 4
+    #     elif zoom <= 24:
+    #         return 5
+    #     return 6
+    
     def _get_georef_resolution(self, scale):
-        # Map scale to zoom, then to GEOREF resolution (0..10)
+        # Map scale to zoom, then to GEOREF resolution using formula:
         zoom = 29.1402 - log2(scale)
-        if zoom <= 6:
-            return 0
-        elif zoom <= 10:
-            return 1
-        elif zoom <= 15:
-            return 2
-        elif zoom <= 19:
-            return 3
-        elif zoom <= 22:
-            return 4
-        elif zoom <= 24:
-            return 5
-        return 6
+        min_res = DGGS_TYPES['georef']["min_res"]
+        max_res = DGGS_TYPES['georef']["max_res"]
+        res = min(max_res, max(min_res, floor(zoom*0.2)))
+        return res
+
         
     @pyqtSlot()
     def removeMarker(self):

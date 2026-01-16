@@ -15,7 +15,7 @@ from ..settings import settings
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from math import log2, floor        
 from vgrid.utils.io import validate_coordinate
-from vgrid.utils.geometry import geodesic_buffer
+from vgrid.utils.geometry import geodesic_buffer,get_h3_resolution_from_scale_denominator
 from vgrid.utils.constants import DGGS_TYPES
 
 class H3Grid(QObject):
@@ -53,7 +53,8 @@ class H3Grid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self._get_h3_resolution(scale)
+            # resolution = self._get_h3_resolution(scale)
+            resolution = get_h3_resolution_from_scale_denominator(scale,relative_depth=6,mm_per_pixel = 0.28)
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -140,7 +141,7 @@ class H3Grid(QObject):
         zoom = 29.1402 - log2(scale)
         min_res = DGGS_TYPES['h3']["min_res"]
         max_res = DGGS_TYPES['h3']["max_res"]
-        res = min(max_res, max(min_res, int((floor(zoom) - 3) * 0.8)) )
+        res = min(max_res, max(min_res, floor((zoom - 3) * 0.8)))
         return res     
 
     @pyqtSlot()

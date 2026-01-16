@@ -184,7 +184,7 @@ class QTMGrid(QObject):
         min_res = DGGS_TYPES['qtm']["min_res"]
         max_res = DGGS_TYPES['qtm']["max_res"]
 
-        res = min(max_res, max(min_res, int(floor(zoom))) )   
+        res = min(max_res, max(min_res, floor(zoom)))   
         return res
 
     @pyqtSlot()

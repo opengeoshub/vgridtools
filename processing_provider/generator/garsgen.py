@@ -50,6 +50,7 @@ from ...settings import settings
 from ...utils.latlon import epsg4326
 from vgrid.utils.io import validate_coordinate
 from vgrid.utils.constants import DGGS_TYPES
+from vgrid.utils.constants import GARS_RESOLUTION_MINUTES
 
 
 class GARSGen(QgsProcessingAlgorithm):

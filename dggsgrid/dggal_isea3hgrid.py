@@ -23,7 +23,6 @@ from vgrid.utils.constants import DGGAL_TYPES
 app = Application(appGlobals=globals())
 pydggal_setup(app)
 
-
 class DGGALISEA3HGrid(QObject):
     def __init__(self, vgridtools, canvas, iface):
         super(DGGALISEA3HGrid, self).__init__()
@@ -64,7 +63,7 @@ class DGGALISEA3HGrid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self._get_dggal_resolution(scale)
+            resolution = self.dggrs.getLevelFromScaleDenominator(scale,relativeDepth=10,mmPerPixel = 0.28)
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -145,7 +144,7 @@ class DGGALISEA3HGrid(QObject):
         min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
         max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
 
-        res = min(max_res, max(min_res, int(floor(zoom * 1.15))) )
+        res = min(max_res, max(min_res, floor(zoom * 1.15)))
         return res
 
     @pyqtSlot()

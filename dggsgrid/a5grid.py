@@ -18,7 +18,7 @@ from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.latlon2dggs import latlon2a5
 from math import log2, floor
 from vgrid.utils.constants import DGGS_TYPES
-
+from vgrid.utils.geometry import get_a5_resolution_from_scale_denominator
 
 class A5Grid(QObject):
     def __init__(self, vgridtools, canvas, iface):
@@ -55,7 +55,8 @@ class A5Grid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self._get_a5_resolution(scale)
+            # resolution = self._get_a5_resolution(scale)
+            resolution = get_a5_resolution_from_scale_denominator(scale,relative_depth=8,mm_per_pixel = 0.28)
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -141,18 +142,16 @@ class A5Grid(QObject):
 
     def _get_a5_resolution(self, scale):
         # Map scale to approximate zoom, then to A5 resolution similar cadence as H3
-
         zoom = 29.1402 - log2(scale)
         min_res = DGGS_TYPES['a5']["min_res"]
         max_res = DGGS_TYPES['a5']["max_res"]
-
-        res = min(max_res, max(min_res, int(floor(zoom*0.9))))
+        res = min(max_res, max(min_res, floor(zoom*0.95)))
         return res
 
     def _resolution_to_step(self, resolution):
         # Mirror logic from processing a5 grid
         if resolution == 0:
-            return 35, 35
+            return 36, 36
         if resolution == 1:
             return 18, 18
         if resolution == 2:
