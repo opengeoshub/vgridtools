@@ -9,7 +9,7 @@ from qgis.core import (
     QgsField,
     QgsPointXY,
 )
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 import math
 import h3
 

@@ -41,7 +41,7 @@ from qgis.core import (
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 import os
 from vgrid.dggs import mgrs
 from ...utils.imgs import Imgs
@@ -346,7 +346,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         if not isinstance(layer, QgsVectorLayer):
             return
         sym = layer.renderer().symbol().symbolLayer(0)
-        sym.setBrushStyle(Qt.NoBrush)
+        sym.setBrushStyle(Qt.BrushStyle.NoBrush)
         sym.setStrokeColor(self.line_color)
         if settings.gridLabel:
             label = QgsPalLayerSettings()

@@ -58,7 +58,7 @@ class DGGSSettingsDialog(QDialog):
             self.res_spins[dggs_type] = res_spin
 
         # Add buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
@@ -254,7 +254,7 @@ class DGGSSettingsAlgorithm(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         # Get selected DGGS type and resolution from dialog
         dialog = self.createCustomDialog()
-        if not dialog.exec_():
+        if not dialog.exec():
             return {}  # User cancelled
 
         selected_index, selected_resolution = dialog.getSelectedTypeAndResolution()

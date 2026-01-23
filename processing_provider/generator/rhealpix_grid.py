@@ -39,7 +39,7 @@ from qgis.core import (  # type: ignore
 from qgis.PyQt.QtGui import QIcon, QColor  # type: ignore
 from qgis.PyQt.QtCore import QCoreApplication, QSettings, Qt
 from qgis.utils import iface
-from PyQt5.QtCore import QVariant  # type: ignore
+from qgis.PyQt.QtCore import QVariant  # type: ignore
 import os
 
 from vgrid.utils.geometry import rhealpix_cell_to_polygon, geodesic_dggs_metrics
@@ -361,7 +361,7 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         if not isinstance(layer, QgsVectorLayer):
             return
         sym = layer.renderer().symbol().symbolLayer(0)
-        sym.setBrushStyle(Qt.NoBrush)
+        sym.setBrushStyle(Qt.BrushStyle.NoBrush)
         sym.setStrokeColor(self.line_color)
         if settings.gridLabel:
             label = QgsPalLayerSettings()

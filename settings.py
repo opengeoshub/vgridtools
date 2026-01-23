@@ -257,10 +257,10 @@ class Settings:
 
 
         ### General Settings ###
-        self.zoomLevel = int(qset.value("/vgrid/zoomLevel", Qt.Checked))
-        self.gridLabel = int(qset.value("/vgrid/gridLabel", Qt.Checked))
-        self.persistentMarker = int(qset.value("/vgrid/persistentMarker", Qt.Checked))
-        self.splitAntimeridian = int(qset.value("/vgrid/splitAntimeridian", Qt.Checked))
+        self.zoomLevel = int(qset.value("/vgrid/zoomLevel", Qt.CheckState.Checked))
+        self.gridLabel = int(qset.value("/vgrid/gridLabel", Qt.CheckState.Checked))
+        self.persistentMarker = int(qset.value("/vgrid/persistentMarker", Qt.CheckState.Checked))
+        self.splitAntimeridian = int(qset.value("/vgrid/splitAntimeridian", Qt.CheckState.Checked))
         self.coordOrder = int(qset.value("/vgrid/coordOrder", CoordOrder.OrderYX))
         self.epsg4326Precision = int(qset.value("/vgrid/epsg4326Precision", 8))
 
@@ -337,7 +337,7 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.coordOrderComboBox.addItems(
             [tr("Lat, Lon (Y,X) - Google Map Order"), tr("Lon, Lat (X,Y) Order")]
         )
-        self.buttonBox.button(QDialogButtonBox.RestoreDefaults).clicked.connect(
+        self.buttonBox.button(QDialogButtonBox.StandardButton.RestoreDefaults).clicked.connect(
             self.restoreDefaults
         )
         self.readSettings()
@@ -484,10 +484,10 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.digipinColorButton.setColor(QColor("#672a5c"))
 
         ### General Settings ###
-        self.zoomLevelCheckBox.setCheckState(Qt.Checked)
-        self.gridLabelCheckBox.setCheckState(Qt.Checked)
-        self.persistentMarkerCheckBox.setCheckState(Qt.Checked)
-        self.splitAntimeridianCheckBox.setCheckState(Qt.Checked)
+        self.zoomLevelCheckBox.setCheckState(Qt.CheckState.Checked)
+        self.gridLabelCheckBox.setCheckState(Qt.CheckState.Checked)
+        self.persistentMarkerCheckBox.setCheckState(Qt.CheckState.Checked)
+        self.splitAntimeridianCheckBox.setCheckState(Qt.CheckState.Checked)
         self.coordOrderComboBox.setCurrentIndex(CoordOrder.OrderYX)
         self.epsg4326PrecisionSpinBox.setValue(8)
 
@@ -931,10 +931,14 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.digipinColorButton.setColor(settings.digipinColor)
 
         ### General Settings ###
-        self.zoomLevelCheckBox.setCheckState(settings.zoomLevel)
-        self.gridLabelCheckBox.setCheckState(settings.gridLabel)
-        self.persistentMarkerCheckBox.setCheckState(settings.persistentMarker)
-        self.splitAntimeridianCheckBox.setCheckState(settings.splitAntimeridian)
+        self.zoomLevelCheckBox.setCheckState(Qt.CheckState(settings.zoomLevel))
+        self.gridLabelCheckBox.setCheckState(Qt.CheckState(settings.gridLabel))
+        self.persistentMarkerCheckBox.setCheckState(
+            Qt.CheckState(settings.persistentMarker)
+        )
+        self.splitAntimeridianCheckBox.setCheckState(
+            Qt.CheckState(settings.splitAntimeridian)
+        )
         self.coordOrderComboBox.setCurrentIndex(settings.coordOrder)
         self.epsg4326PrecisionSpinBox.setValue(settings.epsg4326Precision)
 

@@ -85,7 +85,7 @@ class DGGSettingsDialog(QDialog, FORM_CLASS):
         self.iface = iface
 
         # Connect signals
-        self.buttonBox.button(QDialogButtonBox.RestoreDefaults).clicked.connect(
+        self.buttonBox.button(QDialogButtonBox.StandardButton.RestoreDefaults).clicked.connect(
             self.restoreDefaults
         )
         self.buttonBox.accepted.connect(self.accept)

@@ -63,7 +63,7 @@ from qgis.core import (
     QgsFields,
     QgsProcessingException,
 )
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 
 
 ##########################

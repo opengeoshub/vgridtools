@@ -35,10 +35,10 @@ def check_and_install_libraries(filename):
             None,
             "Missing Dependencies",
             message,
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
-        if reply == QMessageBox.Yes:
+        if reply == QMessageBox.StandardButton.Yes:
             # Install the missing packages
             install_libraries(missing_packages)
             # settings.setValue("libraries_installed", True)  # Mark libraries as installed
@@ -46,7 +46,7 @@ def check_and_install_libraries(filename):
                 "cached_libraries", required_libraries
             )  # Cache the list of installed libraries
 
-        elif reply == QMessageBox.No:
+        elif reply == QMessageBox.StandardButton.No:
             # Close the current dialog or window when the user clicks "No"
             return  # Stop installation if user declines
     else:

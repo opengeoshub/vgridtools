@@ -12,11 +12,10 @@
 import os
 from qgis.PyQt.QtWidgets import QWidget, QApplication, QDialog,QDialogButtonBox, QTableWidgetItem, QFileDialog, QMessageBox, QMenu, QSpinBox
 from qgis.PyQt.uic import loadUiType
-from qgis.core import QgsProject, QgsVectorLayer       
+from qgis.core import QgsProject, QgsVectorLayer, Qgis
 from owslib.ogcapi import *  
-from PyQt5.QtCore import Qt, QUrl
-from PyQt5.QtGui import QDesktopServices, QColor
-from PyQt5 import QtCore, QtWidgets
+from qgis.PyQt.QtCore import Qt, QUrl
+from qgis.PyQt.QtGui import QDesktopServices, QColor
 
 from urllib.request import urlopen
 import json
@@ -45,8 +44,8 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
         self.set_status_bar(self.status,self.LblStatus)
 
 
-        self.BtnApplyClose.button(QDialogButtonBox.Close).setAutoDefault(False)
-        self.Filter.setFocus(True)
+        self.BtnApplyClose.button(QDialogButtonBox.StandardButton.Close).setAutoDefault(False)
+        self.Filter.setFocus()
         QWidget.setTabOrder(self.Filter, self.TblZones)
         self.BtnOutputFolder.clicked.connect(self.browse_outfile)
         self.BtnConnect.clicked.connect(self.readdggs)
@@ -81,40 +80,57 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
 
         self.cboServerName.setStyleSheet("QComboBox {combobox-popup: 0; }") # To enable the setMaxVisibleItems
         self.cboServerName.setMaxVisibleItems(10)
-        self.cboServerName.view().setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.cboServerName.view().setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
         self.TblZones.itemSelectionChanged.connect(self.onZoneSelectionChanged)
         self.TblZones.itemClicked.connect(self.onTableItemClicked)
         # Enable context menu
-        self.TblZones.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.TblZones.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.TblZones.customContextMenuRequested.connect(self.showContextMenu)
-        self.BtnApplyClose.button(QtWidgets.QDialogButtonBox.Close).clicked.connect(self.closeDialog)
+        self.BtnApplyClose.button(QDialogButtonBox.StandardButton.Close).clicked.connect(self.closeDialog)
 
         self.dggs_servers = [
             'GNOSIS Map Server',
+            'CRIM',
+            'GeoInsight',
+            'Geolynx',
+            'Geomatys',
+            'Safe Software',
             'Custom',
             ]
 
         self.dggs_urls = [
             'https://maps.gnosis.earth/ogcapi',
+            'https://hirondelle.crim.ca/dggs-api',
+            'https://dggs.geoinsight.ai/',
+            'https://dggs.geokuup.ee/dggs-api',
+            'https://server.examind.com/examind/WS/dggs/ogcaipilot',
+            'https://ogc-dggs-testing.fmecloud.com/api/dggs',
             '',
         ]
         self.cboServerName.addItems(self.dggs_servers)
 
-    def closeDialog(self):
+    def _reset_dialog_state(self):
         # Clear UI elements when dialog is closed
         self.cboCollections.clear()
         self.cboDGGS.clear()
         self.TxtAPI.clear()
         self.TblZones.setRowCount(0)
         self.LblStatus.clear()
-        self.set_status_bar(self.status,self.LblStatus)
-        
+        self.set_status_bar(self.status, self.LblStatus)
+
         # Restore cursor
-        QApplication.setOverrideCursor(Qt.ArrowCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
         QApplication.restoreOverrideCursor()
-        
+
+    def closeDialog(self):
+        self._reset_dialog_state()
         self.close()
+
+    def closeEvent(self, event):
+        # Handle window "X" close to keep state consistent
+        self._reset_dialog_state()
+        event.accept()
 
     def updateDGGSTable(self):
         name = self.Filter.text().lower()
@@ -242,13 +258,13 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                         # Display collection ID in the table
                         id_item = QTableWidgetItem(collection_id)
                         # Store collection ID as data (using UserRole) for consistency
-                        id_item.setData(QtCore.Qt.UserRole, collection_id)
-                        id_item.setFlags( QtCore.Qt.ItemIsSelectable |  QtCore.Qt.ItemIsEnabled )
+                        id_item.setData(Qt.ItemDataRole.UserRole, collection_id)
+                        id_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
                         table_widget.setItem(i, 0, id_item)
                         status_callback(((i+1)/len(collections))*100,None)
                     message = str(i+1) + " layers loaded"
                     MessageBar = self.iface.messageBar()
-                    MessageBar.pushMessage(message, 0, 2)
+                    MessageBar.pushMessage("Info", message, level=Qgis.Info, duration=2)
                     self.LblZones.setText(message)
                     self.Filter.setEnabled(True)
                     self.Filter.setFocus(True)
@@ -256,7 +272,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                     message = " 0 layer loaded"
                     self.LblZones.setText(message)
                     MessageBar = self.iface.messageBar()
-                    MessageBar.pushMessage(message, 0, 2)
+                    MessageBar.pushMessage("Info", message, level=Qgis.Info, duration=2)
                     self.Filter.setEnabled(False)
                     self.Filter.setFocus(False)
 
@@ -269,7 +285,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
     def load_collections(self, url):
         """Load first-level collections into cboCollections combobox"""
         # Set cursor to wait
-        QApplication.setOverrideCursor(Qt.WaitCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         
         # Update status - loading
         self.LblStatus.setText("Loading collections...")        
@@ -281,34 +297,38 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 all_collections = data_json.get('collections', [])
                 collections = []
                 for col in all_collections:
-                    # Get href from collection
+                    if not isinstance(col, dict):
+                        continue
+                    # Prefer direct collection id from the collection object
+                    collection_id = col.get('id')
                     href = None
-                    if 'href' in col:
-                        href = col['href']
-                    elif 'links' in col:
-                        for link in col['links']:
-                            if link.get('rel') == 'self' or link.get('rel') == 'collection':
-                                href = link.get('href')
-                                break
-                    
-                    if href:
-                        href_clean = href.split('?')[0].split('#')[0].rstrip('/')
-                        href_parts = [p for p in href_clean.split('/') if p]
-                        try:
-                            collections_idx = href_parts.index('collections')
-                            if collections_idx + 1 < len(href_parts):
-                                collection_id = href_parts[collections_idx + 1]
-                                if (collections_idx + 2 >= len(href_parts) and collection_id and 
-                                    ':' not in collection_id):
-                                    # Extract title from collection, if available
-                                    title = col.get('title', '')
-                                    collections.append({
-                                        'id': collection_id,
-                                        'href': href,
-                                        'title': title
-                                    })
-                        except ValueError:
-                            pass
+                    # Fallback: derive id from collection links if needed 
+                    if not collection_id:
+                        if 'href' in col:
+                            href = col['href']
+                        elif 'links' in col:
+                            for link in col['links']:
+                                if link.get('rel') == 'self' or link.get('rel') == 'collection':
+                                    href = link.get('href')
+                                    break
+                        if href:
+                            href_clean = href.split('?')[0].split('#')[0].rstrip('/')
+                            href_parts = [p for p in href_clean.split('/') if p]
+                            try:
+                                collections_idx = href_parts.index('collections')
+                                if collections_idx + 1 < len(href_parts):
+                                    collection_id = href_parts[collections_idx + 1]
+                            except ValueError:
+                                collection_id = None
+
+                    if collection_id:
+                        # Extract title from collection, if available
+                        title = col.get('title', '')
+                        collections.append({
+                            'id': collection_id,
+                            'href': href,
+                            'title': title
+                        })
                 
                 # Populate cboCollections
                 self._updating_combos = True
@@ -318,7 +338,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                     self.cboCollections.addItem(col['id'], col['id'])  # Store ID as data
                     # Set title as tooltip if available
                     if col.get('title'):
-                        self.cboCollections.setItemData(i, col['title'], QtCore.Qt.ToolTipRole)
+                        self.cboCollections.setItemData(i, col['title'], Qt.ItemDataRole.ToolTipRole)
                     # Update progress
                     if total_collections > 0:
                         percent = int(((i + 1) / total_collections) * 100)
@@ -329,7 +349,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 if len(collections) > 0:
                     message = str(len(collections)) + " collections loaded"
                     MessageBar = self.iface.messageBar()
-                    MessageBar.pushMessage(message, 0, 2)
+                    MessageBar.pushMessage("Info", message, level=Qgis.Info, duration=2)
                     # Update status - completed
                     self.LblStatus.setText("Collections loaded")
                     self.status_bar.setValue(100)
@@ -347,7 +367,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
             QMessageBox.warning(None, "Connection Error", "Failed to load collections:\n" + str(e))
         finally:
             # Restore cursor to default
-            QApplication.setOverrideCursor(Qt.ArrowCursor)
+            QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
 
     def onCollectionChanged(self, index):
         """Handle collection selection change - load DGGS items into cboDGGS"""
@@ -411,7 +431,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                         self.cboDGGS.addItem(dggs_id, dggs_id)
                         # Set title as tooltip if available
                         if title:
-                            self.cboDGGS.setItemData(i, title, QtCore.Qt.ToolTipRole)
+                            self.cboDGGS.setItemData(i, title, Qt.ItemDataRole.ToolTipRole)
                     
                     # Update progress
                     if total_items > 0:
@@ -502,14 +522,14 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                         # Column 0: Zone ID (as hyperlink)
                         zone_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id + '?f=json'
                         zone_id_item = QTableWidgetItem(str(zone_id))
-                        zone_id_item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+                        zone_id_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
                         # Store zone URL in item data
-                        zone_id_item.setData(QtCore.Qt.UserRole, zone_url)
+                        zone_id_item.setData(Qt.ItemDataRole.UserRole, zone_url)
                         # Also store full zone data if it's a dict (for backward compatibility)
                         if isinstance(zone, dict):
-                            zone_id_item.setData(QtCore.Qt.UserRole + 1, zone)
+                            zone_id_item.setData(Qt.ItemDataRole.UserRole + 1, zone)
                         else:
-                            zone_id_item.setData(QtCore.Qt.UserRole + 1, zone_id)
+                            zone_id_item.setData(Qt.ItemDataRole.UserRole + 1, zone_id)
                         # Style as link (blue color)
                         zone_id_item.setForeground(QColor(0, 0, 255))  # Blue color
                         self.TblZones.setItem(i, 0, zone_id_item)
@@ -517,9 +537,9 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                         # Column 1: Data (as hyperlink)
                         data_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id + '/data'
                         data_item = QTableWidgetItem("Data")
-                        data_item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+                        data_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
                         # Store URL in item data
-                        data_item.setData(QtCore.Qt.UserRole, data_url)
+                        data_item.setData(Qt.ItemDataRole.UserRole, data_url)
                         # Style as link (blue color)
                         data_item.setForeground(QColor(0, 0, 255))  # Blue color
                         self.TblZones.setItem(i, 1, data_item)
@@ -527,11 +547,11 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                         # Column 2: DGGS-JSON (as hyperlink)
                         dggs_json_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id + '/data.json'
                         dggs_json_item = QTableWidgetItem("DGGS-JSON")
-                        dggs_json_item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+                        dggs_json_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
                         # Store base URL (without zone-depth parameter) in item data for later updates
-                        dggs_json_item.setData(QtCore.Qt.UserRole, dggs_json_url)
+                        dggs_json_item.setData(Qt.ItemDataRole.UserRole, dggs_json_url)
                         # Store collection_id, dggs_id, zone_id for URL updates
-                        dggs_json_item.setData(QtCore.Qt.UserRole + 2, {'collection_id': collection_id, 'dggs_id': dggs_id, 'zone_id': zone_id, 'base_url': base_url})
+                        dggs_json_item.setData(Qt.ItemDataRole.UserRole + 2, {'collection_id': collection_id, 'dggs_id': dggs_id, 'zone_id': zone_id, 'base_url': base_url})
                         # Style as link (blue color)
                         dggs_json_item.setForeground(QColor(0, 0, 255))  # Blue color
                         self.TblZones.setItem(i, 2, dggs_json_item)
@@ -560,9 +580,9 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                         # Column 4: Zone Geometry (as hyperlink)
                         geometry_url = base_url.rstrip('/') + "/collections/" + collection_id + "/dggs/" + dggs_id + "/zones/" + zone_id + '.geojson'
                         geometry_item = QTableWidgetItem("GeoJSON")
-                        geometry_item.setFlags(QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled)
+                        geometry_item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
                         # Store URL in item data
-                        geometry_item.setData(QtCore.Qt.UserRole, geometry_url)
+                        geometry_item.setData(Qt.ItemDataRole.UserRole, geometry_url)
                         # Style as link (blue color)
                         geometry_item.setForeground(QColor(0, 0, 255))  # Blue color
                         self.TblZones.setItem(i, 4, geometry_item)
@@ -575,7 +595,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                     message = str(len(zones)) + " zones loaded"
                     self.LblZones.setText(message)
                     MessageBar = self.iface.messageBar()
-                    MessageBar.pushMessage(message, 0, 2)
+                    MessageBar.pushMessage("Info", message, level=Qgis.Info, duration=2)
                     self.Filter.setEnabled(True)
                     # Update status - completed
                     self.LblStatus.setText("Zones loaded")
@@ -608,7 +628,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
             return
         
         # Get stored URL components
-        url_data = dggs_json_item.data(QtCore.Qt.UserRole + 2)
+        url_data = dggs_json_item.data(Qt.ItemDataRole.UserRole + 2)
         if url_data:
             base_url = url_data['base_url']
             collection_id = url_data['collection_id']
@@ -633,10 +653,10 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 dggs_json_url = base_dggs_json_url
             
             # Update the stored URL
-            dggs_json_item.setData(QtCore.Qt.UserRole, dggs_json_url)
+            dggs_json_item.setData(Qt.ItemDataRole.UserRole, dggs_json_url)
         else:
             # Fallback: get base URL from item data and update zone-depth parameter
-            current_url = dggs_json_item.data(QtCore.Qt.UserRole)
+            current_url = dggs_json_item.data(Qt.ItemDataRole.UserRole)
             if current_url:
                 # Remove existing zone-depth parameter if present
                 # Remove zone-depth parameter from URL
@@ -667,7 +687,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 else:
                     dggs_json_url = base_url
                 
-                dggs_json_item.setData(QtCore.Qt.UserRole, dggs_json_url)
+                dggs_json_item.setData(Qt.ItemDataRole.UserRole, dggs_json_url)
             else:
                 dggs_json_url = None
         
@@ -687,7 +707,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
             dggs_json_item = self.TblZones.item(row, col)
             max_res = 10  # Default fallback
             if dggs_json_item:
-                url_data = dggs_json_item.data(QtCore.Qt.UserRole + 2)
+                url_data = dggs_json_item.data(Qt.ItemDataRole.UserRole + 2)
                 if url_data and 'dggs_id' in url_data:
                     dggs_type_lower = url_data['dggs_id'].lower()
                     if DGGAL_TYPES and dggs_type_lower in DGGAL_TYPES:
@@ -718,7 +738,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
         column = item.column()
         # Check if clicked on Zone ID (column 0), Data (column 1), DGGS-JSON (column 2) or GeoJSON (column 4)
         if column == 0 or column == 1 or column == 2 or column == 4:
-            url = item.data(QtCore.Qt.UserRole)
+            url = item.data(Qt.ItemDataRole.UserRole)       
             if url:
                 url_obj = QUrl(url)
                 if url_obj.isValid():
@@ -782,7 +802,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
         action_download_load.triggered.connect(lambda: self.downloadAndLoadZone(zone_id, collection_id, dggs_id, base_url))
         
         # Show menu at cursor position
-        menu.exec_(self.TblZones.viewport().mapToGlobal(position))
+        menu.exec(self.TblZones.viewport().mapToGlobal(position))
 
     def downloadAndLoadZone(self, zone_id, collection_id, dggs_id, base_url):
         """Download zone geometry and load into QGIS"""
@@ -808,7 +828,12 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 self.iface.zoomToActiveLayer()
                 self.LblStatus.setText("Zone " + zone_id + " loaded")
                 MessageBar = self.iface.messageBar()
-                MessageBar.pushMessage("Zone " + zone_id + " downloaded and loaded", 0, 2)
+                MessageBar.pushMessage(
+                    "Info",
+                    "Zone " + zone_id + " downloaded and loaded",
+                    level=Qgis.Info,
+                    duration=2,
+                )
             else:
                 QMessageBox.warning(None, "Error", "Failed to load zone GeoJSON file")
         except Exception as e:

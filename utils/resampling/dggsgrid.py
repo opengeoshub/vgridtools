@@ -9,7 +9,7 @@ from qgis.core import (
     QgsFeature,
     QgsGeometry,
 )
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 import h3
 from vgrid.dggs import s2, qtm, olc, mercantile
 from vgrid.generator.olcgrid import olc_refine_cell

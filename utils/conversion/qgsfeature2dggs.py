@@ -2,7 +2,7 @@ from shapely.geometry import Polygon, box
 from shapely.wkt import loads as wkt_loads
 import platform
 from qgis.core import QgsFeature, QgsGeometry, QgsField, QgsFields, QgsWkbTypes
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 import re
 import h3
 import a5

@@ -27,15 +27,16 @@ __author__ = "Thang Quach"
 __date__ = "2024-11-20"
 __copyright__ = "(L) 2024 by Thang Quach"
 
-from PyQt5.QtWidgets import QInputDialog
+import sys
+from qgis.PyQt.QtWidgets import QInputDialog
 
 
-# noinspection PyPep8Naming
-def classFactory(iface):  # pylint: disable=invalid-name
+
+def classFactory(iface): 
     try:
         import vgrid
     except ImportError:
-        command = "import pip\npip.main(['install','vgrid, '--upgrade'])"
+        command = "import pip\npip.main(['install', 'vgrid','--upgrade'])"
         text, ok = QInputDialog.getMultiLineText(
             None,
             "Vgrid DGGS - Vgrid module not found",

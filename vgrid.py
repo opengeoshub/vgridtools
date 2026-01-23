@@ -162,7 +162,7 @@ class VgridTools(object):
         self.toolbar.setToolTip(tr("Vgrid Toolbar"))
 
         self.crossRb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
-        self.crossRb.setColor(Qt.red)
+        self.crossRb.setColor(Qt.GlobalColor.red)
 
         self.iface.mapCanvas().scaleChanged.connect(self.displayZoomLevel)
 
@@ -208,17 +208,24 @@ class VgridTools(object):
         # Create DGGS Client submenu
         self.dggs_client_menu = QMenu("DGGS Client")
         dggs_client_icon = QIcon(os.path.dirname(__file__) + "/images/dggsclient/ogc.png")
-        self.Vgrid_add_submenu2(self.dggs_client_menu, dggs_client_icon)
+        # self.Vgrid_add_submenu2(self.dggs_client_menu, dggs_client_icon)
+        self.dggsClientAction = QAction(
+            dggs_client_icon, tr("DGGS Client"), self.iface.mainWindow()
+        )
+        self.dggsClientAction.setObjectName("dggsClient")
+        self.dggsClientAction.setToolTip(tr("DGGS Client"))
+        self.dggsClientAction.triggered.connect(self.showDGGSClient)
+        self.Vgrid_menu.addAction(self.dggsClientAction)
 
         # Create GNOSIS Map Server action
-        gnosis_icon = QIcon(os.path.dirname(__file__) + "/images/dggsclient/gnosis.svg")
-        self.gnosisMapServerAction = QAction(
-            gnosis_icon, tr("GNOSIS Map Server"), self.iface.mainWindow()
-        )
-        self.gnosisMapServerAction.setObjectName("gnosisMapServer")
-        self.gnosisMapServerAction.setToolTip(tr("GNOSIS Map Server"))
-        self.gnosisMapServerAction.triggered.connect(self.showDGGSClient)
-        self.dggs_client_menu.addAction(self.gnosisMapServerAction)
+        # gnosis_icon = QIcon(os.path.dirname(__file__) + "/images/dggsclient/gnosis.svg")
+        # self.gnosisMapServerAction = QAction(
+        #     gnosis_icon, tr("GNOSIS Map Server"), self.iface.mainWindow()
+        # )
+        # self.gnosisMapServerAction.setObjectName("gnosisMapServer")
+        # self.gnosisMapServerAction.setToolTip(tr("GNOSIS Map Server"))
+        # self.gnosisMapServerAction.triggered.connect(self.showDGGSClient)
+        # self.dggs_client_menu.addAction(self.gnosisMapServerAction)
 
 
         # Create Lat Lon to DGGS action (direct call, no submenu)
@@ -1276,7 +1283,7 @@ class VgridTools(object):
                 self, self.settingsDialog, self.iface, self.iface.mainWindow()
             )
             self.latlon2DGGSDialog.setFloating(True)
-            self.iface.addDockWidget(Qt.RightDockWidgetArea, self.latlon2DGGSDialog)
+            self.iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.latlon2DGGSDialog)
         self.latlon2DGGSDialog.show()
 
     def showDGGSClient(self):
@@ -1499,4 +1506,4 @@ class VgridTools(object):
         self.dggsJson2GeoJsonDialog.show()
 
     def VgridHome(self):
-        webbrowser.open("https://vgrid.vn")
+        webbrowser.open("https://vgridhome.gishub.vn")

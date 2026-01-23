@@ -12,13 +12,12 @@
 import os
 from qgis.PyQt.QtWidgets import  QApplication, QDialog, QDialogButtonBox, QFileDialog, QMessageBox
 from qgis.PyQt.uic import loadUiType
-from PyQt5 import QtWidgets
 from urllib.parse import urlparse
 import requests, json
 from dggal import *
 from vgrid.utils.geometry import dggal_generatezonefeature
 FORM_CLASS, _ = loadUiType(os.path.join(os.path.dirname(__file__), "ui/dggsjon2geojson.ui"))
-from PyQt5.QtCore import Qt
+from qgis.PyQt.QtCore import Qt
 from qgis.core import QgsProject       
 
 
@@ -29,12 +28,12 @@ class DGGSJSON2GeoJSONWidget(QDialog, FORM_CLASS):
         self.iface = iface
         self.canvas = iface.mapCanvas()
         self.set_status_bar(self.status,self.LblStatus)
-        self.BtnApplyClose.button(QDialogButtonBox.Close).setAutoDefault(False)
+        self.BtnApplyClose.button(QDialogButtonBox.StandardButton.Close).setAutoDefault(False)
                 
         self.form_clear()
         self.BtnInputFolder.clicked.connect(self.read_json)
-        self.BtnApplyClose.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.run)
-        self.BtnApplyClose.button(QtWidgets.QDialogButtonBox.Close).clicked.connect(self.form_clear)
+        self.BtnApplyClose.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(self.run)
+        self.BtnApplyClose.button(QDialogButtonBox.StandardButton.Close).clicked.connect(self.form_clear)
         # Connect selection change signal to enable/disable ChkSelected
         self.lsDGGSJSON.itemSelectionChanged.connect(self.on_selection_changed)
         # Initially disable ChkSelected
@@ -384,7 +383,7 @@ class DGGSJSON2GeoJSONWidget(QDialog, FORM_CLASS):
         self.LinInputFolder.setText(home_path)   
         
         # Restore cursor
-        QApplication.setOverrideCursor(Qt.ArrowCursor)
+        QApplication.setOverrideCursor(Qt.CursorShape.ArrowCursor)
         QApplication.restoreOverrideCursor()
         
         self.close()

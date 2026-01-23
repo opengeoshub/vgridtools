@@ -22,7 +22,7 @@ from qgis.core import (
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 import os
 import re
 import statistics

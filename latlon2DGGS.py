@@ -247,6 +247,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.customProjectionSelectionWidget.crsChanged.connect(self.customCrsChanged)
 
         zoomto_icon = QIcon(":/images/themes/default/mActionZoomIn.svg")
+        self.wgs84ZoomtoButton.setIcon(zoomto_icon) 
         self.h3ZoomtoButton.setIcon(zoomto_icon)
         self.s2ZoomtoButton.setIcon(zoomto_icon)
         self.a5ZoomtoButton.setIcon(zoomto_icon)
@@ -289,6 +290,8 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.garsZoomtoButton.setIcon(zoomto_icon)
         self.digipinZoomtoButton.setIcon(zoomto_icon)
 
+
+        self.wgs84ZoomtoButton.clicked.connect(self.zoomToWGS84)
         self.h3ZoomtoButton.clicked.connect(self.zoomToH3)
         self.s2ZoomtoButton.clicked.connect(self.zoomToS2)
         self.a5ZoomtoButton.clicked.connect(self.zoomToA5)
@@ -1518,7 +1521,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             label = "→ {}".format(latlon)
         else:
             label = "→ {}".format(xy)
-        self.projectLabel.setText(label)
+        self.latlonLabel.setText(label)
 
         label = "WGS 84 {}".format(latlon)
         self.wgs84Label.setText(label)
@@ -1730,6 +1733,18 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.updateCoordinates(-1, self.origPt, self.origCrs)
         self.updateLabel()
 
+    def zoomToWGS84(self):
+        try:
+            text = self.wgs84LineEdit.text().strip()
+            if not text:
+                return
+            lat, lon = parseDMSString(text, self.inputXYOrder)
+            pt = self.vgridtools.zoomTo(epsg4326, lat, lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+        except Exception:
+            self.showInvalid(0)
+    
     def zoomToH3(self):
         try:
             canvas_crs = self.canvas.mapSettings().destinationCrs()

@@ -14,7 +14,7 @@ To work with Vgrid DGGS directly in GeoPandas and Pandas, use the [vgridpandas](
 
 To visualize DGGS in Maplibre GL JS, try the [vgrid-maplibre](https://www.npmjs.com/package/vgrid-maplibre) library.
 
-For an interactive demo, visit the [Vgrid Homepage](https://vgrid.vn).
+For an interactive demo, visit the [Vgrid Homepage](https://vgridhome.gishub.vn).
 
 
 <div align="center">

@@ -51,7 +51,7 @@ from pyproj import Geod
 
 geod = Geod(ellps="WGS84")
 
-from PyQt5.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant
 
 from qgis.core import (
     QgsCoordinateReferenceSystem,
