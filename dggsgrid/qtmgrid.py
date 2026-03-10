@@ -129,13 +129,11 @@ class QTMGrid(QObject):
             for lvl in range(resolution):
                 levelFacets[lvl] = []
                 QTMID[lvl] = []
-
                 if lvl == 0:
                     for i, facet in enumerate(initial_facets):
                         facet_geom = qtm.constructGeometry(facet)
                         QTMID[0].append(str(i + 1))
                         levelFacets[0].append(facet)
-
                         # Check if facet intersects with extent
                         if facet_geom.intersects(extent_bbox):
                             geom = QgsGeometry.fromWkt(facet_geom.wkt)

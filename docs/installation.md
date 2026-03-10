@@ -5,9 +5,11 @@ This means that before you can use the plugin, you must ensure that the vgrid pa
 How you install vgrid depends on the type of QGIS installation you are using:
 
 ### OSGeo4W QGIS
-Open OSGeo4W Shell and run the following command before (or after) installing Vgrid Plugin
+Open OSGeo4W Shell and run the following commands before (or after) installing Vgrid Plugin
 ```
-pip install vgrid --upgrade
+python -m ensurepip
+python -m pip install pip --upgrade
+python -m pip install vgrid --upgrade
 ```
 
 ### Standalone QGIS

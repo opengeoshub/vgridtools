@@ -27,12 +27,10 @@ __author__ = "Thang Quach"
 __date__ = "2024-11-20"
 __copyright__ = "(L) 2024 by Thang Quach"
 
-import sys
 from qgis.PyQt.QtWidgets import QInputDialog
 
 
-
-def classFactory(iface): 
+def classFactory(iface):    
     try:
         import vgrid
     except ImportError:
@@ -43,6 +41,7 @@ def classFactory(iface):
             "To run Vgrid Tools, please copy and run this code in the Python console to install vgrid package and reload QGIS:",
             command,
         )
+
 
     from .vgrid import VgridTools
     # from .vgrid_menu import vgrid_menu

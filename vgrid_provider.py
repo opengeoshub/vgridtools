@@ -20,6 +20,7 @@ __copyright__ = "(L) 2024 by Thang Quach"
 
 __revision__ = "$Format:%H$"
 import os
+import sys
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
