@@ -17,13 +17,8 @@ __copyright__ = "(L) 2024 by Thang Quach"
 import os
 import base64
 
-# Optional PIL import - plugin will work without it, but image resizing won't be available
-try:
-    import PIL.Image
-    PIL_AVAILABLE = True
-except ImportError:
-    PIL_AVAILABLE = False
-    PIL = None
+from qgis.PyQt.QtGui import QImage
+from qgis.PyQt.QtCore import Qt
 
 
 # Imagem para HTML
@@ -37,31 +32,27 @@ def img2html(path_file):
 
 
 # Redimensionar Imagem
-def ImgResize(path_file, lado, resized):
-    if not PIL_AVAILABLE:
-        raise ImportError("PIL (Pillow) is not installed. Image resizing is not available.")
-    caminho, arquivo = os.path.split(path_file)
-    img = PIL.Image.open(path_file)
-    altura = img.size[1]
-    largura = img.size[0]
+def ImgResize(path_file, lado, resized):    
+    img = QImage(path_file)
+    if img.isNull():
+        raise ValueError("Could not load image: {}".format(path_file))
+    altura = img.height()
+    largura = img.width()
     if largura < altura:
         new_height = lado
         new_width = int(lado / float(altura) * largura)
     else:
         new_width = lado
         new_height = int(lado / float(largura) * altura)
-
-    img = img.resize((new_width, new_height))
-    path_file_reduced = os.path.join(caminho, resized)
-    img.save(path_file_reduced)
-    del img
+    img = img.scaled(new_width, new_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    path_file_reduced = os.path.join(os.path.split(path_file)[0], resized)
+    if not img.save(path_file_reduced):
+        raise IOError("Could not save resized image to {}".format(path_file_reduced))
     return path_file_reduced
 
 
 # Image to HTML resized
 def img2html_resized(path_file, lado=500, resized="reduzido.jpg"):
-    if not PIL_AVAILABLE:
-        raise ImportError("PIL (Pillow) is not installed. Image resizing is not available.")
     if os.path.isfile(path_file):
         caminho, arquivo = os.path.split(path_file)
         path_file_reduced = ImgResize(path_file, lado, resized)
