@@ -52,6 +52,10 @@ from qgis.core import QgsCoordinateTransform
 from ...utils.latlon import epsg4326
 from vgrid.utils.antimeridian import fix_polygon
 from vgrid.utils.constants import DGGS_TYPES
+from collections import deque
+from shapely.geometry import box
+import a5
+from vgrid.conversion.dggs2geo.a52geo import a52geo_u64
 
 
 class A5Gen(QgsProcessingAlgorithm):
@@ -184,6 +188,9 @@ class A5Gen(QgsProcessingAlgorithm):
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
+        """
+        Generate A5 DGGS polygons intersecting the requested extent.       
+        """
         fields = self.outputFields()
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -200,7 +207,7 @@ class A5Gen(QgsProcessingAlgorithm):
         canvas_crs = QgsProject.instance().crs()
 
         if self.canvas_extent is None or self.canvas_extent.isEmpty():
-            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90  # Whole world
+            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
         else:
             try:
                 min_lon, min_lat, max_lon, max_lat = (
@@ -224,114 +231,97 @@ class A5Gen(QgsProcessingAlgorithm):
             except Exception:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
+        # validate_coordinate expects (min_lat, min_lon, max_lat, max_lon)
         min_lat, min_lon, max_lat, max_lon = validate_coordinate(
             min_lat, min_lon, max_lat, max_lon
         )
-        # Calculate longitude and latitude width based on resolution
-        if self.resolution == 0:
-            lon_width = 35
-            lat_width = 35
-        elif self.resolution == 1:
-            lon_width = 18
-            lat_width = 18
-        elif self.resolution == 2:
-            lon_width = 10
-            lat_width = 10
-        elif self.resolution == 3:
-            lon_width = 5
-            lat_width = 5
-        elif self.resolution > 3:
-            base_width = 5  # at resolution 3
-            factor = 0.5 ** (self.resolution - 3)
-            lon_width = base_width * factor
-            lat_width = base_width * factor
 
-        # Generate longitude and latitude arrays
-        longitudes = []
-        latitudes = []
+        bbox_polygon = box(min_lon, min_lat, max_lon, max_lat)
+        bbox_center_lon = bbox_polygon.centroid.x
+        bbox_center_lat = bbox_polygon.centroid.y
 
-        lon = min_lon
-        while lon < max_lon:
-            longitudes.append(lon)
-            lon += lon_width
+# Centroid-seed BFS: expand neighbors until no intersecting cells remain.
+        seed_cell_id = a5.lonlat_to_cell(
+            (bbox_center_lon, bbox_center_lat), self.resolution
+        )
+        seed_cell_polygon = a52geo_u64(seed_cell_id)
+        if seed_cell_polygon is None:
+            raise QgsProcessingException("Failed to generate seed A5 cell polygon.")
 
-        lat = min_lat
-        while lat < max_lat:
-            latitudes.append(lat)
-            lat += lat_width
+        intersecting_cells = {}  # {cell_u64: shapely_polygon}
+        if seed_cell_polygon.contains(bbox_polygon):
+            intersecting_cells[seed_cell_id] = seed_cell_polygon
+        else:
+            covered_cells = set()
+            queue = deque([seed_cell_id])
 
-        seen_a5_hex = set()  # Track unique A5 hex codes
-        total_cells = len(longitudes) * len(latitudes)
-        feedback.pushInfo(f"Total grid points to process: {total_cells}.")
-
-        cell_count = 0
-
-        # Generate features for each grid cell
-        for i, lon in enumerate(longitudes):
-            for j, lat in enumerate(latitudes):
+            while queue:
                 if feedback.isCanceled():
                     break
 
-                progress = int(((i * len(latitudes) + j) / total_cells) * 100)
-                feedback.setProgress(progress)
+                current_cell_id = queue.popleft()
+                if current_cell_id in covered_cells:
+                    continue
+                covered_cells.add(current_cell_id)
 
-                min_lon = lon
-                min_lat = lat
-                max_lon = lon + lon_width
-                max_lat = lat + lat_width
-
-                # Calculate centroid
-                centroid_lat = (min_lat + max_lat) / 2
-                centroid_lon = (min_lon + max_lon) / 2
-
-                try:
-                    # Convert centroid to A5 cell ID using direct A5 functions
-                    a5_hex = latlon2a5(centroid_lat, centroid_lon, self.resolution)
-                    cell_polygon = a52geo(a5_hex)
-
-                    if cell_polygon is not None:
-                        # Only add if this A5 hex code hasn't been seen before
-                        if a5_hex not in seen_a5_hex:
-                            seen_a5_hex.add(a5_hex)
-                            # Apply antimeridian fix if requested
-                            if self.split_antimeridian:
-                                cell_polygon = fix_polygon(cell_polygon)
-                            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                            a5_feature = QgsFeature()
-                            a5_feature.setGeometry(cell_geometry)
-
-                            num_edges = 5
-                            (
-                                center_lat,
-                                center_lon,
-                                avg_edge_len,
-                                cell_area,
-                                cell_perimeter,
-                            ) = geodesic_dggs_metrics(cell_polygon, num_edges)
-                            a5_feature.setAttributes(
-                                [
-                                    a5_hex,
-                                    self.resolution,
-                                    center_lat,
-                                    center_lon,
-                                    avg_edge_len,
-                                    cell_area,
-                                    cell_perimeter,
-                                ]
-                            )
-                            sink.addFeature(a5_feature, QgsFeatureSink.FastInsert)
-                            cell_count += 1
-
-                except Exception:
-                    # Skip cells that can't be processed
+                cell_polygon = a52geo_u64(current_cell_id)
+                if cell_polygon is None:
                     continue
 
+                if cell_polygon.intersects(bbox_polygon):
+                    intersecting_cells[current_cell_id] = cell_polygon
+                    neighbors = a5.uncompact(
+                        a5.grid_disk_vertex(current_cell_id, 1), self.resolution
+                    )
+                    for neighbor_id in neighbors:
+                        if neighbor_id not in covered_cells:
+                            queue.append(neighbor_id)
+
+        if not intersecting_cells:
+            raise QgsProcessingException(
+                "No A5 cells were generated for the provided extent."
+            )
+
+        items = list(intersecting_cells.items())
+        total_cells = len(items)
+        
+        feedback.pushInfo(f"A5 DGGS generation: {total_cells} intersecting cells.")
+        for idx, (cell_u64, cell_polygon) in enumerate(items):
             if feedback.isCanceled():
                 break
 
-        feedback.pushInfo(
-            f"A5 DGGS generation completed. Generated {cell_count} unique cells."
-        )
+            feedback.setProgress(int((idx / max(total_cells, 1)) * 100))
+            cell_resolution = a5.get_resolution(cell_u64)
+            num_edges = 5
+            if cell_resolution == 1:
+                num_edges = 3   
+
+            a5_hex = a5.u64_to_hex(cell_u64)
+            (
+                center_lat,
+                center_lon,
+                avg_edge_len,
+                cell_area,
+                cell_perimeter,
+            ) = geodesic_dggs_metrics(cell_polygon, num_edges)
+
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            a5_feature = QgsFeature()
+            a5_feature.setGeometry(cell_geometry)
+            a5_feature.setAttributes(
+                [
+                    a5_hex,
+                    self.resolution,
+                    center_lat,
+                    center_lon,
+                    avg_edge_len,
+                    cell_area,
+                    cell_perimeter,
+                ]
+            )
+            sink.addFeature(a5_feature, QgsFeatureSink.FastInsert)
+
+        feedback.pushInfo("A5 DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):
             lineColor = settings.a5Color
             fontColor = QColor("#000000")
@@ -340,7 +330,6 @@ class A5Gen(QgsProcessingAlgorithm):
             )
 
         return {self.OUTPUT: dest_id}
-
 
 class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
     instance = None

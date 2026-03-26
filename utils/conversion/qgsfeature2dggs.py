@@ -1,3 +1,4 @@
+from collections import deque
 from shapely.geometry import Polygon, box
 from shapely.wkt import loads as wkt_loads
 import platform
@@ -748,6 +749,8 @@ def point2a5(feature, resolution, feedback):
     a5_hex = latlon2a5(point.y(), point.x(), resolution)
     cell_polygon = a52geo(a5_hex)
     num_edges = 5
+    if resolution == 1:
+        num_edges = 3
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
         geodesic_dggs_metrics(cell_polygon, num_edges)
     )
@@ -797,6 +800,16 @@ def point2a5(feature, resolution, feedback):
 
 
 def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None):
+    """
+    Convert a polyline feature to A5 grid cells.
+
+    This mirrors `vgrid.conversion.vector2dggs.vector2a5.polyline2a5`:
+    seed from the polyline bbox centroid, BFS over neighbor cells that intersect
+    the bbox, then keep cells that intersect the input polyline.
+    """
+    if feedback and feedback.isCanceled():
+        return []
+
     a5_features = []
     feature_geometry = feature.geometry()
     shapely_geom = wkt_loads(feature_geometry.asWkt())
@@ -805,125 +818,151 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
     min_lat = feature_rect.yMinimum()
     max_lng = feature_rect.xMaximum()
     max_lat = feature_rect.yMaximum()
-    # Calculate longitude and latitude width based on resolution
-    if resolution == 0:
-        lon_width = 35
-        lat_width = 35
-    elif resolution == 1:
-        lon_width = 18
-        lat_width = 18
-    elif resolution == 2:
-        lon_width = 10
-        lat_width = 10
-    elif resolution == 3:
-        lon_width = 5
-        lat_width = 5
-    elif resolution > 3:
-        base_width = 5  # at resolution 3
-        factor = 0.5 ** (resolution - 3)
-        lon_width = base_width * factor
-        lat_width = base_width * factor
 
-    # Generate longitude and latitude arrays
-    longitudes = []
-    latitudes = []
+    bbox_polygon = box(min_lng, min_lat, max_lng, max_lat)
+    bbox_center_lon = bbox_polygon.centroid.x
+    bbox_center_lat = bbox_polygon.centroid.y
 
-    lon = min_lng
-    while lon < max_lng:
-        longitudes.append(lon)
-        lon += lon_width
+    seed_cell_id = a5.lonlat_to_cell((bbox_center_lon, bbox_center_lat), resolution)
+    seed_cell_resolution = a5.get_resolution(seed_cell_id)
+    seed_a5_hex = a5.u64_to_hex(seed_cell_id)
+    seed_cell_polygon = a52geo(seed_a5_hex)
 
-    lat = min_lat
-    while lat < max_lat:
-        latitudes.append(lat)
-        lat += lat_width
-
-    seen_a5_hex = set()  # Track unique A5 hex codes
+    if seed_cell_polygon is None or seed_cell_polygon.is_empty:
+        return []
 
     if feedback:
         feedback.pushInfo(f"Processing feature {feature.id()}")
         feedback.setProgress(0)
 
-    total_cells = len(longitudes) * len(latitudes)
+    # Fast-path: seed cell fully contains bbox -> it must intersect the line
+    if seed_cell_polygon.contains(bbox_polygon):
+        num_edges = 5
+        if seed_cell_resolution == 1:
+            num_edges = 3
 
-    # Generate and check each grid cell
-    i = 0  # Counter for progress tracking
-    for lon in longitudes:
-        for lat in latitudes:
-            i += 1  # Increment counter for each cell processed
-            if feedback and feedback.isCanceled():
-                return []
-            min_lon = lon
-            min_lat = lat
-            max_lon = lon + lon_width
-            max_lat = lat + lat_width
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+        )
 
-            # Calculate centroid
-            centroid_lat = (min_lat + max_lat) / 2
-            centroid_lon = (min_lon + max_lon) / 2
-            # Convert centroid to A5 cell ID using direct A5 functions
-            a5_hex = latlon2a5(centroid_lat, centroid_lon, resolution)
-            cell_polygon = a52geo(a5_hex)
+        cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
+        a5_feature = QgsFeature()
+        a5_feature.setGeometry(cell_geometry)
 
-            if cell_polygon is not None:
-                if a5_hex not in seen_a5_hex:
-                    seen_a5_hex.add(a5_hex)
-                    if not check_predicate(cell_polygon, shapely_geom, "intersects"):
-                        continue
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
 
-                    cell_resolution = a5.get_resolution(a5.hex_to_u64(a5_hex))
-                    num_edges = 5
-                    center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                        geodesic_dggs_metrics(cell_polygon, num_edges)
-                    )
+        new_fields = QgsFields()
+        new_fields.append(QgsField("a5", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
 
-                    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        a5_feature.setFields(all_fields)
 
-                    a5_feature = QgsFeature()
-                    a5_feature.setGeometry(cell_geometry)
+        new_attributes = [
+            seed_a5_hex,
+            seed_cell_resolution,
+            center_lat,
+            center_lon,
+            avg_edge_len,
+            cell_area,
+            cell_perimeter,
+        ]
+        a5_feature.setAttributes(original_attributes + new_attributes)
 
-                    # Get all attributes from the input feature
-                    original_attributes = feature.attributes()
-                    original_fields = feature.fields()
+        if feedback:
+            feedback.setProgress(100)
+        return [a5_feature]
 
-                    # Define new S2-related attributes
-                    new_fields = QgsFields()
-                    new_fields.append(
-                        QgsField("a5", QVariant.String)
-                    )  # Dynamic cell ID field
-                    new_fields.append(QgsField("resolution", QVariant.Int))
-                    new_fields.append(QgsField("center_lat", QVariant.Double))
-                    new_fields.append(QgsField("center_lon", QVariant.Double))
-                    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-                    new_fields.append(QgsField("cell_area", QVariant.Double))
-                    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-                    # Combine original fields and new fields
-                    all_fields = QgsFields()
-                    for field in original_fields:
-                        all_fields.append(field)
-                    for field in new_fields:
-                        all_fields.append(field)
+    intersecting_cells = {}  # {cell_u64: (cell_hex, shapely_polygon)}
+    covered_cells = set()
+    queue = deque([seed_cell_id])
 
-                    a5_feature.setFields(all_fields)
+    while queue:
+        if feedback and feedback.isCanceled():
+            return []
 
-                    # Combine original attributes with new attributes
-                    new_attributes = [
-                        a5_hex,
-                        cell_resolution,
-                        center_lat,
-                        center_lon,
-                        avg_edge_len,
-                        cell_area,
-                        cell_perimeter,
-                    ]
-                    all_attributes = original_attributes + new_attributes
+        current_cell_id = queue.popleft()
+        if current_cell_id in covered_cells:
+            continue
+        covered_cells.add(current_cell_id)
 
-                    a5_feature.setAttributes(all_attributes)
+        cell_hex = a5.u64_to_hex(current_cell_id)
+        cell_polygon = a52geo(cell_hex)
+        if cell_polygon is None or cell_polygon.is_empty:
+            continue
 
-                    a5_features.append(a5_feature)
+        if cell_polygon.intersects(bbox_polygon):
+            intersecting_cells[current_cell_id] = (cell_hex, cell_polygon)
+            neighbors = a5.uncompact(a5.grid_disk_vertex(current_cell_id, 1), resolution)
+            for neighbor_id in neighbors:
+                if neighbor_id not in covered_cells:
+                    queue.append(neighbor_id)
 
-                    if feedback and i % 100 == 0:
-                        feedback.setProgress(int(100 * i / total_cells))
+    total_cells = len(intersecting_cells)
+    for i, (cell_id, (cell_hex, cell_polygon)) in enumerate(intersecting_cells.items()):
+        if feedback and feedback.isCanceled():
+            return []
+
+        if not cell_polygon.intersects(shapely_geom):
+            continue
+
+        cell_resolution = a5.get_resolution(cell_id)
+        num_edges = 5
+        if cell_resolution == 1:
+            num_edges = 3
+
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(cell_polygon, num_edges)
+        )
+
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+        a5_feature = QgsFeature()
+        a5_feature.setGeometry(cell_geometry)
+
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+
+        new_fields = QgsFields()
+        new_fields.append(QgsField("a5", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        a5_feature.setFields(all_fields)
+
+        new_attributes = [
+            cell_hex,
+            cell_resolution,
+            center_lat,
+            center_lon,
+            avg_edge_len,
+            cell_area,
+            cell_perimeter,
+        ]
+        a5_feature.setAttributes(original_attributes + new_attributes)
+
+        a5_features.append(a5_feature)
+
+        if feedback and total_cells and i % 100 == 0:
+            feedback.setProgress(int(100 * i / total_cells))
 
     if feedback:
         feedback.setProgress(100)
@@ -932,7 +971,15 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
 
 
 def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None):
-    a5_features = []
+    """
+    Convert a polygon feature to A5 grid cells.
+
+    This mirrors the discovery strategy used in `vgrid.conversion.vector2dggs.vector2a5.polygon2a5`:
+    seed from the polygon bbox centroid, BFS over neighbor cells that intersect the bbox,
+    then filter candidate cells using `check_predicate` against the input polygon.
+    """
+    if feedback and feedback.isCanceled():
+        return []
 
     feature_geometry = feature.geometry()
     shapely_geom = wkt_loads(feature_geometry.asWkt())
@@ -941,131 +988,160 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None)
     min_lat = feature_rect.yMinimum()
     max_lng = feature_rect.xMaximum()
     max_lat = feature_rect.yMaximum()
-    # Calculate longitude and latitude width based on resolution
-    if resolution == 0:
-        lon_width = 35
-        lat_width = 35
-    elif resolution == 1:
-        lon_width = 18
-        lat_width = 18
-    elif resolution == 2:
-        lon_width = 10
-        lat_width = 10
-    elif resolution == 3:
-        lon_width = 5
-        lat_width = 5
-    elif resolution > 3:
-        base_width = 5  # at resolution 3
-        factor = 0.5 ** (resolution - 3)
-        lon_width = base_width * factor
-        lat_width = base_width * factor
 
-    # Generate longitude and latitude arrays
-    longitudes = []
-    latitudes = []
+    bbox_polygon = box(min_lng, min_lat, max_lng, max_lat)
+    bbox_center_lon = bbox_polygon.centroid.x
+    bbox_center_lat = bbox_polygon.centroid.y
 
-    lon = min_lng
-    while lon < max_lng:
-        longitudes.append(lon)
-        lon += lon_width
+    seed_cell_id = a5.lonlat_to_cell((bbox_center_lon, bbox_center_lat), resolution)
+    seed_cell_resolution = a5.get_resolution(seed_cell_id)
+    seed_a5_hex = a5.u64_to_hex(seed_cell_id)
+    seed_cell_polygon = a52geo(seed_a5_hex)
 
-    lat = min_lat
-    while lat < max_lat:
-        latitudes.append(lat)
-        lat += lat_width
-
-    seen_a5_hex = set()  # Track unique A5 hex codes
+    if seed_cell_polygon is None or seed_cell_polygon.is_empty:
+        return []
 
     if feedback:
         feedback.pushInfo(f"Processing feature {feature.id()}")
         feedback.setProgress(0)
 
-    total_cells = len(longitudes) * len(latitudes)
+    # Fast-path: seed cell fully contains bbox
+    if seed_cell_polygon.contains(bbox_polygon):
+        if predicate and (not check_predicate(seed_cell_polygon, shapely_geom, predicate)):
+            return []
 
-    # Generate and check each grid cell
-    i = 0  # Counter for progress tracking
-    for lon in longitudes:
-        for lat in latitudes:
-            i += 1  # Increment counter for each cell processed
-            if feedback and feedback.isCanceled():
-                return []
-            min_lon = lon
-            min_lat = lat
-            max_lon = lon + lon_width
-            max_lat = lat + lat_width
+        num_edges = 5
+        if seed_cell_resolution == 1:
+            num_edges = 3
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+        )
 
-            # Calculate centroid
-            centroid_lat = (min_lat + max_lat) / 2
-            centroid_lon = (min_lon + max_lon) / 2
-            # Convert centroid to A5 cell ID using direct A5 functions
-            a5_hex = latlon2a5(centroid_lat, centroid_lon, resolution)
-            cell_polygon = a52geo(a5_hex)
+        cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
+        a5_feature = QgsFeature()
+        a5_feature.setGeometry(cell_geometry)
 
-            if cell_polygon is not None:
-                if a5_hex not in seen_a5_hex:
-                    seen_a5_hex.add(a5_hex)
-                    # Check if cell intersects with polygon
-                    if not check_predicate(cell_polygon, shapely_geom, predicate):
-                        continue
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
 
-                    cell_resolution = a5.get_resolution(a5.hex_to_u64(a5_hex))
-                    num_edges = 5
-                    center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                        geodesic_dggs_metrics(cell_polygon, num_edges)
-                    )
+        new_fields = QgsFields()
+        new_fields.append(QgsField("a5", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
 
-                    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        a5_feature.setFields(all_fields)
 
-                    a5_feature = QgsFeature()
-                    a5_feature.setGeometry(cell_geometry)
+        new_attributes = [
+            seed_a5_hex,
+            seed_cell_resolution,
+            center_lat,
+            center_lon,
+            avg_edge_len,
+            cell_area,
+            cell_perimeter,
+        ]
+        a5_feature.setAttributes(original_attributes + new_attributes)
 
-                    # Get all attributes from the input feature
-                    original_attributes = feature.attributes()
-                    original_fields = feature.fields()
+        if feedback:
+            feedback.setProgress(100)
+        return [a5_feature]
 
-                    # Define new S2-related attributes
-                    new_fields = QgsFields()
-                    new_fields.append(
-                        QgsField("a5", QVariant.String)
-                    )  # Dynamic cell ID field
-                    new_fields.append(QgsField("resolution", QVariant.Int))
-                    new_fields.append(QgsField("center_lat", QVariant.Double))
-                    new_fields.append(QgsField("center_lon", QVariant.Double))
-                    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-                    new_fields.append(QgsField("cell_area", QVariant.Double))
-                    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-                    # Combine original fields and new fields
-                    all_fields = QgsFields()
-                    for field in original_fields:
-                        all_fields.append(field)
-                    for field in new_fields:
-                        all_fields.append(field)
+    # BFS discovery over bbox-intersecting cells
+    intersecting_cells = {}  # {cell_u64: (cell_hex, shapely_polygon)}
+    covered_cells = set()
+    queue = deque([seed_cell_id])
 
-                    a5_feature.setFields(all_fields)
+    while queue:
+        if feedback and feedback.isCanceled():
+            return []
 
-                    # Combine original attributes with new attributes
-                    new_attributes = [
-                        a5_hex,
-                        cell_resolution,
-                        center_lat,
-                        center_lon,
-                        avg_edge_len,
-                        cell_area,
-                        cell_perimeter,
-                    ]
-                    all_attributes = original_attributes + new_attributes
+        current_cell_id = queue.popleft()
+        if current_cell_id in covered_cells:
+            continue
+        covered_cells.add(current_cell_id)
 
-                    a5_feature.setAttributes(all_attributes)
+        cell_hex = a5.u64_to_hex(current_cell_id)
+        cell_polygon = a52geo(cell_hex)
+        if cell_polygon is None or cell_polygon.is_empty:
+            continue
 
-                    a5_features.append(a5_feature)
+        if cell_polygon.intersects(bbox_polygon):
+            intersecting_cells[current_cell_id] = (cell_hex, cell_polygon)
+            neighbors = a5.uncompact(a5.grid_disk_vertex(current_cell_id, 1), resolution)
+            for neighbor_id in neighbors:
+                if neighbor_id not in covered_cells:
+                    queue.append(neighbor_id)
 
-                    if feedback and i % 100 == 0:
-                        feedback.setProgress(int(100 * i / total_cells))
+    a5_features = []
+    total_cells = len(intersecting_cells)
+
+    for i, (cell_id, (cell_hex, cell_polygon)) in enumerate(intersecting_cells.items()):
+        if feedback and feedback.isCanceled():
+            return []
+
+        if not check_predicate(cell_polygon, shapely_geom, predicate):
+            continue
+
+        cell_resolution = a5.get_resolution(cell_id)
+        num_edges = 5
+        if cell_resolution == 1:
+            num_edges = 3
+
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(cell_polygon, num_edges)
+        )
+
+        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+        a5_feature = QgsFeature()
+        a5_feature.setGeometry(cell_geometry)
+
+        original_attributes = feature.attributes()
+        original_fields = feature.fields()
+
+        new_fields = QgsFields()
+        new_fields.append(QgsField("a5", QVariant.String))
+        new_fields.append(QgsField("resolution", QVariant.Int))
+        new_fields.append(QgsField("center_lat", QVariant.Double))
+        new_fields.append(QgsField("center_lon", QVariant.Double))
+        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        new_fields.append(QgsField("cell_area", QVariant.Double))
+        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+
+        all_fields = QgsFields()
+        for field in original_fields:
+            all_fields.append(field)
+        for field in new_fields:
+            all_fields.append(field)
+        a5_feature.setFields(all_fields)
+
+        new_attributes = [
+            cell_hex,
+            cell_resolution,
+            center_lat,
+            center_lon,
+            avg_edge_len,
+            cell_area,
+            cell_perimeter,
+        ]
+        a5_feature.setAttributes(original_attributes + new_attributes)
+
+        a5_features.append(a5_feature)
+
+        if feedback and total_cells and i % 100 == 0:
+            feedback.setProgress(int(100 * i / total_cells))
 
     if feedback:
         feedback.setProgress(100)
 
-    # Apply compact mode if enabled
     if compact and a5_features:
         a5_features = a5compact_from_qgsfeatures(a5_features, feedback)
 
@@ -1113,6 +1189,8 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
         cell_polygon = a52geo(a5_hex_compact)
         cell_resolution = a5.get_resolution(a5.hex_to_u64(a5_hex_compact))
         num_edges = 5  # A5 cells are pentagons
+        if cell_resolution == 1:
+            num_edges = 3
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
             geodesic_dggs_metrics(cell_polygon, num_edges)
         )

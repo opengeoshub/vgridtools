@@ -1,5 +1,6 @@
 import importlib
 import subprocess
+import sys
 from qgis.PyQt.QtWidgets import QMessageBox
 from qgis.PyQt.QtCore import QSettings
 from concurrent.futures import ThreadPoolExecutor
@@ -84,7 +85,10 @@ def install_libraries(libraries):
 
     try:
         print(f"Installing missing libraries: {libraries}")
-        subprocess.check_call(["python3", "-m", "pip", "install"] + libraries)
+        # Use the currently running QGIS Python interpreter.
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install"] + libraries
+        )
         print("Libraries installed successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Error installing missing libraries: {e}")
@@ -96,7 +100,14 @@ def read_libraries_from_file(filename):
     with open(filename, "r") as file:
         for line in file:
             if line.strip():  # Skip empty lines
-                # Each line is in the format: library_name:module_name
-                library, module = line.strip().split(":")
+                # Supported formats:
+                # - library_name:module_name
+                # - library_name   (assumes module_name == library_name)
+                parts = line.strip().split(":", 1)
+                if len(parts) == 2:
+                    library, module = parts
+                else:
+                    library = parts[0]
+                    module = parts[0]
                 libraries.append((library, module))
     return libraries
