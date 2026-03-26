@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-dggalgen.py
+DGGRIDgen.py
 ***************************************************************************
 *                                                                         *
 *   This program is free software; you can redistribute it and/or modify  *
@@ -45,25 +45,21 @@ from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsCoordinateTransform
 import os
 from ...settings import settings
-from dggal import *
-
-# Initialize dggal application
-app = Application(appGlobals=globals())
-pydggal_setup(app)
 
 from ...utils.imgs import Imgs
 from ...utils.latlon import epsg4326
-from vgrid.utils.geometry import geodesic_dggs_metrics, dggal_to_geo
-from vgrid.utils.constants import DGGAL_TYPES
-from vgrid.utils.io import validate_dggal_resolution
+from vgrid.utils.io import convert_to_output_format, create_dggrid_instance
+from vgrid.utils.io import validate_dggrid_type, validate_dggrid_resolution
+from vgrid.utils.constants import OUTPUT_FORMATS, STRUCTURED_FORMATS, DGGRID_TYPES
 from vgrid.utils.io import validate_coordinate
-from vgrid.utils.antimeridian import fix_polygon
+from dggrid4py.dggrid_runner import output_address_types
 
 
-class DGGALGen(QgsProcessingAlgorithm):
+class DGGRIDGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     DGGS_TYPE = "DGGS_TYPE"
     RESOLUTION = "RESOLUTION"
+    OUTPUT_ADDRESS_TYPE = "OUTPUT_ADDRESS_TYPE"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
@@ -83,21 +79,21 @@ class DGGALGen(QgsProcessingAlgorithm):
             return self.translate(string[0])
 
     def createInstance(self):
-        return DGGALGen()
+        return DGGRIDGen()
 
     def name(self):
-        return "dggal_gen"
+        return "DGGRID_gen"
 
     def icon(self):
         return QIcon(
             os.path.join(
                 os.path.dirname(os.path.dirname(__file__)),
-                "../images/generator/grid_dggal.svg",
+                "../images/generator/grid_DGGRID.png",
             )
         )
 
     def displayName(self):
-        return self.tr("DGGAL", "DGGAL")
+        return self.tr("DGGRID", "DGGRID")
 
     def group(self):
         return self.tr("Generator", "Generator")
@@ -106,11 +102,11 @@ class DGGALGen(QgsProcessingAlgorithm):
         return "generator"
 
     def tags(self):
-        return self.tr("DGGS, DGGAL, generator").split(",")
+        return self.tr("DGGS, DGGRID, generator").split(",")
 
-    txt_en = "DGGAL Generator"
-    txt_vi = "DGGAL Generator"
-    figure = "../images/tutorial/grid_dggal.png"
+    txt_en = "DGGRID Generator"
+    txt_vi = "DGGRID Generator"
+    figure = "../images/tutorial/grid_dggrid.png"
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -142,8 +138,8 @@ class DGGALGen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterEnum(
             self.DGGS_TYPE,
             self.tr("DGGS Type"),
-            options=[key for key in DGGAL_TYPES.keys()],
-            defaultValue="gnosis",
+            options=[key for key in DGGRID_TYPES.keys()],
+            defaultValue="ISEA3H",
         )
         self.addParameter(param)
 
@@ -158,6 +154,14 @@ class DGGALGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        param = QgsProcessingParameterEnum(
+            self.OUTPUT_ADDRESS_TYPE,
+            self.tr("Output Address Type"),
+            options=list(output_address_types),
+            optional=True,
+        )
+        self.addParameter(param)
+
         param = QgsProcessingParameterBoolean(
             self.SPLIT_ANTIMERIDIAN,
             self.tr("Split at Antimeridian"),
@@ -165,20 +169,27 @@ class DGGALGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        param = QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr("DGGAL"))
+        param = QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr("DGGRID"))
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
         dggs_type_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
-        self.dggs_type = list(DGGAL_TYPES.keys())[dggs_type_index]
+        self.dggs_type = validate_dggrid_type(list(DGGRID_TYPES.keys())[dggs_type_index])
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        output_address_type_index = self.parameterAsEnum(
+            parameters, self.OUTPUT_ADDRESS_TYPE, context
+        )
+        if output_address_type_index >= 0:
+            self.output_address_type = output_address_types[output_address_type_index]
+        else:
+            self.output_address_type = None
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
         self.split_antimeridian = self.parameterAsBoolean(
             parameters, self.SPLIT_ANTIMERIDIAN, context
         )
 
         # Validate resolution for the selected DGGS type
-        self.resolution = validate_dggal_resolution(self.dggs_type, self.resolution)
+        self.resolution = validate_dggrid_resolution(self.dggs_type, self.resolution)
 
         if self.resolution > 4 and (
             self.canvas_extent is None or self.canvas_extent.isEmpty()
@@ -192,7 +203,7 @@ class DGGALGen(QgsProcessingAlgorithm):
 
     def outputFields(self):
         output_fields = QgsFields()
-        output_fields.append(QgsField(f"dggal_{self.dggs_type}", QVariant.String))
+        output_fields.append(QgsField(f"dggrid_{self.dggs_type}", QVariant.String))
         output_fields.append(QgsField("resolution", QVariant.Int))
         output_fields.append(QgsField("center_lat", QVariant.Double))
         output_fields.append(QgsField("center_lon", QVariant.Double))
@@ -200,6 +211,13 @@ class DGGALGen(QgsProcessingAlgorithm):
         output_fields.append(QgsField("cell_area", QVariant.Double))
         output_fields.append(QgsField("cell_perimeter", QVariant.Double))
         return output_fields
+
+    def _zone_to_output_id(self, dggrs, zone):
+        # Keep behavior compatible with existing output while allowing
+        # numeric sequence IDs when requested and supported.
+        if self.output_address_type == "SEQNUM" and hasattr(dggrs, "getZoneID"):
+            return str(dggrs.getZoneID(zone))
+        return dggrs.getZoneTextID(zone)
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
@@ -213,16 +231,11 @@ class DGGALGen(QgsProcessingAlgorithm):
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
-        dggs_class_name = DGGAL_TYPES[self.dggs_type]["class_name"]
-        dggrs = globals()[dggs_class_name]()
+        if sink is None:
+            raise QgsProcessingException("Failed to create output sink")
 
-        if not sink:
-            raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
         canvas_crs = QgsProject.instance().crs()
-
-        if self.canvas_extent is None or self.canvas_extent.isEmpty():
-            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90  # Whole world
-        else:
+        if self.canvas_extent is not None and not self.canvas_extent.isEmpty():
             try:
                 min_lon, min_lat, max_lon, max_lat = (
                     self.canvas_extent.xMinimum(),
@@ -244,59 +257,42 @@ class DGGALGen(QgsProcessingAlgorithm):
                     )
             except Exception:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
+        else:
+            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
         min_lat, min_lon, max_lat, max_lon = validate_coordinate(
             min_lat, min_lon, max_lat, max_lon
         )
-        ll = GeoPoint(min_lat, min_lon)
-        ur = GeoPoint(max_lat, max_lon)
-        geo_extent = GeoExtent(ll, ur)
+        dggrid_instance = create_dggrid_instance()
+       
+        if self.canvas_extent is not None and not self.canvas_extent.isEmpty():
+            bounding_box = self.canvas_extent
+        else:
+            bounding_box = None
 
-        zones = dggrs.listZones(self.resolution, geo_extent)
-
-        total_cells = len(zones)
-        feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
-        for idx, zone in enumerate(zones):
-            progress = int((idx / total_cells) * 100)
-            feedback.setProgress(progress)
-            zone_id = dggrs.getZoneTextID(zone)
-            num_edges = dggrs.countZoneEdges(zone)
-            cell_resolution = dggrs.getZoneLevel(zone)
-            # Convert zone to geometry using dggal2geo
-            cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
-            # Apply antimeridian fix if requested
-            if self.split_antimeridian:
-                cell_polygon = fix_polygon(cell_polygon)
-            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)            
-            dggal_feature = QgsFeature()
-            dggal_feature.setGeometry(cell_geometry)
-            center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+        kwargs = {
+            "split_dateline": self.split_antimeridian,
+            "output_address_type": self.output_address_type,
+        }
+        dggrid_gdf = dggrid_instance.grid_cell_polygons_for_extent(
+                self.dggs_type,
+                self.resolution,
+                clip_geom=bounding_box,
+                **kwargs,
             )
-            dggal_feature.setAttributes(
-                [
-                    zone_id,
-                    cell_resolution,
-                    center_lat,
-                    center_lon,
-                    avg_edge_len,
-                    cell_area,
-                    cell_perimeter,
-                ]
-            )
-            sink.addFeature(dggal_feature, QgsFeatureSink.FastInsert)
 
-            if feedback.isCanceled():
-                break
+        # Apply antimeridian fixing if requested
+        if self.split_antimeridian:
+            dggrid_gdf = dggrid_gdf.dissolve(by="global_id")
 
-        feedback.pushInfo(f"{self.dggs_type} DGGS generation completed.")
-        if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = settings.dggal_gnosisColor
-            fontColor = QColor("#000000")
-            field_name = f"dggal_{self.dggs_type}"
-            context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
-                StylePostProcessor.create(lineColor, fontColor, field_name)
-            )
+        # feedback.pushInfo(f"{self.dggs_type} DGGRID generation completed.")
+        # if context.willLoadLayerOnCompletion(dest_id):
+        #     lineColor = settings.DGGRID_isea3hColor
+        #     fontColor = QColor("#000000")
+        #     field_name = f"dggrid_{self.dggs_type}"
+        #     context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
+        #         StylePostProcessor.create(lineColor, fontColor, field_name)
+        #     )
 
         return {self.OUTPUT: dest_id}
 

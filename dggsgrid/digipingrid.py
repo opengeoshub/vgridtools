@@ -46,9 +46,7 @@ class DIGIPINGrid(QObject):
             # Clear previous grid before drawing a new one
             self.removeMarker()
             self.digipin_marker.reset(QgsWkbTypes.PolygonGeometry)
-            self.digipin_marker.setStrokeColor(
-                settings.digipinColor if hasattr(settings, 'digipinColor') else settings.digipinColor
-            )
+            self.digipin_marker.setStrokeColor(settings.digipinColor)
             self.digipin_marker.setWidth(settings.gridWidth)
 
             canvas_extent = self.canvas.extent()

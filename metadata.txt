@@ -1,9 +1,9 @@
 [general]
 name=Vgrid
-qgisMinimumVersion=34.0
-description= Vgrid - A unified framework for working with DGGS. Vgrid supports H3, S2, A5, rHEALPix, ISEA4T, ISEA3H, EASE-DGGS, DGGAL, DGGRID, QTM, OLC/ OpenLocationCode/ Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS, and DIGIPIN. - Vgridtools Installation instruction: https://vgridtools.gishub.vn/installation
+qgisMinimumVersion=4.0
+description= Vgrid - A unified framework for working with DGGS. Vgrid supports H3, S2, A5, DGGAL, DGGRID, rHEALPix, OpenEAGGR ISEA4T/ ISEA3H, EASE-DGGS, QTM, OLC/ OpenLocationCode/ Google Plus Codes, Geohash, GEOREF, MGRS, Tilecode, Quadkey, Maidenhead, GARS, and DIGIPIN. - Vgridtools Installation instruction: https://vgridtools.gishub.vn/installation
 about= - DGGS Visualization - Zoom To Latlon - Expressions to convert (lat, long, resolution) to DGGS ID and calculate the compactness of polygon features - Convert Cell ID to DGGS - Convert Vector to DGGS - DGGS Compact - DGGS Expand - Convert Raster to DGGS - DGGS Resampling - DGGS Binning -  DGGS Generator - DGGS OGC API client - DGGS Utils
-version=26.3.10
+version=26.3.17
 author=Thang Quach
 owner=thangqd
 email=quachdongthang@gmail.com

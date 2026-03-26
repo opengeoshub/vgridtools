@@ -41,10 +41,7 @@ def classFactory(iface):
             "To run Vgrid Tools, please copy and run this code in the Python console to install vgrid package and reload QGIS:",
             command,
         )
-
-
+  
     from .vgrid import VgridTools
-    # from .vgrid_menu import vgrid_menu
 
     return VgridTools(iface)
-    # return vgrid_menu(iface)

@@ -49,6 +49,8 @@ class S2Grid(QObject):
             # Clear previous grid before drawing a new one
             self.removeMarker()
             self.s2_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.s2_marker.setStrokeColor(settings.s2Color)
+            self.s2_marker.setWidth(settings.gridWidth)
 
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()

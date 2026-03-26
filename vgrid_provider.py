@@ -55,6 +55,7 @@ from .processing_provider.generator.a5gen import A5Gen
 from .processing_provider.generator.rhealpixgen import rHEALPixGen
 from .processing_provider.generator.isea4tgen import ISEA4TGen
 from .processing_provider.generator.dggalgen import DGGALGen
+# from .processing_provider.generator.dggridgen import DGGRIDGen
 
 from .processing_provider.generator.qtmgen import QTMGen
 
@@ -124,6 +125,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(GeohashGen())
         self.addAlgorithm(GEOREFGen())
         self.addAlgorithm(DGGALGen())
+        # self.addAlgorithm(DGGRIDGen())
         ################################
         self.addAlgorithm(MGRSGen())
         self.addAlgorithm(GZDGen())
