@@ -67,7 +67,7 @@ class DGGALISEA3HGrid(QObject):
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | DGGAL ISEA3H resolution:{resolution}"
+                    f"Zoom Level: {zoom:.2f} | DGGAL ISEA3H resolution: {resolution}"
                 )
 
             if resolution <= 3:

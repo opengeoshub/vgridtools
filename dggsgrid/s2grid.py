@@ -59,7 +59,7 @@ class S2Grid(QObject):
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | S2 resolution:{resolution}"
+                    f"Zoom Level: {zoom:.2f} | S2 resolution: {resolution}"
                 )
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             coverer = s2.RegionCoverer()

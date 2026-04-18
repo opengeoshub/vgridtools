@@ -57,7 +57,7 @@ class DIGIPINGrid(QObject):
             zoom = 29.1402 - log2(scale)
             if settings.zoomLevel:
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | DIGIPIN resolution:{resolution}"
+                    f"Zoom Level: {zoom:.2f} | DIGIPIN resolution: {resolution}"
                 )
 
             min_lon, min_lat, max_lon, max_lat = (

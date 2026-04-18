@@ -55,7 +55,7 @@ class GARSGrid(QObject):
         zoom = 29.1402 - log2(scale)
         if settings.zoomLevel:
             self.iface.mainWindow().statusBar().showMessage(
-                f"Zoom Level: {zoom:.2f} | GARS resolution:{resolution}"
+                f"Zoom Level: {zoom:.2f} | GARS resolution: {resolution}"
             )
 
         resolution_minutes = GARS_RESOLUTION_MINUTES.get(resolution)

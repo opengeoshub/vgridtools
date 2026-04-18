@@ -66,7 +66,7 @@ class RhealpixGrid(QObject):
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | rHEALPix resolution:{resolution}"
+                    f"Zoom Level: {zoom:.2f} | rHEALPix resolution: {resolution}"
                 )
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             if resolution <= 2:

@@ -68,7 +68,7 @@ class DGGALIVEA7H_Z7Grid(QObject):
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | DGGAL IVEA7H_Z7 resolution:{resolution}"
+                    f"Zoom Level: {zoom:.2f} | DGGAL IVEA7H_Z7 resolution: {resolution}"
                 )
 
             if resolution <= 2:

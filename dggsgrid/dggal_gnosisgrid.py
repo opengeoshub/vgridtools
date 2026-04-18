@@ -69,7 +69,7 @@ class DGGALGnosisGrid(QObject):
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | DGGAL GNOSIS resolution:{resolution}"
+                    f"Zoom Level: {zoom:.2f} | DGGAL GNOSIS resolution: {resolution}"
                 )
             if resolution <= 3:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90

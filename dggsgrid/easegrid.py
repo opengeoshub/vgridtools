@@ -63,7 +63,7 @@ class EASEGrid(QObject):
             zoom = 29.1402 - log2(scale)
             if settings.zoomLevel:
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | EASE resolution:{resolution}"
+                    f"Zoom Level: {zoom:.2f} | EASE resolution: {resolution}"
                 )
             if zoom >= 8:
                 # Extent in canvas CRS
