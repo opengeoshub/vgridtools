@@ -280,7 +280,7 @@ class Settings:
         resolution_config = {
             "H3": (0, 15, self.h3Res),
             "S2": (0, 30, self.s2Res),
-            "A5": (0, 29, self.a5Res),
+            "A5": (0, 30, self.a5Res),
             "rHEALPix": (0, 15, self.rhealpixRes),
             "ISEA4T": (0, 39, self.isea4tRes),
             "ISEA3H": (0, 40, self.isea3hRes),
