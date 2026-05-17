@@ -176,11 +176,10 @@ def generate_s2_grid(resolution, qgs_features, feedback=None):
                 return None
             feedback.setProgress(int((idx / total) * 100))
 
-        cell_polygon = s22geo(cell_id)
+        s2_token = cell_id.to_token()
+        cell_polygon = s22geo(s2_token)
         if not cell_polygon.intersects(unified_geom):
             continue
-
-        s2_token = cell_id.to_token()
         num_edges = 4
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
             geodesic_dggs_metrics(cell_polygon, num_edges)
@@ -1063,5 +1062,108 @@ def generate_a5_grid(resolution, qgs_features, feedback=None):
     if feedback:
         feedback.pushInfo(f"Generated {len(a5_features)} A5 cells.")
         feedback.setProgress(100)
+
+    return layer
+
+
+#########################
+# DGGAL
+#########################
+from dggal import *
+from vgrid.utils.constants import DGGAL_TYPES
+from vgrid.utils.geometry import dggal_to_geo
+from vgrid.utils.io import validate_dggal_resolution, validate_coordinate
+
+_dggal_app = Application(appGlobals=globals())
+pydggal_setup(_dggal_app)
+
+
+def generate_dggal_grid(dggal_type, resolution, qgs_features, feedback=None):
+    if not qgs_features:
+        raise ValueError("No features provided for DGGAL grid generation.")
+
+    resolution = validate_dggal_resolution(dggal_type, resolution)
+
+    geometries = [load_wkt(f.geometry().asWkt()) for f in qgs_features.getFeatures()]
+    unified_geom = unary_union(geometries)
+    min_lon, min_lat, max_lon, max_lat = unified_geom.bounds
+    min_lat, min_lon, max_lat, max_lon = validate_coordinate(
+        min_lat, min_lon, max_lat, max_lon
+    )
+
+    dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
+    dggrs = globals()[dggs_class_name]()
+    ll = GeoPoint(min_lat, min_lon)
+    ur = GeoPoint(max_lat, max_lon)
+    geo_extent = GeoExtent(ll, ur)
+    zones = dggrs.listZones(resolution, geo_extent)
+
+    total = len(zones)
+    if feedback:
+        feedback.pushInfo(
+            f"Generating DGGAL {dggal_type} grid at resolution {resolution} "
+            f"with {total} cells..."
+        )
+
+    field_name = f"dggal_{dggal_type}"
+    fields = QgsFields()
+    fields.append(QgsField(field_name, QVariant.String))
+    fields.append(QgsField("resolution", QVariant.Int))
+    fields.append(QgsField("center_lat", QVariant.Double))
+    fields.append(QgsField("center_lon", QVariant.Double))
+    fields.append(QgsField("avg_edge_len", QVariant.Double))
+    fields.append(QgsField("cell_area", QVariant.Double))
+    fields.append(QgsField("cell_perimeter", QVariant.Double))
+
+    dggal_features = []
+    for idx, zone in enumerate(zones):
+        if feedback:
+            if feedback.isCanceled():
+                return None
+            feedback.setProgress(int((idx / total) * 100))
+
+        zone_id = dggrs.getZoneTextID(zone)
+        cell_polygon = dggal_to_geo(dggal_type, zone_id)
+        if not cell_polygon.intersects(unified_geom):
+            continue
+
+        num_edges = dggrs.countZoneEdges(zone)
+        cell_resolution = dggrs.getZoneLevel(zone)
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(cell_polygon, num_edges)
+        )
+
+        qgs_feature = QgsFeature()
+        qgs_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+        qgs_feature.setAttributes(
+            [
+                zone_id,
+                cell_resolution,
+                center_lat,
+                center_lon,
+                avg_edge_len,
+                cell_area,
+                cell_perimeter,
+            ]
+        )
+        dggal_features.append(qgs_feature)
+
+    if not dggal_features:
+        raise ValueError(
+            f"No DGGAL cells generated for type {dggal_type!r} at resolution {resolution}."
+        )
+
+    layer = QgsVectorLayer(
+        "Polygon?crs=EPSG:4326", f"dggal_{dggal_type}_{resolution}", "memory"
+    )
+    layer.startEditing()
+    layer.dataProvider().addAttributes(fields)
+    layer.updateFields()
+    layer.dataProvider().addFeatures(dggal_features)
+    layer.commitChanges()
+
+    if feedback:
+        feedback.setProgress(100)
+        feedback.pushInfo(f"DGGAL {dggal_type} grid generation complete.")
 
     return layer

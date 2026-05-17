@@ -24,12 +24,16 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtCore import QVariant
 import os
-import statistics
 import h3
 from shapely.geometry import Polygon
 from ...utils.imgs import Imgs
-from collections import defaultdict, Counter
-from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
+from collections import defaultdict
+from ...utils.binning.bin_helper import (
+    append_bin_stat_fields,
+    append_stats_value,
+    get_default_stats_structure,
+    stat_props_for_category,
+)
 from ...settings import settings
 
 
@@ -247,26 +251,13 @@ class H3Bin(QgsProcessingAlgorithm):
         for bin_data in h3_bins.values():
             all_categories.update(bin_data.keys())
 
-        for cat in sorted(all_categories):
-            prefix = "" if not self.category_field else f"{cat}_"
-
-            if self.stats == "count":
-                out_fields.append(QgsField(f"{prefix}count", QVariant.Int))
-            elif self.stats in [
-                "sum",
-                "mean",
-                "min",
-                "max",
-                "median",
-                "std",
-                "var",
-                "range",
-            ]:
-                out_fields.append(QgsField(f"{prefix}{self.stats}", QVariant.Double))
-            elif self.stats in ["minority", "majority"]:
-                out_fields.append(QgsField(f"{prefix}{self.stats}", QVariant.String))
-            elif self.stats == "variety":
-                out_fields.append(QgsField(f"{prefix}variety", QVariant.Int))
+        append_bin_stat_fields(
+            out_fields,
+            all_categories,
+            self.stats,
+            self.numeric_field,
+            self.category_field,
+        )
 
         # Create the sink for the output
         (sink, dest_id) = self.parameterAsSink(
@@ -283,61 +274,16 @@ class H3Bin(QgsProcessingAlgorithm):
         for i, (h3_id, geom) in enumerate(h3_geometries.items()):
             props = {}
             for cat in sorted(all_categories):
-                prefix = "" if not self.category_field else f"{cat}_"
                 values = h3_bins[h3_id].get(cat, get_default_stats_structure())
-
-                if self.stats == "count":
-                    props[f"{prefix}count"] = values["count"]
-                elif self.stats == "sum":
-                    props[f"{prefix}sum"] = (
-                        sum(values["sum"]) if values["sum"] else None
+                props.update(
+                    stat_props_for_category(
+                        values,
+                        self.stats,
+                        self.numeric_field,
+                        self.category_field,
+                        cat,
                     )
-                elif self.stats == "min":
-                    props[f"{prefix}min"] = (
-                        min(values["min"]) if values["min"] else None
-                    )
-                elif self.stats == "max":
-                    props[f"{prefix}max"] = (
-                        max(values["max"]) if values["max"] else None
-                    )
-                elif self.stats == "mean":
-                    props[f"{prefix}mean"] = (
-                        statistics.mean(values["mean"]) if values["mean"] else None
-                    )
-                elif self.stats == "median":
-                    props[f"{prefix}median"] = (
-                        statistics.median(values["median"])
-                        if values["median"]
-                        else None
-                    )
-                elif self.stats == "std":
-                    props[f"{prefix}std"] = (
-                        statistics.stdev(values["std"]) if len(values["std"]) > 1 else 0
-                    )
-                elif self.stats == "var":
-                    props[f"{prefix}var"] = (
-                        statistics.variance(values["var"])
-                        if len(values["var"]) > 1
-                        else 0
-                    )
-                elif self.stats == "range":
-                    props[f"{prefix}range"] = (
-                        max(values["range"]) - min(values["range"])
-                        if values["range"]
-                        else 0
-                    )
-                elif self.stats == "minority":
-                    freq = Counter(values["values"])
-                    props[f"{prefix}minority"] = (
-                        min(freq.items(), key=lambda x: x[1])[0] if freq else None
-                    )
-                elif self.stats == "majority":
-                    freq = Counter(values["values"])
-                    props[f"{prefix}majority"] = (
-                        max(freq.items(), key=lambda x: x[1])[0] if freq else None
-                    )
-                elif self.stats == "variety":
-                    props[f"{prefix}variety"] = len(set(values["values"]))
+                )
 
             h3_feature = QgsFeature(out_fields)
             h3_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))

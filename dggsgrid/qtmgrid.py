@@ -18,6 +18,7 @@ from ..settings import settings
 from vgrid.dggs import qtm
 from vgrid.utils.io import validate_coordinate
 from vgrid.utils.constants import DGGS_TYPES
+from vgrid.utils.geometry import get_qtm_resolution_from_scale_denominator
 
 
 class QTMGrid(QObject):
@@ -55,7 +56,8 @@ class QTMGrid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self._get_qtm_resolution(scale)
+            # resolution = self._get_qtm_resolution(scale)
+            resolution = get_qtm_resolution_from_scale_denominator(scale,relative_depth=8,mm_per_pixel = 0.28)
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(

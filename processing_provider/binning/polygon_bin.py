@@ -21,12 +21,16 @@ from qgis.core import (
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 import os
-import statistics
-from collections import defaultdict, Counter
+from collections import defaultdict
 from shapely.geometry import shape
 import json
 from ...utils.imgs import Imgs
-from ...utils.binning.bin_helper import append_stats_value, get_default_stats_structure
+from ...utils.binning.bin_helper import (
+    append_bin_stat_fields,
+    append_stats_value,
+    get_default_stats_structure,
+    stat_props_for_category,
+)
 
 
 class PolygonBin(QgsProcessingAlgorithm):
@@ -222,25 +226,13 @@ class PolygonBin(QgsProcessingAlgorithm):
             for cat in bin_results[bin_key].keys():
                 all_categories.add(cat)
 
-        for cat in sorted(all_categories):
-            prefix = "" if not self.category_field else f"{cat}_"
-            if self.stats == "count":
-                fields.append(QgsField(f"{prefix}count", QVariant.Int))
-            elif self.stats in [
-                "sum",
-                "mean",
-                "min",
-                "max",
-                "median",
-                "std",
-                "var",
-                "range",
-            ]:
-                fields.append(QgsField(f"{prefix}{self.stats}", QVariant.Double))
-            elif self.stats in ["minority", "majority"]:
-                fields.append(QgsField(f"{prefix}{self.stats}", QVariant.String))
-            elif self.stats == "variety":
-                fields.append(QgsField(f"{prefix}variety", QVariant.Int))
+        append_bin_stat_fields(
+            fields,
+            all_categories,
+            self.stats,
+            self.numeric_field,
+            self.category_field,
+        )
 
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -258,63 +250,18 @@ class PolygonBin(QgsProcessingAlgorithm):
             attr_dict = {f.name(): props[i] for i, f in enumerate(polygon_fields)}
 
             for cat in sorted(all_categories):
-                prefix = "" if not self.category_field else f"{cat}_"
                 values = bin_results.get(bin_key, {}).get(
                     cat, get_default_stats_structure()
                 )
-
-                if self.stats == "count":
-                    attr_dict[f"{prefix}count"] = values["count"]
-                elif self.stats == "sum":
-                    attr_dict[f"{prefix}sum"] = (
-                        sum(values["sum"]) if values["sum"] else None
+                attr_dict.update(
+                    stat_props_for_category(
+                        values,
+                        self.stats,
+                        self.numeric_field,
+                        self.category_field,
+                        cat,
                     )
-                elif self.stats == "min":
-                    attr_dict[f"{prefix}min"] = (
-                        min(values["min"]) if values["min"] else None
-                    )
-                elif self.stats == "max":
-                    attr_dict[f"{prefix}max"] = (
-                        max(values["max"]) if values["max"] else None
-                    )
-                elif self.stats == "mean":
-                    attr_dict[f"{prefix}mean"] = (
-                        statistics.mean(values["mean"]) if values["mean"] else None
-                    )
-                elif self.stats == "median":
-                    attr_dict[f"{prefix}median"] = (
-                        statistics.median(values["median"])
-                        if values["median"]
-                        else None
-                    )
-                elif self.stats == "std":
-                    attr_dict[f"{prefix}std"] = (
-                        statistics.stdev(values["std"]) if len(values["std"]) > 1 else 0
-                    )
-                elif self.stats == "var":
-                    attr_dict[f"{prefix}var"] = (
-                        statistics.variance(values["var"])
-                        if len(values["var"]) > 1
-                        else 0
-                    )
-                elif self.stats == "range":
-                    attr_dict[f"{prefix}range"] = (
-                        max(values["range"]) - min(values["range"])
-                        if values["range"]
-                        else 0
-                    )
-                elif self.stats == "minority":
-                    freq = Counter(values["values"])
-                    attr_dict[f"{prefix}minority"] = (
-                        min(freq.items(), key=lambda x: x[1])[0] if freq else None
-                    )
-                elif self.stats == "majority":
-                    freq = Counter(values["values"])
-                    attr_dict[f"{prefix}majority"] = (
-                        max(freq.items(), key=lambda x: x[1])[0] if freq else None
-                    )
-                elif self.stats == "variety":
-                    attr_dict[f"{prefix}variety"] = len(set(values["values"]))
+                )
 
             out_feature = QgsFeature(fields)
             out_feature.setGeometry(geom)

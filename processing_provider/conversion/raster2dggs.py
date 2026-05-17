@@ -14,6 +14,7 @@ from qgis.core import (
     QgsProcessingParameterNumber,
     QgsProcessing,
     QgsProcessingException,
+    QgsVectorLayer,
 )
 
 from qgis.core import QgsApplication
@@ -36,7 +37,7 @@ from vgrid.stats.geohashstats import geohash_metrics
 from vgrid.stats.tilecodestats import tilecode_metrics
 from vgrid.stats.quadkeystats import quadkey_metrics
 from vgrid.stats.dggalstats import dggal_metrics
-from vgrid.utils.constants import MIN_CELL_AREA
+from vgrid.utils.constants import MIN_CELL_AREA, RASTER_STATS_OPTIONS
 
 
 class Raster2DGGS(QgsProcessingAlgorithm):
@@ -47,7 +48,11 @@ class Raster2DGGS(QgsProcessingAlgorithm):
     INPUT = "INPUT"
     DGGS_TYPE = "DGGS_TYPE"
     RESOLUTION = "RESOLUTION"
+    METHOD = "METHOD"
+    STATS = "STATS"
     OUTPUT = "OUTPUT"
+
+    METHODS = ["nearest", "binning"]
 
     DGGS_TYPES = [
         "H3",
@@ -214,6 +219,24 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         )
 
         self.addParameter(
+            QgsProcessingParameterEnum(
+                self.METHOD,
+                self.tr("Conversion method"),
+                options=self.METHODS,
+                defaultValue=0,
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.STATS,
+                self.tr("Band statistic (binning only)"),
+                options=RASTER_STATS_OPTIONS,
+                defaultValue=RASTER_STATS_OPTIONS.index("mean"),
+            )
+        )
+
+        self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr("Raster2DGGS"), QgsProcessing.TypeVectorPolygon
             )
@@ -346,38 +369,84 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             )
             self.resolution = 1
 
+        method_index = self.parameterAsEnum(parameters, self.METHOD, context)
+        self.method = self.METHODS[method_index]
+        stats_index = self.parameterAsEnum(parameters, self.STATS, context)
+        self.stats = RASTER_STATS_OPTIONS[stats_index]
+
+        _kw = {"method": self.method, "stats": self.stats}
+
+        def _fn(conv):
+            return lambda rl, res, fb: conv(rl, res, fb, **_kw)
+
         self.DGGS_TYPE_functions = {
-            "h3": raster2h3,
-            "s2": raster2s2,
-            "a5": raster2a5,
-            "rhealpix": raster2rhealpix,
-            "qtm": raster2qtm,
-            "olc": raster2olc,
-            "geohash": raster2geohash,
-            "tilecode": raster2tilecode,
-            "quadkey": raster2quadkey,
-            "digipin": raster2digipin,
-            "dggal_gnosis": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "gnosis"),
-            "dggal_isea4r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "isea4r"),
-            "dggal_isea9r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "isea9r"),
-            "dggal_isea3h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "isea3h"),
-            "dggal_isea7h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "isea7h"),
-            "dggal_isea7h_z7": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "isea7h_z7"),
-            "dggal_ivea4r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "ivea4r"),
-            "dggal_ivea9r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "ivea9r"),
-            "dggal_ivea3h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "ivea3h"),
-            "dggal_ivea7h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "ivea7h"),
-            "dggal_ivea7h_z7": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "ivea7h_z7"),
-            "dggal_rtea4r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rtea4r"),
-            "dggal_rtea9r": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rtea9r"),
-            "dggal_rtea3h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rtea3h"),
-            "dggal_rtea7h": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rtea7h"),
-            "dggal_rtea7h_z7": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rtea7h_z7"),
-            "dggal_healpix": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "healpix"),
-            "dggal_rhealpix": lambda raster_layer, resolution, feedback: raster2dggal(raster_layer, resolution, feedback, "rhealpix"),
+            "h3": _fn(raster2h3),
+            "s2": _fn(raster2s2),
+            "a5": _fn(raster2a5),
+            "rhealpix": _fn(raster2rhealpix),
+            "qtm": _fn(raster2qtm),
+            "olc": _fn(raster2olc),
+            "geohash": _fn(raster2geohash),
+            "tilecode": _fn(raster2tilecode),
+            "quadkey": _fn(raster2quadkey),
+            "digipin": _fn(raster2digipin),
+            "dggal_gnosis": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "gnosis", method=self.method, stats=self.stats
+            ),
+            "dggal_isea4r": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "isea4r", method=self.method, stats=self.stats
+            ),
+            "dggal_isea9r": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "isea9r", method=self.method, stats=self.stats
+            ),
+            "dggal_isea3h": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "isea3h", method=self.method, stats=self.stats
+            ),
+            "dggal_isea7h": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "isea7h", method=self.method, stats=self.stats
+            ),
+            "dggal_isea7h_z7": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "isea7h_z7", method=self.method, stats=self.stats
+            ),
+            "dggal_ivea4r": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "ivea4r", method=self.method, stats=self.stats
+            ),
+            "dggal_ivea9r": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "ivea9r", method=self.method, stats=self.stats
+            ),
+            "dggal_ivea3h": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "ivea3h", method=self.method, stats=self.stats
+            ),
+            "dggal_ivea7h": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "ivea7h", method=self.method, stats=self.stats
+            ),
+            "dggal_ivea7h_z7": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "ivea7h_z7", method=self.method, stats=self.stats
+            ),
+            "dggal_rtea4r": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "rtea4r", method=self.method, stats=self.stats
+            ),
+            "dggal_rtea9r": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "rtea9r", method=self.method, stats=self.stats
+            ),
+            "dggal_rtea3h": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "rtea3h", method=self.method, stats=self.stats
+            ),
+            "dggal_rtea7h": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "rtea7h", method=self.method, stats=self.stats
+            ),
+            "dggal_rtea7h_z7": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "rtea7h_z7", method=self.method, stats=self.stats
+            ),
+            "dggal_healpix": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "healpix", method=self.method, stats=self.stats
+            ),
+            "dggal_rhealpix": lambda rl, res, fb: raster2dggal(
+                rl, res, fb, "rhealpix", method=self.method, stats=self.stats
+            ),
         }
         if platform.system() == "Windows":
-            self.DGGS_TYPE_functions["isea4t"] = raster2isea4t
+            self.DGGS_TYPE_functions["isea4t"] = _fn(raster2isea4t)
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -391,6 +460,9 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         feedback.pushInfo(
             f"Processing raster: {raster_layer.name()} at resolution: {self.resolution}"
         )
+        feedback.pushInfo(f"Method: {self.method}")
+        if self.method == "binning":
+            feedback.pushInfo(f"Band statistic: {self.stats}")
 
         # conversion_function returns a memory layer (QgsVectorLayer)
         memory_layer = conversion_function(raster_layer, self.resolution, feedback)

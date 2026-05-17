@@ -46,6 +46,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
     DGGSTYPE_FROM = "DGGSTYPE_FROM"
     DGGSTYPE_TO = "DGGSTYPE_TO"
     RESOLUTION = "RESOLUTION"
+    METHOD = "METHOD"
     OUTPUT = "OUTPUT"
 
     DGGS_TYPES = [
@@ -58,6 +59,24 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         "Geohash",
         "Tilecode",
         "Quadkey",
+        "DGGAL_GNOSIS",
+        "DGGAL_ISEA4R",
+        "DGGAL_ISEA9R",
+        "DGGAL_ISEA3H",
+        "DGGAL_ISEA7H",
+        "DGGAL_ISEA7H_Z7",
+        "DGGAL_IVEA4R",
+        "DGGAL_IVEA9R",
+        "DGGAL_IVEA3H",
+        "DGGAL_IVEA7H",
+        "DGGAL_IVEA7H_Z7",
+        "DGGAL_RTEA4R",
+        "DGGAL_RTEA9R",
+        "DGGAL_RTEA3H",
+        "DGGAL_RTEA7H",
+        "DGGAL_RTEA7H_Z7",
+        "DGGAL_HEALPix",
+        "DGGAL_rHEALPix",
     ]
 
     if platform.system() == "Windows":
@@ -96,7 +115,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
 
     def tags(self):
         return self.tr(
-            "DGGS, resample, H3,S2, A5, rHEALPix, ISEA4T, QTM,OLC,Geohash,Tilecode,Quadkey"
+            "DGGS, resample, H3,S2, A5, rHEALPix, ISEA4T, QTM,OLC,Geohash,Tilecode,Quadkey,DGGAL"
         ).split(",")
 
     txt_en = "DGGS Resample"
@@ -185,6 +204,15 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.METHOD,
+                self.tr("Resampling method"),
+                options=["nearest", "area_weighted"],
+                defaultValue=0,
+            )
+        )
+
     def prepareAlgorithm(self, parameters, context, feedback):
         self.DGGSTYPE_FROM_index = self.parameterAsEnum(
             parameters, self.DGGSTYPE_FROM, context
@@ -206,6 +234,8 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
             parameters, self.RESAMPLE_FIELD, context
         )
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        method_index = self.parameterAsEnum(parameters, self.METHOD, context)
+        self.method = ["nearest", "area_weighted"][method_index]
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -220,7 +250,8 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
             self.resolution,
             self.dggs_field,
             self.resample_field,
-            feedback,
+            method=self.method,
+            feedback=feedback,
         )
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():
