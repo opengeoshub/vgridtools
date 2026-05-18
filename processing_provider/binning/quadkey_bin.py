@@ -29,9 +29,11 @@ from ...utils.imgs import Imgs
 from collections import defaultdict
 from ...utils.binning.bin_helper import (
     append_bin_stat_fields,
+    append_graticule_metric_fields,
     append_stats_value,
+    build_bin_feature_props,
+    feature_attributes,
     get_default_stats_structure,
-    stat_props_for_category,
 )
 from ...settings import settings
 from vgrid.dggs import mercantile
@@ -265,6 +267,7 @@ class QuadkeyBin(QgsProcessingAlgorithm):
         # Prepare output fields
         out_fields = QgsFields()
         out_fields.append(QgsField("quadkey", QVariant.String))
+        append_graticule_metric_fields(out_fields)
 
         all_categories = set()
         for bin_data in quadkey_bins.values():
@@ -291,27 +294,21 @@ class QuadkeyBin(QgsProcessingAlgorithm):
         # Process each quadkey bin and update progress
         total_quadkey_geometries = len(quadkey_geometries)
         for i, (quadkey_id, geom) in enumerate(quadkey_geometries.items()):
-            props = {}
-            for cat in sorted(all_categories):
-                values = quadkey_bins[quadkey_id].get(cat, get_default_stats_structure())
-                props.update(
-                    stat_props_for_category(
-                        values,
-                        self.stats,
-                        self.numeric_field,
-                        self.category_field,
-                        cat,
-                    )
-                )
-
+            props = build_bin_feature_props(
+                geom,
+                self.resolution,
+                "quadkey",
+                quadkey_id,
+                quadkey_bins,
+                all_categories,
+                self.stats,
+                self.numeric_field,
+                self.category_field,
+                metric_kind="graticule",
+            )
             quadkey_feature = QgsFeature(out_fields)
             quadkey_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            quadkey_feature.setAttributes(
-                [
-                    props.get(f.name(), None) if f.name() != "quadkey" else quadkey_id
-                    for f in out_fields
-                ]
-            )
+            quadkey_feature.setAttributes(feature_attributes(out_fields, props))
             sink.addFeature(quadkey_feature, QgsFeatureSink.FastInsert)
 
             # Update progress after each quadkey bin is processed

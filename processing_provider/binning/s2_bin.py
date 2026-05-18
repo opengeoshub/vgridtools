@@ -31,9 +31,11 @@ from ...utils.imgs import Imgs
 from collections import defaultdict
 from ...utils.binning.bin_helper import (
     append_bin_stat_fields,
+    append_geodesic_metric_fields,
     append_stats_value,
+    build_bin_feature_props,
+    feature_attributes,
     get_default_stats_structure,
-    stat_props_for_category,
 )
 from ...settings import settings
 from vgrid.utils.antimeridian import fix_polygon
@@ -263,6 +265,7 @@ class S2Bin(QgsProcessingAlgorithm):
         # Prepare output fields
         out_fields = QgsFields()
         out_fields.append(QgsField("s2", QVariant.String))
+        append_geodesic_metric_fields(out_fields)
 
         all_categories = set()
         for bin_data in s2_bins.values():
@@ -289,27 +292,21 @@ class S2Bin(QgsProcessingAlgorithm):
         # Process each s2 bin and update progress
         total_s2_geometries = len(s2_geometries)
         for i, (s2_token, geom) in enumerate(s2_geometries.items()):
-            props = {}
-            for cat in sorted(all_categories):
-                values = s2_bins[s2_token].get(cat, get_default_stats_structure())
-                props.update(
-                    stat_props_for_category(
-                        values,
-                        self.stats,
-                        self.numeric_field,
-                        self.category_field,
-                        cat,
-                    )
-                )
-
+            props = build_bin_feature_props(
+                geom,
+                self.resolution,
+                "s2",
+                s2_token,
+                s2_bins,
+                all_categories,
+                self.stats,
+                self.numeric_field,
+                self.category_field,
+                num_edges=4,
+            )
             s2_feature = QgsFeature(out_fields)
             s2_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            s2_feature.setAttributes(
-                [
-                    props.get(f.name(), None) if f.name() != "s2" else s2_token
-                    for f in out_fields
-                ]
-            )
+            s2_feature.setAttributes(feature_attributes(out_fields, props))
             sink.addFeature(s2_feature, QgsFeatureSink.FastInsert)
 
             # Update progress after each s2 bin is processed

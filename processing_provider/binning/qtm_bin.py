@@ -29,9 +29,11 @@ from ...utils.imgs import Imgs
 from collections import defaultdict
 from ...utils.binning.bin_helper import (
     append_bin_stat_fields,
+    append_geodesic_metric_fields,
     append_stats_value,
+    build_bin_feature_props,
+    feature_attributes,
     get_default_stats_structure,
-    stat_props_for_category,
 )
 from ...settings import settings
 
@@ -246,6 +248,7 @@ class QTMBin(QgsProcessingAlgorithm):
         # Prepare output fields
         out_fields = QgsFields()
         out_fields.append(QgsField("qtm", QVariant.String))
+        append_geodesic_metric_fields(out_fields)
 
         all_categories = set()
         for bin_data in qtm_bins.values():
@@ -272,27 +275,21 @@ class QTMBin(QgsProcessingAlgorithm):
         # Process each qtm bin and update progress
         total_qtm_geometries = len(qtm_geometries)
         for i, (qtm_id, geom) in enumerate(qtm_geometries.items()):
-            props = {}
-            for cat in sorted(all_categories):
-                values = qtm_bins[qtm_id].get(cat, get_default_stats_structure())
-                props.update(
-                    stat_props_for_category(
-                        values,
-                        self.stats,
-                        self.numeric_field,
-                        self.category_field,
-                        cat,
-                    )
-                )
-
+            props = build_bin_feature_props(
+                geom,
+                self.resolution,
+                "qtm",
+                qtm_id,
+                qtm_bins,
+                all_categories,
+                self.stats,
+                self.numeric_field,
+                self.category_field,
+                num_edges=3,
+            )
             qtm_feature = QgsFeature(out_fields)
             qtm_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            qtm_feature.setAttributes(
-                [
-                    props.get(f.name(), None) if f.name() != "qtm" else qtm_id
-                    for f in out_fields
-                ]
-            )
+            qtm_feature.setAttributes(feature_attributes(out_fields, props))
             sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)
 
             # Update progress after each qtm bin is processed

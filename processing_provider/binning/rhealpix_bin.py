@@ -28,9 +28,11 @@ from collections import defaultdict
 from ...utils.imgs import Imgs
 from ...utils.binning.bin_helper import (
     append_bin_stat_fields,
+    append_geodesic_metric_fields,
     append_stats_value,
+    build_bin_feature_props,
+    feature_attributes,
     get_default_stats_structure,
-    stat_props_for_category,
 )
 from ...settings import settings
 
@@ -253,6 +255,7 @@ class rHEALPixBin(QgsProcessingAlgorithm):
         # Prepare output fields
         out_fields = QgsFields()
         out_fields.append(QgsField("rhealpix", QVariant.String))
+        append_geodesic_metric_fields(out_fields)
 
         all_categories = set()
         for bin_data in rhealpix_bins.values():
@@ -279,27 +282,21 @@ class rHEALPixBin(QgsProcessingAlgorithm):
         # Process each rhealpix bin and update progress
         total_rhealpix_geometries = len(rhealpix_geometries)
         for i, (rhealpix_id, geom) in enumerate(rhealpix_geometries.items()):
-            props = {}
-            for cat in sorted(all_categories):
-                values = rhealpix_bins[rhealpix_id].get(cat, get_default_stats_structure())
-                props.update(
-                    stat_props_for_category(
-                        values,
-                        self.stats,
-                        self.numeric_field,
-                        self.category_field,
-                        cat,
-                    )
-                )
-
+            props = build_bin_feature_props(
+                geom,
+                self.resolution,
+                "rhealpix",
+                rhealpix_id,
+                rhealpix_bins,
+                all_categories,
+                self.stats,
+                self.numeric_field,
+                self.category_field,
+                rhealpix_dggs=rhealpix_dggs,
+            )
             rhealpix_feature = QgsFeature(out_fields)
             rhealpix_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            rhealpix_feature.setAttributes(
-                [
-                    props.get(f.name(), None) if f.name() != "rhealpix" else rhealpix_id
-                    for f in out_fields
-                ]
-            )
+            rhealpix_feature.setAttributes(feature_attributes(out_fields, props))
             sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)
 
             # Update progress after each rhealpix bin is processed

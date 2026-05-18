@@ -32,9 +32,12 @@ from ...utils.imgs import Imgs
 from collections import defaultdict
 from ...utils.binning.bin_helper import (
     append_bin_stat_fields,
+    append_geodesic_metric_fields,
     append_stats_value,
+    build_bin_feature_props,
+    dggal_num_edges,
+    feature_attributes,
     get_default_stats_structure,
-    stat_props_for_category,
 )
 
 
@@ -260,6 +263,7 @@ class DGGALBin(QgsProcessingAlgorithm):
         # Prepare output fields
         out_fields = QgsFields()
         out_fields.append(QgsField(f"dggal_{self.dggs_type}", QVariant.String))
+        append_geodesic_metric_fields(out_fields)
 
         all_categories = set()
         for bin_data in dggal_bins.values():
@@ -285,30 +289,23 @@ class DGGALBin(QgsProcessingAlgorithm):
 
         # Process each dggal bin and update progress
         total_dggal_geometries = len(dggal_geometries)
+        id_field = f"dggal_{self.dggs_type}"
         for i, (dggal_id, geom) in enumerate(dggal_geometries.items()):
-            props = {}
-            for cat in sorted(all_categories):
-                values = dggal_bins[dggal_id].get(cat, get_default_stats_structure())
-                props.update(
-                    stat_props_for_category(
-                        values,
-                        self.stats,
-                        self.numeric_field,
-                        self.category_field,
-                        cat,
-                    )
-                )
-
+            props = build_bin_feature_props(
+                geom,
+                self.resolution,
+                id_field,
+                dggal_id,
+                dggal_bins,
+                all_categories,
+                self.stats,
+                self.numeric_field,
+                self.category_field,
+                num_edges=dggal_num_edges(self.dggs_type, dggal_id),
+            )
             dggal_feature = QgsFeature(out_fields)
             dggal_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            dggal_feature.setAttributes(
-                [
-                    props.get(f.name(), None)
-                    if f.name() != f"dggal_{self.dggs_type}"
-                    else dggal_id
-                    for f in out_fields
-                ]
-            )
+            dggal_feature.setAttributes(feature_attributes(out_fields, props))
             sink.addFeature(dggal_feature, QgsFeatureSink.FastInsert)
 
             # Update progress after each dggal bin is processed

@@ -24,6 +24,7 @@ from qgis.core import (
     QgsProcessingParameterField,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
+    QgsProcessingParameterBoolean,
     QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingException,
     QgsWkbTypes,
@@ -46,6 +47,8 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
     DGGSTYPE_FROM = "DGGSTYPE_FROM"
     DGGSTYPE_TO = "DGGSTYPE_TO"
     RESOLUTION = "RESOLUTION"
+    SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
     DGGS_TYPES = [
@@ -185,6 +188,22 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.SHIFT_ANTIMERIDIAN,
+                self.tr("Shift at Antimeridian"),
+                defaultValue=True,
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.SPLIT_ANTIMERIDIAN,
+                self.tr("Split at Antimeridian"),
+                defaultValue=False,
+            )
+        )
+
     def prepareAlgorithm(self, parameters, context, feedback):
         self.DGGSTYPE_FROM_index = self.parameterAsEnum(
             parameters, self.DGGSTYPE_FROM, context
@@ -195,17 +214,23 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         self.dggstype_from = self.DGGS_TYPES[self.DGGSTYPE_FROM_index].lower()
         self.dggstype_to = self.DGGS_TYPES[self.DGGSTYPE_TO_index].lower()
 
-        if self.dggstype_from == self.dggstype_to:
-            feedback.reportError(
-                "Input DGGS Type must be different with Output DGGS Type."
-            )
-            return False
+        # if self.dggstype_from == self.dggstype_to:
+        #     feedback.reportError(
+        #         "Input DGGS Type must be different with Output DGGS Type."
+        #     )
+        #     return False
 
         self.dggs_field = self.parameterAsString(parameters, self.DGGS_FIELD, context)
         self.resample_field = self.parameterAsString(
             parameters, self.RESAMPLE_FIELD, context
         )
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        self.shift_antimeridian = self.parameterAsBoolean(
+            parameters, self.SHIFT_ANTIMERIDIAN, context
+        )
+        self.split_antimeridian = self.parameterAsBoolean(
+            parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -220,7 +245,9 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
             self.resolution,
             self.dggs_field,
             self.resample_field,
-            feedback,
+            feedback=feedback,
+            shift_antimeridian=self.shift_antimeridian,
+            split_antimeridian=self.split_antimeridian,
         )
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():

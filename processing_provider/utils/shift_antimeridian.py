@@ -86,13 +86,6 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
-        reference = (
-            '''<div>
-                      <p><b>'''
-            + self.tr("Reference:", "Reference:")
-            + '''</b> <a href="https://github.com/gadomski/antimeridian">antimeridian</a></p>
-                    </div>'''
-        )
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -110,7 +103,7 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
                     </div>
                     """
         )
-        return self.tr(self.txt_en, self.txt_vi) + reference + footer
+        return self.tr(self.txt_en, self.txt_vi)  + footer
 
     def inputLayerTypes(self):
         return [QgsProcessing.TypeVectorPolygon, QgsProcessing.TypeVectorLine]

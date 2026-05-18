@@ -172,9 +172,7 @@ def raster2rhealpix(
         stats,
         "rhealpix",
         cell_id,
-        lambda res, feat, fb: dggsgrid.generate_rhealpix_grid(
-            _RHEALPIX_DGGS, res, feat, fb
-        ),
+        lambda res, feat, fb: dggsgrid.generate_rhealpix_grid(res, feat, fb),
         builder,
         feedback=feedback,
         layer_name="rHEALPix",

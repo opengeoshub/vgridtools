@@ -5,8 +5,6 @@ import h3
 import a5
 import re
 import dggal
-import geopandas as gpd
-from pyproj import CRS
 from vgrid.stats.s2stats import s2_metrics
 from vgrid.stats.dggalstats import dggal_metrics
 from vgrid.utils.constants import DGGAL_TYPES
@@ -37,7 +35,9 @@ if platform.system() == "Windows":
 from qgis.core import (
     QgsFeature,
     QgsField,
+    QgsFields,
     QgsGeometry,
+    QgsSpatialIndex,
     QgsVectorLayer,
 )
 from qgis.PyQt.QtCore import QVariant
@@ -249,20 +249,39 @@ def get_nearest_resolution(
     return nearest_resolution
 
 
-def generate_grid(qgs_features, to_dggs, resolution, feedback=None):
+def generate_grid(
+    qgs_features,
+    to_dggs,
+    resolution,
+    feedback=None,
+    shift_antimeridian=False,
+    split_antimeridian=False,
+):
+    antimeridian_kw = {
+        "shift_antimeridian": shift_antimeridian,
+        "split_antimeridian": split_antimeridian,
+    }
     dggs_grid = {}
     if to_dggs == "h3":
-        dggs_grid = dggsgrid.generate_h3_grid(resolution, qgs_features, feedback)
+        dggs_grid = dggsgrid.generate_h3_grid(
+            resolution, qgs_features, feedback, **antimeridian_kw
+        )
     elif to_dggs == "s2":
-        dggs_grid = dggsgrid.generate_s2_grid(resolution, qgs_features, feedback)
+        dggs_grid = dggsgrid.generate_s2_grid(
+            resolution, qgs_features, feedback, **antimeridian_kw
+        )
     elif to_dggs == "a5":
-        dggs_grid = dggsgrid.generate_a5_grid(resolution, qgs_features, feedback)
+        dggs_grid = dggsgrid.generate_a5_grid(
+            resolution, qgs_features, feedback, **antimeridian_kw
+        )
     elif to_dggs == "rhealpix":
-        dggs_grid = dggsgrid.generate_rhealpix_grid(resolution, qgs_features, feedback)
+        dggs_grid = dggsgrid.generate_rhealpix_grid(
+            resolution, qgs_features, feedback, **antimeridian_kw
+        )
     elif to_dggs == "isea4t":
         if platform.system() == "Windows":
             dggs_grid = dggsgrid.generate_isea4t_grid(
-                resolution, qgs_features, feedback
+                resolution, qgs_features, feedback, **antimeridian_kw
             )
     elif to_dggs == "qtm":
         dggs_grid = dggsgrid.generate_qtm_grid(resolution, qgs_features, feedback)
@@ -276,55 +295,51 @@ def generate_grid(qgs_features, to_dggs, resolution, feedback=None):
         dggs_grid = dggsgrid.generate_quadkey_grid(resolution, qgs_features, feedback)
     elif (dt := _dggal_short_type(to_dggs)) is not None:
         dt = validate_dggal_type(dt)
-        dggs_grid = dggsgrid.generate_dggal_grid(dt, resolution, qgs_features, feedback)
+        dggs_grid = dggsgrid.generate_dggal_grid(
+            dt, resolution, qgs_features, feedback, **antimeridian_kw
+        )
     else:
         raise ValueError(f"Unsupported DGGS type: {to_dggs}")
 
     return dggs_grid
 
 
-def _metric_crs(gdf):
-    """Lambert azimuthal equal-area CRS centered on the data extent (metres)."""
-    if gdf.crs is None:
-        return None
-    if not gdf.crs.is_geographic:
-        return gdf.crs
+def _build_source_spatial_index(layer1, resample_field):
+    """Build QgsSpatialIndex and fid -> (feature, numeric value) for source layer."""
+    index = QgsSpatialIndex()
+    source_by_id = {}
+    for feature in layer1.getFeatures():
+        value = feature[resample_field]
+        if not isinstance(value, Number):
+            raise TypeError(
+                f"Non-numeric value found in <{resample_field}>. "
+                "Resampled field calculation failed."
+            )
+        fid = feature.id()
+        if index.addFeature(feature):
+            source_by_id[fid] = (feature, float(value))
+    return index, source_by_id
 
-    minx, miny, maxx, maxy = gdf.total_bounds
-    lon_0 = (minx + maxx) / 2.0
-    lat_0 = max(-89.9, min(89.9, (miny + maxy) / 2.0))
-    return CRS.from_proj4(
-        f"+proj=laea +lat_0={lat_0} +lon_0={lon_0} +datum=WGS84 +units=m +no_defs"
-    )
 
-
-def _qgs_layer_to_gdf(layer, value_field=None):
-    rows = []
-    for idx, feature in enumerate(layer.getFeatures()):
-        row = {"_idx": idx, "geometry": load_wkt(feature.geometry().asWkt())}
-        if value_field is not None:
-            row[value_field] = feature[value_field]
-        rows.append(row)
-    crs = layer.crs().authid() if layer.crs().isValid() else "EPSG:4326"
-    return gpd.GeoDataFrame(rows, crs=crs)
+def _target_intersects_source(geom, index, source_by_id):
+    """True if geometry intersects at least one source feature."""
+    if geom is None or geom.isEmpty():
+        return False
+    for fid in index.intersects(geom.boundingBox()):
+        src_feature, _ = source_by_id.get(fid, (None, None))
+        if src_feature is None:
+            continue
+        if geom.intersects(src_feature.geometry()):
+            return True
+    return False
 
 
 def _resampling_area_weighted(layer1, layer2, resample_field, feedback=None):
     try:
-        layer1_features = []
-        for feature in layer1.getFeatures():
-            if resample_field not in feature.fields().names():
-                raise ValueError(
-                    f"There is no <{resample_field}> field in the input layer1 features."
-                )
-            geom = load_wkt(feature.geometry().asWkt())
-            value = feature[resample_field]
-            layer1_features.append((geom, value))
-    except ValueError as e:
+        source_index, source_by_id = _build_source_spatial_index(layer1, resample_field)
+    except TypeError as e:
         if feedback:
             feedback.reportError(str(e))
-        else:
-            print(e)
         return layer2
 
     fields = layer2.fields()
@@ -348,34 +363,38 @@ def _resampling_area_weighted(layer1, layer2, resample_field, feedback=None):
         if feedback and feedback.isCanceled():
             feedback.reportError("Operation cancelled.")
             return output_layer
-
-        layer2_geom = load_wkt(feature.geometry().asWkt())
-        target_area = layer2_geom.area
-        if target_area == 0:
+        try:
+            layer2_geom = dggsgrid._ensure_valid_geometry(
+                load_wkt(feature.geometry().asWkt())
+            )
+            target_area = layer2_geom.area
+            if target_area == 0:
+                continue
+        except Exception:
             continue
 
         resampled_value = 0.0
         intersected = False
+        qgs_target = feature.geometry()
 
-        for l1_geom, l1_value in layer1_features:
-            if not layer2_geom.intersects(l1_geom):
+        for fid in source_index.intersects(qgs_target.boundingBox()):
+            src_feature, l1_value = source_by_id.get(fid, (None, None))
+            if src_feature is None:
                 continue
-            if not isinstance(l1_value, Number):
-                msg = (
-                    f"Non-numeric value found in <{resample_field}>. "
-                    "Resampled field calculation failed."
+            try:
+                l1_geom = dggsgrid._ensure_valid_geometry(
+                    load_wkt(src_feature.geometry().asWkt())
                 )
-                if feedback:
-                    feedback.reportError(msg)
-                return output_layer
-
-            intersection = layer2_geom.intersection(l1_geom)
-            if intersection.is_empty:
+                if not layer2_geom.intersects(l1_geom):
+                    continue
+                intersection = dggsgrid._safe_intersection(layer2_geom, l1_geom)
+                if intersection.is_empty:
+                    continue
+                proportion = intersection.area / target_area
+                resampled_value += l1_value * proportion
+                intersected = True
+            except Exception:
                 continue
-
-            proportion = intersection.area / target_area
-            resampled_value += float(l1_value) * proportion
-            intersected = True
 
         if not intersected:
             continue
@@ -418,27 +437,19 @@ def _resampling_nearest(layer1, layer2, resample_field, feedback=None):
             feedback.reportError(msg)
         return layer2
 
-    target_features = list(layer2.getFeatures())
-    source_gdf = _qgs_layer_to_gdf(layer1, resample_field)
-    target_gdf = _qgs_layer_to_gdf(layer2)
+    try:
+        source_index, source_by_id = _build_source_spatial_index(layer1, resample_field)
+    except TypeError as e:
+        if feedback:
+            feedback.reportError(str(e))
+        return layer2
 
-    for val in source_gdf[resample_field]:
-        if not isinstance(val, Number):
-            msg = (
-                f"Non-numeric value found in <{resample_field}>. "
-                "Resampled field calculation failed."
-            )
-            if feedback:
-                feedback.reportError(msg)
-            return layer2
+    if not source_by_id:
+        if feedback:
+            feedback.reportError("No source cells for nearest-neighbour resampling.")
+        return layer2
 
-    hits = gpd.sjoin(
-        target_gdf,
-        source_gdf[["geometry"]],
-        how="inner",
-        predicate="intersects",
-    )
-    fields = layer2.fields()
+    fields = QgsFields(layer2.fields())
     if resample_field not in fields.names():
         fields.append(QgsField(resample_field, QVariant.Double))
 
@@ -449,53 +460,45 @@ def _resampling_nearest(layer1, layer2, resample_field, feedback=None):
     output_layer.dataProvider().addAttributes(fields)
     output_layer.updateFields()
 
-    if hits.empty:
-        output_layer.commitChanges()
-        return output_layer
-
-    target_hit = target_gdf.loc[hits.index.unique()].copy()
-    metric_crs = _metric_crs(source_gdf)
-    if metric_crs is not None and (
-        source_gdf.crs is None or not source_gdf.crs.equals(metric_crs)
-    ):
-        source_metric = source_gdf.to_crs(metric_crs)
-        target_metric = target_hit.to_crs(metric_crs)
-    else:
-        source_metric = source_gdf
-        target_metric = target_hit
-
-    source_pts = gpd.GeoDataFrame(
-        {resample_field: source_metric[resample_field].values},
-        geometry=source_metric.geometry.centroid,
-        crs=source_metric.crs,
-    )
-    target_pts = gpd.GeoDataFrame(
-        {"_idx": target_metric["_idx"].values},
-        geometry=target_metric.geometry.centroid,
-        crs=target_metric.crs,
-    )
-
-    nearest = gpd.sjoin_nearest(target_pts, source_pts, how="left")
-    out = target_hit.copy()
-    out[resample_field] = nearest[resample_field].astype(float).round(3)
-
     resample_idx = fields.indexOf(resample_field)
-    total = len(out)
-    for i, (_, row) in enumerate(out.iterrows()):
+    total = layer2.featureCount()
+    resampled_count = 0
+
+    if feedback:
+        feedback.pushInfo(
+            f"Starting nearest-neighbour resampling on {total} features..."
+        )
+
+    for i, target_feature in enumerate(layer2.getFeatures()):
         if feedback and feedback.isCanceled():
             feedback.reportError("Operation cancelled.")
             return output_layer
 
-        orig_feature = target_features[int(row["_idx"])]
+        geom = target_feature.geometry()
+        if not _target_intersects_source(geom, source_index, source_by_id):
+            continue
+
+        centroid = geom.centroid()
+        if centroid.isEmpty():
+            continue
+
+        nearest_ids = source_index.nearestNeighbor(centroid.asPoint(), 1)
+        if not nearest_ids:
+            continue
+
+        _, source_value = source_by_id[nearest_ids[0]]
+        resampled_value = round(source_value, 3)
+
         new_feat = QgsFeature(fields)
-        new_feat.setGeometry(QgsGeometry.fromWkt(row.geometry.wkt))
-        attrs = list(orig_feature.attributes())
+        new_feat.setGeometry(geom)
+        attrs = list(target_feature.attributes())
         if len(attrs) < fields.count():
-            attrs.append(float(row[resample_field]))
+            attrs.append(resampled_value)
         else:
-            attrs[resample_idx] = float(row[resample_field])
+            attrs[resample_idx] = resampled_value
         new_feat.setAttributes(attrs)
         output_layer.addFeature(new_feat)
+        resampled_count += 1
 
         if feedback:
             feedback.setProgress(int((i + 1) / total * 100))
@@ -507,7 +510,7 @@ def _resampling_nearest(layer1, layer2, resample_field, feedback=None):
         feedback.setProgress(100)
         feedback.pushInfo(
             f"Nearest-neighbour resampling complete. "
-            f"{output_layer.featureCount()} features updated."
+            f"{resampled_count} features updated."
         )
 
     return output_layer
@@ -540,6 +543,8 @@ def resample(
     resample_field=None,
     method="nearest",
     feedback=None,
+    shift_antimeridian=False,
+    split_antimeridian=False,
 ):
     resampled_features = None
     if resolution == -1:
@@ -548,16 +553,26 @@ def resample(
         )
         if feedback:
             feedback.pushInfo(f"Nearest resolution: {resolution}")
-    if resolution:
-        resampled_features = generate_grid(
-            dggs_layer, dggstype_to, resolution, feedback
+
+    if resolution is None:
+        if feedback:
+            feedback.reportError("Could not determine output resolution.")
+        return None
+
+    resampled_features = generate_grid(
+        dggs_layer,
+        dggstype_to,
+        resolution,
+        feedback,
+        shift_antimeridian=shift_antimeridian,
+        split_antimeridian=split_antimeridian,
+    )
+    if resample_field and resampled_features is not None:
+        resampled_features = resampling(
+            dggs_layer,
+            resampled_features,
+            resample_field,
+            method=method,
+            feedback=feedback,
         )
-        if resample_field:
-            resampled_features = resampling(
-                dggs_layer,
-                resampled_features,
-                resample_field,
-                method=method,
-                feedback=feedback,
-            )
     return resampled_features

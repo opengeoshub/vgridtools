@@ -28,9 +28,11 @@ from collections import defaultdict
 from ...utils.imgs import Imgs
 from ...utils.binning.bin_helper import (
     append_bin_stat_fields,
+    append_geodesic_metric_fields,
     append_stats_value,
+    build_bin_feature_props,
+    feature_attributes,
     get_default_stats_structure,
-    stat_props_for_category,
 )
 from ...settings import settings
 from shapely.geometry import Polygon
@@ -274,6 +276,7 @@ class ISEA4TBin(QgsProcessingAlgorithm):
             # Prepare output fields
             out_fields = QgsFields()
             out_fields.append(QgsField("isea4t", QVariant.String))
+            append_geodesic_metric_fields(out_fields)
 
             all_categories = set()
             for bin_data in isea4t_bins.values():
@@ -300,27 +303,21 @@ class ISEA4TBin(QgsProcessingAlgorithm):
             # Process each isea4t bin and update progress
             total_isea4t_geometries = len(isea4t_geometries)
             for i, (isea4t_id, geom) in enumerate(isea4t_geometries.items()):
-                props = {}
-                for cat in sorted(all_categories):
-                    values = isea4t_bins[isea4t_id].get(cat, get_default_stats_structure())
-                    props.update(
-                        stat_props_for_category(
-                            values,
-                            self.stats,
-                            self.numeric_field,
-                            self.category_field,
-                            cat,
-                        )
-                    )
-
+                props = build_bin_feature_props(
+                    geom,
+                    self.resolution,
+                    "isea4t",
+                    isea4t_id,
+                    isea4t_bins,
+                    all_categories,
+                    self.stats,
+                    self.numeric_field,
+                    self.category_field,
+                    num_edges=3,
+                )
                 isea4t_feature = QgsFeature(out_fields)
                 isea4t_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-                isea4t_feature.setAttributes(
-                    [
-                        props.get(f.name(), None) if f.name() != "isea4t" else isea4t_id
-                        for f in out_fields
-                    ]
-                )
+                isea4t_feature.setAttributes(feature_attributes(out_fields, props))
                 sink.addFeature(isea4t_feature, QgsFeatureSink.FastInsert)
 
                 # Update progress after each isea4t bin is processed

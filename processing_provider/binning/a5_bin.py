@@ -29,10 +29,13 @@ from vgrid.conversion.latlon2dggs import latlon2a5
 from ...utils.imgs import Imgs
 from collections import defaultdict
 from ...utils.binning.bin_helper import (
+    a5_num_edges,
     append_bin_stat_fields,
+    append_geodesic_metric_fields,
     append_stats_value,
+    build_bin_feature_props,
+    feature_attributes,
     get_default_stats_structure,
-    stat_props_for_category,
 )
 from ...settings import settings
 
@@ -244,6 +247,7 @@ class A5Bin(QgsProcessingAlgorithm):
         # Prepare output fields
         out_fields = QgsFields()
         out_fields.append(QgsField("a5", QVariant.String))
+        append_geodesic_metric_fields(out_fields)
 
         all_categories = set()
         for bin_data in a5_bins.values():
@@ -270,27 +274,21 @@ class A5Bin(QgsProcessingAlgorithm):
         # Process each a5 bin and update progress
         total_a5_geometries = len(a5_geometries)
         for i, (a5_hex, geom) in enumerate(a5_geometries.items()):
-            props = {}
-            for cat in sorted(all_categories):
-                values = a5_bins[a5_hex].get(cat, get_default_stats_structure())
-                props.update(
-                    stat_props_for_category(
-                        values,
-                        self.stats,
-                        self.numeric_field,
-                        self.category_field,
-                        cat,
-                    )
-                )
-
+            props = build_bin_feature_props(
+                geom,
+                self.resolution,
+                "a5",
+                a5_hex,
+                a5_bins,
+                all_categories,
+                self.stats,
+                self.numeric_field,
+                self.category_field,
+                num_edges=a5_num_edges(self.resolution),
+            )
             a5_feature = QgsFeature(out_fields)
             a5_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            a5_feature.setAttributes(
-                [
-                    props.get(f.name(), None) if f.name() != "a5" else a5_hex
-                    for f in out_fields
-                ]
-            )
+            a5_feature.setAttributes(feature_attributes(out_fields, props))
             sink.addFeature(a5_feature, QgsFeatureSink.FastInsert)
 
             # Update progress after each a5 bin is processed
