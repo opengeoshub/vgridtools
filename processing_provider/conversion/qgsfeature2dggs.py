@@ -64,6 +64,22 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "DGGAL_HEALPix",
         "DGGAL_rHEALPix",
 
+        "DGGRID_SUPERFUND",
+        "DGGRID_PLANETRISK",
+        "DGGRID_ISEA3H",
+        "DGGRID_ISEA4H",
+        "DGGRID_ISEA4T",
+        "DGGRID_ISEA4D",
+        "DGGRID_ISEA43H",
+        "DGGRID_ISEA7H",
+        "DGGRID_IGEO7",
+        "DGGRID_FULLER3H",
+        "DGGRID_FULLER4H",
+        "DGGRID_FULLER4T",
+        "DGGRID_FULLER4D",
+        "DGGRID_FULLER43H",
+        "DGGRID_FULLER7H",
+
         "QTM",
         "OLC",
         "Geohash",
@@ -258,6 +274,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                     if dggs_type
                     in ("h3", "s2", "a5", "rhealpix", "isea4t", "isea3h", "ease", "qtm")
                     or dggs_type.startswith("dggal_")
+                    or dggs_type.startswith("dggrid_")
                     else "cell_width"
                 ),
                 QVariant.Double,
@@ -266,6 +283,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             if dggs_type
             not in ("h3", "s2", "a5", "rhealpix", "isea4t", "isea3h", "ease", "qtm")
             and not dggs_type.startswith("dggal_")
+            and not dggs_type.startswith("dggrid_")
             else None,
             QgsField(get_unique_name("cell_area"), QVariant.Double),
             QgsField(get_unique_name("cell_perimeter"), QVariant.Double),
@@ -328,6 +346,29 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             "dggal_healpix": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("healpix", feature, resolution, predicate, compact, feedback),
             "dggal_rhealpix": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rhealpix", feature, resolution, predicate, compact, feedback),
         }
+        for dggrid_name in (
+            "SUPERFUND",
+            "PLANETRISK",
+            "ISEA3H",
+            "ISEA4H",
+            "ISEA4T",
+            "ISEA4D",
+            "ISEA43H",
+            "ISEA7H",
+            "IGEO7",
+            "FULLER3H",
+            "FULLER4H",
+            "FULLER4T",
+            "FULLER4D",
+            "FULLER43H",
+            "FULLER7H",
+        ):
+            key = f"dggrid_{dggrid_name.lower()}"
+            self.DGGS_TYPE_functions[key] = (
+                lambda feature, resolution, predicate, compact, feedback, t=dggrid_name: qgsfeature2dggrid(
+                    t, feature, resolution, predicate, compact, feedback
+                )
+            )
         return True
 
     def processFeature(self, feature, context, feedback):

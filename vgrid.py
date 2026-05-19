@@ -31,6 +31,7 @@ from qgis.PyQt.QtWidgets import (
     QMenu,
     QWidgetAction,
     QCheckBox,
+    QMessageBox,
 )
 from qgis.core import (
     QgsCoordinateTransform,
@@ -50,6 +51,7 @@ from .latlon2dggs import LatLon2DGGSWidget
 from .dggsclient import DGGSClientWidget
 from .dggsjson2geojson import DGGSJSON2GeoJSONWidget
 from .utils import tr
+from .utils.dggs_viz_menu import setup_dggs_visualization_menus
 from .dggsgrid.h3grid import H3Grid
 from .dggsgrid.a5grid import A5Grid
 from .dggsgrid.s2grid import S2Grid
@@ -195,20 +197,12 @@ class VgridTools(object):
             self.iface.firstRightStandardMenu().menuAction(), self.Vgrid_menu
         )
 
-        # Create Geodesic DGGS submenu
-        self.geodesic_dggs_menu = QMenu("Geodesic DGGS")
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_hex.svg")
-        self.Vgrid_add_submenu2(self.geodesic_dggs_menu, icon)
+        setup_dggs_visualization_menus(self)
 
-        # Create Graticule_based DGGS submenu
-        self.graticule_based_dggs_menu = QMenu("Graticule-based DGGS")
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.Vgrid_add_submenu2(self.graticule_based_dggs_menu, icon)
-
-        # Create DGGS Client submenu
-        self.dggs_client_menu = QMenu("DGGS Client")
-        dggs_client_icon = QIcon(os.path.dirname(__file__) + "/images/dggsclient/ogc.png")
-        # self.Vgrid_add_submenu2(self.dggs_client_menu, dggs_client_icon)
+        # Create DGGS Client action
+        dggs_client_icon = QIcon(
+            os.path.dirname(__file__) + "/images/dggsclient/ogc.png"
+        )
         self.dggsClientAction = QAction(
             dggs_client_icon, tr("DGGS Client"), self.iface.mainWindow()
         )
@@ -217,18 +211,7 @@ class VgridTools(object):
         self.dggsClientAction.triggered.connect(self.showDGGSClient)
         self.Vgrid_menu.addAction(self.dggsClientAction)
 
-        # Create GNOSIS Map Server action
-        # gnosis_icon = QIcon(os.path.dirname(__file__) + "/images/dggsclient/gnosis.svg")
-        # self.gnosisMapServerAction = QAction(
-        #     gnosis_icon, tr("GNOSIS Map Server"), self.iface.mainWindow()
-        # )
-        # self.gnosisMapServerAction.setObjectName("gnosisMapServer")
-        # self.gnosisMapServerAction.setToolTip(tr("GNOSIS Map Server"))
-        # self.gnosisMapServerAction.triggered.connect(self.showDGGSClient)
-        # self.dggs_client_menu.addAction(self.gnosisMapServerAction)
-
-
-        # Create Lat Lon to DGGS action (direct call, no submenu)
+        # Create Lat Lon to DGGS action
         latlon2dggs_icon = QIcon(os.path.dirname(__file__) + "/images/vgrid.svg")
         self.latlon2dggsAction = QAction(
             latlon2dggs_icon, tr("Lat Lon to DGGS"), self.iface.mainWindow()
@@ -261,562 +244,6 @@ class VgridTools(object):
         self.utils_menu = QMenu("Utils")
         utils_icon = QIcon(os.path.dirname(__file__) + "/images/utils/utils.png")
         self.Vgrid_add_submenu2(self.utils_menu, utils_icon)
-
-
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_h3.svg")
-        self.h3_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        checkbox = QCheckBox("H3")
-        checkbox.setIcon(icon)
-        checkbox.setChecked(False)  # optional initial state
-        checkbox.toggled.connect(
-            lambda checked: (self.h3grid.enable_h3(checked), self.h3grid.h3_grid())
-            if checked
-            else self.h3grid.enable_h3(False)
-        )
-        self.h3_widget_action.setDefaultWidget(checkbox)
-        self.geodesic_dggs_menu.addAction(self.h3_widget_action)
-
-        # S2
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_s2.svg")
-        self.s2_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        s2_checkbox = QCheckBox("S2")
-        s2_checkbox.setIcon(icon)
-        s2_checkbox.setChecked(False)
-        s2_checkbox.toggled.connect(
-            lambda checked: (self.s2grid.enable_s2(checked), self.s2grid.s2_grid())
-            if checked
-            else self.s2grid.enable_s2(False)
-        )
-        self.s2_widget_action.setDefaultWidget(s2_checkbox)
-        self.geodesic_dggs_menu.addAction(self.s2_widget_action)
-
-        # A5
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_a5.svg")
-        self.a5_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        a5_checkbox = QCheckBox("A5")
-        a5_checkbox.setIcon(icon)
-        a5_checkbox.setChecked(False)
-        a5_checkbox.toggled.connect(
-            lambda checked: (self.a5grid.enable_a5(checked), self.a5grid.a5_grid())
-            if checked
-            else self.a5grid.enable_a5(False)
-        )
-        self.a5_widget_action.setDefaultWidget(a5_checkbox)
-        self.geodesic_dggs_menu.addAction(self.a5_widget_action)
-
-        # rHEALPix
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_rhealpix.svg")
-        self.rhealpix_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        rhealpix_checkbox = QCheckBox("rHEALPix")
-        rhealpix_checkbox.setIcon(icon)
-        rhealpix_checkbox.setChecked(False)
-        rhealpix_checkbox.toggled.connect(
-            lambda checked: (
-                self.rhealpixgrid.enable_rhealpix(checked),
-                self.rhealpixgrid.rhealpix_grid(),
-            )
-            if checked
-            else self.rhealpixgrid.enable_rhealpix(False)
-        )
-        self.rhealpix_widget_action.setDefaultWidget(rhealpix_checkbox)
-        self.geodesic_dggs_menu.addAction(self.rhealpix_widget_action)
-
-        # ISEA4T
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
-        self.isea4t_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        isea4t_checkbox = QCheckBox("ISEA4T")
-        isea4t_checkbox.setIcon(icon)
-        isea4t_checkbox.setChecked(False)
-        isea4t_checkbox.toggled.connect(
-            lambda checked: (
-                self.isea4tgrid.enable_isea4t(checked),
-                self.isea4tgrid.isea4t_grid(),
-            )
-            if checked
-            else self.isea4tgrid.enable_isea4t(False)
-        )
-        self.isea4t_widget_action.setDefaultWidget(isea4t_checkbox)
-        self.geodesic_dggs_menu.addAction(self.isea4t_widget_action)
-
-        # ISEA3H
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_hex.svg")
-        self.isea3h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        isea3h_checkbox = QCheckBox("ISEA3H")
-        isea3h_checkbox.setIcon(icon)
-        isea3h_checkbox.setChecked(False)
-        isea3h_checkbox.toggled.connect(
-            lambda checked: (
-                self.isea3hgrid.enable_isea3h(checked),
-                self.isea3hgrid.isea3h_grid(),
-            )
-            if checked
-            else self.isea3hgrid.enable_isea3h(False)
-        )
-        self.isea3h_widget_action.setDefaultWidget(isea3h_checkbox)
-        self.geodesic_dggs_menu.addAction(self.isea3h_widget_action)
-
-        # EASE
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_ease.svg")
-        self.ease_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        ease_checkbox = QCheckBox("EASE")
-        ease_checkbox.setIcon(icon)
-        ease_checkbox.setChecked(False)
-        ease_checkbox.toggled.connect(
-            lambda checked: (
-                self.easegrid.enable_ease(checked),
-                self.easegrid.ease_grid(),
-            )
-            if checked
-            else self.easegrid.enable_ease(False)
-        )
-        self.ease_widget_action.setDefaultWidget(ease_checkbox)
-        self.geodesic_dggs_menu.addAction(self.ease_widget_action)
-
-        # DGGAL GNOSIS
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_checkbox = QCheckBox("DGGAL GNOSIS")
-        dggal_checkbox.setIcon(icon)
-        dggal_checkbox.setChecked(False)
-        dggal_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_gnosisgrid.enable_dggal(checked),
-                self.dggal_gnosisgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_gnosisgrid.enable_dggal(False)
-        )
-        self.dggal_widget_action.setDefaultWidget(dggal_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_widget_action)
-
-        # DGGAL ISEA4R
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_isea4r_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_isea4r_checkbox = QCheckBox("DGGAL ISEA4R")
-        dggal_isea4r_checkbox.setIcon(icon)
-        dggal_isea4r_checkbox.setChecked(False)
-        dggal_isea4r_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_isea4rgrid.enable_dggal(checked),
-                self.dggal_isea4rgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_isea4rgrid.enable_dggal(False)
-        )
-        self.dggal_isea4r_widget_action.setDefaultWidget(dggal_isea4r_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_isea4r_widget_action)
-
-        # DGGAL ISEA3H
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_isea3h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_isea3h_checkbox = QCheckBox("DGGAL ISEA3H")
-        dggal_isea3h_checkbox.setIcon(icon)
-        dggal_isea3h_checkbox.setChecked(False)
-        dggal_isea3h_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_isea3hgrid.enable_dggal(checked),
-                self.dggal_isea3hgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_isea3hgrid.enable_dggal(False)
-        )
-        self.dggal_isea3h_widget_action.setDefaultWidget(dggal_isea3h_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_isea3h_widget_action)
-       
-        # DGGAL ISEA7H
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_isea7h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_isea7h_checkbox = QCheckBox("DGGAL ISEA7H")
-        dggal_isea7h_checkbox.setIcon(icon)
-        dggal_isea7h_checkbox.setChecked(False)
-        dggal_isea7h_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_isea7hgrid.enable_dggal(checked),
-                self.dggal_isea7hgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_isea7hgrid.enable_dggal(False)
-        )
-        self.dggal_isea7h_widget_action.setDefaultWidget(dggal_isea7h_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_isea7h_widget_action)
-
-        # DGGAL ISEA7H_Z7
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_isea7h_z7_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_isea7h_z7_checkbox = QCheckBox("DGGAL ISEA7H_Z7")
-        dggal_isea7h_z7_checkbox.setIcon(icon)
-        dggal_isea7h_z7_checkbox.setChecked(False)
-        dggal_isea7h_z7_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_isea7h_z7grid.enable_dggal(checked),
-                self.dggal_isea7h_z7grid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_isea7h_z7grid.enable_dggal(False)
-        )
-        self.dggal_isea7h_z7_widget_action.setDefaultWidget(dggal_isea7h_z7_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_isea7h_z7_widget_action)
-
-        # DGGAL ISEA9R
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_isea9r_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_isea9r_checkbox = QCheckBox("DGGAL ISEA9R")
-        dggal_isea9r_checkbox.setIcon(icon)
-        dggal_isea9r_checkbox.setChecked(False)
-        dggal_isea9r_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_isea9rgrid.enable_dggal(checked),
-                self.dggal_isea9rgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_isea9rgrid.enable_dggal(False)
-        )
-        self.dggal_isea9r_widget_action.setDefaultWidget(dggal_isea9r_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_isea9r_widget_action)
-
-        # DGGAL IVEA4R
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_ivea4r_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_ivea4r_checkbox = QCheckBox("DGGAL IVEA4R")
-        dggal_ivea4r_checkbox.setIcon(icon)
-        dggal_ivea4r_checkbox.setChecked(False)
-        dggal_ivea4r_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_ivea4rgrid.enable_dggal(checked),
-                self.dggal_ivea4rgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_ivea4rgrid.enable_dggal(False)
-        )
-        self.dggal_ivea4r_widget_action.setDefaultWidget(dggal_ivea4r_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_ivea4r_widget_action)
-
-        # DGGAL IVEA9R
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_ivea9r_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_ivea9r_checkbox = QCheckBox("DGGAL IVEA9R")
-        dggal_ivea9r_checkbox.setIcon(icon)
-        dggal_ivea9r_checkbox.setChecked(False)
-        dggal_ivea9r_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_ivea9rgrid.enable_dggal(checked),
-                self.dggal_ivea9rgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_ivea9rgrid.enable_dggal(False)
-        )
-        self.dggal_ivea9r_widget_action.setDefaultWidget(dggal_ivea9r_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_ivea9r_widget_action)
-
-        # DGGAL IVEA3H
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_ivea3h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_ivea3h_checkbox = QCheckBox("DGGAL IVEA3H")
-        dggal_ivea3h_checkbox.setIcon(icon)
-        dggal_ivea3h_checkbox.setChecked(False)
-        dggal_ivea3h_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_ivea3hgrid.enable_dggal(checked),
-                self.dggal_ivea3hgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_ivea3hgrid.enable_dggal(False)
-        )
-        self.dggal_ivea3h_widget_action.setDefaultWidget(dggal_ivea3h_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_ivea3h_widget_action)
-
-
-        # DGGAL IVEA7H
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_ivea7h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_ivea7h_checkbox = QCheckBox("DGGAL IVEA7H")
-        dggal_ivea7h_checkbox.setIcon(icon)
-        dggal_ivea7h_checkbox.setChecked(False)
-        dggal_ivea7h_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_ivea7hgrid.enable_dggal(checked),
-                self.dggal_ivea7hgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_ivea7hgrid.enable_dggal(False)
-        )
-        self.dggal_ivea7h_widget_action.setDefaultWidget(dggal_ivea7h_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_ivea7h_widget_action)
-
-        # DGGAL IVEA7H_Z7
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_ivea7h_z7_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_ivea7h_z7_checkbox = QCheckBox("DGGAL IVEA7H_Z7")
-        dggal_ivea7h_z7_checkbox.setIcon(icon)
-        dggal_ivea7h_z7_checkbox.setChecked(False)
-        dggal_ivea7h_z7_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_ivea7h_z7grid.enable_dggal(checked),
-                self.dggal_ivea7h_z7grid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_ivea7h_z7grid.enable_dggal(False)
-        )
-        self.dggal_ivea7h_z7_widget_action.setDefaultWidget(dggal_ivea7h_z7_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_ivea7h_z7_widget_action)
-
-        # DGGAL RTEA4R
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_rtea4r_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_rtea4r_checkbox = QCheckBox("DGGAL RTEA4R")
-        dggal_rtea4r_checkbox.setIcon(icon)
-        dggal_rtea4r_checkbox.setChecked(False)
-        dggal_rtea4r_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_rtea4rgrid.enable_dggal(checked),
-                self.dggal_rtea4rgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_rtea4rgrid.enable_dggal(False)
-        )
-        self.dggal_rtea4r_widget_action.setDefaultWidget(dggal_rtea4r_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_rtea4r_widget_action)
-
-        # DGGAL RTEA9R
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_rtea9r_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_rtea9r_checkbox = QCheckBox("DGGAL RTEA9R")
-        dggal_rtea9r_checkbox.setIcon(icon)
-        dggal_rtea9r_checkbox.setChecked(False)
-        dggal_rtea9r_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_rtea9rgrid.enable_dggal(checked),
-                self.dggal_rtea9rgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_rtea9rgrid.enable_dggal(False)
-        )
-        self.dggal_rtea9r_widget_action.setDefaultWidget(dggal_rtea9r_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_rtea9r_widget_action)
-
-
-        # DGGAL RTEA3H
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_rtea3h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_rtea3h_checkbox = QCheckBox("DGGAL RTEA3H")
-        dggal_rtea3h_checkbox.setIcon(icon)
-        dggal_rtea3h_checkbox.setChecked(False)
-        dggal_rtea3h_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_rtea3hgrid.enable_dggal(checked),
-                self.dggal_rtea3hgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_rtea3hgrid.enable_dggal(False)
-        )
-        self.dggal_rtea3h_widget_action.setDefaultWidget(dggal_rtea3h_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_rtea3h_widget_action)
-
-
-        # DGGAL RTEA7H
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_rtea7h_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_rtea7h_checkbox = QCheckBox("DGGAL RTEA7H")
-        dggal_rtea7h_checkbox.setIcon(icon)
-        dggal_rtea7h_checkbox.setChecked(False)
-        dggal_rtea7h_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_rtea7hgrid.enable_dggal(checked),
-                self.dggal_rtea7hgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_rtea7hgrid.enable_dggal(False)
-        )
-        self.dggal_rtea7h_widget_action.setDefaultWidget(dggal_rtea7h_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_rtea7h_widget_action)
-
-        # DGGAL RTEA7H_Z7
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_rtea7h_z7_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_rtea7h_z7_checkbox = QCheckBox("DGGAL RTEA7H_Z7")
-        dggal_rtea7h_z7_checkbox.setIcon(icon)
-        dggal_rtea7h_z7_checkbox.setChecked(False)
-        dggal_rtea7h_z7_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_rtea7h_z7grid.enable_dggal(checked),
-                self.dggal_rtea7h_z7grid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_rtea7h_z7grid.enable_dggal(False)
-        )
-        self.dggal_rtea7h_z7_widget_action.setDefaultWidget(dggal_rtea7h_z7_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_rtea7h_z7_widget_action)
-
-        # DGGAL HEALPix
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_healpix_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_healpix_checkbox = QCheckBox("DGGAL HEALPix")
-        dggal_healpix_checkbox.setIcon(icon)
-        dggal_healpix_checkbox.setChecked(False)
-        dggal_healpix_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_healpixgrid.enable_dggal(checked),
-                self.dggal_healpixgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_healpixgrid.enable_dggal(False)
-        )
-        self.dggal_healpix_widget_action.setDefaultWidget(dggal_healpix_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_healpix_widget_action)
-
-        # DGGAL rHEALPix    
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggal.svg")
-        self.dggal_rhealpix_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        dggal_rhealpix_checkbox = QCheckBox("DGGAL rHEALPix")
-        dggal_rhealpix_checkbox.setIcon(icon)
-        dggal_rhealpix_checkbox.setChecked(False)
-        dggal_rhealpix_checkbox.toggled.connect(
-            lambda checked: (
-                self.dggal_rhealpixgrid.enable_dggal(checked),
-                self.dggal_rhealpixgrid.dggal_grid(),
-            )
-            if checked
-            else self.dggal_rhealpixgrid.enable_dggal(False)
-        )
-        self.dggal_rhealpix_widget_action.setDefaultWidget(dggal_rhealpix_checkbox)
-        self.geodesic_dggs_menu.addAction(self.dggal_rhealpix_widget_action)
-
-
-        # QTM
-        # icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
-        # self.qtm_widget_action = QWidgetAction(self.geodesic_dggs_menu)
-        # qtm_checkbox = QCheckBox("QTM")
-        # qtm_checkbox.setIcon(icon)
-        # qtm_checkbox.setChecked(False)
-        # qtm_checkbox.toggled.connect(
-        #     lambda checked: (
-        #         self.qtmgrid.enable_qtm(checked),
-        #         self.qtmgrid.qtm_grid(),
-        #     )
-        #     if checked
-        #     else self.qtmgrid.enable_qtm(False)
-        # )
-        # self.qtm_widget_action.setDefaultWidget(qtm_checkbox)
-        # self.geodesic_dggs_menu.addAction(self.qtm_widget_action)
-
-        # OLC (Graticule-based DGGS)
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_olc.svg")
-        self.olc_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
-        olc_checkbox = QCheckBox("OLC")
-        olc_checkbox.setIcon(icon)
-        olc_checkbox.setChecked(False)
-        olc_checkbox.toggled.connect(
-            lambda checked: (
-                self.olcgrid.enable_olc(checked),
-                self.olcgrid.olc_grid(),
-            )
-            if checked
-            else self.olcgrid.enable_olc(False)
-        )
-        self.olc_widget_action.setDefaultWidget(olc_checkbox)
-        self.graticule_based_dggs_menu.addAction(self.olc_widget_action)
-
-        # Geohash (Graticule-based DGGS)
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.geohash_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
-        geohash_checkbox = QCheckBox("Geohash")
-        geohash_checkbox.setIcon(icon)
-        geohash_checkbox.setChecked(False)
-        geohash_checkbox.toggled.connect(
-            lambda checked: (
-                self.geohashgrid.enable_geohash(checked),
-                self.geohashgrid.geohash_grid(),
-            )
-            if checked
-            else self.geohashgrid.enable_geohash(False)
-        )
-        self.geohash_widget_action.setDefaultWidget(geohash_checkbox)
-        self.graticule_based_dggs_menu.addAction(self.geohash_widget_action)
-
-        # GEOREF (Graticule-based DGGS)
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.georef_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
-        georef_checkbox = QCheckBox("GEOREF")
-        georef_checkbox.setIcon(icon)
-        georef_checkbox.setChecked(False)
-        georef_checkbox.toggled.connect(
-            lambda checked: (
-                self.georefgrid.enable_georef(checked),
-                self.georefgrid.georef_grid(),
-            )
-            if checked
-            else self.georefgrid.enable_georef(False)
-        )
-        self.georef_widget_action.setDefaultWidget(georef_checkbox)
-        self.graticule_based_dggs_menu.addAction(self.georef_widget_action)
-
-        # Tilecode (Graticule-based DGGS)
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.tilecode_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
-        tilecode_checkbox = QCheckBox("Tilecode")
-        tilecode_checkbox.setIcon(icon)
-        tilecode_checkbox.setChecked(False)
-        tilecode_checkbox.toggled.connect(
-            lambda checked: (
-                self.tilecodegrid.enable_tilecode(checked),
-                self.tilecodegrid.tilecode_grid(),
-            )
-            if checked
-            else self.tilecodegrid.enable_tilecode(False)
-        )
-        self.tilecode_widget_action.setDefaultWidget(tilecode_checkbox)
-        self.graticule_based_dggs_menu.addAction(self.tilecode_widget_action)
-
-        # Maidenhead (Graticule-based DGGS)
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.maidenhead_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
-        maidenhead_checkbox = QCheckBox("Maidenhead")
-        maidenhead_checkbox.setIcon(icon)
-        maidenhead_checkbox.setChecked(False)
-        maidenhead_checkbox.toggled.connect(
-            lambda checked: (
-                self.maidenheadgrid.enable_maidenhead(checked),
-                self.maidenheadgrid.maidenhead_grid(),
-            )
-            if checked
-            else self.maidenheadgrid.enable_maidenhead(False)
-        )
-        self.maidenhead_widget_action.setDefaultWidget(maidenhead_checkbox)
-        self.graticule_based_dggs_menu.addAction(self.maidenhead_widget_action)
-
-        # GARS (Graticule-based DGGS)
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.gars_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
-        gars_checkbox = QCheckBox("GARS")
-        gars_checkbox.setIcon(icon)
-        gars_checkbox.setChecked(False)
-        gars_checkbox.toggled.connect(
-            lambda checked: (
-                self.garsgrid.enable_gars(checked),
-                self.garsgrid.gars_grid(),
-            )
-            if checked
-            else self.garsgrid.enable_gars(False)
-        )
-        self.gars_widget_action.setDefaultWidget(gars_checkbox)
-        self.graticule_based_dggs_menu.addAction(self.gars_widget_action)
-
-        # DIGIPIN (Graticule-based DGGS)
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_quad.svg")
-        self.digipin_widget_action = QWidgetAction(self.graticule_based_dggs_menu)
-        digipin_checkbox = QCheckBox("DIGIPIN")
-        digipin_checkbox.setIcon(icon)
-        digipin_checkbox.setChecked(False)
-        digipin_checkbox.toggled.connect(
-            lambda checked: (
-                self.digipingrid.enable_digipin(checked),
-                self.digipingrid.digipin_grid(),
-            )
-            if checked
-            else self.digipingrid.enable_digipin(False)
-        )
-        self.digipin_widget_action.setDefaultWidget(digipin_checkbox)
-        self.graticule_based_dggs_menu.addAction(self.digipin_widget_action)
 
         # Add Binning actions
         # H3 Bin
@@ -868,6 +295,14 @@ class VgridTools(object):
         self.dggalBinAction.setToolTip(tr("DGGAL Binning"))
         self.dggalBinAction.triggered.connect(self.runDGGALBin)
         self.binning_menu.addAction(self.dggalBinAction)
+
+        # DGGRID Bin
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggrid.svg")
+        self.dggridBinAction = QAction(icon, tr("DGGRID Bin"), self.iface.mainWindow())
+        self.dggridBinAction.setObjectName("dggridBin")
+        self.dggridBinAction.setToolTip(tr("DGGRID Binning"))
+        self.dggridBinAction.triggered.connect(self.runDGGRIDBin)
+        self.binning_menu.addAction(self.dggridBinAction)
 
         # OLC Bin
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_olc.svg")
@@ -1001,7 +436,28 @@ class VgridTools(object):
         self.dggsJson2GeoJsonAction.triggered.connect(self.showDGGSJSON2GeoJSON)
         self.utils_menu.addAction(self.dggsJson2GeoJsonAction)
 
-        
+        dggrid_utils_icon = QIcon(
+            os.path.dirname(__file__) + "/images/generator/grid_dggrid.svg"
+        )
+        self.createDGGRIDInstanceAction = QAction(
+            dggrid_utils_icon, tr("Create DGGRID Instance"), self.iface.mainWindow()
+        )
+        self.createDGGRIDInstanceAction.setObjectName("createDGGRIDInstance")
+        self.createDGGRIDInstanceAction.setToolTip(
+            tr("Initialize the shared DGGRID instance (Generator and DGGRID Viz)")
+        )
+        self.createDGGRIDInstanceAction.triggered.connect(self.createDGGRIDInstance)
+        self.utils_menu.addAction(self.createDGGRIDInstanceAction)
+
+        self.clearDGGRIDCachesAction = QAction(
+            dggrid_utils_icon, tr("Clear DGGRID Caches"), self.iface.mainWindow()
+        )
+        self.clearDGGRIDCachesAction.setObjectName("clearDGGRIDCaches")
+        self.clearDGGRIDCachesAction.setToolTip(
+            tr("Delete temp_* and metafile_* files in the dggrid folder")
+        )
+        self.clearDGGRIDCachesAction.triggered.connect(self.clearDGGRIDCaches)
+        self.utils_menu.addAction(self.clearDGGRIDCachesAction)
 
         # Add Generator actions
         # H3 Generator
@@ -1051,6 +507,14 @@ class VgridTools(object):
         self.dggalGenAction.setToolTip(tr("DGGAL Generator"))
         self.dggalGenAction.triggered.connect(self.runDGGALGen)
         self.generator_menu.addAction(self.dggalGenAction)
+
+        # DGGRID Generator
+        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggrid.svg")
+        self.dggridGenAction = QAction(icon, tr("DGGRID"), self.iface.mainWindow())
+        self.dggridGenAction.setObjectName("dggridGen")
+        self.dggridGenAction.setToolTip(tr("DGGRID Generator"))
+        self.dggridGenAction.triggered.connect(self.runDGGRIDGen)
+        self.generator_menu.addAction(self.dggridGenAction)
 
         # QTM Generator
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_triangle.svg")
@@ -1272,6 +736,15 @@ class VgridTools(object):
             self.garsgrid.cleanup()
         if hasattr(self, "digipingrid") and self.digipingrid:
             self.digipingrid.cleanup()
+        if getattr(self, "dggrid_grids", None):
+            for dggrid_grid in self.dggrid_grids.values():
+                try:
+                    dggrid_grid.cleanup()
+                except Exception:
+                    pass
+        from .utils.dggrid_instance import reset_plugin_dggrid_instance
+
+        reset_plugin_dggrid_instance()
 
         self.settingsDialog = None
         QgsApplication.processingRegistry().removeProvider(self.provider)
@@ -1384,6 +857,10 @@ class VgridTools(object):
         """Run DGGAL Binning algorithm"""
         processing.execAlgorithmDialog("vgrid:bin_dggal", {})
 
+    def runDGGRIDBin(self):
+        """Run DGGRID Binning algorithm"""
+        processing.execAlgorithmDialog("vgrid:bin_dggrid", {})
+
     def runOLCBin(self):
         """Run OLC Binning algorithm"""
         processing.execAlgorithmDialog("vgrid:bin_olc", {})
@@ -1460,6 +937,10 @@ class VgridTools(object):
         """Run DGGAL Gen algorithm"""
         processing.execAlgorithmDialog("vgrid:dggal_gen", {})
 
+    def runDGGRIDGen(self):
+        """Run DGGRID Gen algorithm"""
+        processing.execAlgorithmDialog("vgrid:DGGRID_gen", {})
+
     def runMGRSGen(self):
         """Run MGRS Gen algorithm"""
         processing.execAlgorithmDialog("vgrid:mgrs_gen", {})
@@ -1504,6 +985,51 @@ class VgridTools(object):
             )
 
         self.dggsJson2GeoJsonDialog.show()
+
+    def createDGGRIDInstance(self):
+        """Initialize the shared DGGRID instance used by Generator and DGGRID Viz."""
+        from .utils.dggrid_instance import dggrid_work_dir, get_plugin_dggrid_instance
+
+        try:
+            get_plugin_dggrid_instance(force_new=True)
+            QMessageBox.information(
+                self.iface.mainWindow(),
+                tr("Vgrid"),
+                tr(
+                    "DGGRID instance is ready.\n\nWorking directory:\n{0}"
+                ).format(dggrid_work_dir()),
+            )
+        except Exception as exc:
+            QMessageBox.critical(
+                self.iface.mainWindow(),
+                tr("Vgrid"),
+                tr("Failed to create DGGRID instance:\n\n{0}").format(exc),
+            )
+
+    def clearDGGRIDCaches(self):
+        """Remove all *.txt files from the plugin dggrid folder."""
+        from .utils.dggrid_instance import (
+            clear_dggrid_cache_files,
+            reset_plugin_dggrid_instance,
+        )
+
+        reset_plugin_dggrid_instance()
+        removed, errors = clear_dggrid_cache_files()
+        if errors:
+            detail = "\n".join(f"{name}: {err}" for name, err in errors[:10])
+            QMessageBox.warning(
+                self.iface.mainWindow(),
+                tr("Vgrid"),
+                tr("Removed {0} file(s). Some files could not be deleted:\n\n{1}").format(
+                    len(removed), detail
+                ),
+            )
+        else:
+            QMessageBox.information(
+                self.iface.mainWindow(),
+                tr("Vgrid"),
+                tr("Removed {0} DGGRID cache file(s).").format(len(removed)),
+            )
 
     def VgridHome(self):
         webbrowser.open("https://vgridhome.gishub.vn")

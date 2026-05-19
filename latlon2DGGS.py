@@ -11,7 +11,7 @@
 
 import os
 import re
-from qgis.PyQt.QtCore import QSize
+from qgis.PyQt.QtCore import QSize, Qt
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QDockWidget, QMenu, QApplication
 from qgis.PyQt.QtCore import pyqtSlot
@@ -31,6 +31,13 @@ from qgis.gui import QgsRubberBand
 from .utils import tr
 from .utils.latlon import epsg4326, parseDMSString
 from .settings import settings
+from .utils.dggrid_instance import (
+    DGGRID_TYPES_NO_ANTIMERIDIAN,
+    cached_dggrid_cell_geometry,
+    cached_latlon2dggrid,
+    dggrid_latlon_cell_options,
+    get_plugin_dggrid_instance,
+)
 from .utils.utm import latLon2Utm, isUtm, utm2Point
 from .utils.captureCoordinate import CaptureCoordinate
 from vgrid.conversion.latlon2dggs import *
@@ -46,6 +53,25 @@ FORM_CLASS, _ = loadUiType(os.path.join(os.path.dirname(__file__), "ui/latlon2dg
 
 s_invalid = tr("Invalid")
 s_copied = tr("copied to the clipboard")
+
+# (widget prefix, DGGRID type name, updateCoordinates id)
+DGGRID_LATLON_ROWS = (
+    ("dggrid_superfund", "SUPERFUND", 26),
+    ("dggrid_planetrisk", "PLANETRISK", 27),
+    ("dggrid_isea3h", "ISEA3H", 28),
+    ("dggrid_isea4h", "ISEA4H", 29),
+    ("dggrid_isea4t", "ISEA4T", 30),
+    ("dggrid_isea4d", "ISEA4D", 31),
+    ("dggrid_isea43h", "ISEA43H", 32),
+    ("dggrid_isea7h", "ISEA7H", 33),
+    ("dggrid_igeo7", "IGEO7", 34),
+    ("dggrid_fuller3h", "FULLER3H", 35),
+    ("dggrid_fuller4h", "FULLER4H", 36),
+    ("dggrid_fuller4t", "FULLER4T", 37),
+    ("dggrid_fuller4d", "FULLER4D", 38),
+    ("dggrid_fuller43h", "FULLER43H", 39),
+    ("dggrid_fuller7h", "FULLER7H", 40),
+)
 
 
 class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
@@ -107,10 +133,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.s2LineEdit.returnPressed.connect(self.commitS2)
         self.a5LineEdit.returnPressed.connect(self.commitA5)
         self.rhealpixLineEdit.returnPressed.connect(self.commitrHEALPix)
-        self.isea4tLineEdit.returnPressed.connect(self.commitISEA4T)
-        self.isea3hLineEdit.returnPressed.connect(self.commitISEA3H)
-        self.easeLineEdit.returnPressed.connect(self.commitEASE)
-
+       
         self.dggal_gnosisLineEdit.returnPressed.connect(self.commitDGGAL_GNOSIS)
 
         self.dggal_isea4rLineEdit.returnPressed.connect(self.commitDGGAL_ISEA4R)
@@ -135,7 +158,26 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_healpixLineEdit.returnPressed.connect(self.commitDGGAL_HEALPix)
         self.dggal_rhealpixLineEdit.returnPressed.connect(self.commitDGGAL_rHEALPix)
 
+        self.dggrid_superfundLineEdit.returnPressed.connect(self.commitDGGRID_SUPERFUND)
+        self.dggrid_planetriskLineEdit.returnPressed.connect(self.commitDGGRID_PLANETRISK)
+        self.dggrid_isea3hLineEdit.returnPressed.connect(self.commitDGGRID_ISEA3H)
+        self.dggrid_isea4hLineEdit.returnPressed.connect(self.commitDGGRID_ISEA4H)
+        self.dggrid_isea4tLineEdit.returnPressed.connect(self.commitDGGRID_ISEA4T)
+        self.dggrid_isea4dLineEdit.returnPressed.connect(self.commitDGGRID_ISEA4D)
+        self.dggrid_isea43hLineEdit.returnPressed.connect(self.commitDGGRID_ISEA43H)
+        self.dggrid_isea7hLineEdit.returnPressed.connect(self.commitDGGRID_ISEA7H)
+        self.dggrid_igeo7LineEdit.returnPressed.connect(self.commitDGGRID_IGEO7)
+        self.dggrid_fuller3hLineEdit.returnPressed.connect(self.commitDGGRID_FULLER3H)
+        self.dggrid_fuller4hLineEdit.returnPressed.connect(self.commitDGGRID_FULLER4H)
+        self.dggrid_fuller4tLineEdit.returnPressed.connect(self.commitDGGRID_FULLER4T)
+        self.dggrid_fuller4dLineEdit.returnPressed.connect(self.commitDGGRID_FULLER4D)
+        self.dggrid_fuller43hLineEdit.returnPressed.connect(self.commitDGGRID_FULLER43H)
+        self.dggrid_fuller7hLineEdit.returnPressed.connect(self.commitDGGRID_FULLER7H)      
 
+
+        self.isea4tLineEdit.returnPressed.connect(self.commitISEA4T)
+        self.isea3hLineEdit.returnPressed.connect(self.commitISEA3H)
+        self.easeLineEdit.returnPressed.connect(self.commitEASE)
         self.qtmLineEdit.returnPressed.connect(self.commitQTM)
         self.olcLineEdit.returnPressed.connect(self.commitOLC)
         self.geohashLineEdit.returnPressed.connect(self.commitGeohash)
@@ -158,9 +200,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.s2CopyButton.setIcon(icon)
         self.a5CopyButton.setIcon(icon)
         self.rhealpixCopyButton.setIcon(icon)
-        self.isea4tCopyButton.setIcon(icon)
-        self.isea3hCopyButton.setIcon(icon)
-        self.easeCopyButton.setIcon(icon)
+       
 
         self.dggal_gnosisCopyButton.setIcon(icon)
 
@@ -184,7 +224,27 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         
         self.dggal_healpixCopyButton.setIcon(icon)
         self.dggal_rhealpixCopyButton.setIcon(icon)
-       
+
+
+        self.dggrid_superfundCopyButton.setIcon(icon)
+        self.dggrid_planetriskCopyButton.setIcon(icon)
+        self.dggrid_isea3hCopyButton.setIcon(icon)
+        self.dggrid_isea4hCopyButton.setIcon(icon)
+        self.dggrid_isea4tCopyButton.setIcon(icon)
+        self.dggrid_isea4dCopyButton.setIcon(icon)
+        self.dggrid_isea43hCopyButton.setIcon(icon)
+        self.dggrid_isea7hCopyButton.setIcon(icon)
+        self.dggrid_igeo7CopyButton.setIcon(icon)
+        self.dggrid_fuller3hCopyButton.setIcon(icon)
+        self.dggrid_fuller4hCopyButton.setIcon(icon)
+        self.dggrid_fuller4tCopyButton.setIcon(icon)
+        self.dggrid_fuller4dCopyButton.setIcon(icon)
+        self.dggrid_fuller43hCopyButton.setIcon(icon)
+        self.dggrid_fuller7hCopyButton.setIcon(icon)
+
+        self.isea4tCopyButton.setIcon(icon)
+        self.isea3hCopyButton.setIcon(icon)
+        self.easeCopyButton.setIcon(icon)        
         self.qtmCopyButton.setIcon(icon)
         self.olcCopyButton.setIcon(icon)
         self.geohashCopyButton.setIcon(icon)
@@ -205,9 +265,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.s2CopyButton.clicked.connect(self.copyS2)
         self.a5CopyButton.clicked.connect(self.copyA5)
         self.rhealpixCopyButton.clicked.connect(self.copyRHEALPIX)
-        self.isea4tCopyButton.clicked.connect(self.copyISEA4T)
-        self.isea3hCopyButton.clicked.connect(self.copyISEA3H)
-        self.easeCopyButton.clicked.connect(self.copyEASE)
 
         self.dggal_gnosisCopyButton.clicked.connect(self.copyDGGAL_GNOSIS)
 
@@ -232,6 +289,26 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_healpixCopyButton.clicked.connect(self.copyDGGAL_HEALPIX)
         self.dggal_rhealpixCopyButton.clicked.connect(self.copyDGGAL_RHEALPIX)  
 
+
+        self.dggrid_superfundCopyButton.clicked.connect(self.copyDGGRID_SUPERFUND)
+        self.dggrid_planetriskCopyButton.clicked.connect(self.copyDGGRID_PLANETRISK)
+        self.dggrid_isea3hCopyButton.clicked.connect(self.copyDGGRID_ISEA3H)
+        self.dggrid_isea4hCopyButton.clicked.connect(self.copyDGGRID_ISEA4H)
+        self.dggrid_isea4tCopyButton.clicked.connect(self.copyDGGRID_ISEA4T)
+        self.dggrid_isea4dCopyButton.clicked.connect(self.copyDGGRID_ISEA4D)
+        self.dggrid_isea43hCopyButton.clicked.connect(self.copyDGGRID_ISEA43H)
+        self.dggrid_isea7hCopyButton.clicked.connect(self.copyDGGRID_ISEA7H)
+        self.dggrid_igeo7CopyButton.clicked.connect(self.copyDGGRID_IGEO7)
+        self.dggrid_fuller3hCopyButton.clicked.connect(self.copyDGGRID_FULLER3H)
+        self.dggrid_fuller4hCopyButton.clicked.connect(self.copyDGGRID_FULLER4H)
+        self.dggrid_fuller4tCopyButton.clicked.connect(self.copyDGGRID_FULLER4T)
+        self.dggrid_fuller4dCopyButton.clicked.connect(self.copyDGGRID_FULLER4D)
+        self.dggrid_fuller43hCopyButton.clicked.connect(self.copyDGGRID_FULLER43H)
+        self.dggrid_fuller7hCopyButton.clicked.connect(self.copyDGGRID_FULLER7H)
+        
+        self.isea4tCopyButton.clicked.connect(self.copyISEA4T)
+        self.isea3hCopyButton.clicked.connect(self.copyISEA3H)
+        self.easeCopyButton.clicked.connect(self.copyEASE)
         self.qtmCopyButton.clicked.connect(self.copyQTM)
         self.olcCopyButton.clicked.connect(self.copyOLC)
         self.geohashCopyButton.clicked.connect(self.copyGeohash)
@@ -252,9 +329,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.s2ZoomtoButton.setIcon(zoomto_icon)
         self.a5ZoomtoButton.setIcon(zoomto_icon)
         self.rhealpixZoomtoButton.setIcon(zoomto_icon)
-        self.isea4tZoomtoButton.setIcon(zoomto_icon)
-        self.isea3hZoomtoButton.setIcon(zoomto_icon)
-        self.easeZoomtoButton.setIcon(zoomto_icon)
+        
 
         self.dggal_gnosisZoomtoButton.setIcon(zoomto_icon)      
 
@@ -279,6 +354,28 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_healpixZoomtoButton.setIcon(zoomto_icon)
         self.dggal_rhealpixZoomtoButton.setIcon(zoomto_icon)
 
+
+        self.dggrid_superfundZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_planetriskZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_isea3hZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_isea4hZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_isea4tZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_isea4dZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_isea43hZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_isea7hZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_igeo7ZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_fuller3hZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_fuller4hZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_fuller4tZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_fuller4dZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_fuller43hZoomtoButton.setIcon(zoomto_icon)
+        self.dggrid_fuller7hZoomtoButton.setIcon(zoomto_icon)
+
+
+        self.isea4tZoomtoButton.setIcon(zoomto_icon)
+        self.isea3hZoomtoButton.setIcon(zoomto_icon)
+        self.easeZoomtoButton.setIcon(zoomto_icon)
+        
         self.qtmZoomtoButton.setIcon(zoomto_icon)
         self.olcZoomtoButton.setIcon(zoomto_icon)
         self.geohashZoomtoButton.setIcon(zoomto_icon)
@@ -290,15 +387,12 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.garsZoomtoButton.setIcon(zoomto_icon)
         self.digipinZoomtoButton.setIcon(zoomto_icon)
 
-
+      
         self.wgs84ZoomtoButton.clicked.connect(self.zoomToWGS84)
         self.h3ZoomtoButton.clicked.connect(self.zoomToH3)
         self.s2ZoomtoButton.clicked.connect(self.zoomToS2)
         self.a5ZoomtoButton.clicked.connect(self.zoomToA5)
         self.rhealpixZoomtoButton.clicked.connect(self.zoomToRHEALPIX)
-        self.isea4tZoomtoButton.clicked.connect(self.zoomToISEA4T)
-        self.isea3hZoomtoButton.clicked.connect(self.zoomToISEA3H)
-        self.easeZoomtoButton.clicked.connect(self.zoomToEASE)
 
         self.dggal_gnosisZoomtoButton.clicked.connect(self.zoomToDGGAL_GNOSIS)
 
@@ -323,6 +417,27 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_healpixZoomtoButton.clicked.connect(self.zoomToDGGAL_HEALPix)
         self.dggal_rhealpixZoomtoButton.clicked.connect(self.zoomToDGGAL_rHEALPix)
 
+
+        self.dggrid_superfundZoomtoButton.clicked.connect(self.zoomToDGGRID_SUPERFUND)
+        self.dggrid_planetriskZoomtoButton.clicked.connect(self.zoomToDGGRID_PLANETRISK)
+        self.dggrid_isea3hZoomtoButton.clicked.connect(self.zoomToDGGRID_ISEA3H)
+        self.dggrid_isea4hZoomtoButton.clicked.connect(self.zoomToDGGRID_ISEA4H)
+        self.dggrid_isea4tZoomtoButton.clicked.connect(self.zoomToDGGRID_ISEA4T)
+        self.dggrid_isea4dZoomtoButton.clicked.connect(self.zoomToDGGRID_ISEA4D)
+        self.dggrid_isea43hZoomtoButton.clicked.connect(self.zoomToDGGRID_ISEA43H)
+        self.dggrid_isea7hZoomtoButton.clicked.connect(self.zoomToDGGRID_ISEA7H)
+        self.dggrid_igeo7ZoomtoButton.clicked.connect(self.zoomToDGGRID_IGEO7)
+        self.dggrid_fuller3hZoomtoButton.clicked.connect(self.zoomToDGGRID_FULLER3H)
+        self.dggrid_fuller4hZoomtoButton.clicked.connect(self.zoomToDGGRID_FULLER4H)
+        self.dggrid_fuller4tZoomtoButton.clicked.connect(self.zoomToDGGRID_FULLER4T)
+        self.dggrid_fuller4dZoomtoButton.clicked.connect(self.zoomToDGGRID_FULLER4D)
+        self.dggrid_fuller43hZoomtoButton.clicked.connect(self.zoomToDGGRID_FULLER43H)
+        self.dggrid_fuller7hZoomtoButton.clicked.connect(self.zoomToDGGRID_FULLER7H)
+
+
+        self.isea4tZoomtoButton.clicked.connect(self.zoomToISEA4T)
+        self.isea3hZoomtoButton.clicked.connect(self.zoomToISEA3H)
+        self.easeZoomtoButton.clicked.connect(self.zoomToEASE)
         self.qtmZoomtoButton.clicked.connect(self.zoomToQTM)
         self.olcZoomtoButton.clicked.connect(self.zoomToOLC)
         self.geohashZoomtoButton.clicked.connect(self.zoomToGeohash)    
@@ -356,19 +471,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.a5_marker.setStrokeColor(settings.markerColor)
         self.a5_marker.setWidth(settings.gridWidth)
 
-        self.isea4t_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.isea4t_marker.setStrokeColor(settings.markerColor)
-        self.isea4t_marker.setWidth(settings.gridWidth)
-
-        self.isea3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.isea3h_marker.setStrokeColor(settings.markerColor)
         self.rhealpix_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.rhealpix_marker.setStrokeColor(settings.markerColor)
         self.rhealpix_marker.setWidth(settings.gridWidth)
-
-        self.ease_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.ease_marker.setStrokeColor(settings.markerColor)
-        self.ease_marker.setWidth(settings.gridWidth)
 
         self.dggal_gnosis_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
@@ -468,6 +573,77 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_rhealpix_marker.setStrokeColor(settings.markerColor)
         self.dggal_rhealpix_marker.setWidth(settings.gridWidth)
 
+        self.dggrid_superfund_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_superfund_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_superfund_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_planetrisk_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_planetrisk_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_planetrisk_marker.setWidth(settings.gridWidth)
+       
+        self.dggrid_isea3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea3h_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_isea3h_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_isea4h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea4h_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_isea4h_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_isea4t_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea4t_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_isea4t_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_isea4d_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea4d_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_isea4d_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_isea43h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea43h_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_isea43h_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_isea7h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea7h_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_isea7h_marker.setWidth(settings.gridWidth)
+
+        self.dggrid_igeo7_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_igeo7_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_igeo7_marker.setWidth(settings.gridWidth)
+
+        self.dggrid_fuller3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller3h_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_fuller3h_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_fuller4h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller4h_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_fuller4h_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_fuller4t_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller4t_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_fuller4t_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_fuller4d_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller4d_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_fuller4d_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_fuller43h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller43h_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_fuller43h_marker.setWidth(settings.gridWidth)
+        
+        self.dggrid_fuller7h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller7h_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_fuller7h_marker.setWidth(settings.gridWidth)    
+
+
+        self.isea4t_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.isea4t_marker.setStrokeColor(settings.markerColor)
+        self.isea4t_marker.setWidth(settings.gridWidth)
+        self.isea3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.isea3h_marker.setStrokeColor(settings.markerColor)
+        self.ease_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.ease_marker.setStrokeColor(settings.markerColor)
+        self.ease_marker.setWidth(settings.gridWidth)
+
+
         self.qtm_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.qtm_marker.setStrokeColor(settings.markerColor)
         self.qtm_marker.setWidth(settings.gridWidth)
@@ -509,7 +685,90 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.digipin_marker.setWidth(settings.gridWidth)
 
 
+    def _dggs_row_label(self, prefix):
+        """Return the form-row label widget for a DGGS prefix."""
+        for name in (f"{prefix}Label", f"{prefix}Llabel"):
+            widget = getattr(self, name, None)
+            if widget is not None:
+                return widget
+        return None
+
+    def _apply_dggs_row_visibility(self):
+        rows = (
+            ("h3Visible", "h3"),
+            ("s2Visible", "s2"),
+            ("a5Visible", "a5"),
+            ("rhealpixVisible", "rhealpix"),
+            ("isea4tVisible", "isea4t"),
+            ("isea3hVisible", "isea3h"),
+            ("easeVisible", "ease"),
+            ("dggal_gnosisVisible", "dggal_gnosis"),
+            ("dggal_isea4rVisible", "dggal_isea4r"),
+            ("dggal_isea9rVisible", "dggal_isea9r"),
+            ("dggal_isea3hVisible", "dggal_isea3h"),
+            ("dggal_isea7hVisible", "dggal_isea7h"),
+            ("dggal_isea7h_z7Visible", "dggal_isea7h_z7"),
+            ("dggal_ivea4rVisible", "dggal_ivea4r"),
+            ("dggal_ivea9rVisible", "dggal_ivea9r"),
+            ("dggal_ivea3hVisible", "dggal_ivea3h"),
+            ("dggal_ivea7hVisible", "dggal_ivea7h"),
+            ("dggal_ivea7h_z7Visible", "dggal_ivea7h_z7"),
+            ("dggal_rtea4rVisible", "dggal_rtea4r"),
+            ("dggal_rtea9rVisible", "dggal_rtea9r"),
+            ("dggal_rtea3hVisible", "dggal_rtea3h"),
+            ("dggal_rtea7hVisible", "dggal_rtea7h"),
+            ("dggal_rtea7h_z7Visible", "dggal_rtea7h_z7"),
+            ("dggal_healpixVisible", "dggal_healpix"),
+            ("dggal_rhealpixVisible", "dggal_rhealpix"),
+            ("dggrid_superfundVisible", "dggrid_superfund"),
+            ("dggrid_planetriskVisible", "dggrid_planetrisk"),
+            ("dggrid_isea3hVisible", "dggrid_isea3h"),
+            ("dggrid_isea4hVisible", "dggrid_isea4h"),
+            ("dggrid_isea4tVisible", "dggrid_isea4t"),
+            ("dggrid_isea4dVisible", "dggrid_isea4d"),
+            ("dggrid_isea43hVisible", "dggrid_isea43h"),
+            ("dggrid_isea7hVisible", "dggrid_isea7h"),
+            ("dggrid_igeo7Visible", "dggrid_igeo7"),
+            ("dggrid_fuller3hVisible", "dggrid_fuller3h"),
+            ("dggrid_fuller4hVisible", "dggrid_fuller4h"),
+            ("dggrid_fuller4tVisible", "dggrid_fuller4t"),
+            ("dggrid_fuller4dVisible", "dggrid_fuller4d"),
+            ("dggrid_fuller43hVisible", "dggrid_fuller43h"),
+            ("dggrid_fuller7hVisible", "dggrid_fuller7h"),
+            ("qtmVisible", "qtm"),
+            ("olcVisible", "olc"),
+            ("geohashVisible", "geohash"),
+            ("georefVisible", "georef"),
+            ("mgrsVisible", "mgrs"),
+            ("tilecodeVisible", "tilecode"),
+            ("quadkeyVisible", "quadkey"),
+            ("maidenheadVisible", "maidenhead"),
+            ("garsVisible", "gars"),
+            ("digipinVisible", "digipin"),
+        )
+        for settings_key, prefix in rows:
+            state = int(getattr(settings, settings_key, Qt.CheckState.Checked))
+            visible = state == Qt.CheckState.Checked
+            row_widget = self._dggs_row_label(prefix)
+            if row_widget is None:
+                row_widget = getattr(self, f"{prefix}LineEdit", None)
+            if row_widget is not None:
+                self.formLayout.setRowVisible(row_widget, visible)
+
+    def _dggs_visible(self, settings_key):
+        state = int(getattr(settings, settings_key, Qt.CheckState.Checked))
+        return state == Qt.CheckState.Checked
+
+    def _should_update_coord(self, id, coord_id, visible_key=None):
+        if id == coord_id:
+            return False
+        if id == -1 and visible_key is not None:
+            return self._dggs_visible(visible_key)
+        return True
+
     def configure(self):
+        settings.readSettings()
+        self._apply_dggs_row_visibility()
         self.removeMarker()
         self.updateMarker()
 
@@ -518,6 +777,10 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.xyButton.setDefaultAction(self.xymenu.actions()[settings.coordOrder])
         self.updateLabel()
         self.configure()
+        try:
+            get_plugin_dggrid_instance()
+        except Exception:
+            pass
 
     def closeEvent(self, e):
         self.removeMarker()
@@ -550,73 +813,105 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         if id != 6:
             self.a5LineEdit.setText(s_invalid)
         if id != 7:
-            self.rhealpixLineEdit.setText(s_invalid)
+            self.rhealpixLineEdit.setText(s_invalid)      
+        
         if id != 8:
-            self.isea4tLineEdit.setText(s_invalid)
-        if id != 9:
-            self.isea3hLineEdit.setText(s_invalid)
-        if id != 10:
-            self.easeLineEdit.setText(s_invalid)
-
-        if id != 11:
             self.dggal_gnosisLineEdit.setText(s_invalid)
         
-        if id != 12:
+        if id != 9: 
             self.dggal_isea4rLineEdit.setText(s_invalid)
-        if id != 13:
+        if id != 10:
             self.dggal_isea9rLineEdit.setText(s_invalid)
-        if id != 14:
+        if id != 11:
             self.dggal_isea3hLineEdit.setText(s_invalid)
-        if id != 15:
+        if id != 12:
             self.dggal_isea7hLineEdit.setText(s_invalid)
-        if id != 16:
+        if id != 13:
             self.dggal_isea7h_z7LineEdit.setText(s_invalid)
         
-        if id != 17:
+        if id != 14:
             self.dggal_ivea4rLineEdit.setText(s_invalid)
-        if id != 18:
+        if id != 15:
             self.dggal_ivea9rLineEdit.setText(s_invalid)
-        if id != 19:
+        if id != 16:
             self.dggal_ivea3hLineEdit.setText(s_invalid)
-        if id != 20:
+        if id != 17:
             self.dggal_ivea7hLineEdit.setText(s_invalid)
-        if id != 21:
+        if id != 18:        
             self.dggal_ivea7h_z7LineEdit.setText(s_invalid)
        
-        if id != 22:
+        if id != 19:
             self.dggal_rtea4rLineEdit.setText(s_invalid)
-        if id != 23:
+        if id != 20:
             self.dggal_rtea9rLineEdit.setText(s_invalid)
-        if id != 24:
+        if id != 21:
             self.dggal_rtea3hLineEdit.setText(s_invalid)
-        if id != 25:
+        if id != 22:
             self.dggal_rtea7hLineEdit.setText(s_invalid)
-        if id != 26:            
+        if id != 23:            
             self.dggal_rtea7h_z7LineEdit.setText(s_invalid)     
-        if id != 27:
+        if id != 24:
             self.dggal_healpixLineEdit.setText(s_invalid)
-        if id != 28:
+        if id != 25:
             self.dggal_rhealpixLineEdit.setText(s_invalid)
 
+        if id != 26:
+            self.dggrid_superfundLineEdit.setText(s_invalid)
+        if id != 27:
+            self.dggrid_planetriskLineEdit.setText(s_invalid)
+        if id != 28:
+            self.dggrid_isea3hLineEdit.setText(s_invalid)
         if id != 29:
-            self.qtmLineEdit.setText(s_invalid)
+            self.dggrid_isea4hLineEdit.setText(s_invalid)
         if id != 30:
-            self.olcLineEdit.setText(s_invalid)
+            self.dggrid_isea4tLineEdit.setText(s_invalid)
         if id != 31:
-            self.geohashLineEdit.setText(s_invalid)
+            self.dggrid_isea4dLineEdit.setText(s_invalid)
         if id != 32:
-            self.georefLineEdit.setText(s_invalid)
+            self.dggrid_isea43hLineEdit.setText(s_invalid)
         if id != 33:
-            self.mgrsLineEdit.setText(s_invalid)
-        if id != 34:
-            self.tilecodeLineEdit.setText(s_invalid)
-        if id != 35:
-            self.quadkeyLineEdit.setText(s_invalid)
+            self.dggrid_isea7hLineEdit.setText(s_invalid)   
+        if id != 35:    
+            self.dggrid_igeo7LineEdit.setText(s_invalid)
         if id != 36:
-            self.maidenheadLineEdit.setText(s_invalid)
+            self.dggrid_fuller3hLineEdit.setText(s_invalid)
         if id != 37:
-            self.garsLineEdit.setText(s_invalid)
+            self.dggrid_fuller4hLineEdit.setText(s_invalid)
         if id != 38:
+            self.dggrid_fuller4tLineEdit.setText(s_invalid)
+        if id != 39:
+            self.dggrid_fuller4dLineEdit.setText(s_invalid)
+        if id != 40:
+            self.dggrid_fuller43hLineEdit.setText(s_invalid)
+        if id != 41:
+            self.dggrid_fuller7hLineEdit.setText(s_invalid)
+        
+        if id != 42:
+            self.isea4tLineEdit.setText(s_invalid)
+        if id != 43:
+            self.isea3hLineEdit.setText(s_invalid)
+        if id != 44:
+            self.easeLineEdit.setText(s_invalid)
+
+        if id != 45:
+            self.qtmLineEdit.setText(s_invalid)
+        if id != 45:
+            self.olcLineEdit.setText(s_invalid)
+        if id != 46:
+            self.geohashLineEdit.setText(s_invalid)
+        if id != 47:
+            self.georefLineEdit.setText(s_invalid)
+        if id != 48:
+            self.mgrsLineEdit.setText(s_invalid)
+        if id != 49:
+            self.tilecodeLineEdit.setText(s_invalid)
+        if id != 50:
+            self.quadkeyLineEdit.setText(s_invalid)
+        if id != 51:
+            self.maidenheadLineEdit.setText(s_invalid)
+        if id != 52:
+            self.garsLineEdit.setText(s_invalid)
+        if id != 53:
             self.digipinLineEdit.setText(s_invalid)
 
     def clearForm(self):
@@ -632,9 +927,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.s2LineEdit.setText("")
         self.a5LineEdit.setText("")
         self.rhealpixLineEdit.setText("")
-        self.isea4tLineEdit.setText("")
-        self.isea3hLineEdit.setText("")
-        self.easeLineEdit.setText("")
 
         self.dggal_gnosisLineEdit.setText("")
 
@@ -659,6 +951,25 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_healpixLineEdit.setText("")
         self.dggal_rhealpixLineEdit.setText("")         
 
+        self.dggrid_superfundLineEdit.setText("")
+        self.dggrid_planetriskLineEdit.setText("")
+        self.dggrid_isea3hLineEdit.setText("")
+        self.dggrid_isea4hLineEdit.setText("")
+        self.dggrid_isea4tLineEdit.setText("")
+        self.dggrid_isea4dLineEdit.setText("")
+        self.dggrid_isea43hLineEdit.setText("")
+        self.dggrid_isea7hLineEdit.setText("")
+        self.dggrid_igeo7LineEdit.setText("")
+        self.dggrid_fuller3hLineEdit.setText("")
+        self.dggrid_fuller4hLineEdit.setText("")
+        self.dggrid_fuller4tLineEdit.setText("")
+        self.dggrid_fuller4dLineEdit.setText("")
+        self.dggrid_fuller43hLineEdit.setText("")
+        self.dggrid_fuller7hLineEdit.setText("")
+
+        self.isea4tLineEdit.setText("")
+        self.isea3hLineEdit.setText("")
+        self.easeLineEdit.setText("")
         self.qtmLineEdit.setText("")
         self.olcLineEdit.setText("")
         self.geohashLineEdit.setText("")
@@ -735,51 +1046,33 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             s = latLon2Utm(pt4326.y(), pt4326.x(), 2)
             self.utmLineEdit.setText(s)
 
-        if id != 4:  # H3
+        if self._should_update_coord(id, 4, "h3Visible"):  # H3
             try:
                 s = latlon2h3(pt4326.y(), pt4326.x(), settings.h3Res)
             except Exception:
                 s = s_invalid
             self.h3LineEdit.setText(s)
-        if id != 5:  # S2
+        if self._should_update_coord(id, 5, "s2Visible"):  # S2
             try:
                 s = latlon2s2(pt4326.y(), pt4326.x(), settings.s2Res)
             except Exception:
                 s = s_invalid
             self.s2LineEdit.setText(s)
-        if id != 6:  # A5
+        if self._should_update_coord(id, 6, "a5Visible"):  # A5
             try:
                 s = latlon2a5(pt4326.y(), pt4326.x(), settings.a5Res)
             except Exception:
                 s = s_invalid
             self.a5LineEdit.setText(s)
-        if id != 7:  # rHEALPix
+        if self._should_update_coord(id, 7, "rhealpixVisible"):  # rHEALPix
             try:
                 s = latlon2rhealpix(pt4326.y(), pt4326.x(), settings.rhealpixRes)
             except Exception:
                 s = s_invalid
             self.rhealpixLineEdit.setText(s)
-        if id != 8:  # ISEA4T
-            try:
-                s = latlon2isea4t(pt4326.y(), pt4326.x(), settings.isea4tRes)
-            except Exception:
-                s = s_invalid
-            self.isea4tLineEdit.setText(s)
-        if id != 9:  # ISEA3H
-            try:
-                s = latlon2isea3h(pt4326.y(), pt4326.x(), settings.isea3hRes)
-            except Exception:
-                s = s_invalid
-            self.isea3hLineEdit.setText(s)
-        if id != 10:  # EASE
-            try:
-                s = latlon2ease(pt4326.y(), pt4326.x(), settings.easeRes)
-            except Exception:
-                s = s_invalid
-            self.easeLineEdit.setText(s)
-
+    
         ### DGGAL
-        if id != 11:
+        if self._should_update_coord(id, 8, "dggal_gnosisVisible"):
             try:
                 s = latlon2dggal(
                     "gnosis", pt4326.y(), pt4326.x(), settings.dggal_gnosisRes
@@ -788,15 +1081,15 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 s = s_invalid
             self.dggal_gnosisLineEdit.setText(s)
         
-        if id != 12:
+        if self._should_update_coord(id, 9, "dggal_isea4rVisible"):
             try:
                 s = latlon2dggal(
                     "isea4r", pt4326.y(), pt4326.x(), settings.dggal_isea4rRes
                 )
             except Exception:
                 s = s_invalid
-            self.dggal_isea4rLineEdit.setText(s)
-        if id != 13:
+            self.dggal_isea4rLineEdit.setText(s)        
+        if self._should_update_coord(id, 10, "dggal_isea9rVisible"):
             try:
                 s = latlon2dggal(
                     "isea9r", pt4326.y(), pt4326.x(), settings.dggal_isea9rRes
@@ -804,7 +1097,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_isea9rLineEdit.setText(s)
-        if id != 14:
+        if self._should_update_coord(id, 11, "dggal_isea3hVisible"):
             try:
                 s = latlon2dggal(
                     "isea3h", pt4326.y(), pt4326.x(), settings.dggal_isea3hRes
@@ -812,7 +1105,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_isea3hLineEdit.setText(s)
-        if id != 15:
+        if self._should_update_coord(id, 12, "dggal_isea7hVisible"):
             try:
                 s = latlon2dggal(
                     "isea7h", pt4326.y(), pt4326.x(), settings.dggal_isea7hRes
@@ -820,7 +1113,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_isea7hLineEdit.setText(s)
-        if id != 16:
+        if self._should_update_coord(id, 13, "dggal_isea7h_z7Visible"):
             try:
                 s = latlon2dggal(
                     "isea7h_z7", pt4326.y(), pt4326.x(), settings.dggal_isea7h_z7Res
@@ -829,7 +1122,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 s = s_invalid
             self.dggal_isea7h_z7LineEdit.setText(s)
         
-        if id != 17:
+        if self._should_update_coord(id, 14, "dggal_ivea4rVisible"):
             try:
                 s = latlon2dggal(
                     "ivea4r", pt4326.y(), pt4326.x(), settings.dggal_ivea4rRes
@@ -837,7 +1130,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_ivea4rLineEdit.setText(s)
-        if id != 18:
+        if self._should_update_coord(id, 15, "dggal_ivea9rVisible"):
             try:
                 s = latlon2dggal(
                     "ivea9r", pt4326.y(), pt4326.x(), settings.dggal_ivea9rRes
@@ -845,7 +1138,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_ivea9rLineEdit.setText(s)
-        if id != 19:
+        if self._should_update_coord(id, 16, "dggal_ivea3hVisible"):
             try:
                 s = latlon2dggal(
                     "ivea3h", pt4326.y(), pt4326.x(), settings.dggal_ivea3hRes
@@ -853,7 +1146,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_ivea3hLineEdit.setText(s)
-        if id != 20:
+        if self._should_update_coord(id, 17, "dggal_ivea7hVisible"):
             try:
                 s = latlon2dggal(
                     "ivea7h", pt4326.y(), pt4326.x(), settings.dggal_ivea7hRes
@@ -861,7 +1154,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_ivea7hLineEdit.setText(s)
-        if id != 21:
+        if self._should_update_coord(id, 18, "dggal_ivea7h_z7Visible"):
             try:
                 s = latlon2dggal(
                     "ivea7h_z7", pt4326.y(), pt4326.x(), settings.dggal_ivea7h_z7Res
@@ -870,7 +1163,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 s = s_invalid
             self.dggal_ivea7h_z7LineEdit.setText(s)
 
-        if id != 22:
+        if self._should_update_coord(id, 19, "dggal_rtea4rVisible"):
             try:
                 s = latlon2dggal(
                     "rtea4r", pt4326.y(), pt4326.x(), settings.dggal_rtea4rRes
@@ -878,7 +1171,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_rtea4rLineEdit.setText(s)
-        if id != 23:
+        if self._should_update_coord(id, 20, "dggal_rtea9rVisible"):
             try:
                 s = latlon2dggal(
                     "rtea9r", pt4326.y(), pt4326.x(), settings.dggal_rtea9rRes
@@ -886,7 +1179,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_rtea9rLineEdit.setText(s)
-        if id != 24:
+        if self._should_update_coord(id, 21, "dggal_rtea3hVisible"):
             try:
                 s = latlon2dggal(
                     "rtea3h", pt4326.y(), pt4326.x(), settings.dggal_rtea3hRes
@@ -894,7 +1187,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_rtea3hLineEdit.setText(s)
-        if id != 25:
+        if self._should_update_coord(id, 22, "dggal_rtea7hVisible"):
             try:
                 s = latlon2dggal(
                     "rtea7h", pt4326.y(), pt4326.x(), settings.dggal_rtea7hRes
@@ -902,7 +1195,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_rtea7hLineEdit.setText(s)
-        if id != 26:
+        if self._should_update_coord(id, 23, "dggal_rtea7h_z7Visible"):
             try:
                 s = latlon2dggal(
                     "rtea7h_z7", pt4326.y(), pt4326.x(), settings.dggal_rtea7h_z7Res
@@ -911,7 +1204,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 s = s_invalid
             self.dggal_rtea7h_z7LineEdit.setText(s)
 
-        if id != 27:
+        if self._should_update_coord(id, 24, "dggal_healpixVisible"):
             try:
                 s = latlon2dggal(
                     "healpix", pt4326.y(), pt4326.x(), settings.dggal_healpixRes
@@ -919,7 +1212,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_healpixLineEdit.setText(s)
-        if id != 28:
+        if self._should_update_coord(id, 25, "dggal_rhealpixVisible"):
             try:
                 s = latlon2dggal(
                     "rhealpix", pt4326.y(), pt4326.x(), settings.dggal_rhealpixRes
@@ -927,9 +1220,50 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_rhealpixLineEdit.setText(s)    
+        
+
+        ### DGGRID
+        dggrid_instance = None
+        for prefix, dggs_type, coord_id in DGGRID_LATLON_ROWS:
+            if self._should_update_coord(id, coord_id, f"{prefix}Visible"):
+                if dggrid_instance is None:
+                    dggrid_instance = get_plugin_dggrid_instance()
+                try:
+                    s = cached_latlon2dggrid(
+                        dggrid_instance,
+                        dggs_type,
+                        pt4326.y(),
+                        pt4326.x(),
+                        getattr(settings, f"{prefix}Res"),
+                    )
+                except Exception:
+                    s = s_invalid
+                getattr(self, f"{prefix}LineEdit").setText(s)
+
+      
+        if self._should_update_coord(id, 41, "isea4tVisible"):  # ISEA4T
+            try:
+                s = latlon2isea4t(pt4326.y(), pt4326.x(), settings.isea4tRes)
+            except Exception:
+                s = s_invalid
+            self.isea4tLineEdit.setText(s)
+        
+        
+        if self._should_update_coord(id, 42, "isea3hVisible"):  # ISEA3H
+            try:
+                s = latlon2isea3h(pt4326.y(), pt4326.x(), settings.isea3hRes)
+            except Exception:
+                s = s_invalid
+            self.isea3hLineEdit.setText(s)
+        if self._should_update_coord(id, 43, "easeVisible"):  # EASE
+            try:
+                s = latlon2ease(pt4326.y(), pt4326.x(), settings.easeRes)
+            except Exception:
+                s = s_invalid
+            self.easeLineEdit.setText(s)
 
         ### QTM
-        if id != 29:
+        if self._should_update_coord(id, 44, "qtmVisible"):
             try:
                 s = latlon2qtm(pt4326.y(), pt4326.x(), settings.qtmRes)
             except Exception:
@@ -937,49 +1271,49 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.qtmLineEdit.setText(s)
 
         ### Graticule-based DGGS
-        if id != 30:
+        if self._should_update_coord(id, 45, "olcVisible"):
             try:
                 s = latlon2olc(pt4326.y(), pt4326.x(), settings.olcRes)
             except Exception:
                 s = s_invalid
             self.olcLineEdit.setText(s)
-        if id != 31:
+        if self._should_update_coord(id, 46, "geohashVisible"):
             try:
                 s = latlon2geohash(pt4326.y(), pt4326.x(), settings.geohashRes)
             except Exception:
                 s = s_invalid
             self.geohashLineEdit.setText(s)
-        if id != 32:
+        if self._should_update_coord(id, 47, "georefVisible"):
             try:
                 s = latlon2georef(pt4326.y(), pt4326.x(), settings.georefRes)
             except Exception:
                 s = s_invalid
             self.georefLineEdit.setText(s)
-        if id != 33:
+        if self._should_update_coord(id, 48, "mgrsVisible"):
             try:
                 s = latlon2mgrs(pt4326.y(), pt4326.x(), settings.mgrsRes)
             except Exception:
                 s = s_invalid
             self.mgrsLineEdit.setText(s)
-        if id != 34:
+        if self._should_update_coord(id, 49, "tilecodeVisible"):
             try:
                 s = latlon2tilecode(pt4326.y(), pt4326.x(), settings.tilecodeRes)
             except Exception:
                 s = s_invalid
             self.tilecodeLineEdit.setText(s)
-        if id != 35:
+        if self._should_update_coord(id, 50, "quadkeyVisible"):
             try:
                 s = latlon2quadkey(pt4326.y(), pt4326.x(), settings.quadkeyRes)
             except Exception:
                 s = s_invalid
             self.quadkeyLineEdit.setText(s)
-        if id != 36:
+        if self._should_update_coord(id, 51, "maidenheadVisible"):
             try:
                 s = latlon2maidenhead(pt4326.y(), pt4326.x(), settings.maidenheadRes)
             except Exception:
                 s = s_invalid
             self.maidenheadLineEdit.setText(s)
-        if id != 37:
+        if self._should_update_coord(id, 52, "garsVisible"):
             try:
                 s = latlon2gars(pt4326.y(), pt4326.x(), settings.garsRes)
             except Exception:
@@ -987,7 +1321,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.garsLineEdit.setText(s)
 
         ### DIGIPIN
-        if id != 38:
+        if self._should_update_coord(id, 53, "digipinVisible"):
             try:
                 s = latlon2digipin(pt4326.y(), pt4326.x(), settings.digipinRes)
             except Exception:
@@ -1121,45 +1455,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         except Exception:
             self.showInvalid(7)
 
-    def commitISEA4T(self):
-        text = self.isea4tLineEdit.text().strip()
-        try:
-            isea4t_geometry = isea4t2geo(text)
-            num_edges = 3
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                isea4t_geometry, num_edges
-            )
-            pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(8, pt, epsg4326)
-        except Exception:
-            self.showInvalid(8)
-
-    def commitISEA3H(self):
-        text = self.isea3hLineEdit.text().strip()
-        try:
-            isea3h_geometry = isea3h2geo(text)
-            num_edges = 6
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                isea3h_geometry, num_edges
-            )
-            pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(9, pt, epsg4326)
-        except Exception:
-            self.showInvalid(9)
-
-    def commitEASE(self):
-        text = self.easeLineEdit.text().strip()
-        try:
-            ease_geometry = ease2geo(text)
-            num_edges = 4
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                ease_geometry, num_edges
-            )
-            pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(10, pt, epsg4326)
-        except Exception:
-            self.showInvalid(10)
-   
     def commitDGGAL_GNOSIS(self):
         text = self.dggal_gnosisLineEdit.text().strip()
         try:
@@ -1169,9 +1464,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_gnosis_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(11, pt, epsg4326)
+            self.updateCoordinates(8, pt, epsg4326)
         except Exception:
-            self.showInvalid(11)
+            self.showInvalid(8)    
 
     def commitDGGAL_ISEA4R(self):
         text = self.dggal_isea4rLineEdit.text().strip()
@@ -1182,9 +1477,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_isea4r_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(12, pt, epsg4326)
+            self.updateCoordinates(9, pt, epsg4326)
         except Exception:
-            self.showInvalid(12)
+            self.showInvalid(9)
 
     def commitDGGAL_ISEA9R(self):
         text = self.dggal_isea9rLineEdit.text().strip()
@@ -1195,9 +1490,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_isea9r_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(13, pt, epsg4326)
+            self.updateCoordinates(10, pt, epsg4326)
         except Exception:
-            self.showInvalid(13)
+            self.showInvalid(10)
 
     def commitDGGAL_ISEA3H(self):
         text = self.dggal_isea3hLineEdit.text().strip()
@@ -1208,9 +1503,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_isea3h_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(14, pt, epsg4326)
+            self.updateCoordinates(11, pt, epsg4326)
         except Exception:
-            self.showInvalid(14)
+            self.showInvalid(11)
 
     def commitDGGAL_ISEA7H(self):
             text = self.dggal_isea7hLineEdit.text().strip()
@@ -1221,9 +1516,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                     dggal_isea7h_geometry, num_edges
                 )
                 pt = QgsPoint(center_lon, center_lat)
-                self.updateCoordinates(15, pt, epsg4326)
+                self.updateCoordinates(12, pt, epsg4326)
             except Exception:
-                self.showInvalid(15)
+                self.showInvalid(12)
 
     def commitDGGAL_ISEA7H_Z7(self):
         text = self.dggal_isea7h_z7LineEdit.text().strip()
@@ -1234,9 +1529,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_isea7h_z7_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(16, pt, epsg4326)
+            self.updateCoordinates(13, pt, epsg4326)
         except Exception:
-            self.showInvalid(16)
+            self.showInvalid(13)
 
     def commitDGGAL_IVEA4R(self):
         text = self.dggal_ivea4rLineEdit.text().strip()
@@ -1247,9 +1542,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_ivea4r_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(17, pt, epsg4326)
+            self.updateCoordinates(14, pt, epsg4326)
         except Exception:
-            self.showInvalid(17)
+            self.showInvalid(14)
     
     def commitDGGAL_IVEA9R(self):
         text = self.dggal_ivea9rLineEdit.text().strip()
@@ -1260,9 +1555,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_ivea9r_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(18, pt, epsg4326)
+            self.updateCoordinates(15, pt, epsg4326)
         except Exception:
-            self.showInvalid(18)
+            self.showInvalid(15)
     
     def commitDGGAL_IVEA3H(self):
         text = self.dggal_ivea3hLineEdit.text().strip()
@@ -1273,10 +1568,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_ivea3h_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(19, pt, epsg4326)
+            self.updateCoordinates(16, pt, epsg4326)
         except Exception:
-            self.showInvalid(19)
-
+            self.showInvalid(16)
 
     def commitDGGAL_IVEA7H(self):
         text = self.dggal_ivea7hLineEdit.text().strip()
@@ -1287,9 +1581,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_ivea7h_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(20, pt, epsg4326)
+            self.updateCoordinates(17, pt, epsg4326)
         except Exception:
-            self.showInvalid(20)
+            self.showInvalid(17)
 
     def commitDGGAL_IVEA7H_Z7(self):
         text = self.dggal_ivea7h_z7LineEdit.text().strip()
@@ -1300,9 +1594,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_ivea7h_z7_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(21, pt, epsg4326)
+            self.updateCoordinates(18, pt, epsg4326)
         except Exception:
-            self.showInvalid(21)
+            self.showInvalid(18)
     
     def commitDGGAL_RTEA4R(self):
         text = self.dggal_rtea4rLineEdit.text().strip()
@@ -1313,9 +1607,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_rtea4r_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(22, pt, epsg4326)
+            self.updateCoordinates(19, pt, epsg4326)
         except Exception:
-            self.showInvalid(22)
+            self.showInvalid(19)
 
     def commitDGGAL_RTEA9R(self):
         text = self.dggal_rtea9rLineEdit.text().strip()
@@ -1326,9 +1620,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_rtea9r_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(23, pt, epsg4326)
+            self.updateCoordinates(20, pt, epsg4326)
         except Exception:
-            self.showInvalid(23)
+            self.showInvalid(20)
 
     def commitDGGAL_RTEA3H(self):
         text = self.dggal_rtea3hLineEdit.text().strip()
@@ -1339,9 +1633,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_rtea3h_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(24, pt, epsg4326)
+            self.updateCoordinates(21, pt, epsg4326)
         except Exception:
-            self.showInvalid(24)
+            self.showInvalid(21)
 
     def commitDGGAL_RTEA7H(self):
         text = self.dggal_rtea7hLineEdit.text().strip()
@@ -1352,9 +1646,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_rtea7h_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(25, pt, epsg4326)
+            self.updateCoordinates(22, pt, epsg4326)
         except Exception:
-            self.showInvalid(25)
+            self.showInvalid(22)
 
     def commitDGGAL_RTEA7H_Z7(self):
         text = self.dggal_rtea7h_z7LineEdit.text().strip()
@@ -1365,9 +1659,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_rtea7h_z7_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(26, pt, epsg4326)
+            self.updateCoordinates(23, pt, epsg4326)
         except Exception:
-            self.showInvalid(26)
+            self.showInvalid(23)
 
     def commitDGGAL_HEALPix(self):
         text = self.dggal_healpixLineEdit.text().strip()
@@ -1378,9 +1672,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_healpix_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(27, pt, epsg4326)
+            self.updateCoordinates(24, pt, epsg4326)
         except Exception:
-            self.showInvalid(27)
+            self.showInvalid(24)
 
 
     def commitDGGAL_rHEALPix(self):
@@ -1392,10 +1686,236 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 dggal_rhealpix_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(28, pt, epsg4326)
+            self.updateCoordinates(25, pt, epsg4326)
         except Exception:
-            self.showInvalid(28)
+            self.showInvalid(25)
     
+    ### DGGRID
+    def _plugin_dggrid(self):
+        return get_plugin_dggrid_instance()
+
+    def _dggrid_cell_polygon(self, dggs_type, cell_id, res):
+        split = (
+            settings.splitAntimeridian
+            and dggs_type not in DGGRID_TYPES_NO_ANTIMERIDIAN
+        )
+        return cached_dggrid_cell_geometry(
+            self._plugin_dggrid(),
+            dggs_type,
+            cell_id,
+            res,
+            split_antimeridian=split,
+            options=dggrid_latlon_cell_options(),
+        )
+
+    def _commit_dggrid_row(self, line_edit, dggs_type, res, coord_id):
+        text = line_edit.text().strip()
+        try:
+            cell_polygon = self._dggrid_cell_polygon(dggs_type, text, res)
+            num_edges = len(cell_polygon.exterior.coords) - 1
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+            self.updateCoordinates(
+                coord_id, QgsPoint(center_lon, center_lat), epsg4326
+            )
+        except Exception:
+            self.showInvalid(coord_id)
+
+    def _zoom_to_dggrid(self, line_edit, marker, dggs_type, res):
+        try:
+            text = line_edit.text().strip()
+            if not text:
+                return
+            cell_polygon = self._dggrid_cell_polygon(dggs_type, text, res)
+            num_edges = len(cell_polygon.exterior.coords) - 1
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                cell_geometry.transform(trans_to_canvas)
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+            if not settings.persistentMarker:
+                marker.reset(QgsWkbTypes.PolygonGeometry)
+            marker.addGeometry(cell_geometry, None)
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+
+    def commitDGGRID_SUPERFUND(self):
+        self._commit_dggrid_row(
+            self.dggrid_superfundLineEdit,
+            "SUPERFUND",
+            settings.dggrid_superfundRes,
+            26,
+        )
+
+    def commitDGGRID_PLANETRISK(self):
+        self._commit_dggrid_row(
+            self.dggrid_planetriskLineEdit,
+            "PLANETRISK",
+            settings.dggrid_planetriskRes,
+            27,
+        )
+
+    def commitDGGRID_ISEA3H(self):
+        self._commit_dggrid_row(
+            self.dggrid_isea3hLineEdit,
+            "ISEA3H",
+            settings.dggrid_isea3hRes,
+            28,
+        )
+
+    def commitDGGRID_ISEA4H(self):
+        self._commit_dggrid_row(
+            self.dggrid_isea4hLineEdit,
+            "ISEA4H",
+            settings.dggrid_isea4hRes,
+            29,
+        )
+
+    def commitDGGRID_ISEA4T(self):
+        self._commit_dggrid_row(
+            self.dggrid_isea4tLineEdit,
+            "ISEA4T",
+            settings.dggrid_isea4tRes,
+            30,
+        )
+
+    def commitDGGRID_ISEA4D(self):
+        self._commit_dggrid_row(
+            self.dggrid_isea4dLineEdit,
+            "ISEA4D",
+            settings.dggrid_isea4dRes,
+            31,
+        )
+
+    def commitDGGRID_ISEA43H(self):
+        self._commit_dggrid_row(
+            self.dggrid_isea43hLineEdit,
+            "ISEA43H",
+            settings.dggrid_isea43hRes,
+            32,
+        )
+
+    def commitDGGRID_ISEA7H(self):
+        self._commit_dggrid_row(
+            self.dggrid_isea7hLineEdit,
+            "ISEA7H",
+            settings.dggrid_isea7hRes,
+            33,
+        )
+
+    def commitDGGRID_IGEO7(self):
+        self._commit_dggrid_row(
+            self.dggrid_igeo7LineEdit,
+            "IGEO7",
+            settings.dggrid_igeo7Res,
+            34,
+        )
+
+    def commitDGGRID_FULLER3H(self):
+        self._commit_dggrid_row(
+            self.dggrid_fuller3hLineEdit,
+            "FULLER3H",
+            settings.dggrid_fuller3hRes,
+            35,
+        )
+
+    def commitDGGRID_FULLER4H(self):
+        self._commit_dggrid_row(
+            self.dggrid_fuller4hLineEdit,
+            "FULLER4H",
+            settings.dggrid_fuller4hRes,
+            36,
+        )
+
+    def commitDGGRID_FULLER4T(self):
+        self._commit_dggrid_row(
+            self.dggrid_fuller4tLineEdit,
+            "FULLER4T",
+            settings.dggrid_fuller4tRes,
+            37,
+        )
+
+    def commitDGGRID_FULLER4D(self):
+        self._commit_dggrid_row(
+            self.dggrid_fuller4dLineEdit,
+            "FULLER4D",
+            settings.dggrid_fuller4dRes,
+            38,
+        )
+
+    def commitDGGRID_FULLER43H(self):
+        self._commit_dggrid_row(
+            self.dggrid_fuller43hLineEdit,
+            "FULLER43H",
+            settings.dggrid_fuller43hRes,
+            39,
+        )
+
+    def commitDGGRID_FULLER7H(self):
+        self._commit_dggrid_row(
+            self.dggrid_fuller7hLineEdit,
+            "FULLER7H",
+            settings.dggrid_fuller7hRes,
+            40,
+        )
+
+    def commitISEA4T(self):
+        text = self.isea4tLineEdit.text().strip()
+        try:
+            isea4t_geometry = isea4t2geo(text)
+            num_edges = 3
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                isea4t_geometry, num_edges
+            )
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(41, pt, epsg4326)
+        except Exception:
+            self.showInvalid(41)
+
+    def commitISEA3H(self):
+        text = self.isea3hLineEdit.text().strip()
+        try:
+            isea3h_geometry = isea3h2geo(text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                isea3h_geometry, num_edges
+            )
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(42, pt, epsg4326)
+        except Exception:
+            self.showInvalid(42)
+
+    def commitEASE(self):
+        text = self.easeLineEdit.text().strip()
+        try:
+            ease_geometry = ease2geo(text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                ease_geometry, num_edges
+            )
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(43, pt, epsg4326)
+        except Exception:
+            self.showInvalid(43)
 
     def commitQTM(self):
         text = self.qtmLineEdit.text().strip()
@@ -1406,9 +1926,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 qtm_geometry, num_edges
             )
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(29, pt, epsg4326)
+            self.updateCoordinates(44, pt, epsg4326)
         except Exception:
-            self.showInvalid(29)
+            self.showInvalid(44)
 
     def commitOLC(self):
         text = self.olcLineEdit.text().strip()
@@ -1417,9 +1937,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             olc_geometry = olc2geo(text)
             center_lat, center_lon, _, _, _ ,_ = graticule_dggs_metrics(olc_geometry)
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(30, pt, epsg4326)
+            self.updateCoordinates(45, pt, epsg4326)
         except Exception:
-            self.showInvalid(30)
+            self.showInvalid(45)
 
     def commitGeohash(self):
         text = self.geohashLineEdit.text().strip()
@@ -1428,9 +1948,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             geohash_geometry = geohash2geo(text)
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(geohash_geometry)
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(31, pt, epsg4326)
+            self.updateCoordinates(46, pt, epsg4326)
         except Exception:
-            self.showInvalid(31)
+            self.showInvalid(46)
 
     def commitGEOREF(self):
         text = self.georefLineEdit.text().strip()
@@ -1438,10 +1958,10 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             georef_geometry = georef2geo(text)
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(georef_geometry)
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(32, pt, epsg4326)
+            self.updateCoordinates(47, pt, epsg4326)
         except Exception:
             traceback.print_exc()
-            self.showInvalid(32)
+            self.showInvalid(47)
 
     def commitMGRS(self):
         text = self.mgrsLineEdit.text().strip()
@@ -1452,9 +1972,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(mgrs_geometry)
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(33, pt, epsg4326)
+            self.updateCoordinates(48, pt, epsg4326)
         except Exception:
-            self.showInvalid(33)
+            self.showInvalid(48)
 
     def commitTilecode(self):
         text = self.tilecodeLineEdit.text().strip()
@@ -1462,9 +1982,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             tilecode_geometry = tilecode2geo(text)
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(tilecode_geometry)
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(34, pt, epsg4326)
+            self.updateCoordinates(49, pt, epsg4326)
         except Exception:
-            self.showInvalid(34)
+            self.showInvalid(49)
 
     def commitQuadkey(self):
         text = self.quadkeyLineEdit.text().strip()
@@ -1472,9 +1992,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             quadkey_geometry = quadkey2geo(text)
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(quadkey_geometry)
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(35, pt, epsg4326)
+            self.updateCoordinates(50, pt, epsg4326)
         except Exception:
-            self.showInvalid(35)
+            self.showInvalid(50)
 
     def commitMaidenhead(self):
         text = self.maidenheadLineEdit.text().strip()
@@ -1482,9 +2002,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             maidenhead_geometry = maidenhead2geo(text)
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(maidenhead_geometry)
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(36, pt, epsg4326)
+            self.updateCoordinates(51, pt, epsg4326)
         except Exception:
-            self.showInvalid(36)
+            self.showInvalid(51)
 
     def commitGARS(self):
         text = self.garsLineEdit.text().strip()
@@ -1492,10 +2012,10 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             gars_geometry = gars2geo(text)
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(gars_geometry)
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(37, pt, epsg4326)
+            self.updateCoordinates(52, pt, epsg4326)    
         except Exception:
             traceback.print_exc()
-            self.showInvalid(37)
+            self.showInvalid(52)
     
     def commitDIGIPIN(self):
         text = self.digipinLineEdit.text().strip()
@@ -1503,9 +2023,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             digipin_geometry = digipin2geo(text)
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(digipin_geometry)
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(38, pt, epsg4326)
+            self.updateCoordinates(53, pt, epsg4326)
         except Exception:
-            self.showInvalid(38)
+            self.showInvalid(53)
 
     def updateLabel(self):
         if self.inputXYOrder == 0:  # Y, X
@@ -1570,21 +2090,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
 
     def copyRHEALPIX(self):
         s = self.rhealpixLineEdit.text()
-        self.clipboard.setText(s)
-        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
-
-    def copyISEA4T(self):
-        s = self.isea4tLineEdit.text()
-        self.clipboard.setText(s)
-        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
-
-    def copyISEA3H(self):
-        s = self.isea3hLineEdit.text()
-        self.clipboard.setText(s)
-        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
-
-    def copyEASE(self):
-        s = self.easeLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
 
@@ -1677,9 +2182,80 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         s = self.dggal_healpixLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+   
+    def copyDGGRID_SUPERFUND(self):
+        s = self.dggrid_superfundLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_PLANETRISK(self):
+        s = self.dggrid_planetriskLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_ISEA3H(self):
+        s = self.dggrid_isea3hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_ISEA4H(self):
+        s = self.dggrid_isea4hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_ISEA4T(self):
+        s = self.dggrid_isea4tLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_ISEA4D(self):
+        s = self.dggrid_isea4dLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_ISEA43H(self):
+        s = self.dggrid_isea43hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_ISEA7H(self):        
+        s = self.dggrid_isea7hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_IGEO7(self):
+        s = self.dggrid_igeo7LineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_FULLER3H(self):
+        s = self.dggrid_fuller3hLineEdit.text()
+    
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_FULLER4H(self):
+        s = self.dggrid_fuller4hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_FULLER4T(self):
+        s = self.dggrid_fuller4tLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_FULLER4D(self):
+        s = self.dggrid_fuller4dLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_FULLER43H(self):
+        s = self.dggrid_fuller43hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    def copyDGGRID_FULLER7H(self):
+        s = self.dggrid_fuller7hLineEdit.text()
+        self.clipboard.setText(s)
 
-    def copyDIGIPIN(self):
-        s = self.digipinLineEdit.text()
+
+    def copyISEA4T(self):
+        s = self.isea4tLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyISEA3H(self):
+        s = self.isea3hLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+    def copyEASE(self):
+        s = self.easeLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
 
@@ -1727,6 +2303,13 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         s = self.garsLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+    
+    def copyDIGIPIN(self):
+        s = self.digipinLineEdit.text()
+        self.clipboard.setText(s)
+        self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
+
 
     def customCrsChanged(self):
         if self.origPt is not None:
@@ -1942,6 +2525,1000 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
             return
 
+
+    def zoomToDGGAL_GNOSIS(self):
+        try:
+            text = self.dggal_gnosisLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("gnosis", text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                cell_geometry.transform(trans)
+
+            # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_gnosis_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_gnosis_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+
+    def zoomToDGGAL_ISEA4R(self):
+        try:
+            text = self.dggal_isea4rLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("isea4r", text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_isea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_isea4r_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_ISEA9R(self):
+        try:
+            text = self.dggal_isea9rLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("isea9r", text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(3.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_isea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_isea9r_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_ISEA3H(self):
+        try:
+            text = self.dggal_isea3hLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("isea3h", text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_isea3h_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return   
+
+    def zoomToDGGAL_ISEA7H(self):
+        try:
+            text = self.dggal_isea7hLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("isea7h", text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_isea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_isea7h_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_ISEA7H_Z7(self):
+        try:
+            text = self.dggal_isea7h_z7LineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("isea7h_z7", text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_isea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_isea7h_z7_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_IVEA4R(self):
+        try:
+            text = self.dggal_ivea4rLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("ivea4r", text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_ivea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_ivea4r_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+
+    def zoomToDGGAL_IVEA9R(self):
+        try:
+            text = self.dggal_ivea9rLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("ivea9r", text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(3.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_ivea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_ivea9r_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+
+    def zoomToDGGAL_IVEA3H(self):
+        try:
+            text = self.dggal_ivea3hLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("ivea3h", text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_ivea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_ivea3h_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_IVEA7H(self):
+        try:
+            text = self.dggal_ivea7hLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("ivea7h", text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_ivea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_ivea7h_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_IVEA7H_Z7(self):
+        try:
+            text = self.dggal_ivea7h_z7LineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("ivea7h_z7", text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_ivea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_ivea7h_z7_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_RTEA4R(self):
+        try:
+            text = self.dggal_rtea4rLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("rtea4r", text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_rtea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_rtea4r_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+    
+    def zoomToDGGAL_RTEA9R(self):
+        try:
+            text = self.dggal_rtea9rLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("rtea9r", text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(3.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_rtea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_rtea9r_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_RTEA7H(self):
+        try:
+            text = self.dggal_rtea7hLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("rtea7h", text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_rtea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_rtea7h_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_RTEA7H_Z7(self):
+        try:
+            text = self.dggal_rtea7h_z7LineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("rtea7h_z7", text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_rtea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_rtea7h_z7_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_RTEA3H(self):
+        try:
+            text = self.dggal_rtea3hLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("rtea3h", text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+
+            # Set the map extent - double the extent
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_rtea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_rtea3h_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+    
+
+    def zoomToDGGAL_HEALPix(self):
+        try:
+            text = self.dggal_healpixLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("healpix", text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+
+            if not settings.persistentMarker:
+                self.dggal_healpix_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_healpix_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGAL_rHEALPix(self):
+        try:
+            text = self.dggal_rhealpixLineEdit.text().strip()
+            if not text:
+                return
+
+            cell_polygon = dggal2geo("rhealpix", text)
+            num_edges = 4
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                cell_polygon, num_edges
+            )
+
+            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            canvas_crs = self.canvas.mapSettings().destinationCrs()
+            if epsg4326 != canvas_crs:
+                trans_to_canvas = QgsCoordinateTransform(
+                    epsg4326, canvas_crs, QgsProject.instance()
+                )
+                if settings.splitAntimeridian:
+                    cell_polygon = fix_polygon(cell_polygon)
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                cell_geometry.transform(trans_to_canvas)
+            else:
+                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            # Set the map extent - double the extent
+            bbox = cell_geometry.boundingBox()
+            bbox.scale(2.0, QgsPointXY(bbox.center()))
+            self.canvas.setExtent(bbox)
+            self.canvas.refresh()
+            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.addPoint(pt)
+
+            if not settings.persistentMarker:
+                self.dggal_isea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+            self.dggal_isea9r_marker.addGeometry(cell_geometry, None)
+
+        except Exception as e:
+            traceback.print_exc()
+            self.iface.messageBar().pushMessage(
+                "",
+                tr("Invalid Coordinate: {}").format(str(e)),
+                level=Qgis.Warning,
+                duration=2,
+            )
+            return
+
+    def zoomToDGGRID_SUPERFUND(self):
+        self._zoom_to_dggrid(
+            self.dggrid_superfundLineEdit,
+            self.dggrid_superfund_marker,
+            "SUPERFUND",
+            settings.dggrid_superfundRes,
+        )
+
+    def zoomToDGGRID_PLANETRISK(self):
+        self._zoom_to_dggrid(
+            self.dggrid_planetriskLineEdit,
+            self.dggrid_planetrisk_marker,
+            "PLANETRISK",
+            settings.dggrid_planetriskRes,
+        )
+
+    def zoomToDGGRID_ISEA3H(self):
+        self._zoom_to_dggrid(
+            self.dggrid_isea3hLineEdit,
+            self.dggrid_isea3h_marker,
+            "ISEA3H",
+            settings.dggrid_isea3hRes,
+        )
+
+    def zoomToDGGRID_ISEA4H(self):
+        self._zoom_to_dggrid(
+            self.dggrid_isea4hLineEdit,
+            self.dggrid_isea4h_marker,
+            "ISEA4H",
+            settings.dggrid_isea4hRes,
+        )
+
+    def zoomToDGGRID_ISEA4T(self):
+        self._zoom_to_dggrid(
+            self.dggrid_isea4tLineEdit,
+            self.dggrid_isea4t_marker,
+            "ISEA4T",
+            settings.dggrid_isea4tRes,
+        )
+
+    def zoomToDGGRID_ISEA4D(self):
+        self._zoom_to_dggrid(
+            self.dggrid_isea4dLineEdit,
+            self.dggrid_isea4d_marker,
+            "ISEA4D",
+            settings.dggrid_isea4dRes,
+        )
+
+    def zoomToDGGRID_ISEA43H(self):
+        self._zoom_to_dggrid(
+            self.dggrid_isea43hLineEdit,
+            self.dggrid_isea43h_marker,
+            "ISEA43H",
+            settings.dggrid_isea43hRes,
+        )
+
+    def zoomToDGGRID_ISEA7H(self):
+        self._zoom_to_dggrid(
+            self.dggrid_isea7hLineEdit,
+            self.dggrid_isea7h_marker,
+            "ISEA7H",
+            settings.dggrid_isea7hRes,
+        )
+
+    def zoomToDGGRID_IGEO7(self):
+        self._zoom_to_dggrid(
+            self.dggrid_igeo7LineEdit,
+            self.dggrid_igeo7_marker,
+            "IGEO7",
+            settings.dggrid_igeo7Res,
+        )
+
+    def zoomToDGGRID_FULLER3H(self):
+        self._zoom_to_dggrid(
+            self.dggrid_fuller3hLineEdit,
+            self.dggrid_fuller3h_marker,
+            "FULLER3H",
+            settings.dggrid_fuller3hRes,
+        )
+
+    def zoomToDGGRID_FULLER4H(self):
+        self._zoom_to_dggrid(
+            self.dggrid_fuller4hLineEdit,
+            self.dggrid_fuller4h_marker,
+            "FULLER4H",
+            settings.dggrid_fuller4hRes,
+        )
+
+    def zoomToDGGRID_FULLER4T(self):
+        self._zoom_to_dggrid(
+            self.dggrid_fuller4tLineEdit,
+            self.dggrid_fuller4t_marker,
+            "FULLER4T",
+            settings.dggrid_fuller4tRes,
+        )
+
+    def zoomToDGGRID_FULLER4D(self):
+        self._zoom_to_dggrid(
+            self.dggrid_fuller4dLineEdit,
+            self.dggrid_fuller4d_marker,
+            "FULLER4D",
+            settings.dggrid_fuller4dRes,
+        )
+
+    def zoomToDGGRID_FULLER43H(self):
+        self._zoom_to_dggrid(
+            self.dggrid_fuller43hLineEdit,
+            self.dggrid_fuller43h_marker,
+            "FULLER43H",
+            settings.dggrid_fuller43hRes,
+        )
+
+    def zoomToDGGRID_FULLER7H(self):
+        self._zoom_to_dggrid(
+            self.dggrid_fuller7hLineEdit,
+            self.dggrid_fuller7h_marker,
+            "FULLER7H",
+            settings.dggrid_fuller7hRes,
+        )
+
     def zoomToISEA4T(self):
         try:
             text = self.isea4tLineEdit.text().strip()
@@ -2072,395 +3649,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 self.ease_marker.reset(QgsWkbTypes.PolygonGeometry)
 
             self.ease_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_GNOSIS(self):
-        try:
-            text = self.dggal_gnosisLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("gnosis", text)
-            num_edges = 4
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                cell_geometry.transform(trans)
-
-            # Set the map extent - double the extent
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_gnosis_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_gnosis_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_ISEA3H(self):
-        try:
-            text = self.dggal_isea3hLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("isea3h", text)
-            num_edges = 6
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            # Set the map extent - double the extent
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_isea3h_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_ISEA9R(self):
-        try:
-            text = self.dggal_isea9rLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("isea9r", text)
-            num_edges = 4
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            # Set the map extent - double the extent
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(3.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_isea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_isea9r_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_IVEA3H(self):
-        try:
-            text = self.dggal_ivea3hLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("ivea3h", text)
-            num_edges = 6
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            # Set the map extent - double the extent
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_ivea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_ivea3h_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_IVEA9R(self):
-        try:
-            text = self.dggal_ivea9rLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("ivea9r", text)
-            num_edges = 4
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            # Set the map extent - double the extent
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(3.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_ivea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_ivea9r_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_RTEA3H(self):
-        try:
-            text = self.dggal_rtea3hLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("rtea3h", text)
-            num_edges = 6
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-
-            # Set the map extent - double the extent
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_rtea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_rtea3h_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_RTEA9R(self):
-        try:
-            text = self.dggal_rtea9rLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("rtea9r", text)
-            num_edges = 4
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            # Set the map extent - double the extent
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(3.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_rtea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_rtea9r_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_rHEALPix(self):
-        try:
-            text = self.dggal_rhealpixLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("rhealpix", text)
-            num_edges = 4
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            # Set the map extent - double the extent
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            if not settings.persistentMarker:
-                self.dggal_isea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_isea9r_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
             traceback.print_exc()
@@ -2860,486 +4048,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
             return
 
-    def zoomToDGGAL_ISEA4R(self):
-        try:
-            text = self.dggal_isea4rLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("isea4r", text)
-            num_edges = 4
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_isea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_isea4r_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_ISEA7H(self):
-        try:
-            text = self.dggal_isea7hLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("isea7h", text)
-            num_edges = 6
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_isea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_isea7h_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_ISEA7H_Z7(self):
-        try:
-            text = self.dggal_isea7h_z7LineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("isea7h_z7", text)
-            num_edges = 6
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_isea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_isea7h_z7_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_IVEA4R(self):
-        try:
-            text = self.dggal_ivea4rLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("ivea4r", text)
-            num_edges = 4
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_ivea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_ivea4r_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_IVEA7H(self):
-        try:
-            text = self.dggal_ivea7hLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("ivea7h", text)
-            num_edges = 6
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_ivea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_ivea7h_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_IVEA7H_Z7(self):
-        try:
-            text = self.dggal_ivea7h_z7LineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("ivea7h_z7", text)
-            num_edges = 6
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_ivea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_ivea7h_z7_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_RTEA4R(self):
-        try:
-            text = self.dggal_rtea4rLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("rtea4r", text)
-            num_edges = 4
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_rtea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_rtea4r_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_RTEA7H(self):
-        try:
-            text = self.dggal_rtea7hLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("rtea7h", text)
-            num_edges = 6
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_rtea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_rtea7h_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_RTEA7H_Z7(self):
-        try:
-            text = self.dggal_rtea7h_z7LineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("rtea7h_z7", text)
-            num_edges = 6
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_rtea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_rtea7h_z7_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
-    def zoomToDGGAL_HEALPix(self):
-        try:
-            text = self.dggal_healpixLineEdit.text().strip()
-            if not text:
-                return
-
-            cell_polygon = dggal2geo("healpix", text)
-            num_edges = 4
-            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                cell_polygon, num_edges
-            )
-
-            pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
-            self.marker.addPoint(pt)
-
-            canvas_crs = self.canvas.mapSettings().destinationCrs()
-            if epsg4326 != canvas_crs:
-                trans_to_canvas = QgsCoordinateTransform(
-                    epsg4326, canvas_crs, QgsProject.instance()
-                )
-                if settings.splitAntimeridian:
-                    cell_polygon = fix_polygon(cell_polygon)
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                cell_geometry.transform(trans_to_canvas)
-            else:
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-            bbox = cell_geometry.boundingBox()
-            bbox.scale(2.0, QgsPointXY(bbox.center()))
-            self.canvas.setExtent(bbox)
-            self.canvas.refresh()
-
-            if not settings.persistentMarker:
-                self.dggal_healpix_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-            self.dggal_healpix_marker.addGeometry(cell_geometry, None)
-
-        except Exception as e:
-            traceback.print_exc()
-            self.iface.messageBar().pushMessage(
-                "",
-                tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
-                duration=2,
-            )
-            return
-
     def zoomToDIGIPIN(self):
         try:
             text = self.digipinLineEdit.text().strip()
@@ -3385,6 +4093,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
             return
 
+
     @pyqtSlot(QgsPointXY)
     def capturedPoint(self, pt):
         if self.isVisible() and self.coordCaptureButton.isChecked():
@@ -3410,9 +4119,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.s2_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.a5_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.rhealpix_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.isea4t_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.ease_marker.reset(QgsWkbTypes.PolygonGeometry)
+
         self.dggal_gnosis_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.dggal_isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.dggal_isea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
@@ -3431,7 +4138,28 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_rtea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.dggal_rtea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.dggal_healpix_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.digipin_marker.reset(QgsWkbTypes.PolygonGeometry)
+
+
+        self.dggrid_superfund_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_planetrisk_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea4h_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea4t_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea4d_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea43h_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_isea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_igeo7_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller4h_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller4t_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller4d_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller43h_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller7h_marker.reset(QgsWkbTypes.PolygonGeometry)  
+        
+        
+        self.isea4t_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.ease_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.qtm_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.olc_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.geohash_marker.reset(QgsWkbTypes.PolygonGeometry)
@@ -3441,6 +4169,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.quadkey_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.maidenhead_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.digipin_marker.reset(QgsWkbTypes.PolygonGeometry)
 
     def showSettings(self):
         self.settings.showTab(1)

@@ -37,6 +37,7 @@ from .processing_provider.binning.a5_bin import A5Bin
 from .processing_provider.binning.rhealpix_bin import rHEALPixBin
 from .processing_provider.binning.isea4t_bin import ISEA4TBin
 from .processing_provider.binning.dggal_bin import DGGALBin
+from .processing_provider.binning.dggrid_bin import DGGRIDBin
 
 from .processing_provider.binning.qtm_bin import QTMBin
 
@@ -55,7 +56,7 @@ from .processing_provider.generator.a5gen import A5Gen
 from .processing_provider.generator.rhealpixgen import rHEALPixGen
 from .processing_provider.generator.isea4tgen import ISEA4TGen
 from .processing_provider.generator.dggalgen import DGGALGen
-# from .processing_provider.generator.dggridgen import DGGRIDGen
+from .processing_provider.generator.dggridgen import DGGRIDGen
 
 from .processing_provider.generator.qtmgen import QTMGen
 
@@ -102,6 +103,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(rHEALPixBin())
         self.addAlgorithm(ISEA4TBin())
         self.addAlgorithm(DGGALBin())
+        self.addAlgorithm(DGGRIDBin())
 
         self.addAlgorithm(QTMBin())
 
@@ -125,7 +127,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(GeohashGen())
         self.addAlgorithm(GEOREFGen())
         self.addAlgorithm(DGGALGen())
-        # self.addAlgorithm(DGGRIDGen())
+        self.addAlgorithm(DGGRIDGen())
         ################################
         self.addAlgorithm(MGRSGen())
         self.addAlgorithm(GZDGen())

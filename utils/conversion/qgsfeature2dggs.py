@@ -31,6 +31,7 @@ from vgrid.utils.io import (
     validate_isea3h_resolution,
     validate_rhealpix_resolution,
     validate_dggal_resolution,
+    validate_dggrid_resolution,
     validate_qtm_resolution,
     validate_olc_resolution,
     validate_geohash_resolution,
@@ -38,6 +39,12 @@ from vgrid.utils.io import (
     validate_quadkey_resolution,
     validate_digipin_resolution,
 )
+from ..dggrid_instance import (
+    get_plugin_dggrid_instance,
+    build_dggrid_options,
+    vector_geom_to_dggrid_gdf_qgis,
+)
+from ...settings import settings
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 
@@ -5070,5 +5077,128 @@ def polygon2digipin(feature, resolution, predicate=None, compact=None, feedback=
         digipin_features = digipincompact_from_qgsfeatures(digipin_features, feedback)
 
     return digipin_features
+
+
+#######################
+# QgsFeatures to DGGRID
+#######################
+
+
+def _dggrid_cell_id(row, field_name):
+    for col in (field_name, "seqnum", "global_id", "name"):
+        if col in row.index:
+            val = row[col]
+            if val is not None:
+                return str(val)
+    return None
+
+
+def _dggrid_gdf_to_qgs_features(gdf, field_name, resolution, input_feature, feedback):
+    if gdf is None or gdf.empty:
+        return []
+
+    original_attributes = input_feature.attributes()
+    original_fields = input_feature.fields()
+
+    new_fields = QgsFields()
+    new_fields.append(QgsField(field_name, QVariant.String))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+
+    dggrid_features = []
+    total = len(gdf)
+
+    if feedback:
+        feedback.pushInfo(f"Processing feature {input_feature.id()}")
+        feedback.setProgress(0)
+
+    for idx, row in gdf.iterrows():
+        if feedback and feedback.isCanceled():
+            return []
+
+        cell_polygon = row.geometry
+        if cell_polygon is None or cell_polygon.is_empty:
+            continue
+
+        cell_id = _dggrid_cell_id(row, field_name)
+        if cell_id is None:
+            continue
+
+        num_edges = (
+            len(cell_polygon.exterior.coords) - 1
+            if hasattr(cell_polygon, "exterior")
+            else 4
+        )
+        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+            geodesic_dggs_metrics(cell_polygon, num_edges)
+        )
+
+        dggrid_feature = QgsFeature()
+        dggrid_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+        dggrid_feature.setFields(all_fields)
+        dggrid_feature.setAttributes(
+            original_attributes
+            + [
+                cell_id,
+                resolution,
+                center_lat,
+                center_lon,
+                avg_edge_len,
+                cell_area,
+                cell_perimeter,
+            ]
+        )
+        dggrid_features.append(dggrid_feature)
+
+        if feedback and total and idx % 100 == 0:
+            feedback.setProgress(int(100 * idx / total))
+
+    if feedback:
+        feedback.setProgress(100)
+
+    return dggrid_features
+
+
+def qgsfeature2dggrid(
+    dggs_type, feature, resolution, predicate=None, compact=None, feedback=None
+):
+    resolution = validate_dggrid_resolution(dggs_type, resolution)
+    dggrid_instance = get_plugin_dggrid_instance()
+    dggrid_options = build_dggrid_options(settings.dggridDensificationSpinBox)
+    field_name = f"dggrid_{dggs_type.lower()}"
+
+    geometry = feature.geometry()
+    shapely_geom = wkt_loads(geometry.asWkt())
+
+    if geometry.wkbType() not in (
+        QgsWkbTypes.Point,
+        QgsWkbTypes.LineString,
+        QgsWkbTypes.Polygon,
+    ):
+        return []
+
+    gdf = vector_geom_to_dggrid_gdf_qgis(
+        dggrid_instance,
+        dggs_type,
+        shapely_geom,
+        resolution,
+        predicate=predicate,
+        output_address_type="SEQNUM",
+        options=dggrid_options,
+    )
+
+    return _dggrid_gdf_to_qgs_features(
+        gdf, field_name, resolution, feature, feedback
+    )
 
 

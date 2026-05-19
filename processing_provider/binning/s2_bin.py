@@ -5,15 +5,9 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
-    QgsFeatureSink,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterNumber,
-    QgsFields,
-    QgsField,
-    QgsFeature,
-    QgsGeometry,
-    QgsWkbTypes,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
     QgsProcessingParameterVectorDestination,
@@ -22,23 +16,10 @@ from qgis.core import (
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QVariant
 import os
-from vgrid.dggs import s2
-from vgrid.conversion.latlon2dggs import latlon2s2
-from shapely.geometry import Polygon
 from ...utils.imgs import Imgs
-from collections import defaultdict
-from ...utils.binning.bin_helper import (
-    append_bin_stat_fields,
-    append_geodesic_metric_fields,
-    append_stats_value,
-    build_bin_feature_props,
-    feature_attributes,
-    get_default_stats_structure,
-)
+from ...utils.binning.grid_bin_qgis import run_vgrid_grid_bin
 from ...settings import settings
-from vgrid.utils.antimeridian import fix_polygon
 
 
 class S2Bin(QgsProcessingAlgorithm):
@@ -204,112 +185,21 @@ class S2Bin(QgsProcessingAlgorithm):
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
-        s2_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
-        s2_geometries = {}
+        from vgrid.generator.s2grid import s2_grid
 
-        total_points = self.point_layer.featureCount()
-        feedback.setProgress(0)  # Initial progress value
-
-        # Process each point and update progress
-        for i, point_feature in enumerate(self.point_layer.getFeatures()):
-            try:
-                point = point_feature.geometry().asPoint()
-            except:
-                feedback.pushInfo(
-                    f"Point feature {point_feature.id()} has invalid geometry and will be skipped"
-                )
-                continue
-
-            s2_token = latlon2s2(point.y(), point.x(), self.resolution)
-            props = point_feature.attributes()
-            fields = self.point_layer.fields()
-            props_dict = {fields[i].name(): props[i] for i in range(len(fields))}
-
-            append_stats_value(
-                s2_bins,
-                s2_token,
-                props_dict,
-                self.stats,
-                self.numeric_field,
-                self.category_field,
-            )
-
-            # Update progress after each point is processed
-            feedback.setProgress(int((i + 1) / total_points * 100))
-
-        # Generate geometries and update progress
-        total_s2_bins = len(s2_bins)
-        for i, s2_token in enumerate(s2_bins.keys()):
-            s2_id = s2.CellId.from_token(s2_token)
-            s2_cell = s2.Cell(s2_id)
-
-            vertices = [s2_cell.get_vertex(i) for i in range(4)]
-            # Prepare vertices in (longitude, latitude) format for Shapely
-            shapely_vertices = []
-            for vertex in vertices:
-                lat_lng = s2.LatLng.from_point(vertex)  # Convert Point to LatLng
-                longitude = lat_lng.lng().degrees  # Access longitude in degrees
-                latitude = lat_lng.lat().degrees  # Access latitude in degrees
-                shapely_vertices.append((longitude, latitude))
-
-            # Close the polygon by adding the first vertex again
-            shapely_vertices.append(shapely_vertices[0])  # Closing the polygon
-            # Create a Shapely Polygon
-            cell_polygon = fix_polygon(Polygon(shapely_vertices))  # Split at antimeridian
-            # coords = [(lng, lat) for lat, lng in s2.cell_to_boundary(s2_token)]
-            s2_geometries[s2_token] = cell_polygon
-
-            # Update progress after each geometry is generated
-            feedback.setProgress(int((i + 1) / total_s2_bins * 100))
-
-        # Prepare output fields
-        out_fields = QgsFields()
-        out_fields.append(QgsField("s2", QVariant.String))
-        append_geodesic_metric_fields(out_fields)
-
-        all_categories = set()
-        for bin_data in s2_bins.values():
-            all_categories.update(bin_data.keys())
-
-        append_bin_stat_fields(
-            out_fields,
-            all_categories,
-            self.stats,
-            self.numeric_field,
-            self.category_field,
-        )
-
-        # Create the sink for the output
-        (sink, dest_id) = self.parameterAsSink(
+        return run_vgrid_grid_bin(
+            self,
             parameters,
-            self.OUTPUT,
             context,
-            out_fields,
-            QgsWkbTypes.Polygon,
-            self.point_layer.sourceCrs(),
+            feedback,
+            point_layer=self.point_layer,
+            output_param=self.OUTPUT,
+            resolution=self.resolution,
+            stats=self.stats,
+            category_field=self.category_field,
+            numeric_field=self.numeric_field,
+            grid_generator=s2_grid,
+            id_field="s2",
+            metric_kind="geodesic",
+            num_edges_fn=lambda _cell_id, _geom: 4,
         )
-
-        # Process each s2 bin and update progress
-        total_s2_geometries = len(s2_geometries)
-        for i, (s2_token, geom) in enumerate(s2_geometries.items()):
-            props = build_bin_feature_props(
-                geom,
-                self.resolution,
-                "s2",
-                s2_token,
-                s2_bins,
-                all_categories,
-                self.stats,
-                self.numeric_field,
-                self.category_field,
-                num_edges=4,
-            )
-            s2_feature = QgsFeature(out_fields)
-            s2_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            s2_feature.setAttributes(feature_attributes(out_fields, props))
-            sink.addFeature(s2_feature, QgsFeatureSink.FastInsert)
-
-            # Update progress after each s2 bin is processed
-            feedback.setProgress(int((i + 1) / total_s2_geometries * 100))
-
-        return {self.OUTPUT: dest_id}

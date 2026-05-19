@@ -1205,3 +1205,132 @@ def digipin2qgsfeature(feature, digipin_id):
     digipin_feature.setAttributes(all_attributes)
 
     return digipin_feature
+
+
+def dggrid_join_qgsfeature(feature, cell_id, lookup, dggs_type, out_fields):
+    """Join one input feature to a batch DGGRID lookup by cell ID."""
+    from ..dggrid_instance import normalize_dggrid_cell_id
+    from vgrid.utils.io import validate_dggrid_type
+
+    dggs_type = validate_dggrid_type(dggs_type)
+    cell_id_str = normalize_dggrid_cell_id(cell_id)
+    if not cell_id_str:
+        raise ValueError("empty DGGRID cell ID")
+    cell_info = lookup.get(cell_id_str)
+    if not cell_info:
+        raise ValueError(f"DGGRID cell not found: {cell_id_str}")
+
+    out_feature = QgsFeature(out_fields)
+    out_feature.setGeometry(QgsGeometry.fromWkt(cell_info["geometry"].wkt))
+    out_feature.setAttributes(
+        list(feature.attributes())
+        + [
+            cell_info["cell_id"],
+            cell_info["resolution"],
+            cell_info["center_lat"],
+            cell_info["center_lon"],
+            cell_info["avg_edge_len"],
+            cell_info["cell_area"],
+            cell_info["cell_perimeter"],
+        ]
+    )
+    return out_feature
+
+
+def dggrid_batch2qgsfeatures(
+    features, cell_ids, dggs_type, resolution, out_fields, feedback=None
+):
+    """
+    Convert many input features via one ``dggrid2geo`` call and join by cell ID.
+
+    Returns ``(output_features, num_bad)``.
+    """
+    from ...settings import settings
+    from ..dggrid_instance import (
+        batch_dggrid_cells_qgis,
+        build_dggrid_options,
+        get_plugin_dggrid_instance,
+    )
+    from vgrid.utils.io import validate_dggrid_resolution, validate_dggrid_type
+
+    dggs_type = validate_dggrid_type(dggs_type)
+    resolution = validate_dggrid_resolution(dggs_type, resolution)
+
+    lookup = batch_dggrid_cells_qgis(
+        get_plugin_dggrid_instance(feedback=feedback),
+        dggs_type,
+        cell_ids,
+        resolution,
+        options=build_dggrid_options(settings.dggridDensificationSpinBox),
+        feedback=feedback,
+    )
+
+    if not lookup:
+        if feedback:
+            feedback.reportError(
+                "DGGRID returned no cells for the given cell IDs and resolution."
+            )
+        return [], len(features)
+
+    if feedback:
+        feedback.pushInfo(f"DGGRID lookup: {len(lookup)} cell polygon(s) loaded.")
+
+    output_features = []
+    num_bad = 0
+    total = len(features)
+
+    for i, (feat, cell_id) in enumerate(zip(features, cell_ids)):
+        if feedback and feedback.isCanceled():
+            break
+        try:
+            output_features.append(
+                dggrid_join_qgsfeature(feat, cell_id, lookup, dggs_type, out_fields)
+            )
+        except Exception as exc:
+            num_bad += 1
+            if feedback and num_bad <= 5:
+                feedback.reportError(
+                    f"Feature {feat.id()}: {exc}"
+                )
+        if feedback and total and i % 50 == 0:
+            feedback.setProgress(int(50 + 50 * i / total))
+
+    return output_features, num_bad
+
+
+def dggrid2qgsfeature(feature, cell_id, dggs_type, resolution):
+    """Convert a single DGGRID cell ID (uses batch lookup for one ID)."""
+    from ...settings import settings
+    from ..dggrid_instance import (
+        batch_dggrid_cells_qgis,
+        build_dggrid_options,
+        get_plugin_dggrid_instance,
+    )
+    from vgrid.utils.io import validate_dggrid_resolution, validate_dggrid_type
+
+    dggs_type = validate_dggrid_type(dggs_type)
+    resolution = validate_dggrid_resolution(dggs_type, resolution)
+    from qgis.core import QgsField, QgsFields
+
+    lookup = batch_dggrid_cells_qgis(
+        get_plugin_dggrid_instance(),
+        dggs_type,
+        [cell_id],
+        resolution,
+        options=build_dggrid_options(settings.dggridDensificationSpinBox),
+    )
+    field_name = f"dggrid_{dggs_type.lower()}"
+    out_fields = QgsFields()
+    for fld in feature.fields():
+        out_fields.append(fld)
+    for name, qtype in (
+        (field_name, QVariant.String),
+        ("resolution", QVariant.Int),
+        ("center_lat", QVariant.Double),
+        ("center_lon", QVariant.Double),
+        ("avg_edge_len", QVariant.Double),
+        ("cell_area", QVariant.Double),
+        ("cell_perimeter", QVariant.Double),
+    ):
+        out_fields.append(QgsField(name, qtype))
+    return dggrid_join_qgsfeature(feature, cell_id, lookup, dggs_type, out_fields)

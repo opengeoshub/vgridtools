@@ -5,15 +5,9 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
-    QgsFeatureSink,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterNumber,
-    QgsFields,
-    QgsField,
-    QgsFeature,
-    QgsGeometry,
-    QgsWkbTypes,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
     QgsProcessingParameterVectorDestination,
@@ -22,21 +16,10 @@ from qgis.core import (
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QVariant
 import os
-import h3
-from shapely.geometry import Polygon
 from ...utils.imgs import Imgs
-from collections import defaultdict
-from ...utils.binning.bin_helper import (
-    append_bin_stat_fields,
-    append_geodesic_metric_fields,
-    append_stats_value,
-    build_bin_feature_props,
-    feature_attributes,
-    get_default_stats_structure,
-    h3_num_edges,
-)
+from ...utils.binning.bin_helper import h3_num_edges
+from ...utils.binning.grid_bin_qgis import run_vgrid_grid_bin
 from ...settings import settings
 
 
@@ -204,96 +187,21 @@ class H3Bin(QgsProcessingAlgorithm):
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
-        h3_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
-        h3_geometries = {}
+        from vgrid.generator.h3grid import h3_grid_within_bbox
 
-        total_points = self.point_layer.featureCount()
-        feedback.setProgress(0)  # Initial progress value
-
-        # Process each point and update progress
-        for i, point_feature in enumerate(self.point_layer.getFeatures()):
-            try:
-                point = point_feature.geometry().asPoint()
-            except:
-                feedback.pushInfo(
-                    f"Point feature {point_feature.id()} has invalid geometry and will be skipped"
-                )
-                continue
-
-            h3_id = h3.latlng_to_cell(point.y(), point.x(), self.resolution)
-            props = point_feature.attributes()
-            fields = self.point_layer.fields()
-            props_dict = {fields[i].name(): props[i] for i in range(len(fields))}
-
-            append_stats_value(
-                h3_bins,
-                h3_id,
-                props_dict,
-                self.stats,
-                self.numeric_field,
-                self.category_field,
-            )
-
-            # Update progress after each point is processed
-            feedback.setProgress(int((i + 1) / total_points * 100))
-
-        # Generate geometries and update progress
-        total_h3_bins = len(h3_bins)
-        for i, h3_id in enumerate(h3_bins.keys()):
-            coords = [(lng, lat) for lat, lng in h3.cell_to_boundary(h3_id)]
-            h3_geometries[h3_id] = Polygon(coords)
-
-            # Update progress after each geometry is generated
-            feedback.setProgress(int((i + 1) / total_h3_bins * 100))
-
-        # Prepare output fields
-        out_fields = QgsFields()
-        out_fields.append(QgsField("h3", QVariant.String))
-        append_geodesic_metric_fields(out_fields)
-
-        all_categories = set()
-        for bin_data in h3_bins.values():
-            all_categories.update(bin_data.keys())
-
-        append_bin_stat_fields(
-            out_fields,
-            all_categories,
-            self.stats,
-            self.numeric_field,
-            self.category_field,
-        )
-
-        # Create the sink for the output
-        (sink, dest_id) = self.parameterAsSink(
+        return run_vgrid_grid_bin(
+            self,
             parameters,
-            self.OUTPUT,
             context,
-            out_fields,
-            QgsWkbTypes.Polygon,
-            self.point_layer.sourceCrs(),
+            feedback,
+            point_layer=self.point_layer,
+            output_param=self.OUTPUT,
+            resolution=self.resolution,
+            stats=self.stats,
+            category_field=self.category_field,
+            numeric_field=self.numeric_field,
+            grid_generator=h3_grid_within_bbox,
+            id_field="h3",
+            metric_kind="geodesic",
+            num_edges_fn=lambda cell_id, _geom: h3_num_edges(cell_id),
         )
-
-        # Process each H3 bin and update progress
-        total_h3_geometries = len(h3_geometries)
-        for i, (h3_id, geom) in enumerate(h3_geometries.items()):
-            props = build_bin_feature_props(
-                geom,
-                self.resolution,
-                "h3",
-                h3_id,
-                h3_bins,
-                all_categories,
-                self.stats,
-                self.numeric_field,
-                self.category_field,
-                num_edges=h3_num_edges(h3_id),
-            )
-            h3_feature = QgsFeature(out_fields)
-            h3_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            h3_feature.setAttributes(feature_attributes(out_fields, props))
-            sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)
-
-            # Update progress after each H3 bin is processed
-            feedback.setProgress(int((i + 1) / total_h3_geometries * 100))
-
-        return {self.OUTPUT: dest_id}

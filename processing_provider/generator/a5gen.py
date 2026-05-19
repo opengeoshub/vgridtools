@@ -61,6 +61,7 @@ from vgrid.conversion.dggs2geo.a52geo import a52geo_u64
 class A5Gen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
+    SEGMENTS = "SEGMENTS"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
@@ -131,6 +132,8 @@ class A5Gen(QgsProcessingAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def initAlgorithm(self, config=None):
+        settings.readSettings()
+
         param = QgsProcessingParameterExtent(
             self.EXTENT, self.tr("Canvas extent"), optional=True
         )
@@ -144,6 +147,16 @@ class A5Gen(QgsProcessingAlgorithm):
             defaultValue=1,
             minValue=min_res,
             maxValue=max_res,
+            optional=False,
+        )
+        self.addParameter(param)
+
+        param = QgsProcessingParameterNumber(
+            self.SEGMENTS,
+            self.tr("Segments"),
+            QgsProcessingParameterNumber.Integer,
+            defaultValue=settings.A5SgementsSpinBox,
+            minValue=1,
             optional=False,
         )
         self.addParameter(param)
@@ -165,6 +178,8 @@ class A5Gen(QgsProcessingAlgorithm):
         self.split_antimeridian = self.parameterAsBoolean(
             parameters, self.SPLIT_ANTIMERIDIAN, context
         )
+        self.segments = self.parameterAsInt(parameters, self.SEGMENTS, context)
+        self.a5_options = {"segments": self.segments}
         if self.resolution > 8 and (
             self.canvas_extent is None or self.canvas_extent.isEmpty()
         ):
@@ -244,7 +259,11 @@ class A5Gen(QgsProcessingAlgorithm):
         seed_cell_id = a5.lonlat_to_cell(
             (bbox_center_lon, bbox_center_lat), self.resolution
         )
-        seed_cell_polygon = a52geo_u64(seed_cell_id)
+        seed_cell_polygon = a52geo_u64(
+            seed_cell_id,
+            options=self.a5_options,
+            split_antimeridian=self.split_antimeridian,
+        )
         if seed_cell_polygon is None:
             raise QgsProcessingException("Failed to generate seed A5 cell polygon.")
 
@@ -264,7 +283,11 @@ class A5Gen(QgsProcessingAlgorithm):
                     continue
                 covered_cells.add(current_cell_id)
 
-                cell_polygon = a52geo_u64(current_cell_id)
+                cell_polygon = a52geo_u64(
+                    current_cell_id,
+                    options=self.a5_options,
+                    split_antimeridian=self.split_antimeridian,
+                )
                 if cell_polygon is None:
                     continue
 

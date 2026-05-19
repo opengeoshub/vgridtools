@@ -5,15 +5,9 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
-    QgsFeatureSink,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterNumber,
-    QgsFields,
-    QgsField,
-    QgsFeature,
-    QgsGeometry,
-    QgsWkbTypes,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
     QgsProcessingParameterVectorDestination,
@@ -22,22 +16,10 @@ from qgis.core import (
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QVariant
 import os
-from shapely.geometry import Polygon
 from ...utils.imgs import Imgs
-from collections import defaultdict
-from ...utils.binning.bin_helper import (
-    append_bin_stat_fields,
-    append_graticule_metric_fields,
-    append_stats_value,
-    build_bin_feature_props,
-    feature_attributes,
-    get_default_stats_structure,
-)
+from ...utils.binning.grid_bin_qgis import run_vgrid_grid_bin
 from ...settings import settings
-from vgrid.dggs import olc
-from vgrid.conversion.latlon2dggs import latlon2olc
 
 
 class OLCBin(QgsProcessingAlgorithm):
@@ -210,110 +192,20 @@ class OLCBin(QgsProcessingAlgorithm):
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
-        olc_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
-        olc_geometries = {}
+        from vgrid.generator.olcgrid import olc_grid_within_bbox
 
-        total_points = self.point_layer.featureCount()
-        feedback.setProgress(0)  # Initial progress value
-
-        # Process each point and update progress
-        for i, point_feature in enumerate(self.point_layer.getFeatures()):
-            try:
-                point = point_feature.geometry().asPoint()
-            except:
-                feedback.pushInfo(
-                    f"Point feature {point_feature.id()} has invalid geometry and will be skipped"
-                )
-                continue
-
-            olc_id = latlon2olc(point.y(), point.x(), self.resolution)
-            props = point_feature.attributes()
-            fields = self.point_layer.fields()
-            props_dict = {fields[i].name(): props[i] for i in range(len(fields))}
-
-            append_stats_value(
-                olc_bins,
-                olc_id,
-                props_dict,
-                self.stats,
-                self.numeric_field,
-                self.category_field,
-            )
-
-            # Update progress after each point is processed
-            feedback.setProgress(int((i + 1) / total_points * 100))
-
-        # Generate geometries and update progress
-        total_olc_bins = len(olc_bins)
-        for i, olc_id in enumerate(olc_bins.keys()):
-            coord = olc.decode(olc_id)
-            # Create the bounding box coordinates for the polygon
-            min_lat, min_lon = coord.latitudeLo, coord.longitudeLo
-            max_lat, max_lon = coord.latitudeHi, coord.longitudeHi
-            # Define the polygon based on the bounding box
-            cell_polygon = Polygon(
-                [
-                    [min_lon, min_lat],  # Bottom-left corner
-                    [max_lon, min_lat],  # Bottom-right corner
-                    [max_lon, max_lat],  # Top-right corner
-                    [min_lon, max_lat],  # Top-left corner
-                    [min_lon, min_lat],  # Closing the polygon (same as the first point)
-                ]
-            )
-
-            olc_geometries[olc_id] = cell_polygon
-
-            # Update progress after each geometry is generated
-            feedback.setProgress(int((i + 1) / total_olc_bins * 100))
-
-        # Prepare output fields
-        out_fields = QgsFields()
-        out_fields.append(QgsField("olc", QVariant.String))
-        append_graticule_metric_fields(out_fields)
-
-        all_categories = set()
-        for bin_data in olc_bins.values():
-            all_categories.update(bin_data.keys())
-
-        append_bin_stat_fields(
-            out_fields,
-            all_categories,
-            self.stats,
-            self.numeric_field,
-            self.category_field,
-        )
-
-        # Create the sink for the output
-        (sink, dest_id) = self.parameterAsSink(
+        return run_vgrid_grid_bin(
+            self,
             parameters,
-            self.OUTPUT,
             context,
-            out_fields,
-            QgsWkbTypes.Polygon,
-            self.point_layer.sourceCrs(),
+            feedback,
+            point_layer=self.point_layer,
+            output_param=self.OUTPUT,
+            resolution=self.resolution,
+            stats=self.stats,
+            category_field=self.category_field,
+            numeric_field=self.numeric_field,
+            grid_generator=olc_grid_within_bbox,
+            id_field="olc",
+            metric_kind="graticule",
         )
-
-        # Process each olc bin and update progress
-        total_olc_geometries = len(olc_geometries)
-        for i, (olc_id, geom) in enumerate(olc_geometries.items()):
-            props = build_bin_feature_props(
-                geom,
-                self.resolution,
-                "olc",
-                olc_id,
-                olc_bins,
-                all_categories,
-                self.stats,
-                self.numeric_field,
-                self.category_field,
-                metric_kind="graticule",
-            )
-            olc_feature = QgsFeature(out_fields)
-            olc_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            olc_feature.setAttributes(feature_attributes(out_fields, props))
-            sink.addFeature(olc_feature, QgsFeatureSink.FastInsert)
-
-            # Update progress after each olc bin is processed
-            feedback.setProgress(int((i + 1) / total_olc_geometries * 100))
-
-        return {self.OUTPUT: dest_id}

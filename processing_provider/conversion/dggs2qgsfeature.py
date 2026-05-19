@@ -19,10 +19,15 @@ import os
 
 from qgis.core import (
     QgsProcessing,
+    QgsProcessingException,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
     QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingParameterEnum,
+    QgsProcessingParameterNumber,
+    QgsFeatureSink,
+    QgsField,
+    QgsFields,
     QgsWkbTypes,
     QgsCoordinateReferenceSystem,
 )
@@ -34,7 +39,28 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 import platform
 
 from ...utils.imgs import Imgs
-from ...utils.conversion.dggs2qgsfeature import *
+from ...utils.conversion.dggs2qgsfeature import (
+    a52qgsfeature,
+    dggal2qgsfeature,
+    digipin2qgsfeature,
+    dggrid_batch2qgsfeatures,
+    ease2qgsfeature,
+    gars2qgsfeature,
+    geohash2qgsfeature,
+    georef2qgsfeature,
+    h32qgsfeature,
+    isea3h2qgsfeature,
+    isea4t2qgsfeature,
+    maidenhead2qgsfeature,
+    mgrs2qgsfeature,
+    olc2qgsfeature,
+    qtm2qgsfeature,
+    quadkey2qgsfeature,
+    rhealpix2qgsfeature,
+    s22qgsfeature,
+    tilecode2qgsfeature,
+)
+from ...settings import settings
 
 
 class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
@@ -46,6 +72,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     INPUT = "INPUT"
     CELL_ID = "CELL_ID"
     DGGS_TYPE = "DGGS_TYPE"
+    RESOLUTION = "RESOLUTION"
     DGGS_TYPES = [
         "H3",
         "S2",
@@ -73,6 +100,22 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "DGGAL_RTEA7H_Z7",
         "DGGAL_HEALPix",
         "DGGAL_rHEALPix",
+
+        "DGGRID_SUPERFUND",
+        "DGGRID_PLANETRISK",
+        "DGGRID_ISEA3H",
+        "DGGRID_ISEA4H",
+        "DGGRID_ISEA4T",
+        "DGGRID_ISEA4D",
+        "DGGRID_ISEA43H",
+        "DGGRID_ISEA7H",
+        "DGGRID_IGEO7",
+        "DGGRID_FULLER3H",
+        "DGGRID_FULLER4H",
+        "DGGRID_FULLER4T",
+        "DGGRID_FULLER4D",
+        "DGGRID_FULLER43H",
+        "DGGRID_FULLER7H",
 
         "QTM",
         "OLC",
@@ -201,13 +244,49 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         )
         self.addParameter(param)
 
+        default_dggs = self.DGGS_TYPES[0]
+        _, _, default_res = settings.getResolution(default_dggs)
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.RESOLUTION,
+                self.tr("Resolution (DGGRID)"),
+                QgsProcessingParameterNumber.Integer,
+                default_res,
+                minValue=0,
+                maxValue=40,
+            )
+        )
+
+    def checkParameterValues(self, parameters, context):
+        selected_dggs = self.DGGS_TYPES[
+            self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
+        ]
+        if not selected_dggs.startswith("DGGRID_"):
+            return super().checkParameterValues(parameters, context)
+
+        resolution_settings = settings.getResolution(selected_dggs)
+        if resolution_settings is None:
+            return (False, f"No resolution settings found for {selected_dggs}.")
+
+        min_res, max_res, _ = resolution_settings
+        res_value = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        if not (min_res <= res_value <= max_res):
+            return (
+                False,
+                f"Resolution must be between {min_res} and {max_res} for {selected_dggs}.",
+            )
+        return super().checkParameterValues(parameters, context)
+
     def prepareAlgorithm(self, parameters, context, feedback):
         source = self.parameterAsSource(parameters, self.INPUT, context)
         self.total_features = source.featureCount()
         self.num_bad = 0
 
-        self.CELL_ID = self.parameterAsString(parameters, self.CELL_ID, context)
+        self.cell_id_field = self.parameterAsString(
+            parameters, self.CELL_ID, context
+        )
         self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
+        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         self.DGGS_TYPE_functions = {
             "h3": h32qgsfeature,
             "s2": s22qgsfeature,
@@ -247,6 +326,13 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             "gars": gars2qgsfeature,
             "digipin": digipin2qgsfeature,
         }
+
+        self._dggrid_type_name = None
+        dggs_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
+        if dggs_key.startswith("dggrid_"):
+            self._dggrid_type_name = self.DGGS_TYPES[self.DGGS_TYPE_index].replace(
+                "DGGRID_", ""
+            )
 
         if platform.system() == "Windows":
             self.DGGS_TYPE_functions["isea4t"] = isea4t2qgsfeature
@@ -309,6 +395,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
                         "dggal_rhealpix",
                         "qtm",
                     )
+                    or dggs_type.startswith("dggrid_")
                     else "cell_width"
                 ),
                 QVariant.Double,
@@ -341,6 +428,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 "dggal_rhealpix",
                 "qtm",
             )
+            and not dggs_type.startswith("dggrid_")
             else None,
             QgsField(get_unique_name("cell_area"), QVariant.Double),
             QgsField(get_unique_name("cell_perimeter"), QVariant.Double),
@@ -355,7 +443,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
     def processFeature(self, feature, context, feedback):
         try:
-            cell_id = feature[self.CELL_ID]
+            cell_id = feature[self.cell_id_field]
             DGGS_TYPE_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
             conversion_function = self.DGGS_TYPE_functions.get(DGGS_TYPE_key)
             cell_feature = conversion_function(feature, cell_id)
@@ -366,6 +454,66 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             self.num_bad += 1
             feedback.reportError(f"Error processing feature {feature.id()}: {str(e)}")
             return []
+
+    def processAlgorithm(self, parameters, context, feedback):
+        dggs_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
+        if not self.DGGS_TYPES[dggs_index].startswith("DGGRID_"):
+            return super().processAlgorithm(parameters, context, feedback)
+
+        if not self.prepareAlgorithm(parameters, context, feedback):
+            raise QgsProcessingException(self.invalidParameterTypes())
+
+        source = self.parameterAsSource(parameters, self.INPUT, context)
+        out_fields = self.outputFields(source.fields())
+        input_features = []
+        cell_ids = []
+        for feat in source.getFeatures():
+            if feedback.isCanceled():
+                break
+            input_features.append(feat)
+            try:
+                cell_ids.append(feat[self.cell_id_field])
+            except Exception:
+                cell_ids.append(None)
+
+        if feedback:
+            feedback.pushInfo(
+                f"Read {len(input_features)} input feature(s); "
+                f"cell ID field: {self.cell_id_field!r}."
+            )
+
+        out_features, batch_bad = dggrid_batch2qgsfeatures(
+            input_features,
+            cell_ids,
+            self._dggrid_type_name,
+            self.resolution,
+            out_fields,
+            feedback=feedback,
+        )
+        self.num_bad += batch_bad
+
+        if feedback:
+            feedback.pushInfo(
+                f"Built {len(out_features)} output feature(s) "
+                f"({batch_bad} failed to join)."
+            )
+
+        sink, dest_id = self.parameterAsSink(
+            parameters,
+            self.OUTPUT,
+            context,
+            out_fields,
+            QgsWkbTypes.Polygon,
+            QgsCoordinateReferenceSystem("EPSG:4326"),
+        )
+
+        for out_feat in out_features:
+            if feedback.isCanceled():
+                break
+            sink.addFeature(out_feat, QgsFeatureSink.FastInsert)
+
+        feedback.setProgress(100)
+        return {self.OUTPUT: dest_id}
 
     def postProcessAlgorithm(self, context, feedback):
         if self.num_bad:
