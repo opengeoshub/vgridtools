@@ -113,19 +113,7 @@ def setup_dggs_visualization_menus(plugin) -> None:
         _icon("grid_rhealpix.svg"),
         _grid_toggle(plugin.rhealpixgrid.enable_rhealpix, plugin.rhealpixgrid.rhealpix_grid),
     )
-    _add_checkbox(
-        viz_menu,
-        "ISEA4T",
-        _icon("grid_triangle.svg"),
-        _grid_toggle(plugin.isea4tgrid.enable_isea4t, plugin.isea4tgrid.isea4t_grid),
-    )
-    _add_checkbox(
-        viz_menu,
-        "ISEA3H",
-        hex_icon,
-        _grid_toggle(plugin.isea3hgrid.enable_isea3h, plugin.isea3hgrid.isea3h_grid),
-    )
-
+ 
     dggal_menu = QMenu("DGGAL")
     dggal_menu.setIcon(_icon("grid_dggal.svg"))
     viz_menu.addMenu(dggal_menu)
@@ -160,6 +148,19 @@ def setup_dggs_visualization_menus(plugin) -> None:
         action.setDefaultWidget(checkbox)
         dggrid_menu.addAction(action)
         plugin.dggrid_viz_items[dggs_type] = (grid, checkbox)
+
+    _add_checkbox(
+        viz_menu,
+        "ISEA4T",
+        _icon("grid_triangle.svg"),
+        _grid_toggle(plugin.isea4tgrid.enable_isea4t, plugin.isea4tgrid.isea4t_grid),
+    )
+    _add_checkbox(
+        viz_menu,
+        "ISEA3H",
+        hex_icon,
+        _grid_toggle(plugin.isea3hgrid.enable_isea3h, plugin.isea3hgrid.isea3h_grid),
+    )
 
     _add_checkbox(
         viz_menu,
