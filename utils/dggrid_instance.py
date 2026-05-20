@@ -802,6 +802,9 @@ def batch_dggrid_cells_qgis(
             "Indexing DGGRID polygons by input cell ID order (shapefile IDs may differ)."
         )
 
+    from vgrid.utils.geometry import dggrid_num_edges
+
+    num_edges = dggrid_num_edges(dggs_type)
     for idx in range(len(gdf)):
         if feedback and feedback.isCanceled():
             break
@@ -818,9 +821,6 @@ def batch_dggrid_cells_qgis(
         if not cell_id_str:
             continue
 
-        num_edges = (
-            len(geom.exterior.coords) - 1 if hasattr(geom, "exterior") else 4
-        )
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
             geodesic_dggs_metrics(geom, num_edges)
         )
@@ -908,9 +908,20 @@ def get_plugin_dggrid_instance(feedback=None, force_new: bool = False) -> DGGRID
     return _plugin_dggrid_instance
 
 
+def _is_dggrid_cache_artifact(name: str) -> bool:
+    """True for DGGRID run leftovers (not the portable executable)."""
+    low = name.lower()
+    return (
+        low.endswith(".txt")
+        or low.startswith("meta")
+        or low.startswith("temp")
+    )
+
+
 def clear_dggrid_cache_files() -> tuple[list[str], list[tuple[str, str]]]:
     """
-    Delete all ``*.txt`` files under the plugin ``dggrid/`` folder.
+    Delete DGGRID cache artifacts under the plugin ``dggrid/`` folder:
+    ``*.txt``, names starting with ``meta``, and names starting with ``temp``.
 
     Returns ``(removed_names, [(name, error), ...])``.
     """
@@ -921,7 +932,7 @@ def clear_dggrid_cache_files() -> tuple[list[str], list[tuple[str, str]]]:
         return removed, errors
 
     for name in os.listdir(folder):
-        if not name.lower().endswith(".txt"):
+        if not _is_dggrid_cache_artifact(name):
             continue
         path = os.path.join(folder, name)
         try:

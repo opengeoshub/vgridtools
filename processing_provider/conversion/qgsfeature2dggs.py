@@ -22,6 +22,7 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 import platform
 from ...utils.imgs import Imgs
 from ...utils.conversion.qgsfeature2dggs import *
+from ...utils.conversion.crs_helper import WGS84_REQUIRED_MSG, is_wgs84
 from ...settings import settings
 
 
@@ -298,12 +299,9 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
     def prepareAlgorithm(self, parameters, context, feedback):
         source = self.parameterAsSource(parameters, self.INPUT, context)
-        # Check CRS
         crs = source.sourceCrs() if hasattr(source, "sourceCrs") else None
-        if crs is not None and not crs.isGeographic():
-            feedback.reportError(
-                "Input layer CRS must be a geographic coordinate system (degrees)."
-            )
+        if not is_wgs84(crs):
+            feedback.reportError(WGS84_REQUIRED_MSG)
             return False
 
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
@@ -387,10 +385,10 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             # Handle MultiPoint geometry
             if feature_geom.wkbType() == QgsWkbTypes.MultiPoint:
                 for point in feature_geom.asMultiPoint():
-                    point_feature = QgsFeature(feature)  # Copy original feature
+                    point_feature = QgsFeature(feature)
                     point_feature.setGeometry(
                         QgsGeometry.fromPointXY(point)
-                    )  # Set individual point geometry
+                    )
                     cell_polygons = conversion_function(
                         point_feature,
                         self.resolution,

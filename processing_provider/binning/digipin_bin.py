@@ -5,38 +5,29 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
-    QgsFeatureSink,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterNumber,
-    QgsFields,
-    QgsField,
-    QgsFeature,
-    QgsGeometry,
-    QgsWkbTypes,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
     QgsProcessingParameterVectorDestination,
     QgsProcessingParameterEnum,
-    QgsProcessingException,
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QVariant
 import os
-from ...utils.imgs import Imgs
-from collections import defaultdict
-from ...utils.binning.bin_helper import (
-    append_bin_stat_fields,
-    append_graticule_metric_fields,
-    append_stats_value,
-    build_bin_feature_props,
-    feature_attributes,
-    get_default_stats_structure,
-)
+
+from vgrid.utils.io import validate_digipin_resolution
+
 from ...settings import settings
-from vgrid.conversion.latlon2dggs import latlon2digipin
-from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
+from ...utils.binning.bin_helper import (
+    BIN_STATISTICS,
+    prepare_point_bin_algorithm,
+    process_point_dggs_bin,
+    generate_digipin_grid_qgis,
+)
+from ...utils.imgs import Imgs
+
 
 
 class DigipinBin(QgsProcessingAlgorithm):
@@ -47,20 +38,7 @@ class DigipinBin(QgsProcessingAlgorithm):
     RESOLUTION = "RESOLUTION"
     OUTPUT = "OUTPUT"
 
-    STATISTICS = [
-        "count",
-        "sum",
-        "min",
-        "max",
-        "mean",
-        "median",
-        "std",
-        "var",
-        "range",
-        "minority",
-        "majority",
-        "variety",
-    ]
+    STATISTICS = BIN_STATISTICS
 
     LOC = QgsApplication.locale()[:2]
 
@@ -68,14 +46,11 @@ class DigipinBin(QgsProcessingAlgorithm):
         return QCoreApplication.translate("Processing", string)
 
     def tr(self, *string):
-        # Translate to Vietnamese: arg[0] - English (translate), arg[1] - Vietnamese
         if self.LOC == "vi":
             if len(string) == 2:
                 return string[1]
-            else:
-                return self.translate(string[0])
-        else:
             return self.translate(string[0])
+        return self.translate(string[0])
 
     def createInstance(self):
         return DigipinBin()
@@ -105,7 +80,7 @@ class DigipinBin(QgsProcessingAlgorithm):
 
     txt_en = "DIGIPIN Bin"
     txt_vi = "DIGIPIN Bin"
-    figure = "../images/tutorial/bin_tilecode.png"
+    figure = "../images/tutorial/bin_digipin.png"
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -113,18 +88,18 @@ class DigipinBin(QgsProcessingAlgorithm):
             '''<div align="center">
                       <img src="'''
             + os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figure)
-            + """">
+            + '''">
                     </div>
                     <div align="right">
                       <p align="right">
-                      <b>"""
+                      <b>'''
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
-            + """</b>
-                      </p>"""
+            + '''</b>
+                      </p>'''
             + social_BW
-            + """
+            + '''
                     </div>
-                    """
+                    '''
         )
         return self.tr(self.txt_en, self.txt_vi) + footer
 
@@ -133,12 +108,9 @@ class DigipinBin(QgsProcessingAlgorithm):
             QgsProcessingParameterFeatureSource(
                 self.INPUT,
                 "Input point layer",
-                [
-                    QgsProcessing.TypeVectorPoint
-                ],  # Ensures only point geometries are selectable
+                [QgsProcessing.TypeVectorPoint],
             )
         )
-
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.STATS,
@@ -147,14 +119,13 @@ class DigipinBin(QgsProcessingAlgorithm):
                 defaultValue=0,
             )
         )
-
         self.addParameter(
             QgsProcessingParameterField(
                 self.NUMERIC_FIELD,
                 "Numeric field (for statistics other than 'count')",
                 parentLayerParameterName=self.INPUT,
                 optional=True,
-                type=QgsProcessingParameterField.Numeric,  # 🔥 This limits to numeric fields only
+                type=QgsProcessingParameterField.Numeric,
             )
         )
         self.addParameter(
@@ -165,7 +136,6 @@ class DigipinBin(QgsProcessingAlgorithm):
                 parentLayerParameterName=self.INPUT,
             )
         )
-
         min_res, max_res, default_res = settings.getResolution("DIGIPIN")
         self.addParameter(
             QgsProcessingParameterNumber(
@@ -178,7 +148,6 @@ class DigipinBin(QgsProcessingAlgorithm):
                 optional=False,
             )
         )
-
         self.addParameter(
             QgsProcessingParameterVectorDestination(self.OUTPUT, "DGGS_binning")
         )
@@ -194,105 +163,28 @@ class DigipinBin(QgsProcessingAlgorithm):
         self.category_field = self.parameterAsString(
             parameters, self.CATEGORY_FIELD, context
         )
-
-        if self.stats != "count" and not self.numeric_field:
-            raise QgsProcessingException(
-                "A numeric field is required for statistics other than 'count'."
-            )
-
-        return True
-
-    def processAlgorithm(self, parameters, context, feedback):
-        digipin_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
-        digipin_geometries = {}
-
-        total_points = self.point_layer.featureCount()
-        feedback.setProgress(0)  # Initial progress value
-
-        # Process each point and update progress
-        for i, point_feature in enumerate(self.point_layer.getFeatures()):
-            try:
-                point = point_feature.geometry().asPoint()
-            except:
-                feedback.pushInfo(
-                    f"Point feature {point_feature.id()} has invalid geometry and will be skipped"
-                )
-                continue
-
-            digipin_id = latlon2digipin(point.y(), point.x(), self.resolution)
-            props = point_feature.attributes()
-            fields = self.point_layer.fields()
-            props_dict = {fields[i].name(): props[i] for i in range(len(fields))}
-
-            append_stats_value(
-                digipin_bins,
-                digipin_id,
-                props_dict,
-                self.stats,
-                self.numeric_field,
-                self.category_field,
-            )
-
-            # Update progress after each point is processed
-            feedback.setProgress(int((i + 1) / total_points * 100))
-
-        # Generate geometries and update progress
-        total_digipin_bins = len(digipin_bins)
-        for i, digipin_id in enumerate(digipin_bins.keys()):
-            cell_polygon = digipin2geo(digipin_id)
-            digipin_geometries[digipin_id] = cell_polygon
-
-            # Update progress after each geometry is generated
-            feedback.setProgress(int((i + 1) / total_digipin_bins * 100))
-
-        # Prepare output fields
-        out_fields = QgsFields()
-        out_fields.append(QgsField("digipin", QVariant.String))
-        append_graticule_metric_fields(out_fields)
-
-        all_categories = set()
-        for bin_data in digipin_bins.values():
-            all_categories.update(bin_data.keys())
-
-        append_bin_stat_fields(
-            out_fields,
-            all_categories,
+        prepare_point_bin_algorithm(
+            self.point_layer,
             self.stats,
             self.numeric_field,
             self.category_field,
         )
+        return True
 
-        # Create the sink for the output
-        (sink, dest_id) = self.parameterAsSink(
+    def processAlgorithm(self, parameters, context, feedback):
+        return process_point_dggs_bin(
+            self,
             parameters,
-            self.OUTPUT,
             context,
-            out_fields,
-            QgsWkbTypes.Polygon,
-            self.point_layer.sourceCrs(),
+            feedback,
+            self.point_layer,
+            self.resolution,
+            self.stats,
+            self.category_field,
+            self.numeric_field,
+            "digipin",
+            "DIGIPIN",
+            validate_digipin_resolution,
+            generate_digipin_grid_qgis,
+            metric_kind="graticule",
         )
-
-        # Process each digipin bin and update progress
-        total_digipin_geometries = len(digipin_geometries)
-        for i, (digipin_id, geom) in enumerate(digipin_geometries.items()):
-            props = build_bin_feature_props(
-                geom,
-                self.resolution,
-                "digipin",
-                digipin_id,
-                digipin_bins,
-                all_categories,
-                self.stats,
-                self.numeric_field,
-                self.category_field,
-                metric_kind="graticule",
-            )
-            digipin_feature = QgsFeature(out_fields)
-            digipin_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            digipin_feature.setAttributes(feature_attributes(out_fields, props))
-            sink.addFeature(digipin_feature, QgsFeatureSink.FastInsert)
-
-            # Update progress after each digipin bin is processed
-            feedback.setProgress(int((i + 1) / total_digipin_geometries * 100))
-
-        return {self.OUTPUT: dest_id}

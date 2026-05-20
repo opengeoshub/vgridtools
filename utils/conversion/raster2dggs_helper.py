@@ -18,7 +18,7 @@ from qgis.PyQt.QtCore import QVariant
 from shapely.geometry import Point
 from shapely.wkt import loads as load_wkt
 
-from vgrid.conversion.dggsresample.dggsresample import _metric_crs
+from vgrid.utils.geometry import _metric_crs
 from vgrid.utils.io import (
     finalize_dggs_band_values,
     init_dggs_band_accumulator,
@@ -96,7 +96,7 @@ def accumulate_qgs_raster_pixels(raster_layer, cell_id_fn, stats, feedback=None)
     """
     Stream raster pixels and aggregate values per DGGS cell (vgrid ``accumulate_raster_pixels``).
 
-    Expects a geographic CRS on ``raster_layer`` (enforced by the processing algorithm).
+    Expects a geographic CRS on ``raster_layer`` (EPSG:4326; enforced by processing).
     """
     if not raster_layer.isValid():
         raise ValueError("Invalid raster layer.")
@@ -200,8 +200,10 @@ def nearest_neighbour_from_qgs_grid(raster_layer, grid_layer, feedback=None):
     grid_gdf = qgs_vector_layer_to_gdf(grid_layer)
 
     metric_crs = _metric_crs(grid_gdf)
-    if metric_crs is not None and (
-        grid_gdf.crs is None or not grid_gdf.crs.equals(metric_crs)
+    if (
+        metric_crs is not None
+        and grid_gdf.crs is not None
+        and grid_gdf.crs.is_geographic
     ):
         grid_metric = grid_gdf.to_crs(metric_crs)
         pixel_metric = pixel_gdf.to_crs(metric_crs)

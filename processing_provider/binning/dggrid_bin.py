@@ -3,44 +3,41 @@ __author__ = "Thang Quach"
 __date__ = "2024-11-20"
 __copyright__ = "(L) 2024, Thang Quach"
 
-import os
-
 from qgis.core import (
     QgsApplication,
-    QgsFields,
-    QgsField,
     QgsProcessing,
     QgsProcessingAlgorithm,
-    QgsProcessingException,
-    QgsProcessingParameterEnum,
+    QgsProcessingParameterNumber,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
-    QgsProcessingParameterNumber,
     QgsProcessingParameterVectorDestination,
-    QgsWkbTypes,
+    QgsProcessingParameterEnum,
 )
-from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QIcon
+from qgis.PyQt.QtCore import QCoreApplication
+import os
+
 from vgrid.utils.constants import DGGRID_TYPES
 from vgrid.utils.io import validate_dggrid_resolution
 
 from ...settings import settings
-from ...utils.binning.bin_helper import append_geodesic_metric_fields, dggrid_num_edges
-from ...utils.binning.grid_bin_qgis import (
-    TwoStepBinProgress,
-    qgis_feature_source_to_gdf,
-    silence_tqdm_for_qgis,
-    write_vgrid_bin_to_sink,
-)
-from ...utils.dggrid_instance import (
-    build_dggrid_options,
-    dggrid_bin_qgis,
-    get_plugin_dggrid_instance,
+from ...utils.binning.bin_helper import (
+    BIN_STATISTICS,
+    generate_dggrid_grid_qgis,
+    prepare_point_bin_algorithm,
+    process_point_dggs_bin,
 )
 from ...utils.imgs import Imgs
 
 _DGGS_TYPE_OPTIONS = list(DGGRID_TYPES.keys())
 _DEFAULT_DGGS_TYPE = "ISEA3H"
+
+
+def _option_index(options, name, fallback=0):
+    try:
+        return options.index(name)
+    except ValueError:
+        return fallback
 
 
 class DGGRIDBin(QgsProcessingAlgorithm):
@@ -50,22 +47,10 @@ class DGGRIDBin(QgsProcessingAlgorithm):
     STATS = "STATS"
     DGGS_TYPE = "DGGS_TYPE"
     RESOLUTION = "RESOLUTION"
+    DENSIFICATION = "DENSIFICATION"
     OUTPUT = "OUTPUT"
 
-    STATISTICS = [
-        "count",
-        "sum",
-        "min",
-        "max",
-        "mean",
-        "median",
-        "std",
-        "var",
-        "range",
-        "minority",
-        "majority",
-        "variety",
-    ]
+    STATISTICS = BIN_STATISTICS
 
     LOC = QgsApplication.locale()[:2]
 
@@ -107,7 +92,7 @@ class DGGRIDBin(QgsProcessingAlgorithm):
 
     txt_en = "DGGRID Bin"
     txt_vi = "DGGRID Bin"
-    figure = "../images/tutorial/bin_dggal.png"
+    figure = "../images/tutorial/grid_dggrid.png"
 
     def shortHelpString(self):
         social_BW = Imgs().social_BW
@@ -131,6 +116,8 @@ class DGGRIDBin(QgsProcessingAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def initAlgorithm(self, config=None):
+        settings.readSettings()
+
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 self.INPUT,
@@ -138,26 +125,22 @@ class DGGRIDBin(QgsProcessingAlgorithm):
                 [QgsProcessing.TypeVectorPoint],
             )
         )
-        default_index = _DGGS_TYPE_OPTIONS.index(_DEFAULT_DGGS_TYPE)
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.DGGS_TYPE,
                 self.tr("DGGS Type"),
                 options=_DGGS_TYPE_OPTIONS,
-                defaultValue=default_index,
+                defaultValue=_option_index(_DGGS_TYPE_OPTIONS, _DEFAULT_DGGS_TYPE),
             )
         )
-
-        settings_key = f"DGGRID_{_DEFAULT_DGGS_TYPE}"
-        min_res, max_res, default_res = settings.getResolution(settings_key)
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
                 self.tr("Resolution"),
                 QgsProcessingParameterNumber.Integer,
-                defaultValue=default_res,
-                minValue=min_res,
-                maxValue=max_res,
+                defaultValue=1,
+                minValue=0,
+                maxValue=35,
                 optional=False,
             )
         )
@@ -187,6 +170,16 @@ class DGGRIDBin(QgsProcessingAlgorithm):
             )
         )
         self.addParameter(
+            QgsProcessingParameterNumber(
+                self.DENSIFICATION,
+                self.tr("Densification"),
+                QgsProcessingParameterNumber.Integer,
+                defaultValue=settings.dggridDensificationSpinBox,
+                minValue=1,
+                optional=False,
+            )
+        )
+        self.addParameter(
             QgsProcessingParameterVectorDestination(self.OUTPUT, "DGGS_binning")
         )
 
@@ -196,11 +189,14 @@ class DGGRIDBin(QgsProcessingAlgorithm):
         self.stats = self.STATISTICS[self.stats_index]
 
         dggs_type_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
+        if dggs_type_index < 0 or dggs_type_index >= len(_DGGS_TYPE_OPTIONS):
+            dggs_type_index = _option_index(_DGGS_TYPE_OPTIONS, _DEFAULT_DGGS_TYPE)
         self.dggs_type = _DGGS_TYPE_OPTIONS[dggs_type_index]
 
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
-        self.resolution = validate_dggrid_resolution(self.dggs_type, self.resolution)
-
+        self.densification = self.parameterAsInt(
+            parameters, self.DENSIFICATION, context
+        )
         self.numeric_field = self.parameterAsString(
             parameters, self.NUMERIC_FIELD, context
         )
@@ -208,64 +204,44 @@ class DGGRIDBin(QgsProcessingAlgorithm):
             parameters, self.CATEGORY_FIELD, context
         )
 
-        if self.stats != "count" and not self.numeric_field:
-            raise QgsProcessingException(
-                "A numeric field is required for statistics other than 'count'."
-            )
+        prepare_point_bin_algorithm(
+            self.point_layer,
+            self.stats,
+            self.numeric_field,
+            self.category_field,
+        )
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
-        points_gdf = qgis_feature_source_to_gdf(self.point_layer, feedback=feedback)
-        if points_gdf.empty:
-            feedback.pushInfo("No point features to bin.")
-            return self._empty_sink(parameters, context)
+        id_col = f"dggrid_{self.dggs_type.lower()}"
+        dggs_type = self.dggs_type
+        densification = self.densification
 
-        progress = TwoStepBinProgress(feedback)
-        with silence_tqdm_for_qgis():
-            result_gdf = dggrid_bin_qgis(
-                get_plugin_dggrid_instance(feedback=feedback),
-                self.dggs_type,
-                points_gdf,
-                self.resolution,
-                stats=self.stats,
-                category=self.category_field or None,
-                numeric_field=self.numeric_field or None,
-                options=build_dggrid_options(settings.dggridDensificationSpinBox),
-                feedback=feedback,
-                progress=progress,
+        def validate_res(resolution):
+            return validate_dggrid_resolution(dggs_type, resolution)
+
+        def generate_grid(resolution, extent_layer, fb):
+            return generate_dggrid_grid_qgis(
+                dggs_type,
+                resolution,
+                extent_layer,
+                feedback=fb,
+                densification=densification,
             )
 
-        if result_gdf is None or result_gdf.empty:
-            feedback.pushInfo("No DGGRID cells with points were found.")
-            return self._empty_sink(parameters, context)
-
-        id_field = f"dggrid_{self.dggs_type.lower()}"
-        return write_vgrid_bin_to_sink(
-            result_gdf,
-            algorithm=self,
-            parameters=parameters,
-            context=context,
-            output_param=self.OUTPUT,
-            point_layer=self.point_layer,
-            id_field=id_field,
-            resolution=self.resolution,
-            metric_kind="geodesic",
-            num_edges_fn=lambda _cell_id, geom: dggrid_num_edges(geom),
-            feedback=feedback,
-            progress=progress,
-        )
-
-    def _empty_sink(self, parameters, context):
-        id_field = f"dggrid_{self.dggs_type.lower()}"
-        out_fields = QgsFields()
-        out_fields.append(QgsField(id_field, QVariant.String))
-        append_geodesic_metric_fields(out_fields)
-        sink, dest_id = self.parameterAsSink(
+        return process_point_dggs_bin(
+            self,
             parameters,
-            self.OUTPUT,
             context,
-            out_fields,
-            QgsWkbTypes.Polygon,
-            self.point_layer.sourceCrs(),
+            feedback,
+            self.point_layer,
+            self.resolution,
+            self.stats,
+            self.category_field,
+            self.numeric_field,
+            id_col,
+            f"DGGRID {dggs_type}",
+            validate_res,
+            generate_grid,
+            metric_kind="geodesic",
         )
-        return {self.OUTPUT: dest_id}

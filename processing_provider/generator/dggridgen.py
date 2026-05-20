@@ -50,6 +50,8 @@ from vgrid.utils.io import (
     validate_coordinate,
     is_full_world_bbox,
 )
+from vgrid.utils.geometry import dggrid_num_edges
+
 from ...utils.dggrid_instance import (
     DGGRID_TYPES_NO_ANTIMERIDIAN,
     build_dggrid_options,
@@ -368,6 +370,7 @@ class DGGRIDGen(QgsProcessingAlgorithm):
 
         total_cells = len(dggrid_gdf)
         feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
+        num_edges = dggrid_num_edges(self.dggs_type)
 
         for idx, row in dggrid_gdf.iterrows():
             if feedback.isCanceled():
@@ -384,11 +387,6 @@ class DGGRIDGen(QgsProcessingAlgorithm):
             if cell_id is None:
                 continue
 
-            num_edges = (
-                len(cell_polygon.exterior.coords) - 1
-                if hasattr(cell_polygon, "exterior")
-                else 4
-            )
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
                 geodesic_dggs_metrics(cell_polygon, num_edges)
             )

@@ -5,39 +5,28 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
-    QgsFeatureSink,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterNumber,
-    QgsFields,
-    QgsField,
-    QgsFeature,
-    QgsGeometry,
-    QgsWkbTypes,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
     QgsProcessingParameterVectorDestination,
     QgsProcessingParameterEnum,
-    QgsProcessingException,
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.PyQt.QtCore import QVariant
 import os
-from shapely.geometry import Polygon
-from ...utils.imgs import Imgs
-from collections import defaultdict
-from ...utils.binning.bin_helper import (
-    append_bin_stat_fields,
-    append_graticule_metric_fields,
-    append_stats_value,
-    build_bin_feature_props,
-    feature_attributes,
-    get_default_stats_structure,
-)
+
+from vgrid.utils.io import validate_olc_resolution
+
 from ...settings import settings
-from vgrid.dggs import olc
-from vgrid.conversion.latlon2dggs import latlon2olc
+from ...utils.binning.bin_helper import (
+    BIN_STATISTICS,
+    prepare_point_bin_algorithm,
+    process_point_dggs_bin,
+)
+from ...utils.imgs import Imgs
+from ...utils.resampling.dggsgrid import generate_olc_grid
 
 
 class OLCBin(QgsProcessingAlgorithm):
@@ -48,20 +37,7 @@ class OLCBin(QgsProcessingAlgorithm):
     RESOLUTION = "RESOLUTION"
     OUTPUT = "OUTPUT"
 
-    STATISTICS = [
-        "count",
-        "sum",
-        "min",
-        "max",
-        "mean",
-        "median",
-        "std",
-        "var",
-        "range",
-        "minority",
-        "majority",
-        "variety",
-    ]
+    STATISTICS = BIN_STATISTICS
 
     LOC = QgsApplication.locale()[:2]
 
@@ -69,14 +45,11 @@ class OLCBin(QgsProcessingAlgorithm):
         return QCoreApplication.translate("Processing", string)
 
     def tr(self, *string):
-        # Translate to Vietnamese: arg[0] - English (translate), arg[1] - Vietnamese
         if self.LOC == "vi":
             if len(string) == 2:
                 return string[1]
-            else:
-                return self.translate(string[0])
-        else:
             return self.translate(string[0])
+        return self.translate(string[0])
 
     def createInstance(self):
         return OLCBin()
@@ -114,18 +87,18 @@ class OLCBin(QgsProcessingAlgorithm):
             '''<div align="center">
                       <img src="'''
             + os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figure)
-            + """">
+            + '''">
                     </div>
                     <div align="right">
                       <p align="right">
-                      <b>"""
+                      <b>'''
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
-            + """</b>
-                      </p>"""
+            + '''</b>
+                      </p>'''
             + social_BW
-            + """
+            + '''
                     </div>
-                    """
+                    '''
         )
         return self.tr(self.txt_en, self.txt_vi) + footer
 
@@ -134,12 +107,9 @@ class OLCBin(QgsProcessingAlgorithm):
             QgsProcessingParameterFeatureSource(
                 self.INPUT,
                 "Input point layer",
-                [
-                    QgsProcessing.TypeVectorPoint
-                ],  # Ensures only point geometries are selectable
+                [QgsProcessing.TypeVectorPoint],
             )
         )
-
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.STATS,
@@ -148,14 +118,13 @@ class OLCBin(QgsProcessingAlgorithm):
                 defaultValue=0,
             )
         )
-
         self.addParameter(
             QgsProcessingParameterField(
                 self.NUMERIC_FIELD,
                 "Numeric field (for statistics other than 'count')",
                 parentLayerParameterName=self.INPUT,
                 optional=True,
-                type=QgsProcessingParameterField.Numeric,  # 🔥 This limits to numeric fields only
+                type=QgsProcessingParameterField.Numeric,
             )
         )
         self.addParameter(
@@ -166,7 +135,6 @@ class OLCBin(QgsProcessingAlgorithm):
                 parentLayerParameterName=self.INPUT,
             )
         )
-
         min_res, max_res, default_res = settings.getResolution("OLC")
         self.addParameter(
             QgsProcessingParameterNumber(
@@ -179,7 +147,6 @@ class OLCBin(QgsProcessingAlgorithm):
                 optional=False,
             )
         )
-
         self.addParameter(
             QgsProcessingParameterVectorDestination(self.OUTPUT, "DGGS_binning")
         )
@@ -195,125 +162,28 @@ class OLCBin(QgsProcessingAlgorithm):
         self.category_field = self.parameterAsString(
             parameters, self.CATEGORY_FIELD, context
         )
-
-        if self.resolution not in [2, 4, 6, 8, 10, 11, 12, 13, 14, 15]:
-            feedback.reportError(
-                "Please select a resolution in [2, 4, 6, 8, 10..15] and try again."
-            )
-            return False
-
-        if self.stats != "count" and not self.numeric_field:
-            raise QgsProcessingException(
-                "A numeric field is required for statistics other than 'count'."
-            )
-
-        return True
-
-    def processAlgorithm(self, parameters, context, feedback):
-        olc_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
-        olc_geometries = {}
-
-        total_points = self.point_layer.featureCount()
-        feedback.setProgress(0)  # Initial progress value
-
-        # Process each point and update progress
-        for i, point_feature in enumerate(self.point_layer.getFeatures()):
-            try:
-                point = point_feature.geometry().asPoint()
-            except:
-                feedback.pushInfo(
-                    f"Point feature {point_feature.id()} has invalid geometry and will be skipped"
-                )
-                continue
-
-            olc_id = latlon2olc(point.y(), point.x(), self.resolution)
-            props = point_feature.attributes()
-            fields = self.point_layer.fields()
-            props_dict = {fields[i].name(): props[i] for i in range(len(fields))}
-
-            append_stats_value(
-                olc_bins,
-                olc_id,
-                props_dict,
-                self.stats,
-                self.numeric_field,
-                self.category_field,
-            )
-
-            # Update progress after each point is processed
-            feedback.setProgress(int((i + 1) / total_points * 100))
-
-        # Generate geometries and update progress
-        total_olc_bins = len(olc_bins)
-        for i, olc_id in enumerate(olc_bins.keys()):
-            coord = olc.decode(olc_id)
-            # Create the bounding box coordinates for the polygon
-            min_lat, min_lon = coord.latitudeLo, coord.longitudeLo
-            max_lat, max_lon = coord.latitudeHi, coord.longitudeHi
-            # Define the polygon based on the bounding box
-            cell_polygon = Polygon(
-                [
-                    [min_lon, min_lat],  # Bottom-left corner
-                    [max_lon, min_lat],  # Bottom-right corner
-                    [max_lon, max_lat],  # Top-right corner
-                    [min_lon, max_lat],  # Top-left corner
-                    [min_lon, min_lat],  # Closing the polygon (same as the first point)
-                ]
-            )
-
-            olc_geometries[olc_id] = cell_polygon
-
-            # Update progress after each geometry is generated
-            feedback.setProgress(int((i + 1) / total_olc_bins * 100))
-
-        # Prepare output fields
-        out_fields = QgsFields()
-        out_fields.append(QgsField("olc", QVariant.String))
-        append_graticule_metric_fields(out_fields)
-
-        all_categories = set()
-        for bin_data in olc_bins.values():
-            all_categories.update(bin_data.keys())
-
-        append_bin_stat_fields(
-            out_fields,
-            all_categories,
+        prepare_point_bin_algorithm(
+            self.point_layer,
             self.stats,
             self.numeric_field,
             self.category_field,
         )
+        return True
 
-        # Create the sink for the output
-        (sink, dest_id) = self.parameterAsSink(
+    def processAlgorithm(self, parameters, context, feedback):
+        return process_point_dggs_bin(
+            self,
             parameters,
-            self.OUTPUT,
             context,
-            out_fields,
-            QgsWkbTypes.Polygon,
-            self.point_layer.sourceCrs(),
+            feedback,
+            self.point_layer,
+            self.resolution,
+            self.stats,
+            self.category_field,
+            self.numeric_field,
+            "olc",
+            "OLC",
+            validate_olc_resolution,
+            generate_olc_grid,
+            metric_kind="graticule",
         )
-
-        # Process each olc bin and update progress
-        total_olc_geometries = len(olc_geometries)
-        for i, (olc_id, geom) in enumerate(olc_geometries.items()):
-            props = build_bin_feature_props(
-                geom,
-                self.resolution,
-                "olc",
-                olc_id,
-                olc_bins,
-                all_categories,
-                self.stats,
-                self.numeric_field,
-                self.category_field,
-                metric_kind="graticule",
-            )
-            olc_feature = QgsFeature(out_fields)
-            olc_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
-            olc_feature.setAttributes(feature_attributes(out_fields, props))
-            sink.addFeature(olc_feature, QgsFeatureSink.FastInsert)
-
-            # Update progress after each olc bin is processed
-            feedback.setProgress(int((i + 1) / total_olc_geometries * 100))
-
-        return {self.OUTPUT: dest_id}

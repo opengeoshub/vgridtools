@@ -27,6 +27,7 @@ from pyproj import Geod
 geod = Geod(ellps="WGS84")
 from ...utils.imgs import Imgs
 from ...utils.conversion.raster2dggs import *
+from ...utils.conversion.crs_helper import WGS84_REQUIRED_MSG, is_wgs84
 from vgrid.stats.s2stats import s2_metrics
 from vgrid.stats.a5stats import a5_metrics
 from vgrid.stats.rhealpixstats import rhealpix_metrics
@@ -304,13 +305,8 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
 
         raster_layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
-        crs = raster_layer.crs()
-
-        # Only accept geographic CRS (e.g., EPSG:4326)
-        if not crs.isGeographic():
-            feedback.reportError(
-                "Only rasters with geographic CRS (e.g., EPSG:4326) are supported."
-            )
+        if not is_wgs84(raster_layer.crs()):
+            feedback.reportError(WGS84_REQUIRED_MSG)
             return False
 
         # Get pixel size of raster layer (in map units)

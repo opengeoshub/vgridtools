@@ -1003,7 +1003,7 @@ class VgridTools(object):
             )
 
     def clearDGGRIDCaches(self):
-        """Remove all *.txt files from the plugin dggrid folder."""
+        """Remove DGGRID cache artifacts (*.txt, meta*, temp*) from the dggrid folder."""
         from .utils.dggrid_instance import (
             clear_dggrid_cache_files,
             reset_plugin_dggrid_instance,
