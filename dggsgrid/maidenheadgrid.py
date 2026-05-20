@@ -94,9 +94,9 @@ class MaidenheadGrid(QObject):
                         transformed_extent.yMaximum(),
                     )
 
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
-                min_lat, min_lon, max_lat, max_lon
-            )
+            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
+                min_lon, min_lat, max_lon, max_lat
+            )   
             # Get grid parameters for the resolution
             x_cells, y_cells, lon_width, lat_width = grid_params[resolution]
             base_lat, base_lon = -90.0, -180.0

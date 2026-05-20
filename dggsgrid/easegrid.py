@@ -88,8 +88,8 @@ class EASEGrid(QObject):
                     )
 
                 # Validate and construct extent bbox
-                min_lat, min_lon, max_lat, max_lon = validate_coordinate(
-                    min_lat, min_lon, max_lat, max_lon
+                min_lon, min_lat, max_lon, max_lat = validate_coordinate(
+                    min_lon, min_lat, max_lon, max_lat
                 )
                 extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
 

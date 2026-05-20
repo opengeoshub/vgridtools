@@ -246,9 +246,9 @@ class A5Gen(QgsProcessingAlgorithm):
             except Exception:
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-        # validate_coordinate expects (min_lat, min_lon, max_lat, max_lon)
-        min_lat, min_lon, max_lat, max_lon = validate_coordinate(
-            min_lat, min_lon, max_lat, max_lon
+        # validate_coordinate expects (min_lon, min_lat, max_lon, max_lat)
+        min_lon, min_lat, max_lon, max_lat = validate_coordinate(
+            min_lon, min_lat, max_lon, max_lat
         )
 
         bbox_polygon = box(min_lon, min_lat, max_lon, max_lat)

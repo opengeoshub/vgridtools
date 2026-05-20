@@ -5,9 +5,15 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
+    QgsFeatureSink,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterNumber,
+    QgsFields,
+    QgsField,
+    QgsFeature,
+    QgsGeometry,
+    QgsWkbTypes,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
     QgsProcessingParameterVectorDestination,
@@ -16,12 +22,23 @@ from qgis.core import (
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QVariant
 import os
+from vgrid.utils.geometry import dggal_to_geo
 from vgrid.utils.constants import DGGAL_TYPES
 from vgrid.utils.io import validate_dggal_resolution
+from vgrid.conversion.latlon2dggs import latlon2dggal
 from ...utils.imgs import Imgs
-from ...utils.binning.bin_helper import dggal_num_edges
-from ...utils.binning.grid_bin_qgis import run_vgrid_grid_bin
+from collections import defaultdict
+from ...utils.binning.bin_helper import (
+    append_bin_stat_fields,
+    append_geodesic_metric_fields,
+    append_stats_value,
+    build_bin_feature_props,
+    dggal_num_edges,
+    feature_attributes,
+    get_default_stats_structure,
+)
 
 
 class DGGALBin(QgsProcessingAlgorithm):
@@ -199,34 +216,99 @@ class DGGALBin(QgsProcessingAlgorithm):
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
-        from vgrid.generator.dggalgen import dggalgen
+        dggal_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
+        dggal_geometries = {}
 
-        dggs_type = self.dggs_type
+        total_points = self.point_layer.featureCount()
+        feedback.setProgress(0)  # Initial progress value
 
-        def grid_generator(resolution, bbox, **kw):
-            return dggalgen(
-                dggs_type=dggs_type,
-                resolution=resolution,
-                bbox=bbox,
-                output_format="gpd",
-                **kw,
+        # Process each point and update progress
+        for i, point_feature in enumerate(self.point_layer.getFeatures()):
+            try:
+                point = point_feature.geometry().asPoint()
+            except:
+                feedback.pushInfo(
+                    f"Point feature {point_feature.id()} has invalid geometry and will be skipped"
+                )
+                continue
+
+            dggal_id = latlon2dggal(
+                self.dggs_type, point.y(), point.x(), self.resolution
+            )
+            props = point_feature.attributes()
+            fields = self.point_layer.fields()
+            props_dict = {fields[i].name(): props[i] for i in range(len(fields))}
+
+            append_stats_value(
+                dggal_bins,
+                dggal_id,
+                props_dict,
+                self.stats,
+                self.numeric_field,
+                self.category_field,
             )
 
-        return run_vgrid_grid_bin(
-            self,
-            parameters,
-            context,
-            feedback,
-            point_layer=self.point_layer,
-            output_param=self.OUTPUT,
-            resolution=self.resolution,
-            stats=self.stats,
-            category_field=self.category_field,
-            numeric_field=self.numeric_field,
-            grid_generator=grid_generator,
-            id_field=f"dggal_{self.dggs_type}",
-            metric_kind="geodesic",
-            num_edges_fn=lambda cell_id, _geom: dggal_num_edges(
-                self.dggs_type, cell_id
-            ),
+            # Update progress after each point is processed
+            feedback.setProgress(int((i + 1) / total_points * 100))
+
+        # Generate geometries and update progress
+        total_dggal_bins = len(dggal_bins)
+        for i, dggal_id in enumerate(dggal_bins.keys()):
+            cell_polygon = dggal_to_geo(self.dggs_type, dggal_id)
+            dggal_geometries[dggal_id] = cell_polygon
+
+            # Update progress after each geometry is generated
+            feedback.setProgress(int((i + 1) / total_dggal_bins * 100))
+
+        # Prepare output fields
+        out_fields = QgsFields()
+        out_fields.append(QgsField(f"dggal_{self.dggs_type}", QVariant.String))
+        append_geodesic_metric_fields(out_fields)
+
+        all_categories = set()
+        for bin_data in dggal_bins.values():
+            all_categories.update(bin_data.keys())
+
+        append_bin_stat_fields(
+            out_fields,
+            all_categories,
+            self.stats,
+            self.numeric_field,
+            self.category_field,
         )
+
+        # Create the sink for the output
+        (sink, dest_id) = self.parameterAsSink(
+            parameters,
+            self.OUTPUT,
+            context,
+            out_fields,
+            QgsWkbTypes.Polygon,
+            self.point_layer.sourceCrs(),
+        )
+
+        # Process each dggal bin and update progress
+        total_dggal_geometries = len(dggal_geometries)
+        id_field = f"dggal_{self.dggs_type}"
+        for i, (dggal_id, geom) in enumerate(dggal_geometries.items()):
+            props = build_bin_feature_props(
+                geom,
+                self.resolution,
+                id_field,
+                dggal_id,
+                dggal_bins,
+                all_categories,
+                self.stats,
+                self.numeric_field,
+                self.category_field,
+                num_edges=dggal_num_edges(self.dggs_type, dggal_id),
+            )
+            dggal_feature = QgsFeature(out_fields)
+            dggal_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
+            dggal_feature.setAttributes(feature_attributes(out_fields, props))
+            sink.addFeature(dggal_feature, QgsFeatureSink.FastInsert)
+
+            # Update progress after each dggal bin is processed
+            feedback.setProgress(int((i + 1) / total_dggal_geometries * 100))
+
+        return {self.OUTPUT: dest_id}

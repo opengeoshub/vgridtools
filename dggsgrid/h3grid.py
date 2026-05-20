@@ -99,14 +99,14 @@ class H3Grid(QObject):
                         transformed_extent.yMaximum(),
                     )
 
-                min_lat, min_lon, max_lat, max_lon = validate_coordinate(
-                    min_lat, min_lon, max_lat, max_lon
+                min_lon, min_lat, max_lon, max_lat = validate_coordinate(
+                    min_lon, min_lat, max_lon, max_lat
                 )
 
                 # buffer the extent because the h3.geo_to_cells function only returns the cells that are center_within the extent
                 extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
-                distance = h3.average_hexagon_edge_length(resolution, unit="m")
-                extent_bbox = geodesic_buffer(extent_bbox, distance)
+                # distance = h3.average_hexagon_edge_length(resolution, unit="m")
+                # extent_bbox = geodesic_buffer(extent_bbox, distance)
 
                 bbox_cells = h3.geo_to_cells(extent_bbox, resolution)
                 for bbox_cell in bbox_cells:

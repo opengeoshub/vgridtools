@@ -214,7 +214,7 @@ class RhealpixGrid(QObject):
 
     def _refreshRhealpixGridOnExtent(self):
         if self.rhealpix_enabled:
-            self.rhealpix_grid()
+            self.rhealpix_grid()    
 
     def _get_rhealpix_resolution(self, scale):
         # Map scale to zoom, then clamp to configured bounds

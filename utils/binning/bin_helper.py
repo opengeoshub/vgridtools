@@ -163,13 +163,6 @@ def rhealpix_num_edges(rhealpix_id, rhealpix_dggs=None):
     return 3 if cell.ellipsoidal_shape() == "dart" else 4
 
 
-def dggrid_num_edges(geom):
-    poly = _shapely_polygon(geom)
-    if hasattr(poly, "exterior"):
-        return len(poly.exterior.coords) - 1
-    return 4
-
-
 def dggal_num_edges(dggs_type, zone_id):
     import vgrid.utils.geometry as vgrid_geometry
     from dggal import nullZone

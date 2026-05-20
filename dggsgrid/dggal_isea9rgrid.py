@@ -29,7 +29,7 @@ class DGGALISEA9RGrid(QObject):
         super(DGGALISEA9RGrid, self).__init__()
         self.canvas = canvas
         self.vgridtools = vgridtools
-        self.iface = iface
+        self.iface = iface  
 
         self.dggal_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.dggal_marker.setStrokeColor(settings.dggal_isea9rColor)
@@ -92,8 +92,8 @@ class DGGALISEA9RGrid(QObject):
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
                     )
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
-                min_lat, min_lon, max_lat, max_lon
+            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
+                min_lon, min_lat, max_lon, max_lat
             )
             ll = GeoPoint(min_lat, min_lon)
             ur = GeoPoint(max_lat, max_lon)

@@ -53,7 +53,7 @@ class DGGALISEA7H_Z7Grid(QObject):
         self._extentTimer.start()
 
     def dggal_grid(self):
-        try:
+        try:    
             # Clear previous grid before drawing a new one
             self.removeMarker()
             self.dggal_marker.reset(QgsWkbTypes.PolygonGeometry)
@@ -93,8 +93,8 @@ class DGGALISEA7H_Z7Grid(QObject):
                         transformed_extent.yMaximum(),
                     )
 
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
-                min_lat, min_lon, max_lat, max_lon
+            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
+                min_lon, min_lat, max_lon, max_lat
             )
             ll = GeoPoint(min_lat, min_lon)
             ur = GeoPoint(max_lat, max_lon)

@@ -297,12 +297,12 @@ class VgridTools(object):
         self.binning_menu.addAction(self.dggalBinAction)
 
         # DGGRID Bin
-        icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggrid.svg")
-        self.dggridBinAction = QAction(icon, tr("DGGRID Bin"), self.iface.mainWindow())
-        self.dggridBinAction.setObjectName("dggridBin")
-        self.dggridBinAction.setToolTip(tr("DGGRID Binning"))
-        self.dggridBinAction.triggered.connect(self.runDGGRIDBin)
-        self.binning_menu.addAction(self.dggridBinAction)
+        # icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_dggrid.svg")
+        # self.dggridBinAction = QAction(icon, tr("DGGRID Bin"), self.iface.mainWindow())
+        # self.dggridBinAction.setObjectName("dggridBin")
+        # self.dggridBinAction.setToolTip(tr("DGGRID Binning"))
+        # self.dggridBinAction.triggered.connect(self.runDGGRIDBin)
+        # self.binning_menu.addAction(self.dggridBinAction)
 
         # OLC Bin
         icon = QIcon(os.path.dirname(__file__) + "/images/generator/grid_olc.svg")
@@ -856,10 +856,6 @@ class VgridTools(object):
     def runDGGALBin(self):
         """Run DGGAL Binning algorithm"""
         processing.execAlgorithmDialog("vgrid:bin_dggal", {})
-
-    def runDGGRIDBin(self):
-        """Run DGGRID Binning algorithm"""
-        processing.execAlgorithmDialog("vgrid:bin_dggrid", {})
 
     def runOLCBin(self):
         """Run OLC Binning algorithm"""

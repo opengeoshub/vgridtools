@@ -13,7 +13,7 @@ from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import QObject, QTimer, pyqtSlot
 
 from vgrid.utils.constants import DGGRID_TYPES
-from vgrid.utils.io import validate_coordinate
+from vgrid.utils.io import validate_coordinate  
 
 from ..settings import settings
 from ..utils.dggrid_instance import (
@@ -23,6 +23,21 @@ from ..utils.dggrid_instance import (
     get_plugin_dggrid_instance,
 )
 from ..utils.latlon import epsg4326
+
+# Map canvas zoom → DGGRID resolution: res = floor(zoom * k), per type (see webdggrid / MapLibre viz).
+_DGGRID_RESOLUTION_SCALE_K = {
+    "ISEA4T": 0.95,
+    "FULLER4T": 0.95,
+    "ISEA4D": 0.95,
+    "FULLER4D": 0.95,
+    "ISEA3H": 1.15,
+    "FULLER3H": 1.15,
+    "ISEA4H": 0.95,
+    "FULLER4H": 0.95,
+    "IGEO7": 0.65,
+    "ISEA7H": 0.65,
+    "FULLER7H": 0.65,
+}
 
 
 class DGGRIDGrid(QObject):
@@ -56,7 +71,8 @@ class DGGRIDGrid(QObject):
     def _resolution_from_scale(self, scale: float) -> int:
         cfg = DGGRID_TYPES[self.dggs_type]
         zoom = 29.1402 - log2(scale)
-        res = int(floor(zoom))
+        k = _DGGRID_RESOLUTION_SCALE_K.get(self.dggs_type, 1.0)
+        res = int(floor(zoom * k))
         return min(cfg["max_res"], max(cfg["min_res"], res))
 
     def dggrid_grid(self):
@@ -98,8 +114,8 @@ class DGGRIDGrid(QObject):
                         transformed_extent.xMaximum(),
                         transformed_extent.yMaximum(),
                     )
-                min_lat, min_lon, max_lat, max_lon = validate_coordinate(
-                    min_lat, min_lon, max_lat, max_lon
+                min_lon, min_lat, max_lon, max_lat = validate_coordinate(
+                    min_lon, min_lat, max_lon, max_lat
                 )
                 bbox = [min_lon, min_lat, max_lon, max_lat]
 

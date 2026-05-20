@@ -240,8 +240,8 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                 # min_lon, min_lat, max_lon, max_lat = -180.0, -85.05112878, 180.0, 85.05112878
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
-        min_lat, min_lon, max_lat, max_lon = validate_coordinate(
-            min_lat, min_lon, max_lat, max_lon
+        min_lon, min_lat, max_lon, max_lat = validate_coordinate(
+            min_lon, min_lat, max_lon, max_lat
         )
 
         extent_bbox = box(min_lon, min_lat, max_lon, max_lat)

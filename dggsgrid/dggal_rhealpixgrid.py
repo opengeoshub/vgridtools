@@ -92,8 +92,8 @@ class DGGALRHEALPixGrid(QObject):
                         transformed_extent.yMaximum(),
                     )
             # Define bbox in canvas CRS
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
-                min_lat, min_lon, max_lat, max_lon
+            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
+                min_lon, min_lat, max_lon, max_lat
             )
             ll = GeoPoint(min_lat, min_lon)
             ur = GeoPoint(max_lat, max_lon)

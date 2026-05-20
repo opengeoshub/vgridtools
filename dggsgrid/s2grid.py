@@ -9,7 +9,7 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
-from math import log2, floor
+from math import log2, floor    
 
 from ..utils.latlon import epsg4326
 from ..settings import settings

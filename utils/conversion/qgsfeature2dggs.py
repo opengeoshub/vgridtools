@@ -1331,9 +1331,9 @@ def polyline2dggal(
     dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
     dggrs = globals()[dggs_class_name]()
 
-    # Convert bounds from (minx, miny, maxx, maxy) to (min_lat, min_lon, max_lat, max_lon)
-    min_lat, min_lon = feature_rect.yMinimum(), feature_rect.xMinimum()
-    max_lat, max_lon = feature_rect.yMaximum(), feature_rect.xMaximum()
+    # Convert bounds from (minx, miny, maxx, maxy) to (min_lon, min_lat, max_lon, max_lat)
+    min_lon, min_lat = feature_rect.xMinimum(), feature_rect.yMinimum()
+    max_lon, max_lat = feature_rect.xMaximum(), feature_rect.yMaximum()
 
     # Create GeoExtent for DGGAL
     ll = GeoPoint(min_lat, min_lon)
@@ -1439,8 +1439,8 @@ def polygon2dggal(
     dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
     dggrs = globals()[dggs_class_name]()
 
-    # Convert bounds from (minx, miny, maxx, maxy) to (min_lat, min_lon, max_lat, max_lon)
-    min_lat, min_lon = feature_rect.yMinimum(), feature_rect.xMinimum()
+    # Convert bounds from (minx, miny, maxx, maxy) to (min_lon, min_lat, max_lon, max_lat)
+    min_lon, min_lat = feature_rect.xMinimum(), feature_rect.yMinimum()
     max_lat, max_lon = feature_rect.yMaximum(), feature_rect.xMaximum()
 
     ll = GeoPoint(min_lat, min_lon)

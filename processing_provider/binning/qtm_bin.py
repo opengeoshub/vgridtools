@@ -5,9 +5,15 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
+    QgsFeatureSink,
     QgsProcessing,
     QgsProcessingAlgorithm,
     QgsProcessingParameterNumber,
+    QgsFields,
+    QgsField,
+    QgsFeature,
+    QgsGeometry,
+    QgsWkbTypes,
     QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
     QgsProcessingParameterVectorDestination,
@@ -16,9 +22,19 @@ from qgis.core import (
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
+from qgis.PyQt.QtCore import QVariant
 import os
+from vgrid.dggs import qtm
 from ...utils.imgs import Imgs
-from ...utils.binning.grid_bin_qgis import run_vgrid_grid_bin
+from collections import defaultdict
+from ...utils.binning.bin_helper import (
+    append_bin_stat_fields,
+    append_geodesic_metric_fields,
+    append_stats_value,
+    build_bin_feature_props,
+    feature_attributes,
+    get_default_stats_structure,
+)
 from ...settings import settings
 
 
@@ -186,21 +202,97 @@ class QTMBin(QgsProcessingAlgorithm):
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
-        from vgrid.generator.qtmgrid import qtm_grid_within_bbox
+        qtm_bins = defaultdict(lambda: defaultdict(get_default_stats_structure))
+        qtm_geometries = {}
 
-        return run_vgrid_grid_bin(
-            self,
-            parameters,
-            context,
-            feedback,
-            point_layer=self.point_layer,
-            output_param=self.OUTPUT,
-            resolution=self.resolution,
-            stats=self.stats,
-            category_field=self.category_field,
-            numeric_field=self.numeric_field,
-            grid_generator=qtm_grid_within_bbox,
-            id_field="qtm",
-            metric_kind="geodesic",
-            num_edges_fn=lambda _cell_id, _geom: 3,
+        total_points = self.point_layer.featureCount()
+        feedback.setProgress(0)  # Initial progress value
+
+        # Process each point and update progress
+        for i, point_feature in enumerate(self.point_layer.getFeatures()):
+            try:
+                point = point_feature.geometry().asPoint()
+            except:
+                feedback.pushInfo(
+                    f"Point feature {point_feature.id()} has invalid geometry and will be skipped"
+                )
+                continue
+
+            qtm_id = qtm.latlon_to_qtm_id(point.y(), point.x(), self.resolution)
+            props = point_feature.attributes()
+            fields = self.point_layer.fields()
+            props_dict = {fields[i].name(): props[i] for i in range(len(fields))}
+
+            append_stats_value(
+                qtm_bins,
+                qtm_id,
+                props_dict,
+                self.stats,
+                self.numeric_field,
+                self.category_field,
+            )
+
+            # Update progress after each point is processed
+            feedback.setProgress(int((i + 1) / total_points * 100))
+
+        # Generate geometries and update progress
+        total_qtm_bins = len(qtm_bins)
+        for i, qtm_id in enumerate(qtm_bins.keys()):
+            facet = qtm.qtm_id_to_facet(qtm_id)
+            cell_polygon = qtm.constructGeometry(facet)
+            qtm_geometries[qtm_id] = cell_polygon
+
+            # Update progress after each geometry is generated
+            feedback.setProgress(int((i + 1) / total_qtm_bins * 100))
+
+        # Prepare output fields
+        out_fields = QgsFields()
+        out_fields.append(QgsField("qtm", QVariant.String))
+        append_geodesic_metric_fields(out_fields)
+
+        all_categories = set()
+        for bin_data in qtm_bins.values():
+            all_categories.update(bin_data.keys())
+
+        append_bin_stat_fields(
+            out_fields,
+            all_categories,
+            self.stats,
+            self.numeric_field,
+            self.category_field,
         )
+
+        # Create the sink for the output
+        (sink, dest_id) = self.parameterAsSink(
+            parameters,
+            self.OUTPUT,
+            context,
+            out_fields,
+            QgsWkbTypes.Polygon,
+            self.point_layer.sourceCrs(),
+        )
+
+        # Process each qtm bin and update progress
+        total_qtm_geometries = len(qtm_geometries)
+        for i, (qtm_id, geom) in enumerate(qtm_geometries.items()):
+            props = build_bin_feature_props(
+                geom,
+                self.resolution,
+                "qtm",
+                qtm_id,
+                qtm_bins,
+                all_categories,
+                self.stats,
+                self.numeric_field,
+                self.category_field,
+                num_edges=3,
+            )
+            qtm_feature = QgsFeature(out_fields)
+            qtm_feature.setGeometry(QgsGeometry.fromWkt(geom.wkt))
+            qtm_feature.setAttributes(feature_attributes(out_fields, props))
+            sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)
+
+            # Update progress after each qtm bin is processed
+            feedback.setProgress(int((i + 1) / total_qtm_geometries * 100))
+
+        return {self.OUTPUT: dest_id}

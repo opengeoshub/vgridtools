@@ -191,7 +191,7 @@ class DIGIPINGen(QgsProcessingAlgorithm):
 
         if self.canvas_extent is None or self.canvas_extent.isEmpty():
             # Use full DIGIPIN bounds if no extent specified
-            min_lat, min_lon, max_lat, max_lon = (
+            min_lon, min_lat, max_lon, max_lat = (
                 BOUNDS['minLat'], BOUNDS['minLon'], BOUNDS['maxLat'], BOUNDS['maxLon']
             )
         else:
@@ -215,13 +215,13 @@ class DIGIPINGen(QgsProcessingAlgorithm):
                         transformed_extent.yMaximum(),
                     )
             except Exception:
-                min_lat, min_lon, max_lat, max_lon = (
-                    BOUNDS['minLat'], BOUNDS['minLon'], BOUNDS['maxLat'], BOUNDS['maxLon']
+                min_lon, min_lat, max_lon, max_lat = (
+                    BOUNDS['minLon'], BOUNDS['minLat'], BOUNDS['maxLon'], BOUNDS['maxLat']
                 )
 
             # Validate and constrain to DIGIPIN bounds (India region)
-            min_lat, min_lon, max_lat, max_lon = validate_digipin_coordinate(
-                min_lat, min_lon, max_lat, max_lon
+            min_lon, min_lat, max_lon, max_lat = validate_digipin_coordinate(
+                min_lon, min_lat, max_lon, max_lat
             )            
 
         # Calculate sampling density based on resolution

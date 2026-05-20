@@ -37,7 +37,6 @@ from .processing_provider.binning.a5_bin import A5Bin
 from .processing_provider.binning.rhealpix_bin import rHEALPixBin
 from .processing_provider.binning.isea4t_bin import ISEA4TBin
 from .processing_provider.binning.dggal_bin import DGGALBin
-from .processing_provider.binning.dggrid_bin import DGGRIDBin
 
 from .processing_provider.binning.qtm_bin import QTMBin
 
@@ -103,7 +102,6 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(rHEALPixBin())
         self.addAlgorithm(ISEA4TBin())
         self.addAlgorithm(DGGALBin())
-        self.addAlgorithm(DGGRIDBin())
 
         self.addAlgorithm(QTMBin())
 

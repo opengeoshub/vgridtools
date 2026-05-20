@@ -15,8 +15,7 @@ from vgrid.utils.io import validate_coordinate
 from vgrid.utils.antimeridian import fix_polygon
 
 # A5 converters
-from vgrid.conversion.dggs2geo.a52geo import a52geo, a52geo_u64
-from vgrid.conversion.latlon2dggs import latlon2a5
+from vgrid.conversion.dggs2geo.a52geo import a52geo_u64
 from math import log2, floor
 from vgrid.utils.constants import DGGS_TYPES
 from vgrid.utils.geometry import get_a5_resolution_from_scale_denominator
@@ -86,8 +85,8 @@ class A5Grid(QObject):
                     transformed_extent.yMaximum(),
                 )
 
-            min_lat, min_lon, max_lat, max_lon = validate_coordinate(
-                min_lat, min_lon, max_lat, max_lon
+            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
+                min_lon, min_lat, max_lon, max_lat
             )
 
             bbox_polygon = box(min_lon, min_lat, max_lon, max_lat)

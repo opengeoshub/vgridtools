@@ -429,8 +429,6 @@ def generate_grid_qgis(
     return dggrid_gdf
 
 
-from .binning.grid_bin_qgis import qgis_feature_source_to_gdf  # noqa: F401
-
 
 def _ensure_dggrid_global_id_column(grid_gdf):
     """Normalize DGGRID grid output to a ``global_id`` column for joins."""
@@ -463,7 +461,6 @@ def dggrid_bin_qgis(
     numeric_field=None,
     options=None,
     feedback=None,
-    progress=None,
 ):
     """
     Bin points into DGGRID cells by generating a grid over the point extent,
@@ -495,12 +492,10 @@ def dggrid_bin_qgis(
     minx, miny, maxx, maxy = points_gdf.total_bounds
     bbox = (minx, miny, maxx, maxy)
 
-    if progress is None and feedback:
-        from .binning.grid_bin_qgis import TwoStepBinProgress
-
-        progress = TwoStepBinProgress(feedback)
-    if progress:
-        progress.begin(0)
+    if feedback:
+        feedback.pushInfo(
+            f"Generating DGGRID {dggs_type} grid for point layer extent..."
+        )
 
     grid_gdf = generate_grid_qgis(
         dggrid_instance,
@@ -513,11 +508,6 @@ def dggrid_bin_qgis(
         options=options,
     )
     grid_gdf, id_col = _ensure_dggrid_global_id_column(grid_gdf)
-
-    if progress:
-        progress.complete(0)
-        progress.begin(1)
-        progress.set(1, 5)
 
     if grid_gdf.crs is None:
         grid_gdf = grid_gdf.set_crs(points_gdf.crs or "EPSG:4326")
@@ -540,8 +530,10 @@ def dggrid_bin_qgis(
         predicate="within",
     )
 
-    if progress:
-        progress.set(1, 40)
+    if feedback:
+        feedback.pushInfo(
+            f"Aggregating {len(joined)} point-in-cell match(es) ({stats})..."
+        )
 
     grouped = aggregate_joined(
         joined, id_col, stats=stats, category=category, numeric_field=numeric_field
@@ -552,9 +544,6 @@ def dggrid_bin_qgis(
     out = out.rename(columns={id_col: f"dggrid_{dggs_type.lower()}"})
     if "resolution" not in out.columns:
         out["resolution"] = resolution
-
-    if progress:
-        progress.set(1, 85)
 
     return gpd.GeoDataFrame(out, geometry="geometry", crs=grid_gdf.crs or "EPSG:4326")
 
