@@ -24,6 +24,7 @@ from vgrid.utils.constants import DGGAL_TYPES
 app = Application(appGlobals=globals())
 pydggal_setup(app)
 
+
 class DGGALRTEA7H_Z7Grid(QObject):
     def __init__(self, vgridtools, canvas, iface):
         super(DGGALRTEA7H_Z7Grid, self).__init__()
@@ -64,7 +65,9 @@ class DGGALRTEA7H_Z7Grid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self.dggrs.getLevelFromScaleDenominator(scale,relativeDepth=6,mmPerPixel = 0.28)
+            resolution = self.dggrs.getLevelFromScaleDenominator(
+                scale, relativeDepth=6, mmPerPixel=0.28
+            )
 
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
@@ -109,7 +112,7 @@ class DGGALRTEA7H_Z7Grid(QObject):
                     zone_id = self.dggrs.getZoneTextID(zone)
                     # Convert zone to geometry using dggal_to_geo
                     cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
-                    if settings.splitAntimeridian:          
+                    if settings.splitAntimeridian:
                         cell_polygon = fix_polygon(cell_polygon)
 
                     if epsg4326 != canvas_crs:

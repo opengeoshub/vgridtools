@@ -41,7 +41,7 @@ class GARSGrid(QObject):
     def _onExtentsChanged(self):
         self._extentTimer.start()
 
-    def gars_grid(self):       
+    def gars_grid(self):
         self.removeMarker()
         self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.gars_marker.setStrokeColor(settings.garsColor)
@@ -130,40 +130,6 @@ class GARSGrid(QObject):
         if zoom >= 14:
             res = 4
         return res
-
-    @pyqtSlot()
-    def removeMarker(self):
-        self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
-
-    def cleanup(self):
-        # Disconnect signals and delete rubber band
-        try:
-            self._extentTimer.stop()
-            try:
-                self._extentTimer.timeout.disconnect(self._refreshGARSGridOnExtent)
-            except Exception:
-                pass
-            try:
-                self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
-                pass
-        except Exception:
-            pass
-
-        try:
-            self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
-            self.gars_marker.deleteLater()
-        except Exception:
-            pass
-
-    def enable_gars(self, enabled: bool):
-        self.gars_enabled = bool(enabled)
-        if not self.gars_enabled:
-            self.removeMarker()
-
-    def _refreshGARSGridOnExtent(self):
-        if self.gars_enabled:
-            self.gars_grid()
 
     @pyqtSlot()
     def removeMarker(self):

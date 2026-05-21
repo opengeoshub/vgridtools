@@ -10,6 +10,7 @@ from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 from math import log2, floor
 
+from ..utils.geohash_alphabet import geohash_child_chars
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.utils.constants import INITIAL_GEOHASHES
@@ -57,7 +58,9 @@ class GeohashGrid(QObject):
 
             scale = self.canvas.scale()
             # resolution = self._get_geohash_resolution(scale)
-            resolution = get_geohash_resolution_from_scale_denominator(scale,relative_depth=3,mm_per_pixel = 0.28)
+            resolution = get_geohash_resolution_from_scale_denominator(
+                scale, relative_depth=3, mm_per_pixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -120,8 +123,7 @@ class GeohashGrid(QObject):
             self.geohash_marker.addGeometry(cell_geom, None)
             return
 
-        # Expand the geohash with all possible characters
-        for char in "0123456789bcdefghjkmnpqrstuvwxyz":
+        for char in geohash_child_chars():
             self._expand_geohash(gh + char, target_length, canvas_crs)
 
     def _expand_geohash_within_extent(self, gh, target_length, extent_bbox, canvas_crs):
@@ -140,8 +142,7 @@ class GeohashGrid(QObject):
             self.geohash_marker.addGeometry(cell_geom, None)
             return
 
-        # If not at the target length, expand the geohash with all possible characters
-        for char in "0123456789bcdefghjkmnpqrstuvwxyz":
+        for char in geohash_child_chars():
             self._expand_geohash_within_extent(
                 gh + char, target_length, extent_bbox, canvas_crs
             )
@@ -158,9 +159,9 @@ class GeohashGrid(QObject):
     def _get_geohash_resolution(self, scale):
         # Map scale to zoom, then to Geohash resolution
         zoom = 29.1402 - log2(scale)
-        min_res = DGGS_TYPES['geohash']["min_res"]
-        max_res = DGGS_TYPES['geohash']["max_res"]
-        res = min(max_res, max(min_res, floor(zoom*0.45)))
+        min_res = DGGS_TYPES["geohash"]["min_res"]
+        max_res = DGGS_TYPES["geohash"]["max_res"]
+        res = min(max_res, max(min_res, floor(zoom * 0.45)))
         return res
 
     @pyqtSlot()

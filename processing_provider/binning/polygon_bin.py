@@ -10,7 +10,6 @@ from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterField,
     QgsFields,
-    QgsField,
     QgsFeature,
     QgsWkbTypes,
     QgsProcessingParameterFeatureSource,
@@ -19,12 +18,12 @@ from qgis.core import (
     QgsProcessingException,
 )
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.PyQt.QtCore import QCoreApplication
 import os
 from collections import defaultdict
 from shapely.geometry import shape
 import json
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...utils.binning.bin_helper import (
     append_bin_stat_fields,
     append_stats_value,
@@ -98,7 +97,6 @@ class PolygonBin(QgsProcessingAlgorithm):
     figure = "../images/tutorial/bin_h3.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = f'''
         <div align="center">
           <img src="{os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figure)}">
@@ -106,7 +104,7 @@ class PolygonBin(QgsProcessingAlgorithm):
         <div align="right">
           <p align="right">
           <b>{self.tr("Author: Thang Quach", "Author: Thang Quach")}</b>
-          </p>{social_BW}
+          </p>{social_links_footer()}
         </div>
         '''
         return self.tr(self.txt_en, self.txt_vi) + footer
@@ -187,7 +185,7 @@ class PolygonBin(QgsProcessingAlgorithm):
         for i, polygon_feature in enumerate(self.polygon_layer.getFeatures()):
             try:
                 poly_geom = shape(json.loads(polygon_feature.geometry().asJson()))
-            except:
+            except BaseException:
                 feedback.pushInfo(
                     f"Polygon feature {polygon_feature.id()} has invalid geometry and will be skipped"
                 )
@@ -202,7 +200,7 @@ class PolygonBin(QgsProcessingAlgorithm):
             for point_feature in self.point_layer.getFeatures():
                 try:
                     pt_geom = shape(json.loads(point_feature.geometry().asJson()))
-                except:
+                except BaseException:
                     feedback.pushInfo(
                         f"Point feature {point_feature.id()} has invalid geometry and will be skipped"
                     )

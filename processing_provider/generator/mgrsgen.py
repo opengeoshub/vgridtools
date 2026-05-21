@@ -44,7 +44,7 @@ from qgis.utils import iface
 from qgis.PyQt.QtCore import QVariant
 import os
 from vgrid.dggs import mgrs
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...settings import settings
 from vgrid.generator.mgrsgrid import is_valid_gzd
 import json
@@ -105,7 +105,6 @@ class MGRSGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_mgrs.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -118,7 +117,7 @@ class MGRSGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """

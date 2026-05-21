@@ -24,6 +24,7 @@ from vgrid.utils.constants import DGGAL_TYPES
 app = Application(appGlobals=globals())
 pydggal_setup(app)
 
+
 class DGGALISEA7H_Z7Grid(QObject):
     def __init__(self, vgridtools, canvas, iface):
         super(DGGALISEA7H_Z7Grid, self).__init__()
@@ -53,7 +54,7 @@ class DGGALISEA7H_Z7Grid(QObject):
         self._extentTimer.start()
 
     def dggal_grid(self):
-        try:    
+        try:
             # Clear previous grid before drawing a new one
             self.removeMarker()
             self.dggal_marker.reset(QgsWkbTypes.PolygonGeometry)
@@ -64,7 +65,9 @@ class DGGALISEA7H_Z7Grid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self.dggrs.getLevelFromScaleDenominator(scale,relativeDepth=6,mmPerPixel = 0.28)
+            resolution = self.dggrs.getLevelFromScaleDenominator(
+                scale, relativeDepth=6, mmPerPixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -108,13 +111,13 @@ class DGGALISEA7H_Z7Grid(QObject):
                     zone_id = self.dggrs.getZoneTextID(zone)
                     # Convert zone to geometry using dggal_to_geo
                     cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
-                    if settings.splitAntimeridian:          
+                    if settings.splitAntimeridian:
                         cell_polygon = fix_polygon(cell_polygon)
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
                         )
-                      
+
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         cell_geometry.transform(trans_to_canvas)
                     else:

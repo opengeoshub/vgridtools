@@ -24,6 +24,7 @@ from vgrid.utils.constants import DGGAL_TYPES
 app = Application(appGlobals=globals())
 pydggal_setup(app)
 
+
 class DGGALHEALPixGrid(QObject):
     def __init__(self, vgridtools, canvas, iface):
         super(DGGALHEALPixGrid, self).__init__()
@@ -64,7 +65,9 @@ class DGGALHEALPixGrid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self.dggrs.getLevelFromScaleDenominator(scale,relativeDepth=8,mmPerPixel = 0.28)
+            resolution = self.dggrs.getLevelFromScaleDenominator(
+                scale, relativeDepth=8, mmPerPixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -113,7 +116,7 @@ class DGGALHEALPixGrid(QObject):
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
-                        )                      
+                        )
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         cell_geometry.transform(trans_to_canvas)
                     else:
@@ -143,7 +146,7 @@ class DGGALHEALPixGrid(QObject):
         # DGGAL resolution mapping - similar to other grids
         min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
         max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
-        res = min(max_res, max(min_res, floor(zoom*0.95)))        
+        res = min(max_res, max(min_res, floor(zoom * 0.95)))
         return res
 
     @pyqtSlot()

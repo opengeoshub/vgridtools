@@ -30,9 +30,12 @@ __copyright__ = "(L) 2024 by Thang Quach"
 from qgis.PyQt.QtWidgets import QInputDialog
 
 
-def classFactory(iface):    
+def classFactory(iface):
     try:
-        import vgrid
+        import importlib.util
+
+        if importlib.util.find_spec("vgrid") is None:
+            raise ImportError("vgrid package is not installed")
     except ImportError:
         command = "import pip\npip.main(['install', 'vgrid','--upgrade'])"
         text, ok = QInputDialog.getMultiLineText(
@@ -41,7 +44,7 @@ def classFactory(iface):
             "To run Vgrid Tools, please copy and run this code in the Python console to install vgrid package and reload QGIS:",
             command,
         )
-  
+
     from .vgrid import VgridTools
 
     return VgridTools(iface)

@@ -36,7 +36,7 @@ from qgis.core import (
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...utils.resampling.dggsresample import *
 
 
@@ -107,13 +107,12 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
     figure = "../images/tutorial/dggsresample.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = f'''<div align="center">
                       <img src="{os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figure)}">
                     </div>
                     <div align="right">
                       <p><b>{self.tr("Author: Thang Quach", "Author: Thang Quach")}</b></p>
-                      {social_BW}
+                      {social_links_footer()}
                     </div>'''
         return self.tr(self.txt_en, self.txt_vi) + footer
 

@@ -1,3 +1,38 @@
+from qgis.core import (
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
+    QgsProject,
+    QgsFeature,
+    QgsGeometry,
+    QgsField,
+    QgsFields,
+)
+from qgis.PyQt.QtCore import QVariant
+from pyproj import Geod
+from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
+from vgrid.conversion.dggs2geo.maidenhead2geo import maidenhead2geo
+from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
+from vgrid.conversion.dggs2geo.olc2geo import olc2geo
+from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
+from vgrid.conversion.dggs2geo.ease2geo import ease2geo
+from vgrid.conversion.dggs2geo.isea3h2geo import isea3h2geo
+from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
+from vgrid.conversion.dggs2geo.a52geo import a52geo
+from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
+from vgrid.conversion.dggs2geo.s22geo import s22geo
+from vgrid.conversion.dggs2geo.h32geo import h32geo
+from vgrid.utils.constants import ISEA3H_ACCURACY_RES_DICT
+from vgrid.utils.geometry import (
+    graticule_dggs_metrics,
+    geodesic_dggs_metrics,
+)
+import a5
+import h3
+from vgrid.dggs import mercantile
+import platform
+from dggal import *
+from vgrid.utils.constants import DGGAL_TYPES
+from vgrid.utils.geometry import dggal_to_geo
 import re
 import os
 from shapely.geometry import Polygon, shape
@@ -11,14 +46,10 @@ from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 rhealpix_dggs = RHEALPixDGGS(
     ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3
 )
-from vgrid.utils.geometry import dggal_to_geo
-from vgrid.utils.constants import DGGAL_TYPES
-from dggal import *
 
 app = Application(appGlobals=globals())
 pydggal_setup(app)
 
-import platform
 
 if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
@@ -27,41 +58,8 @@ if platform.system() == "Windows":
 
     isea3h_dggs = Eaggr(Model.ISEA3H)
 
-from vgrid.dggs import mercantile
-import h3
-import a5
-from vgrid.utils.geometry import (
-    graticule_dggs_metrics,
-    geodesic_dggs_metrics,
-)
-from vgrid.utils.constants import ISEA3H_ACCURACY_RES_DICT
-from vgrid.conversion.dggs2geo.h32geo import h32geo
-from vgrid.conversion.dggs2geo.s22geo import s22geo
-from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
-from vgrid.conversion.dggs2geo.a52geo import a52geo
-from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
-from vgrid.conversion.dggs2geo.isea3h2geo import isea3h2geo
-from vgrid.conversion.dggs2geo.ease2geo import ease2geo
-from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
-from vgrid.conversion.dggs2geo.olc2geo import olc2geo
-from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
-from vgrid.conversion.dggs2geo.maidenhead2geo import maidenhead2geo
-from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
-from pyproj import Geod
 
 geod = Geod(ellps="WGS84")
-
-from qgis.PyQt.QtCore import QVariant
-
-from qgis.core import (
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsProject,
-    QgsFeature,
-    QgsGeometry,
-    QgsField,
-    QgsFields,
-)
 
 
 def h32qgsfeature(feature, h3_id):
@@ -335,7 +333,7 @@ def isea4t2qgsfeature(feature, isea4t_id):
 
 def isea3h2qgsfeature(feature, isea3h_id):
     if platform.system() == "Windows":
-        isea3h_cell = DggsCell(isea3h_id)
+        DggsCell(isea3h_id)
         cell_polygon = isea3h2geo(isea3h_id)
         cell_centroid = cell_polygon.centroid
         center_lat = round(cell_centroid.y, 7)
@@ -470,12 +468,12 @@ def ease2qgsfeature(feature, ease_id):
 def dggal2qgsfeature(feature, zone_id, dggs_type):
     """
     Unified function to convert DGGSAL cell ID to QGIS feature for any DGGSAL type.
-    
+
     Args:
         feature: Input QGIS feature
         zone_id: DGGSAL cell ID
         dggs_type: DGGSAL type (e.g., 'gnosis', 'isea3h', 'isea9r', etc.)
-    
+
     Returns:
         QgsFeature: Feature with DGGSAL geometry and attributes
     """
@@ -508,7 +506,7 @@ def dggal2qgsfeature(feature, zone_id, dggs_type):
     new_fields.append(QgsField("avg_edge_len", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
     new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    
+
     # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
@@ -533,7 +531,6 @@ def dggal2qgsfeature(feature, zone_id, dggs_type):
     dggal_feature.setAttributes(all_attributes)
 
     return dggal_feature
-
 
 
 def qtm2qgsfeature(feature, qtm_id):
@@ -710,7 +707,7 @@ def mgrs2qgsfeature(feature, mgrs_id):
                         cell_area,
                         cell_perimeter,
                     ) = graticule_dggs_metrics(intersected_polygon)
-    except:
+    except BaseException:
         pass
 
     # Get all attributes from the input feature
@@ -1152,7 +1149,7 @@ def gars2qgsfeature(feature, gars_id):
 
 def digipin2qgsfeature(feature, digipin_id):
     cell_polygon = digipin2geo(digipin_id)
-    clean_id = digipin_id.replace('-', '')
+    clean_id = digipin_id.replace("-", "")
     resolution = len(clean_id)
 
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -1289,9 +1286,7 @@ def dggrid_batch2qgsfeatures(
         except Exception as exc:
             num_bad += 1
             if feedback and num_bad <= 5:
-                feedback.reportError(
-                    f"Feature {feat.id()}: {exc}"
-                )
+                feedback.reportError(f"Feature {feat.id()}: {exc}")
         if feedback and total and i % 50 == 0:
             feedback.setProgress(int(50 + 50 * i / total))
 

@@ -43,14 +43,12 @@ from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from qgis.PyQt.QtCore import QVariant  # type: ignore
 import os
-import processing  # type: ignore
 
 from collections import deque
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-from ...utils.imgs import Imgs  # type: ignore
+from ...utils.help_footer import social_links_footer  # type: ignore
 from shapely.geometry import box
-from shapely.wkt import loads as wkt_loads
 from ...settings import settings  # type: ignore
 from vgrid.utils.io import validate_coordinate
 from ...utils.latlon import epsg4326
@@ -112,7 +110,6 @@ class rHEALPixGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_rhealpix.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -125,7 +122,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -256,9 +253,11 @@ class rHEALPixGen(QgsProcessingAlgorithm):
             seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
             # Apply antimeridian fix if requested
             if self.shift_antimeridian:
-                seed_cell_polygon = rhealpix2geo(seed_cell_id, fix_antimeridian='shift_east')
+                seed_cell_polygon = rhealpix2geo(
+                    seed_cell_id, fix_antimeridian="shift_east"
+                )
             elif self.split_antimeridian:
-                seed_cell_polygon = rhealpix2geo(seed_cell_id, fix_antimeridian='split')
+                seed_cell_polygon = rhealpix2geo(seed_cell_id, fix_antimeridian="split")
             else:
                 seed_cell_polygon = rhealpix2geo(seed_cell_id)
 
@@ -291,44 +290,59 @@ class rHEALPixGen(QgsProcessingAlgorithm):
             else:
                 # Store intersecting cells with their polygons and cell objects
                 intersecting_cells = {}  # {cell_id: (cell, polygon)}
-                covered_cells = set()  # Cells that have been processed (by their unique ID)
+                covered_cells = (
+                    set()
+                )  # Cells that have been processed (by their unique ID)
                 queue = deque([seed_cell])  # Queue for BFS exploration
-                
+
                 while queue:
                     current_cell = queue.popleft()  # BFS: FIFO
-                    current_cell_id = str(current_cell)  # Unique identifier for the current cell
+                    current_cell_id = str(
+                        current_cell
+                    )  # Unique identifier for the current cell
 
                     if current_cell_id in covered_cells:
                         continue
                     # Add current cell to the covered set
                     covered_cells.add(current_cell_id)
-                    
+
                     # Apply antimeridian fix if requested (apply once during BFS)
                     if self.shift_antimeridian:
-                        cell_polygon = rhealpix2geo(current_cell_id, fix_antimeridian='shift_east')
+                        cell_polygon = rhealpix2geo(
+                            current_cell_id, fix_antimeridian="shift_east"
+                        )
                     elif self.split_antimeridian:
-                        cell_polygon = rhealpix2geo(current_cell_id, fix_antimeridian='split')
+                        cell_polygon = rhealpix2geo(
+                            current_cell_id, fix_antimeridian="split"
+                        )
                     else:
                         cell_polygon = rhealpix2geo(current_cell_id)
-                    
+
                     # Skip cells that do not intersect the bounding box
                     if cell_polygon.intersects(extent_bbox):
                         # Store for later processing (no double conversion)
-                        intersecting_cells[current_cell_id] = (current_cell, cell_polygon)
-                        
+                        intersecting_cells[current_cell_id] = (
+                            current_cell,
+                            cell_polygon,
+                        )
+
                         # Get neighbors and add to queue
                         neighbors = current_cell.neighbors(plane=False)
                         for _, neighbor in neighbors.items():
-                            neighbor_id = str(neighbor)  # Unique identifier for the neighbor
+                            neighbor_id = str(
+                                neighbor
+                            )  # Unique identifier for the neighbor
                             if neighbor_id not in covered_cells:
                                 queue.append(neighbor)
-                    
+
                     if feedback.isCanceled():
                         break
 
                 # Process only intersecting cells (no double conversion)
                 # Note: fix_antimeridian already applied when creating polygon in BFS loop
-                for idx, (cell_id, (cell, cell_polygon)) in enumerate(intersecting_cells.items()):
+                for idx, (cell_id, (cell, cell_polygon)) in enumerate(
+                    intersecting_cells.items()
+                ):
                     progress = int((idx / len(intersecting_cells)) * 100)
                     feedback.setProgress(progress)
 
@@ -370,16 +384,18 @@ class rHEALPixGen(QgsProcessingAlgorithm):
             for idx, cell in enumerate(rhealpix_grid):
                 progress = int((idx / total_cells) * 100)
                 feedback.setProgress(progress)
-                
+
                 rhealpix_id = str(cell)
                 # Apply antimeridian fix if requested
                 if self.shift_antimeridian:
-                    cell_polygon = rhealpix2geo(rhealpix_id, fix_antimeridian='shift_east')
+                    cell_polygon = rhealpix2geo(
+                        rhealpix_id, fix_antimeridian="shift_east"
+                    )
                 elif self.split_antimeridian:
-                    cell_polygon = rhealpix2geo(rhealpix_id, fix_antimeridian='split')
+                    cell_polygon = rhealpix2geo(rhealpix_id, fix_antimeridian="split")
                 else:
                     cell_polygon = rhealpix2geo(rhealpix_id)
-                
+
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
                 rhealpix_feature = QgsFeature()

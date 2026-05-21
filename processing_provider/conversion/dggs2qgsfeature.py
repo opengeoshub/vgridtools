@@ -38,13 +38,12 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 
 import platform
 
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...utils.conversion.dggs2qgsfeature import (
     a52qgsfeature,
     dggal2qgsfeature,
     digipin2qgsfeature,
     dggrid_batch2qgsfeatures,
-    ease2qgsfeature,
     gars2qgsfeature,
     geohash2qgsfeature,
     georef2qgsfeature,
@@ -78,21 +77,17 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "S2",
         "A5",
         "rHEALPix",
-       
         "DGGAL_GNOSIS",
-        
         "DGGAL_ISEA4R",
         "DGGAL_ISEA9R",
         "DGGAL_ISEA3H",
         "DGGAL_ISEA7H",
         "DGGAL_ISEA7H_Z7",
-
         "DGGAL_IVEA4R",
         "DGGAL_IVEA9R",
         "DGGAL_IVEA3H",
         "DGGAL_IVEA7H",
         "DGGAL_IVEA7H_Z7",
-        
         "DGGAL_RTEA4R",
         "DGGAL_RTEA9R",
         "DGGAL_RTEA3H",
@@ -100,7 +95,6 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "DGGAL_RTEA7H_Z7",
         "DGGAL_HEALPix",
         "DGGAL_rHEALPix",
-
         "DGGRID_SUPERFUND",
         "DGGRID_PLANETRISK",
         "DGGRID_ISEA3H",
@@ -116,7 +110,6 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "DGGRID_FULLER4D",
         "DGGRID_FULLER43H",
         "DGGRID_FULLER7H",
-
         "QTM",
         "OLC",
         "Geohash",
@@ -184,7 +177,6 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     figure = "../images/tutorial/cellid2dggs.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -197,7 +189,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -282,9 +274,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         self.total_features = source.featureCount()
         self.num_bad = 0
 
-        self.cell_id_field = self.parameterAsString(
-            parameters, self.CELL_ID, context
-        )
+        self.cell_id_field = self.parameterAsString(parameters, self.CELL_ID, context)
         self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         self.DGGS_TYPE_functions = {
@@ -293,28 +283,60 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             "a5": a52qgsfeature,
             "rhealpix": rhealpix2qgsfeature,
             # 'ease': ease2qgsfeature, # prone to unexpected errors
-            "dggal_gnosis": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "gnosis"),
-           
-            "dggal_isea4r": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "isea4r"),
-            "dggal_isea9r": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "isea9r"),   
-            "dggal_isea3h": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "isea3h"),
-            "dggal_isea7h": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "isea7h"),
-            "dggal_isea7h_z7": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "isea7h_z7"),
-           
-            "dggal_ivea4r": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "ivea4r"),
-            "dggal_ivea9r": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "ivea9r"),
-            "dggal_ivea3h": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "ivea3h"),
-            "dggal_ivea7h": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "ivea7h"),
-            "dggal_ivea7h_z7": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "ivea7h_z7"),
-           
-            "dggal_rtea4r": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "rtea4r"),
-            "dggal_rtea9r": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "rtea9r"),
-            "dggal_rtea3h": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "rtea3h"),
-            "dggal_rtea7h": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "rtea7h"),    
-            "dggal_rtea7h_z7": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "rtea7h_z7"),
-            "dggal_healpix": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "healpix"),
-            "dggal_rhealpix": lambda feature, zone_id: dggal2qgsfeature(feature, zone_id, "rhealpix"),
-           
+            "dggal_gnosis": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "gnosis"
+            ),
+            "dggal_isea4r": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "isea4r"
+            ),
+            "dggal_isea9r": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "isea9r"
+            ),
+            "dggal_isea3h": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "isea3h"
+            ),
+            "dggal_isea7h": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "isea7h"
+            ),
+            "dggal_isea7h_z7": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "isea7h_z7"
+            ),
+            "dggal_ivea4r": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "ivea4r"
+            ),
+            "dggal_ivea9r": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "ivea9r"
+            ),
+            "dggal_ivea3h": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "ivea3h"
+            ),
+            "dggal_ivea7h": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "ivea7h"
+            ),
+            "dggal_ivea7h_z7": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "ivea7h_z7"
+            ),
+            "dggal_rtea4r": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "rtea4r"
+            ),
+            "dggal_rtea9r": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "rtea9r"
+            ),
+            "dggal_rtea3h": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "rtea3h"
+            ),
+            "dggal_rtea7h": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "rtea7h"
+            ),
+            "dggal_rtea7h_z7": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "rtea7h_z7"
+            ),
+            "dggal_healpix": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "healpix"
+            ),
+            "dggal_rhealpix": lambda feature, zone_id: dggal2qgsfeature(
+                feature, zone_id, "rhealpix"
+            ),
             "qtm": qtm2qgsfeature,
             "olc": olc2qgsfeature,
             "geohash": geohash2qgsfeature,

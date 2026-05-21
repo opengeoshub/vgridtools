@@ -42,14 +42,13 @@ from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsCoordinateTransform
 import os
 
-from shapely.geometry import Polygon
 from vgrid.conversion.latlon2dggs import latlon2digipin
 from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
 from vgrid.utils.io import validate_digipin_coordinate
 from vgrid.dggs.digipin import BOUNDS
 from vgrid.utils.geometry import graticule_dggs_metrics
 
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...settings import settings
 from ...utils.latlon import epsg4326
 from vgrid.utils.constants import DGGS_TYPES
@@ -106,7 +105,6 @@ class DIGIPINGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_digipin.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -119,7 +117,7 @@ class DIGIPINGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -132,8 +130,8 @@ class DIGIPINGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        min_res = DGGS_TYPES['digipin']["min_res"]
-        max_res = DGGS_TYPES['digipin']["max_res"]
+        min_res = DGGS_TYPES["digipin"]["min_res"]
+        max_res = DGGS_TYPES["digipin"]["max_res"]
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
@@ -192,7 +190,10 @@ class DIGIPINGen(QgsProcessingAlgorithm):
         if self.canvas_extent is None or self.canvas_extent.isEmpty():
             # Use full DIGIPIN bounds if no extent specified
             min_lon, min_lat, max_lon, max_lat = (
-                BOUNDS['minLat'], BOUNDS['minLon'], BOUNDS['maxLat'], BOUNDS['maxLon']
+                BOUNDS["minLat"],
+                BOUNDS["minLon"],
+                BOUNDS["maxLat"],
+                BOUNDS["maxLon"],
             )
         else:
             try:
@@ -216,29 +217,31 @@ class DIGIPINGen(QgsProcessingAlgorithm):
                     )
             except Exception:
                 min_lon, min_lat, max_lon, max_lat = (
-                    BOUNDS['minLon'], BOUNDS['minLat'], BOUNDS['maxLon'], BOUNDS['maxLat']
+                    BOUNDS["minLon"],
+                    BOUNDS["minLat"],
+                    BOUNDS["maxLon"],
+                    BOUNDS["maxLat"],
                 )
 
             # Validate and constrain to DIGIPIN bounds (India region)
             min_lon, min_lat, max_lon, max_lat = validate_digipin_coordinate(
                 min_lon, min_lat, max_lon, max_lat
-            )            
+            )
 
         # Calculate sampling density based on resolution
         # Each level divides the cell by 4 (2x2 grid)
         base_width = 9.0  # degrees at resolution 1
         factor = 0.25 ** (self.resolution - 1)  # each level divides by 4
         sample_width = base_width * factor
-        
+
         seen_cells = set()
-        total_cells = 0
-        
+
         # Estimate total cells for progress tracking
         lon_range = max_lon - min_lon
         lat_range = max_lat - min_lat
         estimated_cells = int((lon_range / sample_width) * (lat_range / sample_width))
         feedback.pushInfo(f"Estimated cells to be generated: {estimated_cells}.")
-        
+
         # Sample points across the bounding box
         lon = min_lon
         cell_count = 0
@@ -247,69 +250,86 @@ class DIGIPINGen(QgsProcessingAlgorithm):
             while lat <= max_lat:
                 if feedback.isCanceled():
                     break
-                    
+
                 try:
                     # Get DIGIPIN code for this point at the specified resolution
                     digipin_id = latlon2digipin(lat, lon, self.resolution)
-                    
-                    if digipin_id == 'Out of Bound':
+
+                    if digipin_id == "Out of Bound":
                         lat += sample_width
                         continue
-                    
+
                     if digipin_id in seen_cells:
                         lat += sample_width
                         continue
-                    
+
                     seen_cells.add(digipin_id)
-                    
+
                     # Get the bounds for this DIGIPIN cell
                     cell_polygon = digipin2geo(digipin_id)
-                    
+
                     if isinstance(cell_polygon, str):  # Error like 'Invalid DIGIPIN'
                         lat += sample_width
                         continue
-                    
+
                     # Convert to QgsGeometry
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                    
+
                     # Calculate cell metrics
-                    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-                        graticule_dggs_metrics(cell_polygon)
-                    )
-                    
-                    # Create QgsFeature
-                    digipin_feature = QgsFeature()
-                    digipin_feature.setGeometry(cell_geometry)
-                    digipin_feature.setAttributes([
-                        digipin_id,
-                        self.resolution,
+                    (
                         center_lat,
                         center_lon,
                         cell_width,
                         cell_height,
                         cell_area,
                         cell_perimeter,
-                    ])
-                    
+                    ) = graticule_dggs_metrics(cell_polygon)
+
+                    # Create QgsFeature
+                    digipin_feature = QgsFeature()
+                    digipin_feature.setGeometry(cell_geometry)
+                    digipin_feature.setAttributes(
+                        [
+                            digipin_id,
+                            self.resolution,
+                            center_lat,
+                            center_lon,
+                            cell_width,
+                            cell_height,
+                            cell_area,
+                            cell_perimeter,
+                        ]
+                    )
+
                     sink.addFeature(digipin_feature, QgsFeatureSink.FastInsert)
                     cell_count += 1
-                    
+
                     # Update progress
                     if cell_count % 100 == 0:
-                        progress = int((cell_count / estimated_cells) * 100) if estimated_cells > 0 else 0
+                        progress = (
+                            int((cell_count / estimated_cells) * 100)
+                            if estimated_cells > 0
+                            else 0
+                        )
                         feedback.setProgress(progress)
-                    
+
                 except Exception:
                     # Skip cells with errors
                     pass
-                
+
                 lat += sample_width
             lon += sample_width
 
-        feedback.pushInfo(f"DIGIPIN DGGS generation completed. Generated {cell_count} cells.")
+        feedback.pushInfo(
+            f"DIGIPIN DGGS generation completed. Generated {cell_count} cells."
+        )
 
         if context.willLoadLayerOnCompletion(dest_id):
-            lineColor = settings.digipinColor if hasattr(settings, 'digipinColor') else QColor("#FF0000")
+            lineColor = (
+                settings.digipinColor
+                if hasattr(settings, "digipinColor")
+                else QColor("#FF0000")
+            )
             fontColor = QColor("#000000")
             context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
                 StylePostProcessor.create(lineColor, fontColor)

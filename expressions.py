@@ -16,28 +16,31 @@ __date__ = "2024-11-20"
 __copyright__ = "(L) 2024 by Thang Quach"
 
 
-from qgis.core import  Qgis, qgsfunction, QgsGeometry, QgsCircle, QgsGeos, QgsPointXY
+from qgis.core import Qgis, qgsfunction, QgsGeometry, QgsCircle, QgsPointXY
 from vgrid.conversion import latlon2dggs
 from math import tau, pi, sqrt
+
 FOUR_PI = 4 * pi
 try:
-  from shapely import maximum_inscribed_circle
+    from shapely import maximum_inscribed_circle as _shapely_mic
 except ImportError:
-  from shapely.experimental import maximum_inscribed_circle
+    from shapely.experimental import maximum_inscribed_circle as _shapely_mic
 
 group_name = "DGGS Vgrid"
+
 
 def maximum_inscribed_circle(geometry: QgsGeometry) -> QgsGeometry:
     # geos_geo = QgsGeos(geometry.get())
     # epsilon = 0.00000001
     # line_string = geos_geo.maximumInscribedCircle(epsilon)[0]
-    line_string = maximum_inscribed_circle(geometry)
+    line_string = _shapely_mic(geometry)
 
     return QgsGeometry(
         QgsCircle.fromCenterPoint(
             line_string.pointN(0), line_string.pointN(-1)
         ).toPolygon()
     )
+
 
 @qgsfunction(args="auto", group=group_name)
 def latlon2h3(latitude, longitude, resolution, feature, parent):
@@ -83,19 +86,19 @@ def latlon2s2(latitude, longitude, resolution, feature, parent):
     </style>
     Convert (lat, long) to S2 Token.
     <h4>Syntax</h4>
-      <li><span class = function>latlon2s2</span>(<span class = parameters>lat, long, resolution</span>)</li>   
+      <li><span class = function>latlon2s2</span>(<span class = parameters>lat, long, resolution</span>)</li>
     <h4>Arguments</h4>
     <ul>
       <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
       <li><span class = parameters>long</span>: longitude coordinate field or value</li>
-      <li><span class = parameters>resolution</span>: S2 resolution [0..30]</li>    
+      <li><span class = parameters>resolution</span>: S2 resolution [0..30]</li>
     </ul>
     <h4>Example usage</h4>
 
     <ul>
-      <li><span class = function>latlon2s2</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 21</span>)&rarr; '31752f45cc94'</li>
+      <li><span class = function>latlon2s2</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 21</span>)</li>
       <li>Point features: <span class = function>latlon2s2</span>(<span class = parameters>$y,$x,21</span>)</li>
-    </ul> 
+    </ul>
     """
     return latlon2dggs.latlon2s2(latitude, longitude, resolution)
 
@@ -119,7 +122,7 @@ def latlon2a5(latitude, longitude, resolution, feature, parent):
     <ul>
       <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
       <li><span class = parameters>long</span>: longitude coordinate field or value</li>
-      <li><span class = parameters>resolution</span>: A5 resolution [0..29]</li>      
+      <li><span class = parameters>resolution</span>: A5 resolution [0..29]</li>
     </ul>
     <h4>Example usage</h4>
 
@@ -493,7 +496,7 @@ def latlon2quadkey(latitude, longitude, resolution, feature, parent):
     <ul>
       <li><span class = function>latlon2quadkey</span>(<span class = parameters>10.775275567242561, 106.70679737574993, 23</span>)&rarr; '13223011131020212310000'</li>
       <li>Point features: <span class = function>latlon2quadkey</span>(<span class = parameters>$y,$x,23</span>)</li>
-    </ul> 
+    </ul>
     """
     return latlon2dggs.latlon2quadkey(latitude, longitude, resolution)
 
@@ -548,7 +551,7 @@ def latlon2gars(latitude, longitude, resolution, feature, parent):
     <ul>
       <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
       <li><span class = parameters>long</span>: longitude coordinate field or value</li>
-      <li><span class = parameters>resolution</span>: GARS resolution [1..4] (30, 15, 5, 1 minutes)</li>  
+      <li><span class = parameters>resolution</span>: GARS resolution [1..4] (30, 15, 5, 1 minutes)</li>
     </ul>
     <h4>Example usage</h4>
 
@@ -579,7 +582,7 @@ def latlon2digipin(latitude, longitude, resolution, feature, parent):
     <ul>
       <li><span class = parameters>lat</span>: latitude coordinate field or value</li>
       <li><span class = parameters>long</span>: longitude coordinate field or value</li>
-      <li><span class = parameters>resolution</span>: DIGIPIN resolution [1..10]</li>  
+      <li><span class = parameters>resolution</span>: DIGIPIN resolution [1..10]</li>
     </ul>
     <h4>Example usage</h4>
 
@@ -593,55 +596,56 @@ def latlon2digipin(latitude, longitude, resolution, feature, parent):
 
 @qgsfunction(args="auto", group=group_name)
 def comp_skew(geometry: QgsGeometry, parent):
-        """
-        <style type="text/css">
-        .function {
-        color: #05688f;
-        font-weight: bold;
-        }
-        .parameters {
-        color: red;
-        font-style:italic
-        }
-        </style>
-        Calculate Skew Compactness
+    """
+    <style type="text/css">
+    .function {
+    color: #05688f;
+    font-weight: bold;
+    }
+    .parameters {
+    color: red;
+    font-style:italic
+    }
+    </style>
+    Calculate Skew Compactness
 
-        <p> Skew Compactness is the ratio of the area <b>A<sub>mic<sub></b> of the maximum inscribed circle to the area of the minimum bounding circle <b>A<sub>mbc<sub></b>. </p>
+    <p> Skew Compactness is the ratio of the area <b>A<sub>mic<sub></b> of the maximum inscribed circle to the area of the minimum bounding circle <b>A<sub>mbc<sub></b>. </p>
 
-        <p style="text-align: center;">
-        <b>comp_skew</b> = <b>A<sub>mic</sub></b> / <b>A<sub>mbc</sub></b>
-        </p>
-        Where:
-        <ul>
-            <li> <b>A<sub>mic</sub></b> is the area of the maximum inscribed circle of the geometry. </li>
-            <li> <b>A<sub>mbc</sub></b> is the area of the minimum bounding circle of the geometry. </li>
-        </ul>
+    <p style="text-align: center;">
+    <b>comp_skew</b> = <b>A<sub>mic</sub></b> / <b>A<sub>mbc</sub></b>
+    </p>
+    Where:
+    <ul>
+        <li> <b>A<sub>mic</sub></b> is the area of the maximum inscribed circle of the geometry. </li>
+        <li> <b>A<sub>mbc</sub></b> is the area of the minimum bounding circle of the geometry. </li>
+    </ul>
 
-        Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact.
+    Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact.
 
-        <h4>Syntax</h4>
-        <p><b>comp_skew</b>( <i>geometry</i> )</p>
+    <h4>Syntax</h4>
+    <p><b>comp_skew</b>( <i>geometry</i> )</p>
 
-        <h4>Arguments</h4>
-        <p><i>geometry</i>: a polygon geometry</p>
+    <h4>Arguments</h4>
+    <p><i>geometry</i>: a polygon geometry</p>
 
-        <h4>Example usage</h4>
-        <ul>
-        <li><b>comp_skew</b>( $geometry )  &rarr; [0..1]</li>
-        </ul>
-        """
-        if geometry.type() != Qgis.GeometryType.Polygon:
-            parent.setEvalErrorString(
-                "Only polygon geometry are supported for function `comp_skew`"
-            )
-            return
+    <h4>Example usage</h4>
+    <ul>
+    <li><b>comp_skew</b>( $geometry )  &rarr; [0..1]</li>
+    </ul>
+    """
+    if geometry.type() != Qgis.GeometryType.Polygon:
+        parent.setEvalErrorString(
+            "Only polygon geometry are supported for function `comp_skew`"
+        )
+        return
 
-        # mic = maximum inscribed circle
-        A_mic = maximum_inscribed_circle(geometry).area()
-        # mbc = minimal bounding circle
-        A_mbc = geometry.minimalEnclosingCircle()[0].area()
+    # mic = maximum inscribed circle
+    A_mic = maximum_inscribed_circle(geometry).area()
+    # mbc = minimal bounding circle
+    A_mbc = geometry.minimalEnclosingCircle()[0].area()
 
-        return A_mic / A_mbc
+    return A_mic / A_mbc
+
 
 @qgsfunction(args="auto", group=group_name)
 def comp_pp(geometry: QgsGeometry, parent):
@@ -694,6 +698,7 @@ def comp_pp(geometry: QgsGeometry, parent):
 
     return (FOUR_PI * A) / (P * P)
 
+
 @qgsfunction(args="auto", group=group_name)
 def comp_schwartz(geometry: QgsGeometry, parent):
     """<style type="text/css">
@@ -744,6 +749,7 @@ def comp_schwartz(geometry: QgsGeometry, parent):
 
     return 1 / (P / (tau * sqrt(A / pi)))
 
+
 @qgsfunction(args="auto", group=group_name)
 def comp_reock(geometry: QgsGeometry, parent):
     """<style type="text/css">
@@ -792,6 +798,7 @@ def comp_reock(geometry: QgsGeometry, parent):
     A_mbc = geometry.minimalEnclosingCircle()[0].area()
 
     return A / A_mbc
+
 
 @qgsfunction(args="auto", group=group_name)
 def comp_box_reock(geometry: QgsGeometry, parent):
@@ -921,7 +928,7 @@ def comp_cvh(geometry: QgsGeometry, parent):
       <li> <b>A<sub>cvh</sub></b> is the area of the convex hull of the geometry. </li>
     </ul>
 
-    Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact. Only a convex geometry will reach a Convex Hull Compactness score of 1. 
+    Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact. Only a convex geometry will reach a Convex Hull Compactness score of 1.
 
     <h4>Syntax</h4>
     <p><span class = function>comp_cvh</span>( <span class = parameters>geometry</span> )</p>
@@ -974,10 +981,10 @@ def comp_x_sym(geometry: QgsGeometry, parent):
       <li> <b>A</b> is the area of the original geometry. </li>
     </ul>
 
-    Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact. 
+    Scores range from 0 to 1, where 0 is the least compact and 1 is the most compact.
 
     <h4>Syntax</h4>
-          <li><span class = function>comp_x_sym</span>(<span class = parameters>geometry</span>)</li>   
+          <li><span class = function>comp_x_sym</span>(<span class = parameters>geometry</span>)</li>
 
     <h4>Arguments</h4>
     <p><span class = parameters>geometry</span>: a polygon geometry</p>
@@ -1008,7 +1015,9 @@ def comp_x_sym(geometry: QgsGeometry, parent):
     return A_X / A
 
 
-def _reflect_geometry_horizontally(geometry: QgsGeometry, centroid_y: float) -> QgsGeometry:
+def _reflect_geometry_horizontally(
+    geometry: QgsGeometry, centroid_y: float
+) -> QgsGeometry:
     """Return a geometry reflected across the horizontal axis (y mirrored) about centroid_y.
     Works for single and multi polygon geometries using XY coordinates.
     """
@@ -1018,7 +1027,9 @@ def _reflect_geometry_horizontally(geometry: QgsGeometry, centroid_y: float) -> 
         for poly in multi:
             reflected_poly = []
             for ring in poly:
-                reflected_ring = [QgsPointXY(pt.x(), 2 * centroid_y - pt.y()) for pt in ring]
+                reflected_ring = [
+                    QgsPointXY(pt.x(), 2 * centroid_y - pt.y()) for pt in ring
+                ]
                 reflected_poly.append(reflected_ring)
             reflected_multi.append(reflected_poly)
         return QgsGeometry.fromMultiPolygonXY(reflected_multi)
@@ -1026,7 +1037,8 @@ def _reflect_geometry_horizontally(geometry: QgsGeometry, centroid_y: float) -> 
         poly = geometry.asPolygon()
         reflected_poly = []
         for ring in poly:
-            reflected_ring = [QgsPointXY(pt.x(), 2 * centroid_y - pt.y()) for pt in ring]
+            reflected_ring = [
+                QgsPointXY(pt.x(), 2 * centroid_y - pt.y()) for pt in ring
+            ]
             reflected_poly.append(reflected_ring)
         return QgsGeometry.fromPolygonXY(reflected_poly)
-

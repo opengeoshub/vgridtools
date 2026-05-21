@@ -24,6 +24,7 @@ from vgrid.utils.constants import DGGAL_TYPES
 app = Application(appGlobals=globals())
 pydggal_setup(app)
 
+
 class DGGALRTEA9RGrid(QObject):
     def __init__(self, vgridtools, canvas, iface):
         super(DGGALRTEA9RGrid, self).__init__()
@@ -64,7 +65,9 @@ class DGGALRTEA9RGrid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self.dggrs.getLevelFromScaleDenominator(scale,relativeDepth=5,mmPerPixel = 0.28)
+            resolution = self.dggrs.getLevelFromScaleDenominator(
+                scale, relativeDepth=5, mmPerPixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -107,7 +110,7 @@ class DGGALRTEA9RGrid(QObject):
                     zone_id = self.dggrs.getZoneTextID(zone)
                     # Convert zone to geometry using dggal_to_geo
                     cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
-                    if settings.splitAntimeridian:    
+                    if settings.splitAntimeridian:
                         cell_polygon = fix_polygon(cell_polygon)
 
                     if epsg4326 != canvas_crs:
@@ -128,25 +131,6 @@ class DGGALRTEA9RGrid(QObject):
 
         except Exception:
             return
-
-    def enable_dggal(self, enabled: bool):
-        self.dggal_enabled = bool(enabled)
-        if not self.dggal_enabled:
-            self.removeMarker()
-
-    def _refreshDGGALGridOnExtent(self):
-        if self.dggal_enabled:
-            self.dggal_grid()
-
-    def _get_dggal_resolution(self, scale):
-        # Map scale to zoom, then to DGGAL resolution
-        zoom = 29.1402 - log2(scale)
-        # DGGAL resolution mapping - similar to other grids
-        min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
-        max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
-
-        res = min(max_res, max(min_res, floor(zoom*0.6)))
-        return res
 
     def enable_dggal(self, enabled: bool):
         self.dggal_enabled = bool(enabled)

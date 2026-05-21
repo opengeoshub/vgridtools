@@ -13,10 +13,11 @@ import h3
 from ..utils.latlon import epsg4326
 from ..settings import settings
 from vgrid.conversion.dggs2geo.h32geo import h32geo
-from math import log2, floor        
+from math import log2, floor
 from vgrid.utils.io import validate_coordinate
-from vgrid.utils.geometry import geodesic_buffer,get_h3_resolution_from_scale_denominator
+from vgrid.utils.geometry import get_h3_resolution_from_scale_denominator
 from vgrid.utils.constants import DGGS_TYPES
+
 
 class H3Grid(QObject):
     def __init__(self, vgridtools, canvas, iface):
@@ -54,7 +55,9 @@ class H3Grid(QObject):
 
             scale = self.canvas.scale()
             # resolution = self._get_h3_resolution(scale)
-            resolution = get_h3_resolution_from_scale_denominator(scale,relative_depth=6,mm_per_pixel = 0.28)
+            resolution = get_h3_resolution_from_scale_denominator(
+                scale, relative_depth=6, mm_per_pixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -67,13 +70,16 @@ class H3Grid(QObject):
                     child_cells = h3.cell_to_children(cell, resolution)
                     # Progress bar for child cells
                     for child_cell in child_cells:
-                        if settings.splitAntimeridian:    
-                            cell_polygon = h32geo(child_cell, fix_antimeridian='split')
-                        else: cell_polygon = h32geo(child_cell, fix_antimeridian='shift_west')
+                        if settings.splitAntimeridian:
+                            cell_polygon = h32geo(child_cell, fix_antimeridian="split")
+                        else:
+                            cell_polygon = h32geo(
+                                child_cell, fix_antimeridian="shift_west"
+                            )
                         if epsg4326 != canvas_crs:
                             trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
-                            )                           
+                            )
                             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                             cell_geometry.transform(trans_to_canvas)
                         else:
@@ -103,7 +109,8 @@ class H3Grid(QObject):
                     min_lon, min_lat, max_lon, max_lat
                 )
 
-                # buffer the extent because the h3.geo_to_cells function only returns the cells that are center_within the extent
+                # buffer the extent because the h3.geo_to_cells function only returns the
+                # cells that are center_within the extent
                 extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
                 # distance = h3.average_hexagon_edge_length(resolution, unit="m")
                 # extent_bbox = geodesic_buffer(extent_bbox, distance)
@@ -111,9 +118,9 @@ class H3Grid(QObject):
                 bbox_cells = h3.geo_to_cells(extent_bbox, resolution)
                 for bbox_cell in bbox_cells:
                     if settings.splitAntimeridian:
-                        cell_polygon = h32geo(bbox_cell, fix_antimeridian='split')
-                    else:   
-                        cell_polygon = h32geo(bbox_cell, fix_antimeridian='shift_west')  
+                        cell_polygon = h32geo(bbox_cell, fix_antimeridian="split")
+                    else:
+                        cell_polygon = h32geo(bbox_cell, fix_antimeridian="shift_west")
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
@@ -139,10 +146,10 @@ class H3Grid(QObject):
 
     def _get_h3_resolution(self, scale):
         zoom = 29.1402 - log2(scale)
-        min_res = DGGS_TYPES['h3']["min_res"]
-        max_res = DGGS_TYPES['h3']["max_res"]
+        min_res = DGGS_TYPES["h3"]["min_res"]
+        max_res = DGGS_TYPES["h3"]["max_res"]
         res = min(max_res, max(min_res, floor((zoom - 3) * 0.8)))
-        return res     
+        return res
 
     @pyqtSlot()
     def removeMarker(self):

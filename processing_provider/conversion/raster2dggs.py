@@ -1,4 +1,19 @@
 # -*- coding: utf-8 -*-
+from vgrid.utils.constants import MIN_CELL_AREA, RASTER_STATS_OPTIONS
+from vgrid.stats.dggalstats import dggal_metrics
+from vgrid.stats.quadkeystats import quadkey_metrics
+from vgrid.stats.tilecodestats import tilecode_metrics
+from vgrid.stats.geohashstats import geohash_metrics
+from vgrid.stats.olcstats import olc_metrics
+from vgrid.stats.qtmstats import qtm_metrics
+from vgrid.stats.isea4tstats import isea4t_metrics
+from vgrid.stats.rhealpixstats import rhealpix_metrics
+from vgrid.stats.a5stats import a5_metrics
+from vgrid.stats.s2stats import s2_metrics
+from ...utils.conversion.crs_helper import WGS84_REQUIRED_MSG, is_wgs84
+from ...utils.conversion.raster2dggs import *
+from ...utils.help_footer import social_links_footer
+
 __author__ = "Thang Quach"
 __date__ = "2024-11-20"
 __copyright__ = "(L) 2024, Thang Quach"
@@ -25,20 +40,6 @@ import platform
 from pyproj import Geod
 
 geod = Geod(ellps="WGS84")
-from ...utils.imgs import Imgs
-from ...utils.conversion.raster2dggs import *
-from ...utils.conversion.crs_helper import WGS84_REQUIRED_MSG, is_wgs84
-from vgrid.stats.s2stats import s2_metrics
-from vgrid.stats.a5stats import a5_metrics
-from vgrid.stats.rhealpixstats import rhealpix_metrics
-from vgrid.stats.isea4tstats import isea4t_metrics
-from vgrid.stats.qtmstats import qtm_metrics
-from vgrid.stats.olcstats import olc_metrics
-from vgrid.stats.geohashstats import geohash_metrics
-from vgrid.stats.tilecodestats import tilecode_metrics
-from vgrid.stats.quadkeystats import quadkey_metrics
-from vgrid.stats.dggalstats import dggal_metrics
-from vgrid.utils.constants import MIN_CELL_AREA, RASTER_STATS_OPTIONS
 
 
 class Raster2DGGS(QgsProcessingAlgorithm):
@@ -60,30 +61,24 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         "S2",
         "A5",
         "rHEALPix",
-        
         "DGGAL_GNOSIS",
-        
         "DGGAL_ISEA4R",
         "DGGAL_ISEA9R",
         "DGGAL_ISEA3H",
         "DGGAL_ISEA7H",
         "DGGAL_ISEA7H_Z7",
-       
         "DGGAL_IVEA4R",
         "DGGAL_IVEA9R",
         "DGGAL_IVEA3H",
         "DGGAL_IVEA7H",
         "DGGAL_IVEA7H_Z7",
-       
         "DGGAL_RTEA4R",
         "DGGAL_RTEA9R",
         "DGGAL_RTEA3H",
         "DGGAL_RTEA7H",
         "DGGAL_RTEA7H_Z7",
-       
         "DGGAL_HEALPix",
         "DGGAL_rHEALPix",
-       
         "QTM",
         "OLC",
         "Geohash",
@@ -175,7 +170,6 @@ class Raster2DGGS(QgsProcessingAlgorithm):
     figure = "../images/tutorial/raster2dggs.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -188,7 +182,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -246,42 +240,66 @@ class Raster2DGGS(QgsProcessingAlgorithm):
     def get_nearest_resolution(self, dggs_type, pixel_size):
         if dggs_type == "h3":
             resolutions = range(16)
-            cell_area = lambda res: h3.average_hexagon_area(res, unit="m^2")
+
+            def cell_area(res):
+                return h3.average_hexagon_area(res, unit="m^2")
         elif dggs_type == "s2":
             resolutions = range(25)
-            cell_area = lambda res: s2_metrics(res)[2]  # avg_area
+
+            def cell_area(res):
+                return s2_metrics(res)[2]  # avg_area
         elif dggs_type == "a5":
             resolutions = range(30)
-            cell_area = lambda res: a5_metrics(res)[2]  # avg_area
+
+            def cell_area(res):
+                return a5_metrics(res)[2]  # avg_area
         elif dggs_type == "rhealpix":
             resolutions = range(16)
-            cell_area = lambda res: rhealpix_metrics(res)[2]  # avg_area
+
+            def cell_area(res):
+                return rhealpix_metrics(res)[2]  # avg_area
         elif dggs_type == "isea4t":
             resolutions = range(24)
-            cell_area = lambda res: isea4t_metrics(res)[2]  # avg_area
+
+            def cell_area(res):
+                return isea4t_metrics(res)[2]  # avg_area
         elif dggs_type == "qtm":
             resolutions = range(2, 25)
-            cell_area = lambda res: qtm_metrics(res)[2]  # avg_area
+
+            def cell_area(res):
+                return qtm_metrics(res)[2]  # avg_area
         elif dggs_type == "olc":
             resolutions = [2, 4, 6, 8, 10, 11, 12]
-            cell_area = lambda res: olc_metrics(res)[2]  # avg_area
+
+            def cell_area(res):
+                return olc_metrics(res)[2]  # avg_area
         elif dggs_type == "geohash":
             resolutions = range(1, 11)
-            cell_area = lambda res: geohash_metrics(res)[2]  # avg_area
+
+            def cell_area(res):
+                return geohash_metrics(res)[2]  # avg_area
         elif dggs_type == "tilecode":
             resolutions = range(27)
-            cell_area = lambda res: tilecode_metrics(res)[2]  # avg_area
+
+            def cell_area(res):
+                return tilecode_metrics(res)[2]  # avg_area
         elif dggs_type == "quadkey":
             resolutions = range(27)
-            cell_area = lambda res: quadkey_metrics(res)[2]  # avg_area
+
+            def cell_area(res):
+                return quadkey_metrics(res)[2]  # avg_area
         elif dggs_type == "digipin":
             resolutions = range(1, 11)
+
             # For DIGIPIN, we'll use a simplified approach since there's no specific metrics function
-            cell_area = lambda res: 1000000 / (10 ** res)  # Simplified area calculation
+            def cell_area(res):
+                return 1000000 / (10**res)  # Simplified area calculation
         elif dggs_type.startswith("dggal_"):
             dggal_type = dggs_type.replace("dggal_", "")
             resolutions = range(34)  # DGGAL typically supports 0-15
-            cell_area = lambda res: dggal_metrics(dggal_type, res)[2]  # avg_area
+
+            def cell_area(res):
+                return dggal_metrics(dggal_type, res)[2]  # avg_area
 
         else:
             raise ValueError(f"Unsupported DGGS type: {dggs_type}")

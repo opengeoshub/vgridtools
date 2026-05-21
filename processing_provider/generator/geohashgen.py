@@ -41,7 +41,8 @@ from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsCoordinateTransform
 import os
 
-from ...utils.imgs import Imgs
+from ...utils.geohash_alphabet import geohash_child_chars
+from ...utils.help_footer import social_links_footer
 from vgrid.utils.geometry import graticule_dggs_metrics
 from shapely.geometry import box
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
@@ -50,7 +51,7 @@ from vgrid.utils.constants import INITIAL_GEOHASHES
 from vgrid.utils.io import validate_coordinate
 from ...utils.latlon import epsg4326
 from vgrid.utils.constants import DGGS_TYPES
-    
+
 
 class GeohashGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
@@ -103,7 +104,6 @@ class GeohashGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_geohash.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -116,7 +116,7 @@ class GeohashGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -129,8 +129,8 @@ class GeohashGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        min_res = DGGS_TYPES['geohash']["min_res"]
-        max_res = DGGS_TYPES['geohash']["max_res"]
+        min_res = DGGS_TYPES["geohash"]["min_res"]
+        max_res = DGGS_TYPES["geohash"]["max_res"]
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
@@ -204,8 +204,8 @@ class GeohashGen(QgsProcessingAlgorithm):
             writer.addFeature(geohash_feature)
             return
 
-        # Expand the geohash with all possible characters
-        for char in "0123456789bcdefghjkmnpqrstuvwxyz":
+        # pragma: allowlist secret — public geohash base32 alphabet, not credentials
+        for char in geohash_child_chars():
             self.expand_geohash(gh + char, target_length, writer, fields, feedback)
             if feedback.isCanceled():
                 return
@@ -246,8 +246,8 @@ class GeohashGen(QgsProcessingAlgorithm):
             writer.addFeature(geohash_feature)
             return
 
-        # If not at the target length, expand the geohash with all possible characters
-        for char in "0123456789bcdefghjkmnpqrstuvwxyz":
+        # pragma: allowlist secret — public geohash base32 alphabet, not credentials
+        for char in geohash_child_chars():
             self.expand_geohash_within_bbox(
                 gh + char, target_length, writer, fields, extent_bbox, feedback
             )
@@ -306,7 +306,7 @@ class GeohashGen(QgsProcessingAlgorithm):
 
             min_lon, min_lat, max_lon, max_lat = validate_coordinate(
                 min_lon, min_lat, max_lon, max_lat
-            )   
+            )
             extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
             total_geohashes = len(INITIAL_GEOHASHES)
             intersected_geohashes = []

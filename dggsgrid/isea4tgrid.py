@@ -14,7 +14,7 @@ from math import log2, floor
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
-from vgrid.utils.io import validate_coordinate  
+from vgrid.utils.io import validate_coordinate
 from vgrid.utils.constants import DGGS_TYPES
 from vgrid.utils.geometry import get_isea4t_resolution_from_scale_denominator
 
@@ -71,7 +71,9 @@ class ISEA4TGrid(QObject):
 
             scale = self.canvas.scale()
             # resolution = self._get_isea4t_resolution(scale)
-            resolution = get_isea4t_resolution_from_scale_denominator(scale,relative_depth=8,mm_per_pixel = 0.28)
+            resolution = get_isea4t_resolution_from_scale_denominator(
+                scale, relative_depth=8, mm_per_pixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -84,9 +86,11 @@ class ISEA4TGrid(QObject):
                     isea4t_cell = DggsCell(child)
                     isea4t_id = isea4t_cell.get_cell_id()
                     if settings.splitAntimeridian:
-                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='split')
+                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian="split")
                     else:
-                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='shift_west')
+                        cell_polygon = isea4t2geo(
+                            isea4t_id, fix_antimeridian="shift_west"
+                        )
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
@@ -138,9 +142,11 @@ class ISEA4TGrid(QObject):
                 for cell_id in cells_to_draw:
                     try:
                         if settings.splitAntimeridian:
-                            cell_polygon = isea4t2geo(cell_id, fix_antimeridian='split')
+                            cell_polygon = isea4t2geo(cell_id, fix_antimeridian="split")
                         else:
-                            cell_polygon = isea4t2geo(cell_id, fix_antimeridian='shift_west')
+                            cell_polygon = isea4t2geo(
+                                cell_id, fix_antimeridian="shift_west"
+                            )
                         if epsg4326 != canvas_crs:
                             trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
@@ -170,9 +176,9 @@ class ISEA4TGrid(QObject):
     def _get_isea4t_resolution(self, scale):
         # Map scale to zoom, then to ISEA4T resolution
         zoom = 29.1402 - log2(scale)
-        min_res = DGGS_TYPES['isea4t']["min_res"]
-        max_res = DGGS_TYPES['isea4t']["max_res"]
-        res = min(max_res, max(min_res, floor(zoom*0.95)))
+        min_res = DGGS_TYPES["isea4t"]["min_res"]
+        max_res = DGGS_TYPES["isea4t"]["max_res"]
+        res = min(max_res, max(min_res, floor(zoom * 0.95)))
         return res
 
     @pyqtSlot()

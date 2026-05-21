@@ -4,7 +4,6 @@ from qgis.PyQt.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QVBoxLayout,
-    QWidget,
     QLabel,
     QSpinBox,
     QHBoxLayout,
@@ -58,7 +57,9 @@ class DGGSSettingsDialog(QDialog):
             self.res_spins[dggs_type] = res_spin
 
         # Add buttons
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
@@ -240,12 +241,16 @@ class DGGSSettingsAlgorithm(QgsProcessingAlgorithm):
 
         for i, (dggs_type, param) in enumerate(zip(dggs_types, dggs_params)):
             min_res, max_res, default_res = self.DGGS_RESOLUTION[dggs_type]
+            if i == default_dggs_type:
+                default_value = min(max(default_resolution, min_res), max_res)
+            else:
+                default_value = min_res
             self.addParameter(
                 QgsProcessingParameterNumber(
                     param,
                     self.tr(f"{dggs_type} Resolution"),
                     QgsProcessingParameterNumber.Integer,
-                    default_res if i == default_dggs_type else min_res,
+                    default_value,
                     minValue=min_res,
                     maxValue=max_res,
                 )

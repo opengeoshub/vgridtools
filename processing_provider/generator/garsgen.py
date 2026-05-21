@@ -42,7 +42,7 @@ from qgis.utils import iface
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import QgsCoordinateTransform
 import os
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 import numpy as np
 from gars_field.garsgrid import GARSGrid
 from vgrid.utils.geometry import graticule_dggs_metrics
@@ -104,7 +104,6 @@ class GARSGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_gars.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -117,7 +116,7 @@ class GARSGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -130,8 +129,8 @@ class GARSGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        min_res = DGGS_TYPES['gars']["min_res"]
-        max_res = DGGS_TYPES['gars']["max_res"]
+        min_res = DGGS_TYPES["gars"]["min_res"]
+        max_res = DGGS_TYPES["gars"]["max_res"]
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}] (30, 15, 5, 1 minutes)"),
@@ -224,7 +223,7 @@ class GARSGen(QgsProcessingAlgorithm):
                 min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
 
         min_lon, min_lat, max_lon, max_lat = validate_coordinate(
-            min_lon, min_lat, max_lon, max_lat  
+            min_lon, min_lat, max_lon, max_lat
         )
 
         longitudes = np.arange(min_lon, max_lon, resolution_degrees)

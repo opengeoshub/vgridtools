@@ -1,3 +1,7 @@
+from vgrid.utils.io import validate_dggal_resolution
+from vgrid.utils.geometry import dggal_to_geo
+from vgrid.utils.constants import DGGAL_TYPES
+from dggal import *
 from collections import deque
 
 from shapely import make_valid
@@ -99,7 +103,9 @@ _SHIFT_FIX = {
 }
 
 
-def _resolve_fix_antimeridian(to_dggs, shift_antimeridian=False, split_antimeridian=False):
+def _resolve_fix_antimeridian(
+    to_dggs, shift_antimeridian=False, split_antimeridian=False
+):
     """Map generator-style booleans to ``fix_antimeridian`` for geo converters."""
     if split_antimeridian:
         return "split"
@@ -192,6 +198,7 @@ def _unified_geom_and_bbox(qgs_features):
 # H3
 #########################
 
+
 def _h3_cell_ids_full_world(resolution):
     """All H3 cell IDs at resolution (same path as vgrid ``h3_grid``)."""
     cells = []
@@ -235,9 +242,7 @@ def generate_h3_grid(
                 return None
             feedback.setProgress(int((idx / total) * 100))
 
-        cell_polygon = (
-            h32geo(h3_cell, fix_antimeridian=fix) if fix else h32geo(h3_cell)
-        )
+        cell_polygon = h32geo(h3_cell, fix_antimeridian=fix) if fix else h32geo(h3_cell)
         if bbox_polygon is not None and not cell_polygon.intersects(bbox_polygon):
             continue
         if not cell_polygon.intersects(unified_geom):
@@ -395,9 +400,7 @@ def generate_rhealpix_grid(
 
     resolution = validate_rhealpix_resolution(resolution)
     unified_geom, bbox = _unified_geom_and_bbox(qgs_features)
-    fix = _resolve_fix_antimeridian(
-        "rhealpix", shift_antimeridian, split_antimeridian
-    )
+    fix = _resolve_fix_antimeridian("rhealpix", shift_antimeridian, split_antimeridian)
     bbox_polygon = box(*bbox)
     bbox_center_lon = bbox_polygon.centroid.x
     bbox_center_lat = bbox_polygon.centroid.y
@@ -509,9 +512,7 @@ def generate_isea4t_grid(
 
     resolution = validate_isea4t_resolution(resolution)
     unified_geom, bbox = _unified_geom_and_bbox(qgs_features)
-    fix = _resolve_fix_antimeridian(
-        "isea4t", shift_antimeridian, split_antimeridian
-    )
+    fix = _resolve_fix_antimeridian("isea4t", shift_antimeridian, split_antimeridian)
 
     if is_full_world_bbox(bbox):
         bounding_children = get_isea4t_children_cells(ISEA4T_BASE_CELLS, resolution)
@@ -1253,9 +1254,7 @@ def generate_a5_grid(
     bbox_center_lat = bbox_polygon.centroid.y
 
     seed_cell_id = a5.lonlat_to_cell((bbox_center_lon, bbox_center_lat), resolution)
-    seed_cell_polygon = a52geo_u64(
-        seed_cell_id, split_antimeridian=use_split
-    )
+    seed_cell_polygon = a52geo_u64(seed_cell_id, split_antimeridian=use_split)
 
     intersecting_cells = {}
     if seed_cell_polygon.contains(bbox_polygon):
@@ -1269,9 +1268,7 @@ def generate_a5_grid(
                 continue
             covered_cells.add(current_cell_id)
 
-            cell_polygon = a52geo_u64(
-                current_cell_id, split_antimeridian=use_split
-            )
+            cell_polygon = a52geo_u64(current_cell_id, split_antimeridian=use_split)
             if full_world or cell_polygon.intersects(unified_geom):
                 intersecting_cells[current_cell_id] = cell_polygon
                 neighbors = a5.uncompact(
@@ -1347,10 +1344,6 @@ def generate_a5_grid(
 #########################
 # DGGAL
 #########################
-from dggal import *
-from vgrid.utils.constants import DGGAL_TYPES
-from vgrid.utils.geometry import dggal_to_geo
-from vgrid.utils.io import validate_dggal_resolution
 
 _dggal_app = Application(appGlobals=globals())
 pydggal_setup(_dggal_app)

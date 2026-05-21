@@ -26,8 +26,7 @@ from ...utils.binning.bin_helper import (
     process_point_dggs_bin,
     generate_digipin_grid_qgis,
 )
-from ...utils.imgs import Imgs
-
+from ...utils.help_footer import social_links_footer
 
 
 class DigipinBin(QgsProcessingAlgorithm):
@@ -83,23 +82,22 @@ class DigipinBin(QgsProcessingAlgorithm):
     figure = "../images/tutorial/bin_digipin.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
             + os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figure)
-            + '''">
+            + """">
                     </div>
                     <div align="right">
                       <p align="right">
-                      <b>'''
+                      <b>"""
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
-            + '''</b>
-                      </p>'''
-            + social_BW
-            + '''
+            + """</b>
+                      </p>"""
+            + social_links_footer()
+            + """
                     </div>
-                    '''
+                    """
         )
         return self.tr(self.txt_en, self.txt_vi) + footer
 

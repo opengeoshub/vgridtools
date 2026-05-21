@@ -18,10 +18,10 @@ from vgrid.utils.constants import GEOREF_RESOLUTION_DEGREES
 from vgrid.conversion.latlon2dggs import latlon2georef
 from vgrid.conversion.dggs2geo import georef2geo
 from vgrid.utils.constants import DGGS_TYPES
-from math import floor  
-from vgrid.utils.geometry import get_georef_resolution_from_scale_denominator
+from math import floor
 
-class GEOREFGrid(QObject):  
+
+class GEOREFGrid(QObject):
     def __init__(self, vgridtools, canvas, iface):
         super(GEOREFGrid, self).__init__()
         self.canvas = canvas
@@ -88,7 +88,7 @@ class GEOREFGrid(QObject):
                     )
 
             # Clamp to valid bounds
-            min_lon, min_lat, max_lon, max_lat = validate_coordinate(   
+            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
                 min_lon, min_lat, max_lon, max_lat
             )
 
@@ -142,16 +142,15 @@ class GEOREFGrid(QObject):
     #     elif zoom <= 24:
     #         return 5
     #     return 6
-    
+
     def _get_georef_resolution(self, scale):
         # Map scale to zoom, then to GEOREF resolution using formula:
         zoom = 29.1402 - log2(scale)
-        min_res = DGGS_TYPES['georef']["min_res"]
-        max_res = DGGS_TYPES['georef']["max_res"]
-        res = min(max_res, max(min_res, floor(zoom*0.2)))
+        min_res = DGGS_TYPES["georef"]["min_res"]
+        max_res = DGGS_TYPES["georef"]["max_res"]
+        res = min(max_res, max(min_res, floor(zoom * 0.2)))
         return res
 
-        
     @pyqtSlot()
     def removeMarker(self):
         self.georef_marker.reset(QgsWkbTypes.PolygonGeometry)

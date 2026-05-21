@@ -42,15 +42,12 @@ from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from qgis.PyQt.QtCore import QVariant
 import os
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from vgrid.utils.geometry import geodesic_dggs_metrics
-from vgrid.conversion.dggs2geo.a52geo import a52geo
-from vgrid.conversion.latlon2dggs import latlon2a5
 from ...settings import settings
 from vgrid.utils.io import validate_coordinate
 from qgis.core import QgsCoordinateTransform
 from ...utils.latlon import epsg4326
-from vgrid.utils.antimeridian import fix_polygon
 from vgrid.utils.constants import DGGS_TYPES
 from collections import deque
 from shapely.geometry import box
@@ -111,7 +108,6 @@ class A5Gen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_a5.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -124,7 +120,7 @@ class A5Gen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -138,8 +134,8 @@ class A5Gen(QgsProcessingAlgorithm):
             self.EXTENT, self.tr("Canvas extent"), optional=True
         )
         self.addParameter(param)
-        min_res = DGGS_TYPES['a5']["min_res"]
-        max_res = DGGS_TYPES['a5']["max_res"]
+        min_res = DGGS_TYPES["a5"]["min_res"]
+        max_res = DGGS_TYPES["a5"]["max_res"]
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
@@ -204,7 +200,7 @@ class A5Gen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         """
-        Generate A5 DGGS polygons intersecting the requested extent.       
+        Generate A5 DGGS polygons intersecting the requested extent.
         """
         fields = self.outputFields()
         (sink, dest_id) = self.parameterAsSink(
@@ -255,7 +251,7 @@ class A5Gen(QgsProcessingAlgorithm):
         bbox_center_lon = bbox_polygon.centroid.x
         bbox_center_lat = bbox_polygon.centroid.y
 
-# Centroid-seed BFS: expand neighbors until no intersecting cells remain.
+        # Centroid-seed BFS: expand neighbors until no intersecting cells remain.
         seed_cell_id = a5.lonlat_to_cell(
             (bbox_center_lon, bbox_center_lat), self.resolution
         )
@@ -307,7 +303,7 @@ class A5Gen(QgsProcessingAlgorithm):
 
         items = list(intersecting_cells.items())
         total_cells = len(items)
-        
+
         feedback.pushInfo(f"A5 DGGS generation: {total_cells} intersecting cells.")
         for idx, (cell_u64, cell_polygon) in enumerate(items):
             if feedback.isCanceled():
@@ -317,7 +313,7 @@ class A5Gen(QgsProcessingAlgorithm):
             cell_resolution = a5.get_resolution(cell_u64)
             num_edges = 5
             if cell_resolution == 1:
-                num_edges = 3   
+                num_edges = 3
 
             a5_hex = a5.u64_to_hex(cell_u64)
             (
@@ -353,6 +349,7 @@ class A5Gen(QgsProcessingAlgorithm):
             )
 
         return {self.OUTPUT: dest_id}
+
 
 class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
     instance = None

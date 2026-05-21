@@ -11,8 +11,8 @@ from qgis.PyQt.QtCore import pyqtSlot
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
-from math import log2, floor        
-from vgrid.utils.constants import DGGS_TYPES
+from math import log2
+
 # OLC imports
 from vgrid.generator.olcgrid import olc_grid as olc_grid_vgrid, olc_refine_cell
 from vgrid.utils.io import validate_coordinate

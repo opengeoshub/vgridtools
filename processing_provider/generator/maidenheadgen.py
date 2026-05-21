@@ -44,7 +44,7 @@ from qgis.PyQt.QtCore import QVariant
 import os
 
 from vgrid.dggs import maidenhead
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from shapely.geometry import Polygon
 from vgrid.utils.io import validate_coordinate
 from ...utils.latlon import epsg4326
@@ -110,7 +110,6 @@ class MaidenheadGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_maidenhead.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -123,7 +122,7 @@ class MaidenheadGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -295,7 +294,7 @@ class MaidenheadGen(QgsProcessingAlgorithm):
 
             min_lon, min_lat, max_lon, max_lat = validate_coordinate(
                 min_lon, min_lat, max_lon, max_lat
-            )   
+            )
 
             min_x = max(0, int((min_lon - base_lon) / lon_width))
             max_x = min(x_cells, int((max_lon - base_lon) / lon_width) + 1)

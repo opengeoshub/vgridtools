@@ -12,7 +12,6 @@ from qgis.core import (
     QgsGeometry,
     QgsPointXY,
     QgsVectorLayer,
-    QgsWkbTypes,
 )
 from qgis.PyQt.QtCore import QVariant
 from shapely.geometry import Point
@@ -124,8 +123,10 @@ def accumulate_qgs_raster_pixels(raster_layer, cell_id_fn, stats, feedback=None)
             has_valid = False
             for b in range(band_count):
                 val, ok = provider.sample(point, b + 1)
-                if ok and val is not None and not (
-                    isinstance(val, float) and math.isnan(val)
+                if (
+                    ok
+                    and val is not None
+                    and not (isinstance(val, float) and math.isnan(val))
                 ):
                     values.append(float(val))
                     has_valid = True
@@ -168,8 +169,10 @@ def read_qgs_pixel_centroids(raster_layer, feedback=None):
             valid = False
             for b in range(band_count):
                 val, ok = provider.sample(point, b + 1)
-                if ok and val is not None and not (
-                    isinstance(val, float) and math.isnan(val)
+                if (
+                    ok
+                    and val is not None
+                    and not (isinstance(val, float) and math.isnan(val))
                 ):
                     rec[f"band_{b + 1}"] = float(val)
                     valid = True

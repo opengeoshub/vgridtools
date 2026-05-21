@@ -1,3 +1,12 @@
+from qgis.PyQt.QtCore import QVariant
+from qgis.core import (
+    QgsVectorLayer,
+    QgsFeature,
+    QgsGeometry,
+    QgsField,
+    QgsFields,
+    QgsProcessingException,
+)
 import platform
 from vgrid.dggs import s2, olc
 import h3
@@ -50,16 +59,6 @@ from pyproj import Geod
 
 geod = Geod(ellps="WGS84")
 
-from qgis.core import (
-    QgsVectorLayer,
-    QgsFeature,
-    QgsGeometry,
-    QgsField,
-    QgsFields,
-    QgsProcessingException,
-)
-from qgis.PyQt.QtCore import QVariant
-
 
 ##########################
 # H3
@@ -100,7 +99,7 @@ def h3expand(
                     )
                     return None
             h3_ids_expand = h3.uncompact_cells(h3_ids, resolution)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your H3 cell Ids."
             )
@@ -194,7 +193,7 @@ def s2expand(
                     expanded_cells.extend(s2_id.children(resolution))
             s2_tokens_expand = [cell_id.to_token() for cell_id in expanded_cells]
 
-    except:
+    except BaseException:
         raise QgsProcessingException(
             "Expand cells failed. Please check your S2 Tokens."
         )
@@ -280,7 +279,7 @@ def a5expand(
                     )
                     return None
             a5_hexes_expand = a5_expand(a5_hexes, resolution)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your A5 cell Ids."
             )
@@ -363,8 +362,7 @@ def rhealpixexpand(
     if rhealpix_ids:
         try:
             max_res = max(
-                get_rhealpix_resolution(rhealpix_id)
-                for rhealpix_id in rhealpix_ids
+                get_rhealpix_resolution(rhealpix_id) for rhealpix_id in rhealpix_ids
             )
         except Exception as e:
             raise QgsProcessingException(
@@ -379,10 +377,8 @@ def rhealpixexpand(
             return None
 
         try:
-            rhealpix_cells_expand = rhealpix_expand(
-                rhealpix_ids, resolution
-            )
-        except:
+            rhealpix_cells_expand = rhealpix_expand(rhealpix_ids, resolution)
+        except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your rHEALPix cell Ids."
             )
@@ -467,12 +463,12 @@ def isea4texpand(
                 if feedback:
                     feedback.reportError(
                         f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )   
+                    )
                 return None
 
             try:
                 isea4t_cells_expand = isea4t_expand(isea4t_ids, resolution)
-            except:
+            except BaseException:
                 raise QgsProcessingException(
                     "Expand cells failed. Please check your ISEA4T cell Ids."
                 )
@@ -566,7 +562,7 @@ def isea3hexpand(
 
         try:
             isea3h_cells_expand = isea3h_expand(isea3h_ids, resolution)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your ISEA3H cell Ids."
             )
@@ -649,10 +645,10 @@ def qtmexpand(
                 if feedback:
                     feedback.reportError(
                         f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )   
+                    )
                     return None
             qtm_ids_expand = qtm_expand(qtm_ids, resolution)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your QTM cell Ids."
             )
@@ -735,10 +731,10 @@ def olcexpand(
                 if feedback:
                     feedback.reportError(
                         f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )           
+                    )
                     return None
             olc_ids_expand = olc_expand(olc_ids, resolution)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your OLC cell Ids."
             )
@@ -826,10 +822,10 @@ def geohashexpand(
                 if feedback:
                     feedback.reportError(
                         f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )   
+                    )
                     return None
             geohash_ids_expand = geohash_expand(geohash_ids, resolution)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your Geohash cell Ids."
             )
@@ -926,7 +922,7 @@ def tilecodeexpand(
                     )
                     return None
             tilecode_ids_expand = tilecode_expand(tilecode_ids, resolution)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your tilecode cell Ids."
             )
@@ -1020,7 +1016,7 @@ def quadkeyexpand(
                     )
                     return None
             quadkey_ids_expand = quadkey_expand(quadkey_ids, resolution)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your quadkey cell Ids."
             )
@@ -1124,14 +1120,14 @@ def dggalexpand(
                     zone = dggrs.getZoneFromTextID(dggal_id)
                     zone_res = dggrs.getZoneLevel(zone)
                     max_res = max(max_res, zone_res)
-                except:
+                except BaseException:
                     continue
 
             if resolution < max_res:
                 if feedback:
                     feedback.reportError(
                         f"Target expand resolution ({resolution}) must >=  {max_res}."
-                    )               
+                    )
                     return None
 
             dggal_ids_expand = dggal_expand(dggal_type, dggal_ids, resolution)
@@ -1157,7 +1153,7 @@ def dggalexpand(
                     zone = dggrs.getZoneFromTextID(dggal_id_expand)
                     zone_resolution = dggrs.getZoneLevel(zone)
                     num_edges = dggrs.countZoneEdges(zone)
-                except:
+                except BaseException:
                     # Fallback values if we can't get them from DGGAL
                     zone_resolution = resolution
                     num_edges = 6  # Default for hexagonal cells
@@ -1228,16 +1224,18 @@ def digipinexpand(
 
     if digipin_ids:
         try:
-            max_res = max(len(digipin_id.replace('-', '')) for digipin_id in digipin_ids)
+            max_res = max(
+                len(digipin_id.replace("-", "")) for digipin_id in digipin_ids
+            )
             if resolution < max_res:
                 if feedback:
                     feedback.reportError(
                         f"Target expand resolution ({resolution}) must >= {max_res}."
                     )
                     return None
-            
+
             digipin_ids_expand = digipin_expand(digipin_ids, resolution)
-                    
+
         except Exception as e:
             raise QgsProcessingException(
                 f"Expand cells failed. Please check your DIGIPIN ID field. Error: {str(e)}"
@@ -1250,16 +1248,21 @@ def digipinexpand(
                 feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
-            
+
             try:
                 cell_polygon = digipin2geo(digipin_id_expand)
-                
+
                 if not cell_polygon.is_valid:
                     continue
-                
-                center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-                    graticule_dggs_metrics(cell_polygon)
-                )
+
+                (
+                    center_lat,
+                    center_lon,
+                    cell_width,
+                    cell_height,
+                    cell_area,
+                    cell_perimeter,
+                ) = graticule_dggs_metrics(cell_polygon)
 
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 digipin_feature = QgsFeature(fields)
@@ -1275,9 +1278,11 @@ def digipinexpand(
                     "cell_area": cell_area,
                     "cell_perimeter": cell_perimeter,
                 }
-                digipin_feature.setAttributes([attributes[field.name()] for field in fields])
+                digipin_feature.setAttributes(
+                    [attributes[field.name()] for field in fields]
+                )
                 mem_provider.addFeatures([digipin_feature])
-                
+
             except Exception as e:
                 if feedback:
                     feedback.pushInfo(

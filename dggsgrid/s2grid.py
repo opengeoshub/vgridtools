@@ -9,7 +9,7 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
-from math import log2, floor    
+from math import log2, floor
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
@@ -55,7 +55,9 @@ class S2Grid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             # resolution = self._get_s2_resolution(scale)
-            resolution = get_s2_resolution_from_scale_denominator(scale,relative_depth=8,mm_per_pixel = 0.28)
+            resolution = get_s2_resolution_from_scale_denominator(
+                scale, relative_depth=8, mm_per_pixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -111,9 +113,9 @@ class S2Grid(QObject):
             for cell_id in cells:
                 s2_token = s2.CellId.to_token(cell_id)
                 if settings.splitAntimeridian:
-                    cell_polygon = s22geo(s2_token, fix_antimeridian='split')
+                    cell_polygon = s22geo(s2_token, fix_antimeridian="split")
                 else:
-                    cell_polygon = s22geo(s2_token, fix_antimeridian='shift_east')  
+                    cell_polygon = s22geo(s2_token, fix_antimeridian="shift_east")
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 if epsg4326 != canvas_crs:
                     trans = QgsCoordinateTransform(
@@ -138,10 +140,10 @@ class S2Grid(QObject):
 
     def _get_s2_resolution(self, scale):
         # Map scale to approximate zoom, then to S2 resolution by flooring zoom
-        zoom = 29.1402 - log2(scale)    
-        min_res = DGGS_TYPES['s2']["min_res"]
-        max_res = DGGS_TYPES['s2']["max_res"]
-        res = min(max_res, max(min_res, floor(zoom)))   
+        zoom = 29.1402 - log2(scale)
+        min_res = DGGS_TYPES["s2"]["min_res"]
+        max_res = DGGS_TYPES["s2"]["max_res"]
+        res = min(max_res, max(min_res, floor(zoom)))
         return res
 
     @pyqtSlot()

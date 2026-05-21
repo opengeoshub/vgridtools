@@ -25,7 +25,7 @@ from ...utils.binning.bin_helper import (
     prepare_point_bin_algorithm,
     process_point_dggs_bin,
 )
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...utils.resampling.dggsgrid import generate_isea4t_grid
 
 
@@ -82,23 +82,22 @@ class ISEA4TBin(QgsProcessingAlgorithm):
     figure = "../images/tutorial/bin_isea4t.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
             + os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figure)
-            + '''">
+            + """">
                     </div>
                     <div align="right">
                       <p align="right">
-                      <b>'''
+                      <b>"""
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
-            + '''</b>
-                      </p>'''
-            + social_BW
-            + '''
+            + """</b>
+                      </p>"""
+            + social_links_footer()
+            + """
                     </div>
-                    '''
+                    """
         )
         return self.tr(self.txt_en, self.txt_vi) + footer
 

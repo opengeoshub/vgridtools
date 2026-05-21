@@ -24,6 +24,7 @@ from vgrid.utils.constants import DGGAL_TYPES
 app = Application(appGlobals=globals())
 pydggal_setup(app)
 
+
 class DGGALRTEA4RGrid(QObject):
     def __init__(self, vgridtools, canvas, iface):
         super(DGGALRTEA4RGrid, self).__init__()
@@ -64,7 +65,9 @@ class DGGALRTEA4RGrid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self.dggrs.getLevelFromScaleDenominator(scale,relativeDepth=8,mmPerPixel = 0.28)
+            resolution = self.dggrs.getLevelFromScaleDenominator(
+                scale, relativeDepth=8, mmPerPixel=0.28
+            )
 
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
@@ -109,7 +112,7 @@ class DGGALRTEA4RGrid(QObject):
                     zone_id = self.dggrs.getZoneTextID(zone)
                     # Convert zone to geometry using dggal_to_geo
                     cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
-                    if settings.splitAntimeridian:          
+                    if settings.splitAntimeridian:
                         cell_polygon = fix_polygon(cell_polygon)
 
                     if epsg4326 != canvas_crs:
@@ -145,7 +148,7 @@ class DGGALRTEA4RGrid(QObject):
         min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
         max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
 
-        res = min(max_res, max(min_res, floor(zoom*0.95)))
+        res = min(max_res, max(min_res, floor(zoom * 0.95)))
         return res
 
     @pyqtSlot()

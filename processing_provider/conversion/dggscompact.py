@@ -34,7 +34,7 @@ from qgis.core import (
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...utils.conversion.dggscompact import *
 
 
@@ -49,21 +49,17 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         "S2",
         "A5",
         "rHEALPix",
-        
         "DGGAL_GNOSIS",
-        
         "DGGAL_ISEA4R",
         "DGGAL_ISEA9R",
         "DGGAL_ISEA3H",
         "DGGAL_ISEA7H",
         "DGGAL_ISEA7H_Z7",
-
         "DGGAL_IVEA4R",
         "DGGAL_IVEA9R",
         "DGGAL_IVEA3H",
         "DGGAL_IVEA7H",
         "DGGAL_IVEA7H_Z7",
-        
         "DGGAL_RTEA4R",
         "DGGAL_RTEA9R",
         "DGGAL_RTEA3H",
@@ -71,7 +67,6 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         "DGGAL_RTEA7H_Z7",
         "DGGAL_HEALPix",
         "DGGAL_rHEALPix",
-
         "QTM",
         "OLC",
         "Geohash",
@@ -124,13 +119,12 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
     figure = "../images/tutorial/dggscompact.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = f'''<div align="center">
                       <img src="{os.path.join(os.path.dirname(os.path.dirname(__file__)), self.figure)}">
                     </div>
                     <div align="right">
                       <p><b>{self.tr("Author: Thang Quach", "Author: Thang Quach")}</b></p>
-                      {social_BW}
+                      {social_links_footer()}
                     </div>'''
         return self.tr(self.txt_en, self.txt_vi) + footer
 
@@ -185,24 +179,60 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
             "geohash": geohashcompact,
             "tilecode": tilecodecompact,
             "quadkey": quadkeycompact,
-            "dggal_gnosis": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "gnosis"),
-            "dggal_isea4r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "isea4r"),
-            "dggal_isea9r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "isea9r"),
-            "dggal_isea3h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "isea3h"),
-            "dggal_isea7h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "isea7h"),
-            "dggal_isea7h_z7": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "isea7h_z7"),
-            "dggal_ivea4r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea4r"),
-            "dggal_ivea9r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea9r"),
-            "dggal_ivea3h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea3h"),
-            "dggal_ivea7h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea7h"),
-            "dggal_ivea7h_z7": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea7h_z7"),
-            "dggal_rtea4r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea4r"),
-            "dggal_rtea9r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea9r"),
-            "dggal_rtea3h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea3h"),
-            "dggal_rtea7h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea7h"),
-            "dggal_rtea7h_z7": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea7h_z7"),
-            "dggal_healpix": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "healpix"),
-            "dggal_rhealpix": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(dggal_layer, DGGALID_field, feedback, "rhealpix"),
+            "dggal_gnosis": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "gnosis"
+            ),
+            "dggal_isea4r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "isea4r"
+            ),
+            "dggal_isea9r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "isea9r"
+            ),
+            "dggal_isea3h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "isea3h"
+            ),
+            "dggal_isea7h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "isea7h"
+            ),
+            "dggal_isea7h_z7": lambda dggal_layer, DGGALID_field, feedback: (
+                dggalcompact(dggal_layer, DGGALID_field, feedback, "isea7h_z7")
+            ),
+            "dggal_ivea4r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "ivea4r"
+            ),
+            "dggal_ivea9r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "ivea9r"
+            ),
+            "dggal_ivea3h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "ivea3h"
+            ),
+            "dggal_ivea7h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "ivea7h"
+            ),
+            "dggal_ivea7h_z7": lambda dggal_layer, DGGALID_field, feedback: (
+                dggalcompact(dggal_layer, DGGALID_field, feedback, "ivea7h_z7")
+            ),
+            "dggal_rtea4r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "rtea4r"
+            ),
+            "dggal_rtea9r": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "rtea9r"
+            ),
+            "dggal_rtea3h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "rtea3h"
+            ),
+            "dggal_rtea7h": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "rtea7h"
+            ),
+            "dggal_rtea7h_z7": lambda dggal_layer, DGGALID_field, feedback: (
+                dggalcompact(dggal_layer, DGGALID_field, feedback, "rtea7h_z7")
+            ),
+            "dggal_healpix": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "healpix"
+            ),
+            "dggal_rhealpix": lambda dggal_layer, DGGALID_field, feedback: dggalcompact(
+                dggal_layer, DGGALID_field, feedback, "rhealpix"
+            ),
             "digipin": digipincompact,
         }
         if platform.system() == "Windows":

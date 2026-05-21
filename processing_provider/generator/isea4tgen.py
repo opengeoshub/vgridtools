@@ -58,7 +58,7 @@ if platform.system() == "Windows":
 
     isea4t_dggs = Eaggr(Model.ISEA4T)
 
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from shapely.geometry import box
 from ...settings import settings
 from vgrid.utils.constants import ISEA4T_RES_ACCURACY_DICT
@@ -120,7 +120,6 @@ class ISEA4TGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_isea4t.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -133,7 +132,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -276,9 +275,11 @@ class ISEA4TGen(QgsProcessingAlgorithm):
                     isea4t_id = isea4t_cell.get_cell_id()
                     # Apply antimeridian fix if requested
                     if self.shift_antimeridian:
-                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='shift_west')
+                        cell_polygon = isea4t2geo(
+                            isea4t_id, fix_antimeridian="shift_west"
+                        )
                     elif self.split_antimeridian:
-                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='split')
+                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian="split")
                     else:
                         cell_polygon = isea4t2geo(isea4t_id)
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -317,9 +318,11 @@ class ISEA4TGen(QgsProcessingAlgorithm):
                     isea4t_id = isea4t_cell.get_cell_id()
                     # Apply antimeridian fix if requested
                     if self.shift_antimeridian:
-                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='shift_west')
+                        cell_polygon = isea4t2geo(
+                            isea4t_id, fix_antimeridian="shift_west"
+                        )
                     elif self.split_antimeridian:
-                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian='split')
+                        cell_polygon = isea4t2geo(isea4t_id, fix_antimeridian="split")
                     else:
                         cell_polygon = isea4t2geo(isea4t_id)
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)

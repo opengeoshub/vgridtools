@@ -62,7 +62,7 @@ from vgrid.utils.constants import DGGRID_TYPES
 from vgrid.utils.geometry import geodesic_dggs_metrics
 
 from ...settings import settings
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...utils.latlon import epsg4326
 
 # Must match DGGRIDv8 (not deprecated dggrid_runner.output_address_types v7 list).
@@ -132,7 +132,6 @@ class DGGRIDGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_dggrid.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -145,7 +144,7 @@ class DGGRIDGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -254,7 +253,9 @@ class DGGRIDGen(QgsProcessingAlgorithm):
             parameters, self.SPLIT_ANTIMERIDIAN, context
         )
         self.aggregate = self.parameterAsBoolean(parameters, self.AGGREGATE, context)
-        self.densification = self.parameterAsInt(parameters, self.DENSIFICATION, context)
+        self.densification = self.parameterAsInt(
+            parameters, self.DENSIFICATION, context
+        )
         self.dggrid_options = build_dggrid_options(self.densification)
 
         self.resolution = validate_dggrid_resolution(self.dggs_type, self.resolution)
@@ -272,7 +273,7 @@ class DGGRIDGen(QgsProcessingAlgorithm):
             if self.split_antimeridian:
                 feedback.reportError(
                     f"Split at Antimeridian is not supported for {self.dggs_type} due to the current DGGRIDv8 bugs. "
-                     "Disable Split at Antimeridian or choose another DGGS type."
+                    "Disable Split at Antimeridian or choose another DGGS type."
                 )
                 return False
             if self.aggregate:
@@ -283,8 +284,7 @@ class DGGRIDGen(QgsProcessingAlgorithm):
                 self.aggregate = False
         elif self.aggregate and not self.split_antimeridian:
             feedback.reportWarning(
-                "Aggregate split cells"
-                "Split at Antimeridian; Aggregate will be ignored."
+                "Aggregate split cellsSplit at Antimeridian; Aggregate will be ignored."
             )
             self.aggregate = False
 

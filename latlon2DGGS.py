@@ -133,7 +133,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.s2LineEdit.returnPressed.connect(self.commitS2)
         self.a5LineEdit.returnPressed.connect(self.commitA5)
         self.rhealpixLineEdit.returnPressed.connect(self.commitrHEALPix)
-       
+
         self.dggal_gnosisLineEdit.returnPressed.connect(self.commitDGGAL_GNOSIS)
 
         self.dggal_isea4rLineEdit.returnPressed.connect(self.commitDGGAL_ISEA4R)
@@ -148,18 +148,19 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_ivea7hLineEdit.returnPressed.connect(self.commitDGGAL_IVEA7H)
         self.dggal_ivea7h_z7LineEdit.returnPressed.connect(self.commitDGGAL_IVEA7H_Z7)
 
-
         self.dggal_rtea4rLineEdit.returnPressed.connect(self.commitDGGAL_RTEA4R)
         self.dggal_rtea9rLineEdit.returnPressed.connect(self.commitDGGAL_RTEA9R)
         self.dggal_rtea3hLineEdit.returnPressed.connect(self.commitDGGAL_RTEA3H)
         self.dggal_rtea7hLineEdit.returnPressed.connect(self.commitDGGAL_RTEA7H)
         self.dggal_rtea7h_z7LineEdit.returnPressed.connect(self.commitDGGAL_RTEA7H_Z7)
-        
+
         self.dggal_healpixLineEdit.returnPressed.connect(self.commitDGGAL_HEALPix)
         self.dggal_rhealpixLineEdit.returnPressed.connect(self.commitDGGAL_rHEALPix)
 
         self.dggrid_superfundLineEdit.returnPressed.connect(self.commitDGGRID_SUPERFUND)
-        self.dggrid_planetriskLineEdit.returnPressed.connect(self.commitDGGRID_PLANETRISK)
+        self.dggrid_planetriskLineEdit.returnPressed.connect(
+            self.commitDGGRID_PLANETRISK
+        )
         self.dggrid_isea3hLineEdit.returnPressed.connect(self.commitDGGRID_ISEA3H)
         self.dggrid_isea4hLineEdit.returnPressed.connect(self.commitDGGRID_ISEA4H)
         self.dggrid_isea4tLineEdit.returnPressed.connect(self.commitDGGRID_ISEA4T)
@@ -172,8 +173,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggrid_fuller4tLineEdit.returnPressed.connect(self.commitDGGRID_FULLER4T)
         self.dggrid_fuller4dLineEdit.returnPressed.connect(self.commitDGGRID_FULLER4D)
         self.dggrid_fuller43hLineEdit.returnPressed.connect(self.commitDGGRID_FULLER43H)
-        self.dggrid_fuller7hLineEdit.returnPressed.connect(self.commitDGGRID_FULLER7H)      
-
+        self.dggrid_fuller7hLineEdit.returnPressed.connect(self.commitDGGRID_FULLER7H)
 
         self.isea4tLineEdit.returnPressed.connect(self.commitISEA4T)
         self.isea3hLineEdit.returnPressed.connect(self.commitISEA3H)
@@ -189,7 +189,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.garsLineEdit.returnPressed.connect(self.commitGARS)
         self.digipinLineEdit.returnPressed.connect(self.commitDIGIPIN)
 
-
         icon = QIcon(":/images/themes/default/mActionEditCopy.svg")
         self.wgs84CopyButton.setIcon(icon)
         self.projCopyButton.setIcon(icon)
@@ -200,12 +199,11 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.s2CopyButton.setIcon(icon)
         self.a5CopyButton.setIcon(icon)
         self.rhealpixCopyButton.setIcon(icon)
-       
 
         self.dggal_gnosisCopyButton.setIcon(icon)
 
         self.dggal_isea4rCopyButton.setIcon(icon)
-        self.dggal_isea9rCopyButton.setIcon(icon)           
+        self.dggal_isea9rCopyButton.setIcon(icon)
         self.dggal_isea3hCopyButton.setIcon(icon)
         self.dggal_isea7hCopyButton.setIcon(icon)
         self.dggal_isea7h_z7CopyButton.setIcon(icon)
@@ -215,16 +213,15 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_ivea9rCopyButton.setIcon(icon)
         self.dggal_ivea7hCopyButton.setIcon(icon)
         self.dggal_ivea7h_z7CopyButton.setIcon(icon)
-        
+
         self.dggal_rtea4rCopyButton.setIcon(icon)
         self.dggal_rtea9rCopyButton.setIcon(icon)
         self.dggal_rtea3hCopyButton.setIcon(icon)
         self.dggal_rtea7hCopyButton.setIcon(icon)
         self.dggal_rtea7h_z7CopyButton.setIcon(icon)
-        
+
         self.dggal_healpixCopyButton.setIcon(icon)
         self.dggal_rhealpixCopyButton.setIcon(icon)
-
 
         self.dggrid_superfundCopyButton.setIcon(icon)
         self.dggrid_planetriskCopyButton.setIcon(icon)
@@ -244,7 +241,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
 
         self.isea4tCopyButton.setIcon(icon)
         self.isea3hCopyButton.setIcon(icon)
-        self.easeCopyButton.setIcon(icon)        
+        self.easeCopyButton.setIcon(icon)
         self.qtmCopyButton.setIcon(icon)
         self.olcCopyButton.setIcon(icon)
         self.geohashCopyButton.setIcon(icon)
@@ -268,27 +265,26 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
 
         self.dggal_gnosisCopyButton.clicked.connect(self.copyDGGAL_GNOSIS)
 
-        self.dggal_isea4rCopyButton.clicked.connect(self.copyDGGAL_ISEA4R)      
+        self.dggal_isea4rCopyButton.clicked.connect(self.copyDGGAL_ISEA4R)
         self.dggal_isea9rCopyButton.clicked.connect(self.copyDGGAL_ISEA9R)
         self.dggal_isea3hCopyButton.clicked.connect(self.copyDGGAL_ISEA3H)
         self.dggal_isea7hCopyButton.clicked.connect(self.copyDGGAL_ISEA7H)
         self.dggal_isea7h_z7CopyButton.clicked.connect(self.copyDGGAL_ISEA7H_Z7)
-        
+
         self.dggal_ivea4rCopyButton.clicked.connect(self.copyDGGAL_IVEA4R)
         self.dggal_ivea9rCopyButton.clicked.connect(self.copyDGGAL_IVEA9R)
         self.dggal_ivea3hCopyButton.clicked.connect(self.copyDGGAL_IVEA3H)
         self.dggal_ivea7hCopyButton.clicked.connect(self.copyDGGAL_IVEA7H)
         self.dggal_ivea7h_z7CopyButton.clicked.connect(self.copyDGGAL_IVEA7H_Z7)
-        
+
         self.dggal_rtea4rCopyButton.clicked.connect(self.copyDGGAL_RTEA4R)
         self.dggal_rtea9rCopyButton.clicked.connect(self.copyDGGAL_RTEA9R)
         self.dggal_rtea3hCopyButton.clicked.connect(self.copyDGGAL_RTEA3H)
         self.dggal_rtea7hCopyButton.clicked.connect(self.copyDGGAL_RTEA7H)
-        self.dggal_rtea7h_z7CopyButton.clicked.connect(self.copyDGGAL_RTEA7H_Z7)    
+        self.dggal_rtea7h_z7CopyButton.clicked.connect(self.copyDGGAL_RTEA7H_Z7)
 
         self.dggal_healpixCopyButton.clicked.connect(self.copyDGGAL_HEALPIX)
-        self.dggal_rhealpixCopyButton.clicked.connect(self.copyDGGAL_RHEALPIX)  
-
+        self.dggal_rhealpixCopyButton.clicked.connect(self.copyDGGAL_RHEALPIX)
 
         self.dggrid_superfundCopyButton.clicked.connect(self.copyDGGRID_SUPERFUND)
         self.dggrid_planetriskCopyButton.clicked.connect(self.copyDGGRID_PLANETRISK)
@@ -305,7 +301,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggrid_fuller4dCopyButton.clicked.connect(self.copyDGGRID_FULLER4D)
         self.dggrid_fuller43hCopyButton.clicked.connect(self.copyDGGRID_FULLER43H)
         self.dggrid_fuller7hCopyButton.clicked.connect(self.copyDGGRID_FULLER7H)
-        
+
         self.isea4tCopyButton.clicked.connect(self.copyISEA4T)
         self.isea3hCopyButton.clicked.connect(self.copyISEA3H)
         self.easeCopyButton.clicked.connect(self.copyEASE)
@@ -324,36 +320,34 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.customProjectionSelectionWidget.crsChanged.connect(self.customCrsChanged)
 
         zoomto_icon = QIcon(":/images/themes/default/mActionZoomIn.svg")
-        self.wgs84ZoomtoButton.setIcon(zoomto_icon) 
+        self.wgs84ZoomtoButton.setIcon(zoomto_icon)
         self.h3ZoomtoButton.setIcon(zoomto_icon)
         self.s2ZoomtoButton.setIcon(zoomto_icon)
         self.a5ZoomtoButton.setIcon(zoomto_icon)
         self.rhealpixZoomtoButton.setIcon(zoomto_icon)
-        
 
-        self.dggal_gnosisZoomtoButton.setIcon(zoomto_icon)      
+        self.dggal_gnosisZoomtoButton.setIcon(zoomto_icon)
 
         self.dggal_isea4rZoomtoButton.setIcon(zoomto_icon)
         self.dggal_isea9rZoomtoButton.setIcon(zoomto_icon)
         self.dggal_isea3hZoomtoButton.setIcon(zoomto_icon)
         self.dggal_isea7hZoomtoButton.setIcon(zoomto_icon)
         self.dggal_isea7h_z7ZoomtoButton.setIcon(zoomto_icon)
-        
+
         self.dggal_ivea4rZoomtoButton.setIcon(zoomto_icon)
         self.dggal_ivea9rZoomtoButton.setIcon(zoomto_icon)
         self.dggal_ivea3hZoomtoButton.setIcon(zoomto_icon)
         self.dggal_ivea7hZoomtoButton.setIcon(zoomto_icon)
         self.dggal_ivea7h_z7ZoomtoButton.setIcon(zoomto_icon)
-        
+
         self.dggal_rtea4rZoomtoButton.setIcon(zoomto_icon)
         self.dggal_rtea9rZoomtoButton.setIcon(zoomto_icon)
         self.dggal_rtea3hZoomtoButton.setIcon(zoomto_icon)
         self.dggal_rtea7hZoomtoButton.setIcon(zoomto_icon)
         self.dggal_rtea7h_z7ZoomtoButton.setIcon(zoomto_icon)
-        
+
         self.dggal_healpixZoomtoButton.setIcon(zoomto_icon)
         self.dggal_rhealpixZoomtoButton.setIcon(zoomto_icon)
-
 
         self.dggrid_superfundZoomtoButton.setIcon(zoomto_icon)
         self.dggrid_planetriskZoomtoButton.setIcon(zoomto_icon)
@@ -371,11 +365,10 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggrid_fuller43hZoomtoButton.setIcon(zoomto_icon)
         self.dggrid_fuller7hZoomtoButton.setIcon(zoomto_icon)
 
-
         self.isea4tZoomtoButton.setIcon(zoomto_icon)
         self.isea3hZoomtoButton.setIcon(zoomto_icon)
         self.easeZoomtoButton.setIcon(zoomto_icon)
-        
+
         self.qtmZoomtoButton.setIcon(zoomto_icon)
         self.olcZoomtoButton.setIcon(zoomto_icon)
         self.geohashZoomtoButton.setIcon(zoomto_icon)
@@ -387,7 +380,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.garsZoomtoButton.setIcon(zoomto_icon)
         self.digipinZoomtoButton.setIcon(zoomto_icon)
 
-      
         self.wgs84ZoomtoButton.clicked.connect(self.zoomToWGS84)
         self.h3ZoomtoButton.clicked.connect(self.zoomToH3)
         self.s2ZoomtoButton.clicked.connect(self.zoomToS2)
@@ -407,16 +399,15 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_ivea3hZoomtoButton.clicked.connect(self.zoomToDGGAL_IVEA3H)
         self.dggal_ivea7hZoomtoButton.clicked.connect(self.zoomToDGGAL_IVEA7H)
         self.dggal_ivea7h_z7ZoomtoButton.clicked.connect(self.zoomToDGGAL_IVEA7H_Z7)
-        
+
         self.dggal_rtea4rZoomtoButton.clicked.connect(self.zoomToDGGAL_RTEA4R)
         self.dggal_rtea9rZoomtoButton.clicked.connect(self.zoomToDGGAL_RTEA9R)
         self.dggal_rtea3hZoomtoButton.clicked.connect(self.zoomToDGGAL_RTEA3H)
         self.dggal_rtea7hZoomtoButton.clicked.connect(self.zoomToDGGAL_RTEA7H)
         self.dggal_rtea7h_z7ZoomtoButton.clicked.connect(self.zoomToDGGAL_RTEA7H_Z7)
-        
+
         self.dggal_healpixZoomtoButton.clicked.connect(self.zoomToDGGAL_HEALPix)
         self.dggal_rhealpixZoomtoButton.clicked.connect(self.zoomToDGGAL_rHEALPix)
-
 
         self.dggrid_superfundZoomtoButton.clicked.connect(self.zoomToDGGRID_SUPERFUND)
         self.dggrid_planetriskZoomtoButton.clicked.connect(self.zoomToDGGRID_PLANETRISK)
@@ -434,13 +425,12 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggrid_fuller43hZoomtoButton.clicked.connect(self.zoomToDGGRID_FULLER43H)
         self.dggrid_fuller7hZoomtoButton.clicked.connect(self.zoomToDGGRID_FULLER7H)
 
-
         self.isea4tZoomtoButton.clicked.connect(self.zoomToISEA4T)
         self.isea3hZoomtoButton.clicked.connect(self.zoomToISEA3H)
         self.easeZoomtoButton.clicked.connect(self.zoomToEASE)
         self.qtmZoomtoButton.clicked.connect(self.zoomToQTM)
         self.olcZoomtoButton.clicked.connect(self.zoomToOLC)
-        self.geohashZoomtoButton.clicked.connect(self.zoomToGeohash)    
+        self.geohashZoomtoButton.clicked.connect(self.zoomToGeohash)
         self.georefZoomtoButton.clicked.connect(self.zoomToGEOREF)
         self.mgrsZoomtoButton.clicked.connect(self.zoomToMGRS)
         self.tilecodeZoomtoButton.clicked.connect(self.zoomToTilecode)
@@ -495,7 +485,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
         self.dggal_isea3h_marker.setStrokeColor(settings.markerColor)
-        self.dggal_isea3h_marker.setWidth(settings.gridWidth)   
+        self.dggal_isea3h_marker.setWidth(settings.gridWidth)
         self.dggal_isea7h_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
@@ -507,7 +497,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         )
         self.dggal_isea7h_z7_marker.setStrokeColor(settings.markerColor)
         self.dggal_isea7h_z7_marker.setWidth(settings.gridWidth)
-
 
         self.dggal_ivea4r_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
@@ -534,7 +523,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         )
         self.dggal_ivea7h_z7_marker.setStrokeColor(settings.markerColor)
         self.dggal_ivea7h_z7_marker.setWidth(settings.gridWidth)
-        
+
         self.dggal_rtea4r_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
         )
@@ -552,7 +541,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_rtea3h_marker.setWidth(settings.gridWidth)
         self.dggal_rtea7h_marker = QgsRubberBand(
             self.canvas, QgsWkbTypes.PolygonGeometry
-        )        
+        )
         self.dggal_rtea7h_marker.setStrokeColor(settings.markerColor)
         self.dggal_rtea7h_marker.setWidth(settings.gridWidth)
         self.dggal_rtea7h_z7_marker = QgsRubberBand(
@@ -573,66 +562,95 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_rhealpix_marker.setStrokeColor(settings.markerColor)
         self.dggal_rhealpix_marker.setWidth(settings.gridWidth)
 
-        self.dggrid_superfund_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_superfund_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_superfund_marker.setStrokeColor(settings.markerColor)
         self.dggrid_superfund_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_planetrisk_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_planetrisk_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_planetrisk_marker.setStrokeColor(settings.markerColor)
         self.dggrid_planetrisk_marker.setWidth(settings.gridWidth)
-       
-        self.dggrid_isea3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_isea3h_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_isea3h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea3h_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_isea4h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_isea4h_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_isea4h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea4h_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_isea4t_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_isea4t_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_isea4t_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea4t_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_isea4d_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_isea4d_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_isea4d_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea4d_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_isea43h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_isea43h_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_isea43h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea43h_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_isea7h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_isea7h_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_isea7h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea7h_marker.setWidth(settings.gridWidth)
 
-        self.dggrid_igeo7_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_igeo7_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_igeo7_marker.setStrokeColor(settings.markerColor)
         self.dggrid_igeo7_marker.setWidth(settings.gridWidth)
 
-        self.dggrid_fuller3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggrid_fuller3h_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_fuller3h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller3h_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_fuller4h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_fuller4h_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_fuller4h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller4h_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_fuller4t_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_fuller4t_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_fuller4t_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller4t_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_fuller4d_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_fuller4d_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_fuller4d_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller4d_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_fuller43h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+
+        self.dggrid_fuller43h_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
         self.dggrid_fuller43h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller43h_marker.setWidth(settings.gridWidth)
-        
-        self.dggrid_fuller7h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.dggrid_fuller7h_marker.setStrokeColor(settings.markerColor)
-        self.dggrid_fuller7h_marker.setWidth(settings.gridWidth)    
 
+        self.dggrid_fuller7h_marker = QgsRubberBand(
+            self.canvas, QgsWkbTypes.PolygonGeometry
+        )
+        self.dggrid_fuller7h_marker.setStrokeColor(settings.markerColor)
+        self.dggrid_fuller7h_marker.setWidth(settings.gridWidth)
 
         self.isea4t_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.isea4t_marker.setStrokeColor(settings.markerColor)
@@ -642,7 +660,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.ease_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.ease_marker.setStrokeColor(settings.markerColor)
         self.ease_marker.setWidth(settings.gridWidth)
-
 
         self.qtm_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.qtm_marker.setStrokeColor(settings.markerColor)
@@ -683,7 +700,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.digipin_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
         self.digipin_marker.setStrokeColor(settings.markerColor)
         self.digipin_marker.setWidth(settings.gridWidth)
-
 
     def _dggs_row_label(self, prefix):
         """Return the form-row label widget for a DGGS prefix."""
@@ -813,12 +829,12 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         if id != 6:
             self.a5LineEdit.setText(s_invalid)
         if id != 7:
-            self.rhealpixLineEdit.setText(s_invalid)      
-        
+            self.rhealpixLineEdit.setText(s_invalid)
+
         if id != 8:
             self.dggal_gnosisLineEdit.setText(s_invalid)
-        
-        if id != 9: 
+
+        if id != 9:
             self.dggal_isea4rLineEdit.setText(s_invalid)
         if id != 10:
             self.dggal_isea9rLineEdit.setText(s_invalid)
@@ -828,7 +844,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.dggal_isea7hLineEdit.setText(s_invalid)
         if id != 13:
             self.dggal_isea7h_z7LineEdit.setText(s_invalid)
-        
+
         if id != 14:
             self.dggal_ivea4rLineEdit.setText(s_invalid)
         if id != 15:
@@ -837,9 +853,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.dggal_ivea3hLineEdit.setText(s_invalid)
         if id != 17:
             self.dggal_ivea7hLineEdit.setText(s_invalid)
-        if id != 18:        
+        if id != 18:
             self.dggal_ivea7h_z7LineEdit.setText(s_invalid)
-       
+
         if id != 19:
             self.dggal_rtea4rLineEdit.setText(s_invalid)
         if id != 20:
@@ -848,8 +864,8 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.dggal_rtea3hLineEdit.setText(s_invalid)
         if id != 22:
             self.dggal_rtea7hLineEdit.setText(s_invalid)
-        if id != 23:            
-            self.dggal_rtea7h_z7LineEdit.setText(s_invalid)     
+        if id != 23:
+            self.dggal_rtea7h_z7LineEdit.setText(s_invalid)
         if id != 24:
             self.dggal_healpixLineEdit.setText(s_invalid)
         if id != 25:
@@ -870,8 +886,8 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         if id != 32:
             self.dggrid_isea43hLineEdit.setText(s_invalid)
         if id != 33:
-            self.dggrid_isea7hLineEdit.setText(s_invalid)   
-        if id != 35:    
+            self.dggrid_isea7hLineEdit.setText(s_invalid)
+        if id != 35:
             self.dggrid_igeo7LineEdit.setText(s_invalid)
         if id != 36:
             self.dggrid_fuller3hLineEdit.setText(s_invalid)
@@ -885,7 +901,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.dggrid_fuller43hLineEdit.setText(s_invalid)
         if id != 41:
             self.dggrid_fuller7hLineEdit.setText(s_invalid)
-        
+
         if id != 42:
             self.isea4tLineEdit.setText(s_invalid)
         if id != 43:
@@ -944,12 +960,12 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
 
         self.dggal_rtea4rLineEdit.setText("")
         self.dggal_rtea9rLineEdit.setText("")
-        self.dggal_rtea3hLineEdit.setText("")   
+        self.dggal_rtea3hLineEdit.setText("")
         self.dggal_rtea7hLineEdit.setText("")
         self.dggal_rtea7h_z7LineEdit.setText("")
 
         self.dggal_healpixLineEdit.setText("")
-        self.dggal_rhealpixLineEdit.setText("")         
+        self.dggal_rhealpixLineEdit.setText("")
 
         self.dggrid_superfundLineEdit.setText("")
         self.dggrid_planetriskLineEdit.setText("")
@@ -980,7 +996,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.maidenheadLineEdit.setText("")
         self.garsLineEdit.setText("")
         self.digipinLineEdit.setText("")
-
 
     def updateCoordinates(self, id, pt, crs):
         self.origPt = pt
@@ -1070,8 +1085,8 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.rhealpixLineEdit.setText(s)
-    
-        ### DGGAL
+
+        # DGGAL
         if self._should_update_coord(id, 8, "dggal_gnosisVisible"):
             try:
                 s = latlon2dggal(
@@ -1080,7 +1095,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_gnosisLineEdit.setText(s)
-        
+
         if self._should_update_coord(id, 9, "dggal_isea4rVisible"):
             try:
                 s = latlon2dggal(
@@ -1088,7 +1103,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 )
             except Exception:
                 s = s_invalid
-            self.dggal_isea4rLineEdit.setText(s)        
+            self.dggal_isea4rLineEdit.setText(s)
         if self._should_update_coord(id, 10, "dggal_isea9rVisible"):
             try:
                 s = latlon2dggal(
@@ -1121,7 +1136,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             except Exception:
                 s = s_invalid
             self.dggal_isea7h_z7LineEdit.setText(s)
-        
+
         if self._should_update_coord(id, 14, "dggal_ivea4rVisible"):
             try:
                 s = latlon2dggal(
@@ -1219,10 +1234,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 )
             except Exception:
                 s = s_invalid
-            self.dggal_rhealpixLineEdit.setText(s)    
-        
+            self.dggal_rhealpixLineEdit.setText(s)
 
-        ### DGGRID
+        # DGGRID
         dggrid_instance = None
         for prefix, dggs_type, coord_id in DGGRID_LATLON_ROWS:
             if self._should_update_coord(id, coord_id, f"{prefix}Visible"):
@@ -1240,15 +1254,13 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                     s = s_invalid
                 getattr(self, f"{prefix}LineEdit").setText(s)
 
-      
         if self._should_update_coord(id, 41, "isea4tVisible"):  # ISEA4T
             try:
                 s = latlon2isea4t(pt4326.y(), pt4326.x(), settings.isea4tRes)
             except Exception:
                 s = s_invalid
             self.isea4tLineEdit.setText(s)
-        
-        
+
         if self._should_update_coord(id, 42, "isea3hVisible"):  # ISEA3H
             try:
                 s = latlon2isea3h(pt4326.y(), pt4326.x(), settings.isea3hRes)
@@ -1262,7 +1274,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 s = s_invalid
             self.easeLineEdit.setText(s)
 
-        ### QTM
+        # QTM
         if self._should_update_coord(id, 44, "qtmVisible"):
             try:
                 s = latlon2qtm(pt4326.y(), pt4326.x(), settings.qtmRes)
@@ -1270,7 +1282,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 s = s_invalid
             self.qtmLineEdit.setText(s)
 
-        ### Graticule-based DGGS
+        # Graticule-based DGGS
         if self._should_update_coord(id, 45, "olcVisible"):
             try:
                 s = latlon2olc(pt4326.y(), pt4326.x(), settings.olcRes)
@@ -1320,7 +1332,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 s = s_invalid
             self.garsLineEdit.setText(s)
 
-        ### DIGIPIN
+        # DIGIPIN
         if self._should_update_coord(id, 53, "digipinVisible"):
             try:
                 s = latlon2digipin(pt4326.y(), pt4326.x(), settings.digipinRes)
@@ -1466,7 +1478,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             pt = QgsPoint(center_lon, center_lat)
             self.updateCoordinates(8, pt, epsg4326)
         except Exception:
-            self.showInvalid(8)    
+            self.showInvalid(8)
 
     def commitDGGAL_ISEA4R(self):
         text = self.dggal_isea4rLineEdit.text().strip()
@@ -1508,17 +1520,17 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.showInvalid(11)
 
     def commitDGGAL_ISEA7H(self):
-            text = self.dggal_isea7hLineEdit.text().strip()
-            try:
-                dggal_isea7h_geometry = dggal2geo("isea7h", text)
-                num_edges = 6
-                center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
-                    dggal_isea7h_geometry, num_edges
-                )
-                pt = QgsPoint(center_lon, center_lat)
-                self.updateCoordinates(12, pt, epsg4326)
-            except Exception:
-                self.showInvalid(12)
+        text = self.dggal_isea7hLineEdit.text().strip()
+        try:
+            dggal_isea7h_geometry = dggal2geo("isea7h", text)
+            num_edges = 6
+            center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
+                dggal_isea7h_geometry, num_edges
+            )
+            pt = QgsPoint(center_lon, center_lat)
+            self.updateCoordinates(12, pt, epsg4326)
+        except Exception:
+            self.showInvalid(12)
 
     def commitDGGAL_ISEA7H_Z7(self):
         text = self.dggal_isea7h_z7LineEdit.text().strip()
@@ -1545,7 +1557,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.updateCoordinates(14, pt, epsg4326)
         except Exception:
             self.showInvalid(14)
-    
+
     def commitDGGAL_IVEA9R(self):
         text = self.dggal_ivea9rLineEdit.text().strip()
         try:
@@ -1558,7 +1570,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.updateCoordinates(15, pt, epsg4326)
         except Exception:
             self.showInvalid(15)
-    
+
     def commitDGGAL_IVEA3H(self):
         text = self.dggal_ivea3hLineEdit.text().strip()
         try:
@@ -1597,7 +1609,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.updateCoordinates(18, pt, epsg4326)
         except Exception:
             self.showInvalid(18)
-    
+
     def commitDGGAL_RTEA4R(self):
         text = self.dggal_rtea4rLineEdit.text().strip()
         try:
@@ -1676,7 +1688,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         except Exception:
             self.showInvalid(24)
 
-
     def commitDGGAL_rHEALPix(self):
         text = self.dggal_rhealpixLineEdit.text().strip()
         try:
@@ -1689,15 +1700,14 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.updateCoordinates(25, pt, epsg4326)
         except Exception:
             self.showInvalid(25)
-    
-    ### DGGRID
+
+    # DGGRID
     def _plugin_dggrid(self):
         return get_plugin_dggrid_instance()
 
     def _dggrid_cell_polygon(self, dggs_type, cell_id, res):
         split = (
-            settings.splitAntimeridian
-            and dggs_type not in DGGRID_TYPES_NO_ANTIMERIDIAN
+            settings.splitAntimeridian and dggs_type not in DGGRID_TYPES_NO_ANTIMERIDIAN
         )
         return cached_dggrid_cell_geometry(
             self._plugin_dggrid(),
@@ -1716,9 +1726,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
                 cell_polygon, num_edges
             )
-            self.updateCoordinates(
-                coord_id, QgsPoint(center_lon, center_lat), epsg4326
-            )
+            self.updateCoordinates(coord_id, QgsPoint(center_lon, center_lat), epsg4326)
         except Exception:
             self.showInvalid(coord_id)
 
@@ -1935,7 +1943,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         text = re.sub(r"\s+", "", text)  # Remove all white space
         try:
             olc_geometry = olc2geo(text)
-            center_lat, center_lon, _, _, _ ,_ = graticule_dggs_metrics(olc_geometry)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(olc_geometry)
             pt = QgsPoint(center_lon, center_lat)
             self.updateCoordinates(45, pt, epsg4326)
         except Exception:
@@ -1946,7 +1954,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         text = re.sub(r"\s+", "", text)  # Remove all white space
         try:
             geohash_geometry = geohash2geo(text)
-            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(geohash_geometry)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(
+                geohash_geometry
+            )
             pt = QgsPoint(center_lon, center_lat)
             self.updateCoordinates(46, pt, epsg4326)
         except Exception:
@@ -1968,8 +1978,8 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         text = re.sub(r"\s+", "", text)  # Remove all white space
         text = re.sub(r"\s+", "", text)  # Remove all white space
         try:
-            mgrs_geometry = mgrs2geo(text)        
-                
+            mgrs_geometry = mgrs2geo(text)
+
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(mgrs_geometry)
             pt = QgsPoint(center_lon, center_lat)
             self.updateCoordinates(48, pt, epsg4326)
@@ -1980,7 +1990,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         text = self.tilecodeLineEdit.text().strip()
         try:
             tilecode_geometry = tilecode2geo(text)
-            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(tilecode_geometry)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(
+                tilecode_geometry
+            )
             pt = QgsPoint(center_lon, center_lat)
             self.updateCoordinates(49, pt, epsg4326)
         except Exception:
@@ -1990,7 +2002,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         text = self.quadkeyLineEdit.text().strip()
         try:
             quadkey_geometry = quadkey2geo(text)
-            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(quadkey_geometry)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(
+                quadkey_geometry
+            )
             pt = QgsPoint(center_lon, center_lat)
             self.updateCoordinates(50, pt, epsg4326)
         except Exception:
@@ -2000,7 +2014,9 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         text = self.maidenheadLineEdit.text().strip()
         try:
             maidenhead_geometry = maidenhead2geo(text)
-            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(maidenhead_geometry)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(
+                maidenhead_geometry
+            )
             pt = QgsPoint(center_lon, center_lat)
             self.updateCoordinates(51, pt, epsg4326)
         except Exception:
@@ -2012,16 +2028,18 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             gars_geometry = gars2geo(text)
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(gars_geometry)
             pt = QgsPoint(center_lon, center_lat)
-            self.updateCoordinates(52, pt, epsg4326)    
+            self.updateCoordinates(52, pt, epsg4326)
         except Exception:
             traceback.print_exc()
             self.showInvalid(52)
-    
+
     def commitDIGIPIN(self):
         text = self.digipinLineEdit.text().strip()
         try:
             digipin_geometry = digipin2geo(text)
-            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(digipin_geometry)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(
+                digipin_geometry
+            )
             pt = QgsPoint(center_lon, center_lat)
             self.updateCoordinates(53, pt, epsg4326)
         except Exception:
@@ -2182,67 +2200,80 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         s = self.dggal_healpixLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
-   
+
     def copyDGGRID_SUPERFUND(self):
         s = self.dggrid_superfundLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_PLANETRISK(self):
         s = self.dggrid_planetriskLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_ISEA3H(self):
         s = self.dggrid_isea3hLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_ISEA4H(self):
         s = self.dggrid_isea4hLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_ISEA4T(self):
         s = self.dggrid_isea4tLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_ISEA4D(self):
         s = self.dggrid_isea4dLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_ISEA43H(self):
         s = self.dggrid_isea43hLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
-    def copyDGGRID_ISEA7H(self):        
+
+    def copyDGGRID_ISEA7H(self):
         s = self.dggrid_isea7hLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_IGEO7(self):
         s = self.dggrid_igeo7LineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_FULLER3H(self):
         s = self.dggrid_fuller3hLineEdit.text()
-    
+
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_FULLER4H(self):
         s = self.dggrid_fuller4hLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_FULLER4T(self):
         s = self.dggrid_fuller4tLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_FULLER4D(self):
         s = self.dggrid_fuller4dLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_FULLER43H(self):
         s = self.dggrid_fuller43hLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
+
     def copyDGGRID_FULLER7H(self):
         s = self.dggrid_fuller7hLineEdit.text()
         self.clipboard.setText(s)
-
 
     def copyISEA4T(self):
         s = self.isea4tLineEdit.text()
@@ -2303,13 +2334,11 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         s = self.garsLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
-    
+
     def copyDIGIPIN(self):
         s = self.digipinLineEdit.text()
         self.clipboard.setText(s)
         self.iface.statusBarIface().showMessage("'{}' {}".format(s, s_copied), 3000)
-
-
 
     def customCrsChanged(self):
         if self.origPt is not None:
@@ -2327,7 +2356,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.marker.addPoint(pt)
         except Exception:
             self.showInvalid(0)
-    
+
     def zoomToH3(self):
         try:
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2525,7 +2554,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
             return
 
-
     def zoomToDGGAL_GNOSIS(self):
         try:
             text = self.dggal_gnosisLineEdit.text().strip()
@@ -2570,7 +2598,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 duration=2,
             )
             return
-
 
     def zoomToDGGAL_ISEA4R(self):
         try:
@@ -2715,7 +2742,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 level=Qgis.Warning,
                 duration=2,
             )
-            return   
+            return
 
     def zoomToDGGAL_ISEA7H(self):
         try:
@@ -2861,7 +2888,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
             return
 
-
     def zoomToDGGAL_IVEA9R(self):
         try:
             text = self.dggal_ivea9rLineEdit.text().strip()
@@ -2910,7 +2936,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 duration=2,
             )
             return
-
 
     def zoomToDGGAL_IVEA3H(self):
         try:
@@ -3104,7 +3129,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 duration=2,
             )
             return
-    
+
     def zoomToDGGAL_RTEA9R(self):
         try:
             text = self.dggal_rtea9rLineEdit.text().strip()
@@ -3299,7 +3324,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 duration=2,
             )
             return
-    
 
     def zoomToDGGAL_HEALPix(self):
         try:
@@ -3712,7 +3736,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             if not text:
                 return
             cell_polygon = olc2geo(text)
-            center_lat, center_lon, _, _, _ ,_ = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(cell_polygon)
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -3755,7 +3779,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 return
 
             cell_polygon = geohash2geo(text)
-            center_lat, center_lon, _, _, _ ,_ = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(cell_polygon)
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -3798,7 +3822,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 return
 
             cell_polygon = georef2geo(text)
-            center_lat, center_lon, _, _, _ ,_ = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(cell_polygon)
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -3838,8 +3862,8 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         try:
             text = self.mgrsLineEdit.text().strip()
             if not text:
-                return            
-            cell_polygon = mgrs2geo(text)           
+                return
+            cell_polygon = mgrs2geo(text)
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(cell_polygon)
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -3883,7 +3907,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 return
 
             cell_polygon = tilecode2geo(text)
-            center_lat, center_lon, _, _, _ ,_ = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(cell_polygon)
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -3926,7 +3950,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 return
 
             cell_polygon = quadkey2geo(text)
-            center_lat, center_lon, _, _, _ ,_ = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(cell_polygon)
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -3969,7 +3993,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 return
 
             cell_polygon = maidenhead2geo(text)
-            center_lat, center_lon, _, _, _ ,_ = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(cell_polygon)
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -4012,7 +4036,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 return
 
             cell_polygon = gars2geo(text)
-            center_lat, center_lon, _, _, _ ,_ = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(cell_polygon)
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -4055,7 +4079,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 return
 
             cell_polygon = digipin2geo(text)
-            center_lat, center_lon, _, _, _ ,_ = graticule_dggs_metrics(cell_polygon)
+            center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(cell_polygon)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
             self.marker.reset(QgsWkbTypes.PointGeometry)
@@ -4092,7 +4116,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 duration=2,
             )
             return
-
 
     @pyqtSlot(QgsPointXY)
     def capturedPoint(self, pt):
@@ -4139,7 +4162,6 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggal_rtea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.dggal_healpix_marker.reset(QgsWkbTypes.PolygonGeometry)
 
-
         self.dggrid_superfund_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.dggrid_planetrisk_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.dggrid_isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
@@ -4154,9 +4176,8 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.dggrid_fuller4t_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.dggrid_fuller4d_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.dggrid_fuller43h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_fuller7h_marker.reset(QgsWkbTypes.PolygonGeometry)  
-        
-        
+        self.dggrid_fuller7h_marker.reset(QgsWkbTypes.PolygonGeometry)
+
         self.isea4t_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
         self.ease_marker.reset(QgsWkbTypes.PolygonGeometry)

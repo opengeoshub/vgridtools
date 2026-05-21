@@ -47,7 +47,7 @@ from vgrid.dggs import olc
 from vgrid.generator.olcgrid import olc_grid, olc_refine_cell
 from vgrid.utils.geometry import graticule_dggs_metrics
 
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...settings import settings
 from shapely.geometry import Polygon, box
 from vgrid.utils.io import validate_coordinate
@@ -105,7 +105,6 @@ class OLCGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_olc.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -118,7 +117,7 @@ class OLCGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """

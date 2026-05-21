@@ -86,7 +86,9 @@ def normalize_category(cat):
     return cat.strip().lower()
 
 
-def bin_stat_column_name(stats, numeric_field=None, category_field=None, category_value=None):
+def bin_stat_column_name(
+    stats, numeric_field=None, category_field=None, category_value=None
+):
     """Match vgrid DGGS binning column names via :func:`stat_column_name`."""
     cat = category_value if category_field else None
     if stats == "count":
@@ -232,9 +234,7 @@ def collect_stat_props(
     for cat in sorted(all_categories):
         values = bins[cell_id].get(cat, get_default_stats_structure())
         props.update(
-            stat_props_for_category(
-                values, stats, numeric_field, category_field, cat
-            )
+            stat_props_for_category(values, stats, numeric_field, category_field, cat)
         )
     return props
 
@@ -291,9 +291,7 @@ def compute_stat_value(values, stats):
     if stats == "var":
         return statistics.variance(values["var"]) if len(values["var"]) > 1 else 0
     if stats == "range":
-        return (
-            max(values["range"]) - min(values["range"]) if values["range"] else 0
-        )
+        return max(values["range"]) - min(values["range"]) if values["range"] else 0
     if stats == "minority":
         freq = Counter(values["values"])
         return min(freq.items(), key=lambda x: x[1])[0] if freq else None
@@ -626,9 +624,7 @@ def generate_digipin_grid_qgis(resolution, extent_layer, feedback=None):
     return layer
 
 
-def prepare_point_bin_algorithm(
-    point_layer, stats, numeric_field, category_field
-):
+def prepare_point_bin_algorithm(point_layer, stats, numeric_field, category_field):
     """Shared prepareAlgorithm checks for point DGGS binning tools."""
     if stats != "count" and not numeric_field:
         raise QgsProcessingException(
@@ -665,9 +661,7 @@ def process_point_dggs_bin(
 
     feedback.setProgress(0)
     feedback.pushInfo("Loading and exploding point geometries...")
-    points, bbox = collect_bin_points(
-        point_layer, category, numeric_field, feedback
-    )
+    points, bbox = collect_bin_points(point_layer, category, numeric_field, feedback)
 
     if feedback.isCanceled():
         return {}
@@ -710,9 +704,7 @@ def process_point_dggs_bin(
         sink, dest_id = _create_sink(empty_bin_output_fields(id_col, metric_kind))
         return {alg.OUTPUT: dest_id}
 
-    feedback.pushInfo(
-        f"Aggregating {len(joined)} point-in-cell match(es) ({stats})..."
-    )
+    feedback.pushInfo(f"Aggregating {len(joined)} point-in-cell match(es) ({stats})...")
     grouped = aggregate_joined(
         joined,
         id_col,
@@ -723,9 +715,7 @@ def process_point_dggs_bin(
     grouped = grouped.reset_index()
 
     stats_by_id = {str(row[id_col]): row for _, row in grouped.iterrows()}
-    out_fields, stat_cols = build_bin_output_fields(
-        grid_layer, grouped, stats, id_col
-    )
+    out_fields, stat_cols = build_bin_output_fields(grid_layer, grouped, stats, id_col)
 
     sink, dest_id = _create_sink(out_fields)
 

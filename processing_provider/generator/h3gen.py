@@ -46,7 +46,7 @@ import os
 
 import h3
 
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from shapely.geometry import box
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from ...settings import settings
@@ -109,7 +109,6 @@ class H3Gen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_h3.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -122,7 +121,7 @@ class H3Gen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -135,8 +134,8 @@ class H3Gen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        min_res = DGGS_TYPES['h3']["min_res"]
-        max_res = DGGS_TYPES['h3']["max_res"]
+        min_res = DGGS_TYPES["h3"]["min_res"]
+        max_res = DGGS_TYPES["h3"]["max_res"]
 
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
@@ -255,9 +254,9 @@ class H3Gen(QgsProcessingAlgorithm):
                 feedback.setProgress(progress)
                 # Apply antimeridian fix if requested
                 if self.shift_antimeridian:
-                    cell_polygon = h32geo(bbox_cell, fix_antimeridian='shift_west')
+                    cell_polygon = h32geo(bbox_cell, fix_antimeridian="shift_west")
                 elif self.split_antimeridian:
-                    cell_polygon = h32geo(bbox_cell, fix_antimeridian='split')
+                    cell_polygon = h32geo(bbox_cell, fix_antimeridian="split")
                 else:
                     cell_polygon = h32geo(bbox_cell)
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -301,9 +300,9 @@ class H3Gen(QgsProcessingAlgorithm):
                         break
                     # Apply antimeridian fix if requested
                     if self.shift_antimeridian:
-                        cell_polygon = h32geo(child_cell, fix_antimeridian='shift_west')
+                        cell_polygon = h32geo(child_cell, fix_antimeridian="shift_west")
                     elif self.split_antimeridian:
-                        cell_polygon = h32geo(child_cell, fix_antimeridian='split')
+                        cell_polygon = h32geo(child_cell, fix_antimeridian="split")
                     else:
                         cell_polygon = h32geo(child_cell)
                     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)

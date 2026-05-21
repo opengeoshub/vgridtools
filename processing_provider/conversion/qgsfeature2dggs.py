@@ -20,7 +20,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 
 import platform
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...utils.conversion.qgsfeature2dggs import *
 from ...utils.conversion.crs_helper import WGS84_REQUIRED_MSG, is_wgs84
 from ...settings import settings
@@ -42,21 +42,17 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "S2",
         "A5",
         "rHEALPix",
-
         "DGGAL_GNOSIS",
-        
         "DGGAL_ISEA4R",
         "DGGAL_ISEA9R",
         "DGGAL_ISEA3H",
         "DGGAL_ISEA7H",
         "DGGAL_ISEA7H_Z7",
-
         "DGGAL_IVEA4R",
         "DGGAL_IVEA9R",
         "DGGAL_IVEA3H",
         "DGGAL_IVEA7H",
         "DGGAL_IVEA7H_Z7",
-        
         "DGGAL_RTEA4R",
         "DGGAL_RTEA9R",
         "DGGAL_RTEA3H",
@@ -64,7 +60,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "DGGAL_RTEA7H_Z7",
         "DGGAL_HEALPix",
         "DGGAL_rHEALPix",
-
         "DGGRID_SUPERFUND",
         "DGGRID_PLANETRISK",
         "DGGRID_ISEA3H",
@@ -80,14 +75,13 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         "DGGRID_FULLER4D",
         "DGGRID_FULLER43H",
         "DGGRID_FULLER7H",
-
         "QTM",
         "OLC",
         "Geohash",
         "Tilecode",
-        "Quadkey",          
+        "Quadkey",
         "DIGIPIN",
-    ]   
+    ]
 
     if platform.system() == "Windows":
         index = DGGS_TYPES.index("rHEALPix") + 1
@@ -143,7 +137,6 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     figure = "../images/tutorial/vector2dggs.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -156,7 +149,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -325,24 +318,96 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             "tilecode": qgsfeature2tilecode,
             "quadkey": qgsfeature2quadkey,
             "digipin": qgsfeature2digipin,
-            "dggal_gnosis": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("gnosis", feature, resolution, predicate, compact, feedback),
-            "dggal_isea4r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("isea4r", feature, resolution, predicate, compact, feedback),
-            "dggal_isea9r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("isea9r", feature, resolution, predicate, compact, feedback),
-            "dggal_isea3h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("isea3h", feature, resolution, predicate, compact, feedback),
-            "dggal_isea7h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("isea7h", feature, resolution, predicate, compact, feedback),
-            "dggal_isea7h_z7": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("isea7h_z7", feature, resolution, predicate, compact, feedback),
-            "dggal_ivea4r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("ivea4r", feature, resolution, predicate, compact, feedback),
-            "dggal_ivea9r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("ivea9r", feature, resolution, predicate, compact, feedback),
-            "dggal_ivea3h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("ivea3h", feature, resolution, predicate, compact, feedback),
-            "dggal_ivea7h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("ivea7h", feature, resolution, predicate, compact, feedback),
-            "dggal_ivea7h_z7": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("ivea7h_z7", feature, resolution, predicate, compact, feedback),
-            "dggal_rtea4r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rtea4r", feature, resolution, predicate, compact, feedback),
-            "dggal_rtea9r": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rtea9r", feature, resolution, predicate, compact, feedback),
-            "dggal_rtea3h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rtea3h", feature, resolution, predicate, compact, feedback),
-            "dggal_rtea7h": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rtea7h", feature, resolution, predicate, compact, feedback),
-            "dggal_rtea7h_z7": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rtea7h_z7", feature, resolution, predicate, compact, feedback),
-            "dggal_healpix": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("healpix", feature, resolution, predicate, compact, feedback),
-            "dggal_rhealpix": lambda feature, resolution, predicate, compact, feedback: qgsfeature2dggal("rhealpix", feature, resolution, predicate, compact, feedback),
+            "dggal_gnosis": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "gnosis", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_isea4r": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "isea4r", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_isea9r": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "isea9r", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_isea3h": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "isea3h", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_isea7h": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "isea7h", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_isea7h_z7": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "isea7h_z7", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_ivea4r": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "ivea4r", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_ivea9r": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "ivea9r", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_ivea3h": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "ivea3h", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_ivea7h": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "ivea7h", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_ivea7h_z7": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "ivea7h_z7", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_rtea4r": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "rtea4r", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_rtea9r": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "rtea9r", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_rtea3h": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "rtea3h", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_rtea7h": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "rtea7h", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_rtea7h_z7": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "rtea7h_z7", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_healpix": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "healpix", feature, resolution, predicate, compact, feedback
+                )
+            ),
+            "dggal_rhealpix": lambda feature, resolution, predicate, compact, feedback: (
+                qgsfeature2dggal(
+                    "rhealpix", feature, resolution, predicate, compact, feedback
+                )
+            ),
         }
         for dggrid_name in (
             "SUPERFUND",
@@ -363,8 +428,10 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         ):
             key = f"dggrid_{dggrid_name.lower()}"
             self.DGGS_TYPE_functions[key] = (
-                lambda feature, resolution, predicate, compact, feedback, t=dggrid_name: qgsfeature2dggrid(
-                    t, feature, resolution, predicate, compact, feedback
+                lambda feature, resolution, predicate, compact, feedback, t=dggrid_name: (
+                    qgsfeature2dggrid(
+                        t, feature, resolution, predicate, compact, feedback
+                    )
                 )
             )
         return True
@@ -386,9 +453,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             if feature_geom.wkbType() == QgsWkbTypes.MultiPoint:
                 for point in feature_geom.asMultiPoint():
                     point_feature = QgsFeature(feature)
-                    point_feature.setGeometry(
-                        QgsGeometry.fromPointXY(point)
-                    )
+                    point_feature.setGeometry(QgsGeometry.fromPointXY(point))
                     cell_polygons = conversion_function(
                         point_feature,
                         self.resolution,

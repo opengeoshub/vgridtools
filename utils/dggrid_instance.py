@@ -17,7 +17,15 @@ _DGGRID_DIR = os.path.join(_PLUGIN_ROOT, "dggrid")
 
 # Non-geographic .prj metadata; antimeridian split/aggregate can crash PROJ in QGIS.
 DGGRID_TYPES_NO_ANTIMERIDIAN = frozenset(
-    {"SUPERFUND", "PLANETRISK", "ISEA4H", "ISEA43H", "FULLER4H", "FULLER43H", "FULLER7H"}
+    {
+        "SUPERFUND",
+        "PLANETRISK",
+        "ISEA4H",
+        "ISEA43H",
+        "FULLER4H",
+        "FULLER43H",
+        "FULLER7H",
+    }
 )
 
 # DGGRID v8.43 accepts shapefile_id_field_length only in 1..50 (default 11).
@@ -49,9 +57,12 @@ def patch_dggrid_output_extras(dggrid_instance) -> None:
     dggrid_instance.output_extra_fields = extra_fields
     dggrid_instance._vgrid_output_extras_patched = True
 
+
 # dggrid4py 0.3.2 shipped portable binaries on its GitHub release; 0.5.3+ points
 # Windows to DGGRID v8.43b (required for DGGRIDv8). Linux/mac URLs unchanged in 0.5.3.
-_PORTABLE_RELEASE_032 = "https://github.com/allixender/dggrid4py/releases/download/v0.3.2"
+_PORTABLE_RELEASE_032 = (
+    "https://github.com/allixender/dggrid4py/releases/download/v0.3.2"
+)
 _PORTABLE_URLS = {
     "linux-aarch64": f"{_PORTABLE_RELEASE_032}/dggrid-linux-aarch-gnu",
     "linux-x86_64": f"{_PORTABLE_RELEASE_032}/dggrid-linux-x64",
@@ -295,9 +306,7 @@ def patch_geopandas_read_for_dggrid():
         except Exception as exc:
             if not _is_crs_read_error(exc):
                 raise
-            return _read_geofile_ignore_bad_crs(
-                path_or_buffer, driver=driver
-            )
+            return _read_geofile_ignore_bad_crs(path_or_buffer, driver=driver)
 
     gpd.read_file = read_file_with_crs_fallback
     try:
@@ -429,10 +438,8 @@ def generate_grid_qgis(
     return dggrid_gdf
 
 
-
 def _ensure_dggrid_global_id_column(grid_gdf):
     """Normalize DGGRID grid output to a ``global_id`` column for joins."""
-    import geopandas as gpd
 
     gdf = grid_gdf.copy()
     if "global_id" in gdf.columns:
@@ -448,7 +455,9 @@ def _ensure_dggrid_global_id_column(grid_gdf):
             )
             return gdf, "global_id"
 
-    raise ValueError("DGGRID grid output has no cell ID column (global_id, name, seqnum).")
+    raise ValueError(
+        "DGGRID grid output has no cell ID column (global_id, name, seqnum)."
+    )
 
 
 def dggrid_bin_qgis(
@@ -467,7 +476,11 @@ def dggrid_bin_qgis(
     spatial join (within), and aggregation — same logic as vgrid ``dggrid_bin``.
     """
     import geopandas as gpd
-    from vgrid.utils.io import aggregate_joined, validate_dggrid_resolution, validate_dggrid_type
+    from vgrid.utils.io import (
+        aggregate_joined,
+        validate_dggrid_resolution,
+        validate_dggrid_type,
+    )
 
     dggs_type = validate_dggrid_type(dggs_type)
     resolution = validate_dggrid_resolution(dggs_type, resolution)
@@ -519,7 +532,9 @@ def dggrid_bin_qgis(
         join_cols.append(category)
     if stats != "count" and numeric_field:
         if numeric_field not in points_gdf.columns:
-            raise ValueError(f"numeric_field '{numeric_field}' not found in input layer")
+            raise ValueError(
+                f"numeric_field '{numeric_field}' not found in input layer"
+            )
         join_cols.append(numeric_field)
 
     left = points_gdf[[c for c in ["geometry", *join_cols] if c]]
@@ -589,7 +604,9 @@ def vector_geom_to_dggrid_gdf_qgis(
             split_antimeridian=dggs_type not in DGGRID_TYPES_NO_ANTIMERIDIAN,
             options=options,
         )
-        id_col = "seqnum" if output_address_type == "SEQNUM" else output_address_type.lower()
+        id_col = (
+            "seqnum" if output_address_type == "SEQNUM" else output_address_type.lower()
+        )
         return gpd.GeoDataFrame(
             {id_col: [str(cell_id)], "geometry": [cell_geom]},
             geometry="geometry",
@@ -610,7 +627,11 @@ def vector_geom_to_dggrid_gdf_qgis(
     if gdf is None or gdf.empty:
         return gdf
 
-    if output_address_type == "SEQNUM" and "name" in gdf.columns and "seqnum" not in gdf.columns:
+    if (
+        output_address_type == "SEQNUM"
+        and "name" in gdf.columns
+        and "seqnum" not in gdf.columns
+    ):
         gdf = gdf.rename(columns={"name": "seqnum"})
 
     if geom_type in ("LineString", "LinearRing"):
@@ -911,11 +932,7 @@ def get_plugin_dggrid_instance(feedback=None, force_new: bool = False) -> DGGRID
 def _is_dggrid_cache_artifact(name: str) -> bool:
     """True for DGGRID run leftovers (not the portable executable)."""
     low = name.lower()
-    return (
-        low.endswith(".txt")
-        or low.startswith("meta")
-        or low.startswith("temp")
-    )
+    return low.endswith(".txt") or low.startswith("meta") or low.startswith("temp")
 
 
 def clear_dggrid_cache_files() -> tuple[list[str], list[tuple[str, str]]]:

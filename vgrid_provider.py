@@ -20,7 +20,6 @@ __copyright__ = "(L) 2024 by Thang Quach"
 
 __revision__ = "$Format:%H$"
 import os
-import sys
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
@@ -73,6 +72,7 @@ from .processing_provider.generator.digipingen import DIGIPINGen
 from .processing_provider.utils.split_antimeridian import SplitAltimeridian
 from .processing_provider.utils.shift_antimeridian import ShiftAntimeridian
 
+
 class VgridProvider(QgsProcessingProvider):
     def __init__(self):
         """
@@ -85,7 +85,6 @@ class VgridProvider(QgsProcessingProvider):
         Unloads the provider. Any tear-down steps required by the provider
         should be implemented here.
         """
-        pass
 
     def loadAlgorithms(self):
         # Conversion algorithms
@@ -139,7 +138,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(DIGIPINGen())
         self.addAlgorithm(SplitAltimeridian())
         self.addAlgorithm(ShiftAntimeridian())
-    
+
     def id(self):
         return "vgrid"
 

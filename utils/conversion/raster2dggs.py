@@ -410,9 +410,7 @@ def raster2dggal(
         stats,
         id_field,
         cell_id,
-        lambda res, feat, fb: dggsgrid.generate_dggal_grid(
-            dggal_type, res, feat, fb
-        ),
+        lambda res, feat, fb: dggsgrid.generate_dggal_grid(dggal_type, res, feat, fb),
         builder,
         feedback=feedback,
         layer_name=f"DGGAL_{dggal_type}",
@@ -451,5 +449,7 @@ if platform.system() == "Windows":
 
 else:
 
-    def raster2isea4t(raster_layer, resolution, feedback=None, method="nearest", stats="mean"):
+    def raster2isea4t(
+        raster_layer, resolution, feedback=None, method="nearest", stats="mean"
+    ):
         raise RuntimeError("ISEA4T raster conversion requires Windows.")

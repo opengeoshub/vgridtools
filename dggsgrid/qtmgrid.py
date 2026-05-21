@@ -57,7 +57,9 @@ class QTMGrid(QObject):
 
             scale = self.canvas.scale()
             # resolution = self._get_qtm_resolution(scale)
-            resolution = get_qtm_resolution_from_scale_denominator(scale,relative_depth=8,mm_per_pixel = 0.28)
+            resolution = get_qtm_resolution_from_scale_denominator(
+                scale, relative_depth=8, mm_per_pixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -181,10 +183,10 @@ class QTMGrid(QObject):
     def _get_qtm_resolution(self, scale):
         # Map scale to zoom, then to QTM resolution
         zoom = 29.1402 - log2(scale)
-        min_res = DGGS_TYPES['qtm']["min_res"]
-        max_res = DGGS_TYPES['qtm']["max_res"]
+        min_res = DGGS_TYPES["qtm"]["min_res"]
+        max_res = DGGS_TYPES["qtm"]["max_res"]
 
-        res = min(max_res, max(min_res, floor(zoom)))   
+        res = min(max_res, max(min_res, floor(zoom)))
         return res
 
     @pyqtSlot()

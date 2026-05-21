@@ -257,7 +257,9 @@ def _run_vgrid_grid(grid_type, resolution, feedback_append):
         return False
 
     QgsProject.instance().addMapLayer(out)
-    feedback_append(f"{grid_type}: added layer “{out.name()}” at resolution {resolution}.")
+    feedback_append(
+        f"{grid_type}: added layer “{out.name()}” at resolution {resolution}."
+    )
     return True
 
 

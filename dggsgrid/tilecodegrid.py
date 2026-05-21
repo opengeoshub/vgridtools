@@ -54,7 +54,9 @@ class TilecodeGrid(QObject):
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             # resolution = self._get_tilecode_resolution(scale)
-            resolution = get_tilecode_resolution_from_scale_denominator(scale,relative_depth=8,mm_per_pixel = 0.28)
+            resolution = get_tilecode_resolution_from_scale_denominator(
+                scale, relative_depth=8, mm_per_pixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -146,8 +148,8 @@ class TilecodeGrid(QObject):
     def _get_tilecode_resolution(self, scale):
         # Map scale to zoom, then to Tilecode resolution
         zoom = 29.1402 - log2(scale)
-        min_res = DGGS_TYPES['tilecode']["min_res"]
-        max_res = DGGS_TYPES['tilecode']["max_res"]
+        min_res = DGGS_TYPES["tilecode"]["min_res"]
+        max_res = DGGS_TYPES["tilecode"]["max_res"]
 
         # Tilecode resolution mapping - similar to other grids
         res = max(min_res, floor(zoom * 1.1))

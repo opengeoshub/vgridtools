@@ -43,7 +43,7 @@ from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from qgis.PyQt.QtCore import QVariant  # type: ignore
 import os
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from ...settings import settings
 from vgrid.utils.io import validate_coordinate
@@ -105,7 +105,6 @@ class S2Gen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_s2.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -118,7 +117,7 @@ class S2Gen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -261,9 +260,9 @@ class S2Gen(QgsProcessingAlgorithm):
             s2_token = s2.CellId.to_token(s2_cell_id)
             # Apply antimeridian fix if requested
             if self.shift_antimeridian:
-                cell_polygon = s22geo(s2_token, fix_antimeridian='shift_east')
+                cell_polygon = s22geo(s2_token, fix_antimeridian="shift_east")
             elif self.split_antimeridian:
-                cell_polygon = s22geo(s2_token, fix_antimeridian='split')
+                cell_polygon = s22geo(s2_token, fix_antimeridian="split")
             else:
                 cell_polygon = s22geo(s2_token)
 

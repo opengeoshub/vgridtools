@@ -25,7 +25,7 @@ from ...utils.binning.bin_helper import (
     prepare_point_bin_algorithm,
     process_point_dggs_bin,
 )
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...utils.resampling.dggsgrid import generate_dggal_grid
 
 
@@ -83,7 +83,6 @@ class DGGALBin(QgsProcessingAlgorithm):
     figure = "../images/tutorial/bin_dggal.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -96,7 +95,7 @@ class DGGALBin(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -191,9 +190,7 @@ class DGGALBin(QgsProcessingAlgorithm):
             return validate_dggal_resolution(dggs_type, resolution)
 
         def generate_grid(resolution, extent_layer, fb):
-            return generate_dggal_grid(
-                dggs_type, resolution, extent_layer, feedback=fb
-            )
+            return generate_dggal_grid(dggs_type, resolution, extent_layer, feedback=fb)
 
         return process_point_dggs_bin(
             self,

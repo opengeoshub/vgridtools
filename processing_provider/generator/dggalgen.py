@@ -12,6 +12,14 @@ dggalgen.py
 """
 #  Need to be checked and tested
 
+from vgrid.utils.antimeridian import fix_polygon
+from vgrid.utils.io import validate_coordinate
+from vgrid.utils.io import validate_dggal_resolution
+from vgrid.utils.constants import DGGAL_TYPES
+from vgrid.utils.geometry import geodesic_dggs_metrics, dggal_to_geo
+from ...utils.latlon import epsg4326
+from ...utils.help_footer import social_links_footer
+
 __author__ = "Thang Quach"
 __date__ = "2024-11-20"
 __copyright__ = "(L) 2024, Thang Quach"
@@ -50,14 +58,6 @@ from dggal import *
 # Initialize dggal application
 app = Application(appGlobals=globals())
 pydggal_setup(app)
-
-from ...utils.imgs import Imgs
-from ...utils.latlon import epsg4326
-from vgrid.utils.geometry import geodesic_dggs_metrics, dggal_to_geo
-from vgrid.utils.constants import DGGAL_TYPES
-from vgrid.utils.io import validate_dggal_resolution
-from vgrid.utils.io import validate_coordinate
-from vgrid.utils.antimeridian import fix_polygon
 
 
 class DGGALGen(QgsProcessingAlgorithm):
@@ -113,7 +113,6 @@ class DGGALGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_dggal.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -126,7 +125,7 @@ class DGGALGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -267,7 +266,7 @@ class DGGALGen(QgsProcessingAlgorithm):
             # Apply antimeridian fix if requested
             if self.split_antimeridian:
                 cell_polygon = fix_polygon(cell_polygon)
-            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)            
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             dggal_feature = QgsFeature()
             dggal_feature.setGeometry(cell_geometry)
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (

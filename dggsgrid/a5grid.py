@@ -22,6 +22,7 @@ from vgrid.utils.geometry import get_a5_resolution_from_scale_denominator
 from shapely.geometry import box
 import a5
 
+
 class A5Grid(QObject):
     def __init__(self, vgridtools, canvas, iface):
         super(A5Grid, self).__init__()
@@ -93,7 +94,9 @@ class A5Grid(QObject):
             bbox_center_lon = bbox_polygon.centroid.x
             bbox_center_lat = bbox_polygon.centroid.y
 
-            seed_cell_id = a5.lonlat_to_cell((bbox_center_lon, bbox_center_lat), resolution)
+            seed_cell_id = a5.lonlat_to_cell(
+                (bbox_center_lon, bbox_center_lat), resolution
+            )
             seed_cell_polygon = a52geo_u64(
                 seed_cell_id, split_antimeridian=settings.splitAntimeridian
             )
@@ -134,7 +137,9 @@ class A5Grid(QObject):
 
                 if cell_polygon.intersects(bbox_polygon):
                     intersecting_cells[current_cell_id] = cell_polygon
-                    neighbors = a5.uncompact(a5.grid_disk_vertex(current_cell_id, 1), resolution)
+                    neighbors = a5.uncompact(
+                        a5.grid_disk_vertex(current_cell_id, 1), resolution
+                    )
                     for neighbor_id in neighbors:
                         if neighbor_id not in covered_cells:
                             queue.append(neighbor_id)
@@ -172,9 +177,9 @@ class A5Grid(QObject):
     def _get_a5_resolution(self, scale):
         # Map scale to approximate zoom, then to A5 resolution similar cadence as H3
         zoom = 29.1402 - log2(scale)
-        min_res = DGGS_TYPES['a5']["min_res"]
-        max_res = DGGS_TYPES['a5']["max_res"]
-        res = min(max_res, max(min_res, floor(zoom*0.95)))
+        min_res = DGGS_TYPES["a5"]["min_res"]
+        max_res = DGGS_TYPES["a5"]["max_res"]
+        res = min(max_res, max(min_res, floor(zoom * 0.95)))
         return res
 
     @pyqtSlot()

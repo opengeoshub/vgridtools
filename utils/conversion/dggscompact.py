@@ -1,3 +1,12 @@
+from qgis.PyQt.QtCore import QVariant
+from qgis.core import (
+    QgsVectorLayer,
+    QgsFeature,
+    QgsGeometry,
+    QgsField,
+    QgsFields,
+    QgsProcessingException,
+)
 from vgrid.dggs import s2
 import h3
 import a5
@@ -28,7 +37,7 @@ from vgrid.utils.geometry import (
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
-from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo 
+from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
 from vgrid.conversion.dggscompact.a5compact import a5_compact
 from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_compact
 from vgrid.conversion.dggscompact.dggalcompact import dggal_compact
@@ -48,22 +57,12 @@ from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
 from vgrid.dggs.tilecode import tilecode_resolution, quadkey_resolution
 from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
 from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
-from vgrid.conversion.dggscompact.digipincompact import digipin_compact 
+from vgrid.conversion.dggscompact.digipincompact import digipin_compact
 from vgrid.conversion.dggscompact import *
 from pyproj import Geod
 
 geod = Geod(ellps="WGS84")
 E = WGS84_ELLIPSOID
-
-from qgis.core import (
-    QgsVectorLayer,
-    QgsFeature,
-    QgsGeometry,
-    QgsField,
-    QgsFields,
-    QgsProcessingException,
-)
-from qgis.PyQt.QtCore import QVariant
 
 
 ##########################
@@ -98,8 +97,10 @@ def h3compact(
     if h3_ids:
         try:
             h3_ids_compact = h3.compact_cells(h3_ids)
-        except:
-            h3_ids_compact = h3_ids # to handle "Input cells must all share the same resolution."
+        except BaseException:
+            h3_ids_compact = (
+                h3_ids  # to handle "Input cells must all share the same resolution."
+            )
 
         total_cells = len(h3_ids_compact)
 
@@ -177,7 +178,7 @@ def s2compact(
             covering = s2.CellUnion(s2_ids)
             covering.normalize()
             s2_tokens_compact = [cell_id.to_token() for cell_id in covering.cell_ids()]
-    except:
+    except BaseException:
         raise QgsProcessingException(
             "Compact cells failed. Please check your S2 ID field."
         )
@@ -255,7 +256,7 @@ def a5compact(
     if a5_hexes:
         try:
             a5_hexes_compact = a5_compact(a5_hexes)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your A5 ID field."
             )
@@ -270,7 +271,7 @@ def a5compact(
 
             try:
                 cell_polygon = a52geo(a5_hex_compact)
-            except:
+            except BaseException:
                 raise QgsProcessingException(
                     "Compact cells failed. Please check your A5 ID field."
                 )
@@ -341,7 +342,7 @@ def rhealpixcompact(
     if rhealpix_ids:
         try:
             rhealpix_ids_compact = rhealpix_compact(rhealpix_ids)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your rHEALPix ID field."
             )
@@ -359,7 +360,7 @@ def rhealpixcompact(
                     map(int, rhealpix_id_compact[1:])
                 )
                 rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
-            except:
+            except BaseException:
                 raise QgsProcessingException(
                     "Compact cells failed. Please check your rHEALPix ID field."
                 )
@@ -429,7 +430,7 @@ def isea4tcompact(
         if isea4t_ids:
             try:
                 isea4t_ids_compact = isea4t_compact(isea4t_ids)
-            except:
+            except BaseException:
                 raise QgsProcessingException(
                     "Compact cells failed. Please check your ISEA4T ID field."
                 )
@@ -509,7 +510,7 @@ def isea3hcompact(
         if isea3h_ids:
             try:
                 isea3h_ids_compact = isea3h_compact(isea3h_ids)
-            except:
+            except BaseException:
                 raise QgsProcessingException(
                     "Compact cells failed. Please check your ISEA3H ID field."
                 )
@@ -588,7 +589,7 @@ def qtmcompact(
     if qtm_ids:
         try:
             qtm_ids_compact = qtm_compact(qtm_ids)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your QTM ID field."
             )
@@ -663,7 +664,7 @@ def olccompact(
     if olc_ids:
         try:
             olc_ids_compact = olc_compact(olc_ids)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your OLC ID field."
             )
@@ -677,7 +678,6 @@ def olccompact(
                     return None
             cell_polygon = olc2geo(olc_id_compact)
             cell_resolution = get_olc_resolution(olc_id_compact)
-            num_edges = 4
             (
                 center_lat,
                 center_lon,
@@ -743,7 +743,7 @@ def geohashcompact(
     if geohash_ids:
         try:
             geohash_ids_compact = geohash_compact(geohash_ids)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your geohash ID field."
             )
@@ -825,7 +825,7 @@ def tilecodecompact(
     if tilecode_ids:
         try:
             tilecode_ids_compact = tilecode_compact(tilecode_ids)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your tilecode ID field."
             )
@@ -839,7 +839,6 @@ def tilecodecompact(
                     return None
             cell_polygon = tilecode2geo(tilecode_id_compact)
             resolution = tilecode_resolution(tilecode_id_compact)
-            num_edges = 4
             (
                 center_lat,
                 center_lon,
@@ -908,7 +907,7 @@ def quadkeycompact(
     if quadkey_ids:
         try:
             quadkey_ids_compact = quadkey_compact(quadkey_ids)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your Quadkey ID field."
             )
@@ -1013,7 +1012,7 @@ def dggalcompact(
                     zone = dggrs.getZoneFromTextID(dggal_id_compact)
                     resolution = dggrs.getZoneLevel(zone)
                     num_edges = dggrs.countZoneEdges(zone)
-                except:
+                except BaseException:
                     # Fallback values if we can't get them from DGGAL
                     resolution = 0
                     num_edges = 6  # Default for hexagonal cells
@@ -1084,7 +1083,7 @@ def digipincompact(
     if digipin_ids:
         try:
             digipin_ids_compact = digipin_compact(digipin_ids)
-        except:
+        except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your DIGIPIN ID field."
             )
@@ -1096,13 +1095,18 @@ def digipincompact(
                 feedback.setProgress(int((i / total_cells) * 100))
                 if feedback.isCanceled():
                     return None
-            try:                
+            try:
                 cell_polygon = digipin2geo(digipin_id_compact)
-                clean_id = digipin_id_compact.replace('-', '')
+                clean_id = digipin_id_compact.replace("-", "")
                 resolution = len(clean_id)
-                center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-                    graticule_dggs_metrics(cell_polygon)
-                )
+                (
+                    center_lat,
+                    center_lon,
+                    cell_width,
+                    cell_height,
+                    cell_area,
+                    cell_perimeter,
+                ) = graticule_dggs_metrics(cell_polygon)
 
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 digipin_feature = QgsFeature(fields)
@@ -1118,7 +1122,9 @@ def digipincompact(
                     "cell_area": cell_area,
                     "cell_perimeter": cell_perimeter,
                 }
-                digipin_feature.setAttributes([attributes[field.name()] for field in fields])
+                digipin_feature.setAttributes(
+                    [attributes[field.name()] for field in fields]
+                )
                 mem_provider.addFeatures([digipin_feature])
             except Exception as e:
                 if feedback:

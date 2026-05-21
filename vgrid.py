@@ -29,8 +29,6 @@ import processing
 from qgis.PyQt.QtWidgets import (
     QAction,
     QMenu,
-    QWidgetAction,
-    QCheckBox,
     QMessageBox,
 )
 from qgis.core import (
@@ -105,7 +103,7 @@ exprs = (
     latlon2quadkey,
     latlon2maidenhead,
     latlon2gars,
-    latlon2digipin  
+    latlon2digipin,
 )
 
 
@@ -384,9 +382,7 @@ class VgridTools(object):
         self.conversion_menu.addAction(self.dggsExpandAction)
 
         # DGGS Resample
-        icon = QIcon(
-            os.path.dirname(__file__) + "/images/conversion/dggsresample.svg"
-        )
+        icon = QIcon(os.path.dirname(__file__) + "/images/conversion/dggsresample.svg")
         self.dggsResampleAction = QAction(
             icon, tr("DGGS Resample"), self.iface.mainWindow()
         )
@@ -415,7 +411,7 @@ class VgridTools(object):
         self.splitAntimeridianAction.setToolTip(tr("Split at Antimeridian"))
         self.splitAntimeridianAction.triggered.connect(self.runSplitAtAntimeridian)
         self.utils_menu.addAction(self.splitAntimeridianAction)
-        
+
         # Shift at Antimeridian action
         icon = QIcon(os.path.dirname(__file__) + "/images/utils/shift_antimeridian.png")
         self.shiftAntimeridianAction = QAction(
@@ -425,9 +421,11 @@ class VgridTools(object):
         self.shiftAntimeridianAction.setToolTip(tr("Shift at Antimeridian"))
         self.shiftAntimeridianAction.triggered.connect(self.runShiftAtAntimeridian)
         self.utils_menu.addAction(self.shiftAntimeridianAction)
-        
+
         # DGGS-JSON to GeoJSON action
-        dggs_json_icon = QIcon(os.path.dirname(__file__) + "/images/conversion/conversion.svg")
+        dggs_json_icon = QIcon(
+            os.path.dirname(__file__) + "/images/conversion/conversion.svg"
+        )
         self.dggsJson2GeoJsonAction = QAction(
             dggs_json_icon, tr("DGGS-JSON to GeoJSON"), self.iface.mainWindow()
         )
@@ -598,8 +596,6 @@ class VgridTools(object):
         self.garsGenAction.triggered.connect(self.runGARSGen)
         self.generator_menu.addAction(self.garsGenAction)
 
-        
-
         # Add Latlon2DGGS action
         icon = QIcon(os.path.dirname(__file__) + "/images/vgrid.svg")
         self.latlon2DGGSAction = QAction(
@@ -648,11 +644,11 @@ class VgridTools(object):
         if self.Vgrid_menu is not None:
             self.iface.mainWindow().menuBar().removeAction(self.Vgrid_menu.menuAction())
 
-        if  self.latlon2DGGSAction:
+        if self.latlon2DGGSAction:
             self.iface.removeToolBarIcon(self.latlon2DGGSAction)
-        if  self.settingsAction:
+        if self.settingsAction:
             self.iface.removeToolBarIcon(self.settingsAction)
-        if  self.toolbar:
+        if self.toolbar:
             self.iface.mainWindow().removeToolBar(self.toolbar)
             self.toolbar = None
 
@@ -756,7 +752,9 @@ class VgridTools(object):
                 self, self.settingsDialog, self.iface, self.iface.mainWindow()
             )
             self.latlon2DGGSDialog.setFloating(True)
-            self.iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.latlon2DGGSDialog)
+            self.iface.addDockWidget(
+                Qt.DockWidgetArea.RightDockWidgetArea, self.latlon2DGGSDialog
+            )
         self.latlon2DGGSDialog.show()
 
     def showDGGSClient(self):
@@ -991,9 +989,9 @@ class VgridTools(object):
             QMessageBox.information(
                 self.iface.mainWindow(),
                 tr("Vgrid"),
-                tr(
-                    "DGGRID instance is ready.\n\nWorking directory:\n{0}"
-                ).format(dggrid_work_dir()),
+                tr("DGGRID instance is ready.\n\nWorking directory:\n{0}").format(
+                    dggrid_work_dir()
+                ),
             )
         except Exception as exc:
             QMessageBox.critical(
@@ -1016,9 +1014,9 @@ class VgridTools(object):
             QMessageBox.warning(
                 self.iface.mainWindow(),
                 tr("Vgrid"),
-                tr("Removed {0} file(s). Some files could not be deleted:\n\n{1}").format(
-                    len(removed), detail
-                ),
+                tr(
+                    "Removed {0} file(s). Some files could not be deleted:\n\n{1}"
+                ).format(len(removed), detail),
             )
         else:
             QMessageBox.information(

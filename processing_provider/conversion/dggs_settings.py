@@ -1,7 +1,7 @@
 import os
 from qgis.PyQt.uic import loadUiType
 from qgis.PyQt.QtWidgets import QDialog, QDialogButtonBox
-from qgis.PyQt.QtCore import QSettings, Qt
+from qgis.PyQt.QtCore import QSettings
 
 FORM_CLASS, _ = loadUiType(
     os.path.join(os.path.dirname(__file__), "ui/dggs_settings.ui")
@@ -85,9 +85,9 @@ class DGGSettingsDialog(QDialog, FORM_CLASS):
         self.iface = iface
 
         # Connect signals
-        self.buttonBox.button(QDialogButtonBox.StandardButton.RestoreDefaults).clicked.connect(
-            self.restoreDefaults
-        )
+        self.buttonBox.button(
+            QDialogButtonBox.StandardButton.RestoreDefaults
+        ).clicked.connect(self.restoreDefaults)
         self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(self.reject)
 

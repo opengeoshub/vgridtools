@@ -65,7 +65,9 @@ class MaidenheadGrid(QObject):
 
             scale = self.canvas.scale()
             # resolution = self._get_maidenhead_resolution(scale)
-            resolution = get_maidenhead_resolution_from_scale_denominator(scale,relative_depth=2,mm_per_pixel = 0.28)   
+            resolution = get_maidenhead_resolution_from_scale_denominator(
+                scale, relative_depth=2, mm_per_pixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -96,7 +98,7 @@ class MaidenheadGrid(QObject):
 
             min_lon, min_lat, max_lon, max_lat = validate_coordinate(
                 min_lon, min_lat, max_lon, max_lat
-            )   
+            )
             # Get grid parameters for the resolution
             x_cells, y_cells, lon_width, lat_width = grid_params[resolution]
             base_lat, base_lon = -90.0, -180.0
@@ -168,10 +170,10 @@ class MaidenheadGrid(QObject):
         self, scale
     ):  # Map scale to zoom, then to Maidenhead resolution
         zoom = 29.1402 - log2(scale)
-        min_res = DGGS_TYPES['maidenhead']["min_res"]
-        max_res = DGGS_TYPES['maidenhead']["max_res"]
+        min_res = DGGS_TYPES["maidenhead"]["min_res"]
+        max_res = DGGS_TYPES["maidenhead"]["max_res"]
         # Maidenhead resolution mapping - similar to other grids
-        res = min(max_res, max(min_res, floor(zoom)*0.3))
+        res = min(max_res, max(min_res, floor(zoom) * 0.3))
         return res
 
     @pyqtSlot()

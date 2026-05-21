@@ -41,7 +41,7 @@ from qgis.core import (
     QgsVectorLayerSimpleLabeling,
 )
 
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...settings import settings
 
 bands = [
@@ -119,7 +119,6 @@ class GZDGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_mgrs.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -132,7 +131,7 @@ class GZDGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """

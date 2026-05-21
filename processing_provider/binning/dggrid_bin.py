@@ -27,7 +27,7 @@ from ...utils.binning.bin_helper import (
     prepare_point_bin_algorithm,
     process_point_dggs_bin,
 )
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 
 _DGGS_TYPE_OPTIONS = list(DGGRID_TYPES.keys())
 _DEFAULT_DGGS_TYPE = "ISEA3H"
@@ -95,7 +95,6 @@ class DGGRIDBin(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_dggrid.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -108,7 +107,7 @@ class DGGRIDBin(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """

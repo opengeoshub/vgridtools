@@ -204,7 +204,7 @@ Convert (lat, long) to S2 Token.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2s2(10.775275567242561, 106.70679737574993, 21)→ '31752f45cc94'</code>
+<code>latlon2s2(10.775275567242561, 106.70679737574993, 21)</code>
 </li>
 <br/>
 <div align="center">
@@ -221,7 +221,7 @@ Convert (lat, long) to A5 Hex.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2a5(10.775275567242561, 106.70679737574993, 16)→ '7a9408e938000000'</code> 
+<code>latlon2a5(10.775275567242561, 106.70679737574993, 16)</code> 
 </li>
 <br/>
 <div align="center">
@@ -238,7 +238,7 @@ Convert (lat, long) to rHEALPix ID.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2rhealpix(10.775275567242561, 106.70679737574993, 12)→ 'R312603625535'</code>
+<code>latlon2rhealpix(10.775275567242561, 106.70679737574993, 12)</code>
 </li>
 <br/>
 <div align="center">
@@ -254,7 +254,7 @@ Convert (lat, long) to OpenEAGGR ISEA4T ID (Windows only).
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2isea4t(10.775275567242561, 106.70679737574993, 20)→ '1310231333101123322130'</code>
+<code>latlon2isea4t(10.775275567242561, 106.70679737574993, 20)</code>
 </li>
 <br/>
 <div align="center">
@@ -270,7 +270,7 @@ Convert (lat, long) to OpenEAGGR ISEA3H ID (Windows only).
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2isea3h(10.775275567242561, 106.70679737574993, 20)→ '132022636,-1020'</code>
+<code>latlon2isea3h(10.775275567242561, 106.70679737574993, 20)</code>
 </li>
 <br/>
 <div align="center">
@@ -286,7 +286,7 @@ Convert (lat, long) to DGGAL ID.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2dggal('isea9r', 10.775275567242561, 106.70679737574993, 7)→ 'H7-629F2'</code>
+<code>latlon2dggal('isea9r', 10.775275567242561, 106.70679737574993, 7)</code>
 </li>
 <br/>
 <div align="center">
@@ -302,7 +302,7 @@ Convert (lat, long) to QTM.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2qtm(10.775275567242561, 106.70679737574993, 18)→ '420123231312110130'</code>
+<code>latlon2qtm(10.775275567242561, 106.70679737574993, 18)</code>
 </li>
 <br/>
 <div align="center">
@@ -318,7 +318,7 @@ Convert (lat, long) to Open Location Code (OLC)/ Google Plus Code.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code> latlon2olc(10.775275567242561, 106.70679737574993, 11) → '7P28QPG4+4P7'</code>
+<code> latlon2olc(10.775275567242561, 106.70679737574993, 11) </code>
 </li>
 <br/>
 <div align="center">
@@ -334,7 +334,7 @@ Convert (lat, long) to Geohash ID.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2geohash(10.775275567242561, 106.70679737574993, 9)→ 'w3gvk1td8'</code>
+<code>latlon2geohash(10.775275567242561, 106.70679737574993, 9)</code>
 </li>
 <br/>
 <div align="center">
@@ -350,7 +350,7 @@ Convert (lat, long) to GEOREF ID.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2georef(10.775275567242561, 106.70679737574993, 5)→ 'VGBL4240746516'</code>
+<code>latlon2georef(10.775275567242561, 106.70679737574993, 5)</code>
 </li>
 <br/>
 <div align="center">
@@ -366,7 +366,7 @@ Convert (lat, long) to MGRS ID.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code> latlon2mgrs(10.775275567242561, 106.70679737574993, 4)→ '48PXS86629165'</code>
+<code> latlon2mgrs(10.775275567242561, 106.70679737574993, 4)</code>
 </li>
 <br/>
 <div align="center">
@@ -382,7 +382,7 @@ Convert (lat, long) to Tilecode ID.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2tilecode(10.775275567242561, 106.70679737574993, 23)→ 'z23x6680752y3941728'</code>
+<code>latlon2tilecode(10.775275567242561, 106.70679737574993, 23)</code>
 </li>
 <br/>
 <div align="center">
@@ -398,7 +398,7 @@ Convert (lat, long) to Quadkey ID.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2quadkey(10.775275567242561, 106.70679737574993, 23)→ '13223011131020212310000'</code>
+<code>latlon2quadkey(10.775275567242561, 106.70679737574993, 23)</code>
 </li>
 <br/>
 <div align="center">
@@ -414,7 +414,7 @@ Convert (lat, long) to Maidenhead ID.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2maidenhead(10.775275567242561, 106.70679737574993, 4)→ 'OK30is46' </code>
+<code>latlon2maidenhead(10.775275567242561, 106.70679737574993, 4)</code>
 </li>
 <br/>
 <div align="center">
@@ -430,7 +430,7 @@ Convert (lat, long) to GARS Code.
 </li> 
 <h4>Example usage</h4>
 <li>
-<code>latlon2gars(10.775275567242561, 106.70679737574993, 4)→ '574JK1918'</code>
+<code>latlon2gars(10.775275567242561, 106.70679737574993, 4)</code>
 </li>
 <br/>
 <div align="center">

@@ -17,8 +17,7 @@ from qgis.core import QgsApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
-from ...utils.imgs import Imgs
-from vgrid.utils.geometry import check_crossing_geom
+from ...utils.help_footer import social_links_footer
 from vgrid.utils.antimeridian import fix_shape
 from shapely.geometry import shape
 from qgis.core import QgsGeometry
@@ -74,22 +73,19 @@ class SplitAltimeridian(QgsProcessingFeatureBasedAlgorithm):
         return "utils"
 
     def tags(self):
-        return self.tr(
-            "antimeridian, fix, split"
-        ).split(",")
+        return self.tr("antimeridian, fix, split").split(",")
 
     txt_en = "Split at Antimeridian"
     txt_vi = "Split at Antimeridian"
     figure = "../images/tutorial/antimeridian.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         reference = (
-            '''<div>
-                      <p><b>'''
+            """<div>
+                      <p><b>"""
             + self.tr("Reference:", "Reference:")
-            + '''</b> <a href="https://github.com/gadomski/antimeridian">antimeridian</a></p>
-                    </div>'''
+            + """</b> <a href="https://github.com/gadomski/antimeridian">antimeridian</a></p>
+                    </div>"""
         )
         footer = (
             '''<div align="center">
@@ -103,7 +99,7 @@ class SplitAltimeridian(QgsProcessingFeatureBasedAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
@@ -126,16 +122,18 @@ class SplitAltimeridian(QgsProcessingFeatureBasedAlgorithm):
         # Input vector layer
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.INPUT, self.tr("Input (multi)polygon layer with EPSG:4326 CRS"),[QgsProcessing.TypeVectorPolygon, QgsProcessing.TypeVectorLine]
+                self.INPUT,
+                self.tr("Input (multi)polygon layer with EPSG:4326 CRS"),
+                [QgsProcessing.TypeVectorPolygon, QgsProcessing.TypeVectorLine],
             )
         )
-        
+
         # Fix winding
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.FIX_WINDING,
                 self.tr("Fix winding", "Fix winding"),
-                defaultValue=True,  
+                defaultValue=True,
             )
         )
 
@@ -147,7 +145,7 @@ class SplitAltimeridian(QgsProcessingFeatureBasedAlgorithm):
                 defaultValue=False,
             )
         )
-        
+
         # Force south pole parameter
         self.addParameter(
             QgsProcessingParameterBoolean(
@@ -156,56 +154,55 @@ class SplitAltimeridian(QgsProcessingFeatureBasedAlgorithm):
                 defaultValue=False,
             )
         )
-        
-  
+
     def prepareAlgorithm(self, parameters, context, feedback):
         source = self.parameterAsSource(parameters, self.INPUT, context)
         # Check CRS
         crs = source.sourceCrs() if hasattr(source, "sourceCrs") else None
         if crs is None:
-            feedback.reportError(
-                "Input layer CRS must be EPSG:4326."
-            )
+            feedback.reportError("Input layer CRS must be EPSG:4326.")
             return False
         wgs84 = QgsCoordinateReferenceSystem("EPSG:4326")
         if crs.authid() != wgs84.authid():
-            feedback.reportError(
-                "Input layer CRS must be EPSG:4326."
-            )
+            feedback.reportError("Input layer CRS must be EPSG:4326.")
             return False
-        
+
         # Get boolean parameters
-        self.force_north_pole = self.parameterAsBool(parameters, self.FORCE_NORTH_POLE, context)
-        self.force_south_pole = self.parameterAsBool(parameters, self.FORCE_SOUTH_POLE, context)
+        self.force_north_pole = self.parameterAsBool(
+            parameters, self.FORCE_NORTH_POLE, context
+        )
+        self.force_south_pole = self.parameterAsBool(
+            parameters, self.FORCE_SOUTH_POLE, context
+        )
         self.fix_winding = self.parameterAsBool(parameters, self.FIX_WINDING, context)
-        
+
         # Initialize counters
         self.num_bad = 0
         self.total_features = source.featureCount()
-        
+
         return True
 
     def processFeature(self, feature, context, feedback):
         try:
             feature_geom = feature.geometry()
-            
+
             # Convert QgsGeometry to shapely geometry for checking and fixing
             shapely_geom = shape(feature_geom.__geo_interface__)
-            
+
             # No need toheck if geometry crosses the antimeridian
             # if check_crossing_geom(shapely_geom):
-                # Fix the geometry (returns a dict)
+            # Fix the geometry (returns a dict)
             fixed_shape_dict = fix_shape(
                 shapely_geom,
                 force_north_pole=self.force_north_pole,
                 force_south_pole=self.force_south_pole,
-                fix_winding=self.fix_winding
+                fix_winding=self.fix_winding,
             )
             # Convert dict back to shapely geometry, then to QgsGeometry
             fixed_shapely_geom = shape(fixed_shape_dict)
             fixed_geom = QgsGeometry.fromWkt(fixed_shapely_geom.wkt)
             feature.setGeometry(fixed_geom)
-        
+
             return [feature]
 
         except Exception as e:

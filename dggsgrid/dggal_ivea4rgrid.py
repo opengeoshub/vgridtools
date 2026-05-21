@@ -8,7 +8,7 @@ from qgis.PyQt.QtCore import QObject, QTimer
 from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import pyqtSlot
 
-from math import log2, floor
+from math import log2
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
@@ -23,6 +23,7 @@ from vgrid.utils.constants import DGGAL_TYPES
 # Initialize dggal application
 app = Application(appGlobals=globals())
 pydggal_setup(app)
+
 
 class DGGALIVEA4RGrid(QObject):
     def __init__(self, vgridtools, canvas, iface):
@@ -108,7 +109,7 @@ class DGGALIVEA4RGrid(QObject):
                     zone_id = self.dggrs.getZoneTextID(zone)
                     # Convert zone to geometry using dggal_to_geo
                     cell_polygon = dggal_to_geo(self.dggs_type, zone_id)
-                    if settings.splitAntimeridian:          
+                    if settings.splitAntimeridian:
                         cell_polygon = fix_polygon(cell_polygon)
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
@@ -145,7 +146,9 @@ class DGGALIVEA4RGrid(QObject):
         # max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
 
         # res = min(max_res, max(min_res, floor(zoom*0.95)))
-        res = self.dggrs.getLevelFromScaleDenominator(scale,relativeDepth=8,mmPerPixel = 0.28)
+        res = self.dggrs.getLevelFromScaleDenominator(
+            scale, relativeDepth=8, mmPerPixel=0.28
+        )
 
         return res
 

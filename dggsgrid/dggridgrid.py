@@ -13,7 +13,7 @@ from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import QObject, QTimer, pyqtSlot
 
 from vgrid.utils.constants import DGGRID_TYPES
-from vgrid.utils.io import validate_coordinate  
+from vgrid.utils.io import validate_coordinate
 
 from ..settings import settings
 from ..utils.dggrid_instance import (

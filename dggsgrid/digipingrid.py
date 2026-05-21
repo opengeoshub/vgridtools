@@ -1,4 +1,3 @@
-from shapely.geometry import Polygon
 from qgis.core import (
     QgsWkbTypes,
     QgsCoordinateTransform,
@@ -26,7 +25,11 @@ class DIGIPINGrid(QObject):
         self.iface = iface
 
         self.digipin_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
-        self.digipin_marker.setStrokeColor(settings.digipinColor if hasattr(settings, 'digipinColor') else settings.digipinColor)
+        self.digipin_marker.setStrokeColor(
+            settings.digipinColor
+            if hasattr(settings, "digipinColor")
+            else settings.digipinColor
+        )
         self.digipin_marker.setWidth(settings.gridWidth)
 
         # DIGIPIN auto-update toggle and debounced extent listener
@@ -66,7 +69,7 @@ class DIGIPINGrid(QObject):
                 canvas_extent.xMaximum(),
                 canvas_extent.yMaximum(),
             )
-           
+
             # Transform to EPSG:4326 if needed
             if epsg4326 != canvas_crs:
                 trans_to_4326 = QgsCoordinateTransform(
@@ -97,7 +100,7 @@ class DIGIPINGrid(QObject):
                         # Get DIGIPIN code for this point at the specified resolution
                         digipin_id = latlon2digipin(lat, lon, resolution)
 
-                        if digipin_id == 'Out of Bound':
+                        if digipin_id == "Out of Bound":
                             lat += sample_width
                             continue
 
@@ -110,7 +113,9 @@ class DIGIPINGrid(QObject):
                         # Get the bounds for this DIGIPIN cell
                         cell_polygon = digipin2geo(digipin_id)
 
-                        if isinstance(cell_polygon, str):  # Error like 'Invalid DIGIPIN'
+                        if isinstance(
+                            cell_polygon, str
+                        ):  # Error like 'Invalid DIGIPIN'
                             lat += sample_width
                             continue
 
@@ -146,7 +151,7 @@ class DIGIPINGrid(QObject):
 
     def _get_digipin_resolution(self, scale):
         # Map scale to zoom, then to DIGIPIN resolution
-        zoom = 29.1402 - log2(scale)        
+        zoom = 29.1402 - log2(scale)
         # Map zoom levels to DIGIPIN precision (1-10 characters)
         if zoom < 5:
             return 1
@@ -192,4 +197,3 @@ class DIGIPINGrid(QObject):
             self.digipin_marker.deleteLater()
         except Exception:
             pass
-

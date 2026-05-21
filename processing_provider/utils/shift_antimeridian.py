@@ -18,7 +18,7 @@ from qgis.core import QgsApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from vgrid.utils.geometry import shift_west, shift_east, shift_balanced
 from shapely.geometry import shape
 from qgis.core import QgsGeometry
@@ -76,16 +76,13 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
         return "utils"
 
     def tags(self):
-        return self.tr(
-            "antimeridian, fix, shift"
-        ).split(",")
+        return self.tr("antimeridian, fix, shift").split(",")
 
     txt_en = "Shift at Antimeridian"
     txt_vi = "Shift at Antimeridian"
     figure = "../images/tutorial/antimeridian.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -98,12 +95,12 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
         )
-        return self.tr(self.txt_en, self.txt_vi)  + footer
+        return self.tr(self.txt_en, self.txt_vi) + footer
 
     def inputLayerTypes(self):
         return [QgsProcessing.TypeVectorPolygon, QgsProcessing.TypeVectorLine]
@@ -121,10 +118,12 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
         # Input vector layer
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.INPUT, self.tr("Input (multi)polygon layer with EPSG:4326 CRS"),[QgsProcessing.TypeVectorPolygon, QgsProcessing.TypeVectorLine]
+                self.INPUT,
+                self.tr("Input (multi)polygon layer with EPSG:4326 CRS"),
+                [QgsProcessing.TypeVectorPolygon, QgsProcessing.TypeVectorLine],
             )
         )
-        
+
         # Shift type parameter
         self.addParameter(
             QgsProcessingParameterEnum(
@@ -133,12 +132,12 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
                 options=[
                     self.tr("West Shift", "West Shift"),
                     self.tr("East Shift", "East Shift"),
-                    self.tr("Balanced Shift", "Balanced Shift")
+                    self.tr("Balanced Shift", "Balanced Shift"),
                 ],
                 defaultValue=0,  # Default to West Shift
             )
         )
-        
+
         # West threshold parameter
         self.addParameter(
             QgsProcessingParameterNumber(
@@ -150,7 +149,7 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
                 maxValue=180.0,
             )
         )
-        
+
         # East threshold parameter
         self.addParameter(
             QgsProcessingParameterNumber(
@@ -168,50 +167,58 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
         # Check CRS
         crs = source.sourceCrs() if hasattr(source, "sourceCrs") else None
         if crs is None:
-            feedback.reportError(
-                "Input layer CRS must be EPSG:4326."
-            )
+            feedback.reportError("Input layer CRS must be EPSG:4326.")
             return False
         wgs84 = QgsCoordinateReferenceSystem("EPSG:4326")
         if crs.authid() != wgs84.authid():
-            feedback.reportError(
-                "Input layer CRS must be EPSG:4326."
-            )
+            feedback.reportError("Input layer CRS must be EPSG:4326.")
             return False
-        
+
         # Get shift type parameter
         self.shift_type = self.parameterAsEnum(parameters, self.WEST_SHIFT, context)
-        
+
         # Get threshold parameters
-        self.west_threshold = self.parameterAsDouble(parameters, self.WEST_THRESHOLD, context)
-        self.east_threshold = self.parameterAsDouble(parameters, self.EAST_THRESHOLD, context)
-        
+        self.west_threshold = self.parameterAsDouble(
+            parameters, self.WEST_THRESHOLD, context
+        )
+        self.east_threshold = self.parameterAsDouble(
+            parameters, self.EAST_THRESHOLD, context
+        )
+
         # Initialize counters
         self.num_bad = 0
         self.total_features = source.featureCount()
-        
+
         return True
 
     def processFeature(self, feature, context, feedback):
         try:
             feature_geom = feature.geometry()
-            
+
             shapely_geom = shape(feature_geom.__geo_interface__)
-            
+
             # Apply shift based on shift type
             # 0 = WEST_SHIFT, 1 = EAST_SHIFT, 2 = BALANCED_SHIFT
             if self.shift_type == 0:  # WEST_SHIFT
-                fixed_shape_dict = shift_west(shapely_geom, threshold=self.west_threshold)
+                fixed_shape_dict = shift_west(
+                    shapely_geom, threshold=self.west_threshold
+                )
             elif self.shift_type == 1:  # EAST_SHIFT
-                fixed_shape_dict = shift_east(shapely_geom, threshold=self.east_threshold)
+                fixed_shape_dict = shift_east(
+                    shapely_geom, threshold=self.east_threshold
+                )
             else:  # BALANCED_SHIFT
-                fixed_shape_dict = shift_balanced(shapely_geom, threshold_west=self.west_threshold, threshold_east=self.east_threshold)
-            
+                fixed_shape_dict = shift_balanced(
+                    shapely_geom,
+                    threshold_west=self.west_threshold,
+                    threshold_east=self.east_threshold,
+                )
+
             # Convert dict back to shapely geometry, then to QgsGeometry
             fixed_shapely_geom = shape(fixed_shape_dict)
             fixed_geom = QgsGeometry.fromWkt(fixed_shapely_geom.wkt)
             feature.setGeometry(fixed_geom)
-        
+
             return [feature]
 
         except Exception as e:

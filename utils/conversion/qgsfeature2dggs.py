@@ -1,3 +1,44 @@
+from pyproj import Geod
+from dggal import *
+from vgrid.utils.constants import DGGAL_TYPES
+from vgrid.utils.constants import (
+    ISEA4T_RES_ACCURACY_DICT,
+    ISEA3H_RES_ACCURACY_DICT,
+    INITIAL_GEOHASHES,
+)
+from vgrid.generator.geohashgrid import expand_geohash_bbox
+from vgrid.dggs import qtm
+from vgrid.conversion.dggscompact.a5compact import a5_compact
+from vgrid.conversion.dggscompact.digipincompact import digipin_compact
+from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
+from vgrid.conversion.dggscompact.tilecodecompact import tilecode_compact
+from vgrid.conversion.dggscompact.geohashcompact import geohash_compact
+from vgrid.conversion.dggscompact.olccompact import olc_compact
+from vgrid.conversion.dggscompact.qtmcompact import qtm_compact
+from vgrid.conversion.dggscompact.dggalcompact import dggal_compact
+from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_compact
+from vgrid.utils.geometry import (
+    graticule_dggs_metrics,
+    graticule_dggs_to_feature,
+    geodesic_dggs_metrics,
+    check_predicate,
+)
+from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
+from vgrid.dggs.digipin import BOUNDS
+from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
+from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
+from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
+from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
+from vgrid.generator.olcgrid import olc_refine_cell
+from vgrid.conversion.dggs2geo.olc2geo import olc2geo
+from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
+from vgrid.conversion.dggs2geo.isea3h2geo import isea3h2geo
+from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
+from vgrid.conversion.dggs2geo.a52geo import a52geo
+from vgrid.conversion.dggs2geo.s22geo import s22geo
+from vgrid.conversion.dggs2geo.h32geo import h32geo
+from vgrid.utils.geometry import geodesic_buffer
+from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
 from collections import deque
 from shapely.geometry import Polygon, box
 from shapely.wkt import loads as wkt_loads
@@ -52,44 +93,6 @@ rhealpix_dggs = RHEALPixDGGS(
     ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3
 )
 
-from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
-from vgrid.utils.geometry import geodesic_buffer
-from vgrid.conversion.dggs2geo.h32geo import h32geo
-from vgrid.conversion.dggs2geo.s22geo import s22geo
-from vgrid.conversion.dggs2geo.a52geo import a52geo
-from vgrid.conversion.dggs2geo.isea4t2geo import isea4t2geo
-from vgrid.conversion.dggs2geo.isea3h2geo import isea3h2geo
-from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
-from vgrid.conversion.dggs2geo.olc2geo import olc2geo
-from vgrid.generator.olcgrid import olc_refine_cell
-from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
-from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
-from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
-from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
-from vgrid.dggs.digipin import BOUNDS
-from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
-from vgrid.utils.geometry import (
-    graticule_dggs_metrics,
-    graticule_dggs_to_feature,
-    geodesic_dggs_metrics,
-    check_predicate,
-)
-from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_compact
-from vgrid.conversion.dggscompact.dggalcompact import dggal_compact
-from vgrid.conversion.dggscompact.qtmcompact import qtm_compact
-from vgrid.conversion.dggscompact.olccompact import olc_compact
-from vgrid.conversion.dggscompact.geohashcompact import geohash_compact
-from vgrid.conversion.dggscompact.tilecodecompact import tilecode_compact
-from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
-from vgrid.conversion.dggscompact.digipincompact import digipin_compact
-from vgrid.conversion.dggscompact.a5compact import a5_compact
-from vgrid.dggs import qtm
-from vgrid.generator.geohashgrid import expand_geohash_bbox
-from vgrid.utils.constants import (
-    ISEA4T_RES_ACCURACY_DICT,
-    ISEA3H_RES_ACCURACY_DICT,
-    INITIAL_GEOHASHES,
-)
 
 if platform.system() == "Windows":
     from vgrid.dggs.eaggr.eaggr import Eaggr
@@ -100,17 +103,14 @@ if platform.system() == "Windows":
     from vgrid.conversion.dggscompact.isea4tcompact import isea4t_compact
     from vgrid.conversion.dggscompact.isea3hcompact import isea3h_compact
     from vgrid.generator.isea3hgrid import get_isea3h_children_cells_within_bbox
-    from vgrid.utils.constants import ISEA3H_RES_ACCURACY_DICT, ISEA3H_ACCURACY_RES_DICT
+    from vgrid.utils.constants import ISEA3H_ACCURACY_RES_DICT
 
     isea4t_dggs = Eaggr(Model.ISEA4T)
     isea3h_dggs = Eaggr(Model.ISEA3H)
 
-from vgrid.utils.constants import DGGAL_TYPES
-from dggal import *
 
 app = Application(appGlobals=globals())
 pydggal_setup(app)
-from pyproj import Geod
 
 geod = Geod(ellps="WGS84")
 p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (
@@ -910,7 +910,9 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
 
         if cell_polygon.intersects(bbox_polygon):
             intersecting_cells[current_cell_id] = (cell_hex, cell_polygon)
-            neighbors = a5.uncompact(a5.grid_disk_vertex(current_cell_id, 1), resolution)
+            neighbors = a5.uncompact(
+                a5.grid_disk_vertex(current_cell_id, 1), resolution
+            )
             for neighbor_id in neighbors:
                 if neighbor_id not in covered_cells:
                     queue.append(neighbor_id)
@@ -1014,7 +1016,9 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None)
 
     # Fast-path: seed cell fully contains bbox
     if seed_cell_polygon.contains(bbox_polygon):
-        if predicate and (not check_predicate(seed_cell_polygon, shapely_geom, predicate)):
+        if predicate and (
+            not check_predicate(seed_cell_polygon, shapely_geom, predicate)
+        ):
             return []
 
         num_edges = 5
@@ -1083,7 +1087,9 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None)
 
         if cell_polygon.intersects(bbox_polygon):
             intersecting_cells[current_cell_id] = (cell_hex, cell_polygon)
-            neighbors = a5.uncompact(a5.grid_disk_vertex(current_cell_id, 1), resolution)
+            neighbors = a5.uncompact(
+                a5.grid_disk_vertex(current_cell_id, 1), resolution
+            )
             for neighbor_id in neighbors:
                 if neighbor_id not in covered_cells:
                     queue.append(neighbor_id)
@@ -2060,7 +2066,9 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
         # Compact mode: apply to rhealpix_features after predicate check
         if compact:
             # Extract cell IDs from rhealpix_features
-            cells_to_process = [f["rhealpix"] for f in rhealpix_features if f["rhealpix"]]
+            cells_to_process = [
+                f["rhealpix"] for f in rhealpix_features if f["rhealpix"]
+            ]
             # Apply compact
             cells_to_process = rhealpix_compact(cells_to_process)
             # Rebuild rhealpix_features with compacted cells
@@ -2069,17 +2077,17 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
             if feedback:
                 feedback.pushInfo("Compacting cells")
                 feedback.setProgress(0)
-            
+
             for i, cell_id in enumerate(cells_to_process):
                 if feedback and feedback.isCanceled():
                     return []
-                
+
                 rhealpix_uids = (cell_id[0],) + tuple(map(int, cell_id[1:]))
                 rhelpix_cell = rhealpix_dggs.cell(rhealpix_uids)
                 cell_polygon = rhealpix2geo(cell_id)
-                
+
                 # No need to re-check predicate for parent cells from compact mode
-                
+
                 num_edges = 4
                 if rhelpix_cell.ellipsoidal_shape() == "dart":
                     num_edges = 3
@@ -2088,7 +2096,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
                 )
                 cell_resolution = rhelpix_cell.resolution
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-                
+
                 # Create a single QGIS feature
                 rhealpix_feature = QgsFeature()
                 rhealpix_feature.setGeometry(cell_geometry)
@@ -3371,7 +3379,7 @@ def generate_olc_grid(resolution):
     # Calculate the total number of steps for progress tracking
     total_lat_steps = int((ne_lat - sw_lat) / lat_step)
     total_lng_steps = int((ne_lng - sw_lng) / lng_step)
-    total_steps = total_lat_steps * total_lng_steps
+    total_lat_steps * total_lng_steps
 
     lat = sw_lat
     while lat < ne_lat:
@@ -4703,9 +4711,11 @@ def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=
 
     return quadkey_features
 
+
 #######################
 # QgsFeatures to DIGIPIN
 #######################
+
 
 def qgsfeature2digipin(
     feature, resolution, predicate=None, compact=None, feedback=None
@@ -4794,9 +4804,9 @@ def digipincompact_from_qgsfeatures(qgs_features, feedback):
     for i, digipin_id_compact in enumerate(digipin_ids_compact):
         if feedback and feedback.isCanceled():
             return []
-        
+
         cell_polygon = digipin2geo(digipin_id_compact)
-        clean_id = digipin_id_compact.replace('-', '')
+        clean_id = digipin_id_compact.replace("-", "")
         cell_resolution = len(clean_id)
 
         center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
@@ -4837,68 +4847,73 @@ def polyline2digipin(feature, resolution, predicate=None, compact=None, feedback
     max_lat = feature_rect.yMaximum()
 
     # Constrain to DIGIPIN bounds (India region)
-    min_lat = max(min_lat, BOUNDS['minLat'])
-    min_lon = max(min_lon, BOUNDS['minLon'])
-    max_lat = min(max_lat, BOUNDS['maxLat'])
-    max_lon = min(max_lon, BOUNDS['maxLon'])
-    
+    min_lat = max(min_lat, BOUNDS["minLat"])
+    min_lon = max(min_lon, BOUNDS["minLon"])
+    max_lat = min(max_lat, BOUNDS["maxLat"])
+    max_lon = min(max_lon, BOUNDS["maxLon"])
+
     # Calculate sampling density based on resolution (following digipingrid.py approach)
     # Each level divides the cell by 4 (2x2 grid)
     base_width = 9.0  # degrees at resolution 1
     factor = 0.25 ** (resolution - 1)  # each level divides by 4
     sample_width = base_width * factor
-    
+
     seen_cells = set()
-    
+
     # Calculate approximate number of cells for progress tracking
     lat_range = max_lat - min_lat
     lon_range = max_lon - min_lon
     estimated_cells = int((lat_range * lon_range) / (sample_width * sample_width))
-    
+
     if feedback:
         feedback.pushInfo(f"Processing feature {feature.id()}")
         feedback.setProgress(0)
 
     cell_count = 0
-    
+
     # Sample points across the bounding box
     lon = min_lon
     while lon <= max_lon:
         lat = min_lat
         while lat <= max_lat:
             if feedback and feedback.isCanceled():
-                return []                
+                return []
             # Get DIGIPIN code for this point at the specified resolution
             digipin_id = latlon2digipin(lat, lon, resolution)
-            
-            if digipin_id == 'Out of Bound':
+
+            if digipin_id == "Out of Bound":
                 lat += sample_width
                 continue
-                
+
             if digipin_id in seen_cells:
                 lat += sample_width
                 continue
-                
+
             seen_cells.add(digipin_id)
-            
+
             # Get the bounds for this DIGIPIN cell
             cell_polygon = digipin2geo(digipin_id)
-            
+
             if isinstance(cell_polygon, str):  # Error like 'Invalid DIGIPIN'
                 lat += sample_width
-                continue          
-            
+                continue
+
             # Convert to QgsGeometry for intersection check
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            
+
             # Check if cell intersects with polyline
             if cell_geometry.intersects(feature_geometry):
                 digipin_feature = QgsFeature()
                 digipin_feature.setGeometry(cell_geometry)
 
-                center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-                    graticule_dggs_metrics(cell_polygon)
-                )
+                (
+                    center_lat,
+                    center_lon,
+                    cell_width,
+                    cell_height,
+                    cell_area,
+                    cell_perimeter,
+                ) = graticule_dggs_metrics(cell_polygon)
 
                 original_attributes = feature.attributes()
                 original_fields = feature.fields()
@@ -4935,13 +4950,13 @@ def polyline2digipin(feature, resolution, predicate=None, compact=None, feedback
                 digipin_feature.setAttributes(all_attributes)
 
                 digipin_features.append(digipin_feature)
-                cell_count += 1        
-            
+                cell_count += 1
+
             lat += sample_width
             if feedback and cell_count % 100 == 0:
                 feedback.setProgress(int(100 * cell_count / estimated_cells))
         lon += sample_width
-        
+
     if feedback:
         feedback.setProgress(100)
 
@@ -4961,59 +4976,59 @@ def polygon2digipin(feature, resolution, predicate=None, compact=None, feedback=
     max_lat = feature_rect.yMaximum()
 
     # Constrain to DIGIPIN bounds (India region)
-    min_lat = max(min_lat, BOUNDS['minLat'])
-    min_lon = max(min_lon, BOUNDS['minLon'])
-    max_lat = min(max_lat, BOUNDS['maxLat'])
-    max_lon = min(max_lon, BOUNDS['maxLon'])
-    
+    min_lat = max(min_lat, BOUNDS["minLat"])
+    min_lon = max(min_lon, BOUNDS["minLon"])
+    max_lat = min(max_lat, BOUNDS["maxLat"])
+    max_lon = min(max_lon, BOUNDS["maxLon"])
+
     # Calculate sampling density based on resolution (following digipingrid.py approach)
     # Each level divides the cell by 4 (2x2 grid)
     base_width = 9.0  # degrees at resolution 1
     factor = 0.25 ** (resolution - 1)  # each level divides by 4
     sample_width = base_width * factor
-    
+
     seen_cells = set()
-    
+
     # Calculate approximate number of cells for progress tracking
     lat_range = max_lat - min_lat
     lon_range = max_lon - min_lon
     estimated_cells = int((lat_range * lon_range) / (sample_width * sample_width))
-    
+
     if feedback:
         feedback.pushInfo(f"Processing feature {feature.id()}")
         feedback.setProgress(0)
 
     cell_count = 0
-    
+
     # Sample points across the bounding box
     lon = min_lon
     while lon <= max_lon:
         lat = min_lat
         while lat <= max_lat:
             if feedback and feedback.isCanceled():
-                return []                
+                return []
             # Get DIGIPIN code for this point at the specified resolution
             digipin_id = latlon2digipin(lat, lon, resolution)
-            
-            if digipin_id == 'Out of Bound':
+
+            if digipin_id == "Out of Bound":
                 lat += sample_width
                 continue
-                
+
             if digipin_id in seen_cells:
                 lat += sample_width
                 continue
-                
+
             seen_cells.add(digipin_id)
-            
+
             # Get the bounds for this DIGIPIN cell
             cell_polygon = digipin2geo(digipin_id)
-            
+
             if isinstance(cell_polygon, str):  # Error like 'Invalid DIGIPIN'
                 lat += sample_width
-                continue           
+                continue
             # Convert to QgsGeometry for intersection check
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-            
+
             # Predicate-based filtering
             if not check_predicate(cell_geometry, feature_geometry, predicate):
                 lat += sample_width
@@ -5022,9 +5037,14 @@ def polygon2digipin(feature, resolution, predicate=None, compact=None, feedback=
             digipin_feature = QgsFeature()
             digipin_feature.setGeometry(cell_geometry)
 
-            center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-                graticule_dggs_metrics(cell_polygon)
-            )
+            (
+                center_lat,
+                center_lon,
+                cell_width,
+                cell_height,
+                cell_area,
+                cell_perimeter,
+            ) = graticule_dggs_metrics(cell_polygon)
 
             original_attributes = feature.attributes()
             original_fields = feature.fields()
@@ -5063,10 +5083,10 @@ def polygon2digipin(feature, resolution, predicate=None, compact=None, feedback=
 
             digipin_features.append(digipin_feature)
             cell_count += 1
-                
+
             lat += sample_width
         lon += sample_width
-        
+
         if feedback and cell_count % 100 == 0:
             feedback.setProgress(int(100 * cell_count / estimated_cells))
 
@@ -5197,8 +5217,4 @@ def qgsfeature2dggrid(
         options=dggrid_options,
     )
 
-    return _dggrid_gdf_to_qgs_features(
-        gdf, field_name, resolution, feature, feedback
-    )
-
-
+    return _dggrid_gdf_to_qgs_features(gdf, field_name, resolution, feature, feedback)

@@ -42,7 +42,7 @@ from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from qgis.PyQt.QtCore import QVariant
 import os
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from shapely.geometry import Polygon
 from vgrid.dggs import mercantile
 from vgrid.utils.geometry import graticule_dggs_metrics
@@ -102,7 +102,6 @@ class QuadkeyGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_tilecode.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -115,7 +114,7 @@ class QuadkeyGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """

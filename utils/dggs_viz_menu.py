@@ -13,7 +13,15 @@ from vgrid.utils.constants import DGGRID_TYPES
 from ..dggsgrid.dggridgrid import DGGRIDGrid
 
 DGGRID_MENU_EXCLUDE = frozenset(
-    {"SUPERFUND", "PLANETRISK", "ISEA4H", "ISEA43H", "FULLER4H", "FULLER43H", "FULLER7H"}
+    {
+        "SUPERFUND",
+        "PLANETRISK",
+        "ISEA4H",
+        "ISEA43H",
+        "FULLER4H",
+        "FULLER43H",
+        "FULLER7H",
+    }
 )
 
 DGGAL_VIZ_ENTRIES = [
@@ -58,7 +66,9 @@ def _add_checkbox(menu: QMenu, label: str, icon: QIcon, on_toggle) -> QWidgetAct
 
 
 def _grid_toggle(enable_fn, grid_fn):
-    return lambda checked: (enable_fn(checked), grid_fn()) if checked else enable_fn(False)
+    return lambda checked: (
+        (enable_fn(checked), grid_fn()) if checked else enable_fn(False)
+    )
 
 
 def _dggrid_viz_toggle(plugin, dggs_type: str, grid, checked: bool) -> None:
@@ -111,9 +121,11 @@ def setup_dggs_visualization_menus(plugin) -> None:
         viz_menu,
         "rHEALPix",
         _icon("grid_rhealpix.svg"),
-        _grid_toggle(plugin.rhealpixgrid.enable_rhealpix, plugin.rhealpixgrid.rhealpix_grid),
+        _grid_toggle(
+            plugin.rhealpixgrid.enable_rhealpix, plugin.rhealpixgrid.rhealpix_grid
+        ),
     )
- 
+
     dggal_menu = QMenu("DGGAL")
     dggal_menu.setIcon(_icon("grid_dggal.svg"))
     viz_menu.addMenu(dggal_menu)
@@ -143,7 +155,9 @@ def setup_dggs_visualization_menus(plugin) -> None:
         checkbox.setIcon(_icon("grid_dggrid.svg"))
         checkbox.setChecked(False)
         checkbox.toggled.connect(
-            lambda checked, t=dggs_type, g=grid: _dggrid_viz_toggle(plugin, t, g, checked)
+            lambda checked, t=dggs_type, g=grid: _dggrid_viz_toggle(
+                plugin, t, g, checked
+            )
         )
         action.setDefaultWidget(checkbox)
         dggrid_menu.addAction(action)
@@ -172,7 +186,9 @@ def setup_dggs_visualization_menus(plugin) -> None:
         viz_menu,
         "Geohash",
         _icon("grid_quad.svg"),
-        _grid_toggle(plugin.geohashgrid.enable_geohash, plugin.geohashgrid.geohash_grid),
+        _grid_toggle(
+            plugin.geohashgrid.enable_geohash, plugin.geohashgrid.geohash_grid
+        ),
     )
     _add_checkbox(
         viz_menu,
@@ -184,14 +200,17 @@ def setup_dggs_visualization_menus(plugin) -> None:
         viz_menu,
         "Tilecode",
         _icon("grid_quad.svg"),
-        _grid_toggle(plugin.tilecodegrid.enable_tilecode, plugin.tilecodegrid.tilecode_grid),
+        _grid_toggle(
+            plugin.tilecodegrid.enable_tilecode, plugin.tilecodegrid.tilecode_grid
+        ),
     )
     _add_checkbox(
         viz_menu,
         "Maidenhead",
         _icon("grid_quad.svg"),
         _grid_toggle(
-            plugin.maidenheadgrid.enable_maidenhead, plugin.maidenheadgrid.maidenhead_grid
+            plugin.maidenheadgrid.enable_maidenhead,
+            plugin.maidenheadgrid.maidenhead_grid,
         ),
     )
     _add_checkbox(
@@ -204,5 +223,7 @@ def setup_dggs_visualization_menus(plugin) -> None:
         viz_menu,
         "DIGIPIN",
         _icon("grid_quad.svg"),
-        _grid_toggle(plugin.digipingrid.enable_digipin, plugin.digipingrid.digipin_grid),
+        _grid_toggle(
+            plugin.digipingrid.enable_digipin, plugin.digipingrid.digipin_grid
+        ),
     )

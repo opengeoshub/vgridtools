@@ -71,7 +71,9 @@ class ISEA3HGrid(QObject):
 
             scale = self.canvas.scale()
             # resolution = self._get_isea3h_resolution(scale)
-            resolution = get_isea3h_resolution_from_scale_denominator(scale,relative_depth=10,mm_per_pixel = 0.28)
+            resolution = get_isea3h_resolution_from_scale_denominator(
+                scale, relative_depth=10, mm_per_pixel=0.28
+            )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
@@ -84,9 +86,11 @@ class ISEA3HGrid(QObject):
                     isea3h_cell = DggsCell(child)
                     isea3h_id = isea3h_cell.get_cell_id()
                     if settings.splitAntimeridian:
-                        cell_polygon = isea3h2geo(isea3h_id, fix_antimeridian='split')
+                        cell_polygon = isea3h2geo(isea3h_id, fix_antimeridian="split")
                     else:
-                        cell_polygon = isea3h2geo(isea3h_id, fix_antimeridian='shift_west') 
+                        cell_polygon = isea3h2geo(
+                            isea3h_id, fix_antimeridian="shift_west"
+                        )
                     if epsg4326 != canvas_crs:
                         trans_to_canvas = QgsCoordinateTransform(
                             epsg4326, canvas_crs, QgsProject.instance()
@@ -138,9 +142,11 @@ class ISEA3HGrid(QObject):
                 for cell_id in cells_to_draw:
                     try:
                         if settings.splitAntimeridian:
-                            cell_polygon = isea3h2geo(cell_id, fix_antimeridian='split')
+                            cell_polygon = isea3h2geo(cell_id, fix_antimeridian="split")
                         else:
-                            cell_polygon = isea3h2geo(cell_id, fix_antimeridian='shift_west')       
+                            cell_polygon = isea3h2geo(
+                                cell_id, fix_antimeridian="shift_west"
+                            )
                         if epsg4326 != canvas_crs:
                             trans_to_canvas = QgsCoordinateTransform(
                                 epsg4326, canvas_crs, QgsProject.instance()
@@ -170,8 +176,8 @@ class ISEA3HGrid(QObject):
     def _get_isea3h_resolution(self, scale):
         # Map scale to zoom, then to isea3h resolution
         zoom = 29.1402 - log2(scale)
-        min_res = DGGS_TYPES['isea3h']["min_res"]
-        max_res = DGGS_TYPES['isea3h']["max_res"]
+        min_res = DGGS_TYPES["isea3h"]["min_res"]
+        max_res = DGGS_TYPES["isea3h"]["max_res"]
         # ISEA3H resolution mapping - similar to other grids
         res = min(max_res, max(min_res, floor(zoom * 1.2)))
         return res

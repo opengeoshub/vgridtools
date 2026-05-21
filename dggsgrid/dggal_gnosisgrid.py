@@ -64,7 +64,9 @@ class DGGALGnosisGrid(QObject):
             canvas_crs = QgsProject.instance().crs()
 
             scale = self.canvas.scale()
-            resolution = self.dggrs.getLevelFromScaleDenominator(scale,relativeDepth=8,mmPerPixel = 0)
+            resolution = self.dggrs.getLevelFromScaleDenominator(
+                scale, relativeDepth=8, mmPerPixel=0
+            )
 
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
@@ -137,7 +139,7 @@ class DGGALGnosisGrid(QObject):
         zoom = 29.1402 - log2(scale)
         min_res = DGGAL_TYPES[self.dggs_type]["min_res"]
         max_res = DGGAL_TYPES[self.dggs_type]["max_res"]
-        res = min(max_res, max(min_res, int(floor(zoom))) )        
+        res = min(max_res, max(min_res, int(floor(zoom))))
         return res
 
     @pyqtSlot()

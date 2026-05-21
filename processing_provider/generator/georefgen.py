@@ -44,7 +44,7 @@ import os
 
 from vgrid.utils.io import validate_coordinate
 from vgrid.utils.constants import GEOREF_RESOLUTION_DEGREES
-from ...utils.imgs import Imgs
+from ...utils.help_footer import social_links_footer
 from ...utils.latlon import epsg4326
 from ...settings import settings
 import numpy as np
@@ -104,7 +104,6 @@ class GEOREFGen(QgsProcessingAlgorithm):
     figure = "../images/tutorial/grid_georef.png"
 
     def shortHelpString(self):
-        social_BW = Imgs().social_BW
         footer = (
             '''<div align="center">
                       <img src="'''
@@ -117,7 +116,7 @@ class GEOREFGen(QgsProcessingAlgorithm):
             + self.tr("Author: Thang Quach", "Author: Thang Quach")
             + """</b>
                       </p>"""
-            + social_BW
+            + social_links_footer()
             + """
                     </div>
                     """
