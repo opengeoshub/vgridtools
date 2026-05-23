@@ -16,6 +16,7 @@ from ..settings import settings
 
 # QTM imports
 from vgrid.dggs import qtm
+from vgrid.dggs.qtm import QTM_INITIAL_FACETS
 from vgrid.utils.io import validate_coordinate
 from vgrid.utils.constants import DGGS_TYPES
 from vgrid.utils.geometry import get_qtm_resolution_from_scale_denominator
@@ -92,40 +93,6 @@ class QTMGrid(QObject):
             )
             extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
 
-            # QTM base facets (8 triangular faces)
-            p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (
-                (90.0, -180.0),
-                (90.0, -90.0),
-                (90.0, 0.0),
-                (90.0, 90.0),
-                (90.0, 180.0),
-            )
-            p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (
-                (0.0, -180.0),
-                (0.0, -90.0),
-                (0.0, 0.0),
-                (0.0, 90.0),
-                (0.0, 180.0),
-            )
-            n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (
-                (-90.0, -180.0),
-                (-90.0, -90.0),
-                (-90.0, 0.0),
-                (-90.0, 90.0),
-                (-90.0, 180.0),
-            )
-
-            initial_facets = [
-                [p0_n180, p0_n90, p90_n90, p90_n180, p0_n180, True],
-                [p0_n90, p0_p0, p90_p0, p90_n90, p0_n90, True],
-                [p0_p0, p0_p90, p90_p90, p90_p0, p0_p0, True],
-                [p0_p90, p0_p180, p90_p180, p90_p90, p0_p90, True],
-                [n90_n180, n90_n90, p0_n90, p0_n180, n90_n180, False],
-                [n90_n90, n90_p0, p0_p0, p0_n90, n90_n90, False],
-                [n90_p0, n90_p90, p0_p90, p0_p0, n90_p0, False],
-                [n90_p90, n90_p180, p0_p180, p0_p90, n90_p90, False],
-            ]
-
             # Generate QTM cells
             QTMID = {}
             levelFacets = {}
@@ -134,7 +101,7 @@ class QTMGrid(QObject):
                 levelFacets[lvl] = []
                 QTMID[lvl] = []
                 if lvl == 0:
-                    for i, facet in enumerate(initial_facets):
+                    for i, facet in enumerate(QTM_INITIAL_FACETS):
                         facet_geom = qtm.constructGeometry(facet)
                         QTMID[0].append(str(i + 1))
                         levelFacets[0].append(facet)

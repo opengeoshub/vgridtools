@@ -8,6 +8,7 @@ from vgrid.utils.constants import (
 )
 from vgrid.generator.geohashgrid import expand_geohash_bbox
 from vgrid.dggs import qtm
+from vgrid.dggs.qtm import QTM_INITIAL_FACETS
 from vgrid.conversion.dggscompact.a5compact import a5_compact
 from vgrid.conversion.dggscompact.digipincompact import digipin_compact
 from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
@@ -113,27 +114,6 @@ app = Application(appGlobals=globals())
 pydggal_setup(app)
 
 geod = Geod(ellps="WGS84")
-p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (
-    (90.0, -180.0),
-    (90.0, -90.0),
-    (90.0, 0.0),
-    (90.0, 90.0),
-    (90.0, 180.0),
-)
-p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (
-    (0.0, -180.0),
-    (0.0, -90.0),
-    (0.0, 0.0),
-    (0.0, 90.0),
-    (0.0, 180.0),
-)
-n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (
-    (-90.0, -180.0),
-    (-90.0, -90.0),
-    (-90.0, 0.0),
-    (-90.0, 90.0),
-    (-90.0, 180.0),
-)
 
 
 #######################
@@ -2922,18 +2902,7 @@ def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=Non
         QTMID[lvl] = []
 
         if lvl == 0:
-            initial_facets = [
-                [p0_n180, p0_n90, p90_n90, p90_n180, p0_n180, True],
-                [p0_n90, p0_p0, p90_p0, p90_n90, p0_n90, True],
-                [p0_p0, p0_p90, p90_p90, p90_p0, p0_p0, True],
-                [p0_p90, p0_p180, p90_p180, p90_p90, p0_p90, True],
-                [n90_n180, n90_n90, p0_n90, p0_n180, n90_n180, False],
-                [n90_n90, n90_p0, p0_p0, p0_n90, n90_n90, False],
-                [n90_p0, n90_p90, p0_p90, p0_p0, n90_p0, False],
-                [n90_p90, n90_p180, p0_p180, p0_p90, n90_p90, False],
-            ]
-
-            for i, facet in enumerate(initial_facets):
+            for i, facet in enumerate(QTM_INITIAL_FACETS):
                 QTMID[0].append(str(i + 1))
                 facet_geom = qtm.constructGeometry(facet)
                 num_edges = 3
@@ -3085,18 +3054,7 @@ def polygon2qtm(feature, resolution, predicate, compact, feedback):
         QTMID[lvl] = []
 
         if lvl == 0:
-            initial_facets = [
-                [p0_n180, p0_n90, p90_n90, p90_n180, p0_n180, True],
-                [p0_n90, p0_p0, p90_p0, p90_n90, p0_n90, True],
-                [p0_p0, p0_p90, p90_p90, p90_p0, p0_p0, True],
-                [p0_p90, p0_p180, p90_p180, p90_p90, p0_p90, True],
-                [n90_n180, n90_n90, p0_n90, p0_n180, n90_n180, False],
-                [n90_n90, n90_p0, p0_p0, p0_n90, n90_n90, False],
-                [n90_p0, n90_p90, p0_p90, p0_p0, n90_p0, False],
-                [n90_p90, n90_p180, p0_p180, p0_p90, n90_p90, False],
-            ]
-
-            for i, facet in enumerate(initial_facets):
+            for i, facet in enumerate(QTM_INITIAL_FACETS):
                 QTMID[0].append(str(i + 1))
                 facet_geom = qtm.constructGeometry(facet)
                 num_edges = 3

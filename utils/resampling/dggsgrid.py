@@ -20,6 +20,7 @@ from qgis.core import (
 from qgis.PyQt.QtCore import QVariant
 import h3
 from vgrid.dggs import s2, qtm, olc, mercantile
+from vgrid.dggs.qtm import QTM_INITIAL_FACETS
 from vgrid.generator.olcgrid import olc_refine_cell
 from vgrid.utils.antimeridian import fix_polygon
 from vgrid.utils.geometry import (
@@ -69,29 +70,6 @@ if platform.system() == "Windows":
 
     isea4t_dggs = Eaggr(Model.ISEA4T)
     isea3h_dggs = Eaggr(Model.ISEA3H)
-
-p90_n180, p90_n90, p90_p0, p90_p90, p90_p180 = (
-    (90.0, -180.0),
-    (90.0, -90.0),
-    (90.0, 0.0),
-    (90.0, 90.0),
-    (90.0, 180.0),
-)
-p0_n180, p0_n90, p0_p0, p0_p90, p0_p180 = (
-    (0.0, -180.0),
-    (0.0, -90.0),
-    (0.0, 0.0),
-    (0.0, 90.0),
-    (0.0, 180.0),
-)
-n90_n180, n90_n90, n90_p0, n90_p90, n90_p180 = (
-    (-90.0, -180.0),
-    (-90.0, -90.0),
-    (-90.0, 0.0),
-    (-90.0, 90.0),
-    (-90.0, 180.0),
-)
-
 
 WEB_MERCATOR_BBOX = [-180.0, -85.05112878, 180.0, 85.05112878]
 
@@ -628,18 +606,7 @@ def generate_qtm_grid(resolution, qgs_features, feedback=None):
         QTMID[lvl] = []
 
         if lvl == 0:
-            initial_facets = [
-                [p0_n180, p0_n90, p90_n90, p90_n180, p0_n180, True],
-                [p0_n90, p0_p0, p90_p0, p90_n90, p0_n90, True],
-                [p0_p0, p0_p90, p90_p90, p90_p0, p0_p0, True],
-                [p0_p90, p0_p180, p90_p180, p90_p90, p0_p90, True],
-                [n90_n180, n90_n90, p0_n90, p0_n180, n90_n180, False],
-                [n90_n90, n90_p0, p0_p0, p0_n90, n90_n90, False],
-                [n90_p0, n90_p90, p0_p90, p0_p0, n90_p0, False],
-                [n90_p90, n90_p180, p0_p180, p0_p90, n90_p90, False],
-            ]
-
-            for i, facet in enumerate(initial_facets):
+            for i, facet in enumerate(QTM_INITIAL_FACETS):
                 QTMID[0].append(str(i + 1))
                 facet_geom = qtm.constructGeometry(facet)
                 levelFacets[0].append(facet)
