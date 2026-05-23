@@ -175,6 +175,12 @@ def setup_dggs_visualization_menus(plugin) -> None:
         hex_icon,
         _grid_toggle(plugin.isea3hgrid.enable_isea3h, plugin.isea3hgrid.isea3h_grid),
     )
+    _add_checkbox(
+        viz_menu,
+        "QTM",
+        _icon("grid_triangle.svg"),
+        _grid_toggle(plugin.qtmgrid.enable_qtm, plugin.qtmgrid.qtm_grid),
+    )
 
     _add_checkbox(
         viz_menu,

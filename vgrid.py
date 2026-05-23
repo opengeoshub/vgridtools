@@ -76,7 +76,7 @@ from .dggsgrid.dggal_rtea9rgrid import DGGALRTEA9RGrid
 from .dggsgrid.dggal_healpixgrid import DGGALHEALPixGrid
 from .dggsgrid.dggal_rhealpixgrid import DGGALRHEALPixGrid
 
-# from .dggsgrid.qtmgrid import QTMGrid
+from .dggsgrid.qtmgrid import QTMGrid
 from .dggsgrid.olcgrid import OLCGrid
 from .dggsgrid.geohasgrid import GeohashGrid
 from .dggsgrid.georefgrid import GEOREFGrid
@@ -147,7 +147,7 @@ class VgridTools(object):
         self.dggal_rtea9rgrid = DGGALRTEA9RGrid(self, self.canvas, self.iface)
         self.dggal_rhealpixgrid = DGGALRHEALPixGrid(self, self.canvas, self.iface)
         self.dggal_healpixgrid = DGGALHEALPixGrid(self, self.canvas, self.iface)
-        # self.qtmgrid = QTMGrid(self, self.canvas, self.iface)
+        self.qtmgrid = QTMGrid(self, self.canvas, self.iface)
         self.olcgrid = OLCGrid(self, self.canvas, self.iface)
         self.geohashgrid = GeohashGrid(self, self.canvas, self.iface)
         self.georefgrid = GEOREFGrid(self, self.canvas, self.iface)
@@ -716,8 +716,8 @@ class VgridTools(object):
             self.dggal_rhealpixgrid.cleanup()
         if hasattr(self, "dggal_healpixgrid") and self.dggal_healpixgrid:
             self.dggal_healpixgrid.cleanup()
-        # if hasattr(self, "qtmgrid") and self.qtmgrid:
-        #     self.qtmgrid.cleanup()
+        if hasattr(self, "qtmgrid") and self.qtmgrid:
+            self.qtmgrid.cleanup()
         if hasattr(self, "olcgrid") and self.olcgrid:
             self.olcgrid.cleanup()
         if hasattr(self, "geohashgrid") and self.geohashgrid:

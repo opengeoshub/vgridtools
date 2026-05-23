@@ -1,24 +1,20 @@
-from shapely.geometry import box
+from math import log2
+
+from shapely.geometry import Polygon
 from qgis.core import (
     QgsWkbTypes,
     QgsCoordinateTransform,
     QgsGeometry,
     QgsProject,
 )
-from qgis.PyQt.QtCore import QObject, QTimer
+from qgis.PyQt.QtCore import QObject, QTimer, pyqtSlot
 from qgis.gui import QgsRubberBand
-from qgis.PyQt.QtCore import pyqtSlot
-
-from math import log2, floor
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
-
-# QTM imports
 from vgrid.dggs import qtm
 from vgrid.dggs.qtm import QTM_INITIAL_FACETS
-from vgrid.utils.io import validate_coordinate
-from vgrid.utils.constants import DGGS_TYPES
+from vgrid.utils.io import validate_coordinate, validate_qtm_resolution
 from vgrid.utils.geometry import get_qtm_resolution_from_scale_denominator
 
 
@@ -33,7 +29,6 @@ class QTMGrid(QObject):
         self.qtm_marker.setStrokeColor(settings.qtmColor)
         self.qtm_marker.setWidth(settings.gridWidth)
 
-        # QTM auto-update toggle and debounced extent listener
         self.qtm_enabled = False
         self._extentTimer = QTimer(self)
         self._extentTimer.setSingleShot(True)
@@ -45,21 +40,63 @@ class QTMGrid(QObject):
     def _onExtentsChanged(self):
         self._extentTimer.start()
 
+    def _canvas_bbox_4326(self):
+        """Return (min_lon, min_lat, max_lon, max_lat) for the current canvas extent."""
+        canvas_extent = self.canvas.extent()
+        canvas_crs = QgsProject.instance().crs()
+        min_lon, min_lat, max_lon, max_lat = (
+            canvas_extent.xMinimum(),
+            canvas_extent.yMinimum(),
+            canvas_extent.xMaximum(),
+            canvas_extent.yMaximum(),
+        )
+        if epsg4326 != canvas_crs:
+            trans_to_4326 = QgsCoordinateTransform(
+                canvas_crs, epsg4326, QgsProject.instance()
+            )
+            transformed_extent = trans_to_4326.transform(canvas_extent)
+            min_lon, min_lat, max_lon, max_lat = (
+                transformed_extent.xMinimum(),
+                transformed_extent.yMinimum(),
+                transformed_extent.xMaximum(),
+                transformed_extent.yMaximum(),
+            )
+        return validate_coordinate(min_lon, min_lat, max_lon, max_lat)
+
+    def _bbox_polygon(self, min_lon, min_lat, max_lon, max_lat):
+        return Polygon(
+            [
+                (min_lon, min_lat),
+                (max_lon, min_lat),
+                (max_lon, max_lat),
+                (min_lon, max_lat),
+                (min_lon, min_lat),
+            ]
+        )
+
+    def _add_cell_geometry(self, facet_geom, canvas_crs):
+        geom = QgsGeometry.fromWkt(facet_geom.wkt)
+        if epsg4326 != canvas_crs:
+            trans_to_canvas = QgsCoordinateTransform(
+                epsg4326, canvas_crs, QgsProject.instance()
+            )
+            geom.transform(trans_to_canvas)
+        self.qtm_marker.addGeometry(geom, None)
+
     def qtm_grid(self):
+        """Draw QTM cells for the canvas extent (aligned with vgrid qtm_grid_within_bbox)."""
         try:
-            # Clear previous grid before drawing a new one
             self.removeMarker()
             self.qtm_marker.reset(QgsWkbTypes.PolygonGeometry)
             self.qtm_marker.setStrokeColor(settings.qtmColor)
             self.qtm_marker.setWidth(settings.gridWidth)
 
-            canvas_extent = self.canvas.extent()
             canvas_crs = QgsProject.instance().crs()
-
             scale = self.canvas.scale()
-            # resolution = self._get_qtm_resolution(scale)
-            resolution = get_qtm_resolution_from_scale_denominator(
-                scale, relative_depth=8, mm_per_pixel=0.28
+            resolution = validate_qtm_resolution(
+                get_qtm_resolution_from_scale_denominator(
+                    scale, relative_depth=8, mm_per_pixel=0.28
+                )
             )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
@@ -67,71 +104,33 @@ class QTMGrid(QObject):
                     f"Zoom Level: {zoom:.2f} | QTM resolution: {resolution}"
                 )
 
-            # Define bbox in canvas CRS
-            min_lon, min_lat, max_lon, max_lat = (
-                canvas_extent.xMinimum(),
-                canvas_extent.yMinimum(),
-                canvas_extent.xMaximum(),
-                canvas_extent.yMaximum(),
-            )
+            min_lon, min_lat, max_lon, max_lat = self._canvas_bbox_4326()
+            bbox_poly = self._bbox_polygon(min_lon, min_lat, max_lon, max_lat)
 
-            # Transform extent to EPSG:4326 if needed
-            if epsg4326 != canvas_crs:
-                trans_to_4326 = QgsCoordinateTransform(
-                    canvas_crs, epsg4326, QgsProject.instance()
-                )
-                transformed_extent = trans_to_4326.transform(canvas_extent)
-                min_lon, min_lat, max_lon, max_lat = (
-                    transformed_extent.xMinimum(),
-                    transformed_extent.yMinimum(),
-                    transformed_extent.xMaximum(),
-                    transformed_extent.yMaximum(),
-                )
-            # Create extent bbox for intersection testing
-            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
-                min_lon, min_lat, max_lon, max_lat
-            )
-            extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
-
-            # Generate QTM cells
-            QTMID = {}
-            levelFacets = {}
+            level_facets = {}
+            qtm_ids = {}
 
             for lvl in range(resolution):
-                levelFacets[lvl] = []
-                QTMID[lvl] = []
+                level_facets[lvl] = []
+                qtm_ids[lvl] = []
+
                 if lvl == 0:
                     for i, facet in enumerate(QTM_INITIAL_FACETS):
+                        qtm_ids[0].append(str(i + 1))
                         facet_geom = qtm.constructGeometry(facet)
-                        QTMID[0].append(str(i + 1))
-                        levelFacets[0].append(facet)
-                        # Check if facet intersects with extent
-                        if facet_geom.intersects(extent_bbox):
-                            geom = QgsGeometry.fromWkt(facet_geom.wkt)
-                            if epsg4326 != canvas_crs:
-                                trans_to_canvas = QgsCoordinateTransform(
-                                    epsg4326, canvas_crs, QgsProject.instance()
-                                )
-                                geom.transform(trans_to_canvas)
-                            self.qtm_marker.addGeometry(geom, None)
+                        level_facets[0].append(facet)
+                        if facet_geom.intersects(bbox_poly) and resolution == 1:
+                            self._add_cell_geometry(facet_geom, canvas_crs)
                 else:
-                    for i, pf in enumerate(levelFacets[lvl - 1]):
-                        subdivided_facets = qtm.divideFacet(pf)
-                        for j, subfacet in enumerate(subdivided_facets):
+                    for i, parent_facet in enumerate(level_facets[lvl - 1]):
+                        for j, subfacet in enumerate(qtm.divideFacet(parent_facet)):
                             subfacet_geom = qtm.constructGeometry(subfacet)
-                            new_id = QTMID[lvl - 1][i] + str(j)
-                            QTMID[lvl].append(new_id)
-                            levelFacets[lvl].append(subfacet)
-
-                            # Check if subfacet intersects with extent
-                            if subfacet_geom.intersects(extent_bbox):
-                                geom = QgsGeometry.fromWkt(subfacet_geom.wkt)
-                                if epsg4326 != canvas_crs:
-                                    trans_to_canvas = QgsCoordinateTransform(
-                                        epsg4326, canvas_crs, QgsProject.instance()
-                                    )
-                                    geom.transform(trans_to_canvas)
-                                self.qtm_marker.addGeometry(geom, None)
+                            if subfacet_geom.intersects(bbox_poly):
+                                new_id = qtm_ids[lvl - 1][i] + str(j)
+                                qtm_ids[lvl].append(new_id)
+                                level_facets[lvl].append(subfacet)
+                                if lvl == resolution - 1:
+                                    self._add_cell_geometry(subfacet_geom, canvas_crs)
 
             self.canvas.refresh()
 
@@ -147,21 +146,11 @@ class QTMGrid(QObject):
         if self.qtm_enabled:
             self.qtm_grid()
 
-    def _get_qtm_resolution(self, scale):
-        # Map scale to zoom, then to QTM resolution
-        zoom = 29.1402 - log2(scale)
-        min_res = DGGS_TYPES["qtm"]["min_res"]
-        max_res = DGGS_TYPES["qtm"]["max_res"]
-
-        res = min(max_res, max(min_res, floor(zoom)))
-        return res
-
     @pyqtSlot()
     def removeMarker(self):
         self.qtm_marker.reset(QgsWkbTypes.PolygonGeometry)
 
     def cleanup(self):
-        # Disconnect signals and delete rubber band
         try:
             self._extentTimer.stop()
             try:
