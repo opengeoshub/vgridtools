@@ -778,8 +778,8 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
     def _should_update_coord(self, id, coord_id, visible_key=None):
         if id == coord_id:
             return False
-        if id == -1 and visible_key is not None:
-            return self._dggs_visible(visible_key)
+        if visible_key is not None and not self._dggs_visible(visible_key):
+            return False
         return True
 
     def configure(self):
