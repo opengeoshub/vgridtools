@@ -23,7 +23,7 @@ from shapely.geometry import box
 from vgrid.utils.geometry import geodesic_dggs_metrics, graticule_dggs_metrics
 from vgrid.utils.io import aggregate_joined, stat_column_name
 
-from ..conversion.crs_helper import WGS84_REQUIRED_MSG, is_wgs84
+from ..conversion.crs_helper import ensure_wgs84_source
 
 _WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
 
@@ -624,14 +624,17 @@ def generate_digipin_grid_qgis(resolution, extent_layer, feedback=None):
     return layer
 
 
+def ensure_wgs84_point_source(source, feedback=None):
+    """Alias for :func:`ensure_wgs84_source` (point binning)."""
+    return ensure_wgs84_source(source, feedback=feedback, layer_name="bin_points_wgs84")
+
+
 def prepare_point_bin_algorithm(point_layer, stats, numeric_field, category_field):
     """Shared prepareAlgorithm checks for point DGGS binning tools."""
     if stats != "count" and not numeric_field:
         raise QgsProcessingException(
             "A numeric field is required for statistics other than 'count'."
         )
-    if not is_wgs84(point_layer.sourceCrs()):
-        raise QgsProcessingException(WGS84_REQUIRED_MSG)
 
 
 def process_point_dggs_bin(
@@ -658,6 +661,8 @@ def process_point_dggs_bin(
     resolution = validate_resolution_fn(resolution)
     category = category_field or None
     numeric_field = numeric_field or None
+
+    point_layer = ensure_wgs84_point_source(point_layer, feedback)
 
     feedback.setProgress(0)
     feedback.pushInfo("Loading and exploding point geometries...")
@@ -709,8 +714,8 @@ def process_point_dggs_bin(
         joined,
         id_col,
         stats=stats,
-        category=category,
-        numeric_field=numeric_field,
+        category_col=category,
+        numeric_col=numeric_field,
     )
     grouped = grouped.reset_index()
 

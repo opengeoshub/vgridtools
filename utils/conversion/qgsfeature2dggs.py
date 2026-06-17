@@ -51,6 +51,12 @@ import h3
 import a5
 from vgrid.dggs import s2, olc, mercantile
 
+from .crs_helper import (
+    flatten_feature_geometry,
+    reproject_feature,
+    wgs84_transform_if_needed,
+)
+
 from vgrid.conversion.latlon2dggs import (
     latlon2h3,
     latlon2s2,
@@ -114,6 +120,13 @@ app = Application(appGlobals=globals())
 pydggal_setup(app)
 
 geod = Geod(ellps="WGS84")
+
+
+def prepare_feature_for_dggs_conversion(feature, to_wgs84_transform):
+    """Reproject *feature* to WGS84 and flatten Z/M for DGGS conversion."""
+    if to_wgs84_transform is not None:
+        feature = reproject_feature(feature, to_wgs84_transform)
+    return flatten_feature_geometry(feature)
 
 
 #######################

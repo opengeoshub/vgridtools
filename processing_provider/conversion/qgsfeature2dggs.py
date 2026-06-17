@@ -12,6 +12,7 @@ from qgis.core import (
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
     QgsProcessingParameterBoolean,
+    QgsProcessingException,
     QgsWkbTypes,
 )
 
@@ -22,7 +23,7 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 import platform
 from ...utils.help_footer import social_links_footer
 from ...utils.conversion.qgsfeature2dggs import *
-from ...utils.conversion.crs_helper import WGS84_REQUIRED_MSG, is_wgs84
+from ...utils.conversion.crs_helper import wgs84_transform_if_needed
 from ...settings import settings
 
 
@@ -293,8 +294,12 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     def prepareAlgorithm(self, parameters, context, feedback):
         source = self.parameterAsSource(parameters, self.INPUT, context)
         crs = source.sourceCrs() if hasattr(source, "sourceCrs") else None
-        if not is_wgs84(crs):
-            feedback.reportError(WGS84_REQUIRED_MSG)
+        try:
+            self._to_wgs84 = wgs84_transform_if_needed(
+                crs, context.transformContext(), feedback
+            )
+        except QgsProcessingException as exc:
+            feedback.reportError(str(exc))
             return False
 
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
@@ -438,6 +443,9 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
     def processFeature(self, feature, context, feedback):
         try:
+            feature = prepare_feature_for_dggs_conversion(
+                feature, getattr(self, "_to_wgs84", None)
+            )
             self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
             conversion_function = self.DGGS_TYPE_functions.get(self.dggs_type)
 
@@ -445,12 +453,13 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 return []
 
             feature_geom = feature.geometry()
+            flat_type = QgsWkbTypes.flatType(feature_geom.wkbType())
 
             cell_polygons = []
             multi_cell_polygons = []
 
             # Handle MultiPoint geometry
-            if feature_geom.wkbType() == QgsWkbTypes.MultiPoint:
+            if flat_type == QgsWkbTypes.MultiPoint:
                 for point in feature_geom.asMultiPoint():
                     point_feature = QgsFeature(feature)
                     point_feature.setGeometry(QgsGeometry.fromPointXY(point))
@@ -461,11 +470,12 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                         self.compact,
                         feedback,
                     )
-                    multi_cell_polygons.extend(cell_polygons)
+                    if cell_polygons:
+                        multi_cell_polygons.extend(cell_polygons)
                 return multi_cell_polygons
 
             # Handle MultiLineString geometry
-            elif feature_geom.wkbType() == QgsWkbTypes.MultiLineString:
+            elif flat_type == QgsWkbTypes.MultiLineString:
                 for line in feature_geom.asMultiPolyline():
                     line_feature = QgsFeature(feature)
                     line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
@@ -476,11 +486,12 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                         self.compact,
                         feedback,
                     )
-                    multi_cell_polygons.extend(cell_polygons)
+                    if cell_polygons:
+                        multi_cell_polygons.extend(cell_polygons)
                 return multi_cell_polygons
 
             # Handle MultiPolygon geometry
-            elif feature_geom.wkbType() == QgsWkbTypes.MultiPolygon:
+            elif flat_type == QgsWkbTypes.MultiPolygon:
                 for polygon in feature_geom.asMultiPolygon():
                     polygon_feature = QgsFeature(feature)
                     polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))
@@ -491,13 +502,15 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                         self.compact,
                         feedback,
                     )
-                    multi_cell_polygons.extend(cell_polygons)
+                    if cell_polygons:
+                        multi_cell_polygons.extend(cell_polygons)
                 return multi_cell_polygons
 
             else:  # Single part features
-                return conversion_function(
+                result = conversion_function(
                     feature, self.resolution, self.predicate, self.compact, feedback
                 )
+                return result if result is not None else []
 
         except Exception as e:
             self.num_bad += 1

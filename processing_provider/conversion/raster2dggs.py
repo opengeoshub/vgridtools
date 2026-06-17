@@ -10,7 +10,7 @@ from vgrid.stats.isea4tstats import isea4t_metrics
 from vgrid.stats.rhealpixstats import rhealpix_metrics
 from vgrid.stats.a5stats import a5_metrics
 from vgrid.stats.s2stats import s2_metrics
-from ...utils.conversion.crs_helper import WGS84_REQUIRED_MSG, is_wgs84
+from ...utils.conversion.crs_helper import ensure_wgs84_raster_layer
 from ...utils.conversion.raster2dggs import *
 from ...utils.help_footer import social_links_footer
 
@@ -323,17 +323,21 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
 
         raster_layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
-        if not is_wgs84(raster_layer.crs()):
-            feedback.reportError(WGS84_REQUIRED_MSG)
+        try:
+            self.raster_layer = ensure_wgs84_raster_layer(
+                raster_layer, context=context, feedback=feedback
+            )
+        except QgsProcessingException as exc:
+            feedback.reportError(str(exc))
             return False
 
         # Get pixel size of raster layer (in map units)
-        pixel_size_x = raster_layer.rasterUnitsPerPixelX()
-        pixel_size_y = raster_layer.rasterUnitsPerPixelY()
+        pixel_size_x = self.raster_layer.rasterUnitsPerPixelX()
+        pixel_size_y = self.raster_layer.rasterUnitsPerPixelY()
 
         # Convert pixel area from square degrees to square meters
         # Get the center of the raster for latitude-dependent conversion
-        extent = raster_layer.extent()
+        extent = self.raster_layer.extent()
         center_lat = (extent.yMinimum() + extent.yMaximum()) / 2
         center_lon = (extent.xMinimum() + extent.xMaximum()) / 2
 
@@ -464,7 +468,13 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
-        raster_layer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
+        raster_layer = getattr(self, "raster_layer", None) or self.parameterAsRasterLayer(
+            parameters, self.INPUT, context
+        )
+        if raster_layer is not getattr(self, "raster_layer", None):
+            raster_layer = ensure_wgs84_raster_layer(
+                raster_layer, context=context, feedback=feedback
+            )
         self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
         conversion_function = self.DGGS_TYPE_functions.get(self.dggs_type)
 

@@ -551,7 +551,7 @@ def dggrid_bin_qgis(
         )
 
     grouped = aggregate_joined(
-        joined, id_col, stats=stats, category=category, numeric_field=numeric_field
+        joined, id_col, stats=stats, category_col=category, numeric_col=numeric_field
     )
     grouped = grouped.reset_index()
 
