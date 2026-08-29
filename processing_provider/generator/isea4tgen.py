@@ -19,7 +19,6 @@ __copyright__ = "(L) 2024, Thang Quach"
 from qgis.core import (
     QgsApplication,
     QgsProject,
-    QgsCoordinateTransform,
     QgsFeatureSink,
     QgsProcessingLayerPostProcessorInterface,
     QgsProcessingParameterExtent,
@@ -63,8 +62,7 @@ from shapely.geometry import box
 from ...settings import settings
 from vgrid.utils.constants import ISEA4T_RES_ACCURACY_DICT
 from vgrid.utils.geometry import geodesic_dggs_metrics
-from vgrid.utils.io import validate_coordinate
-from ...utils.latlon import epsg4326
+from ...utils.crs_helper import processing_extent_wgs84
 
 
 class ISEA4TGen(QgsProcessingAlgorithm):
@@ -194,6 +192,38 @@ class ISEA4TGen(QgsProcessingAlgorithm):
 
         return True
 
+    def _isea4t_cells_within_bbox(self, extent_bbox, feedback):
+        """Cells intersecting *extent_bbox*.
+
+        ``get_bounding_dggs_cell`` fails when the bbox has no common parent
+        (near-global / oversized Web Mercator extents). Fall back to walking
+        all 20 ISEA4T base cells in that case.
+        """
+        accuracy = ISEA4T_RES_ACCURACY_DICT.get(self.resolution)
+        try:
+            shapes = isea4t_dggs.convert_shape_string_to_dggs_shapes(
+                extent_bbox.wkt, ShapeStringFormat.WKT, accuracy
+            )
+            bbox_cells = shapes[0].get_shape().get_outer_ring().get_cells()
+            bounding_cell = isea4t_dggs.get_bounding_dggs_cell(bbox_cells)
+            return get_isea4t_children_cells_within_bbox(
+                bounding_cell.get_cell_id(), extent_bbox, self.resolution
+            )
+        except Exception as exc:
+            if feedback:
+                feedback.pushInfo(
+                    f"Extent has no common ISEA4T parent ({exc}); "
+                    "generating from all base cells within the extent."
+                )
+            cells = []
+            for base in ISEA4T_BASE_CELLS:
+                cells.extend(
+                    get_isea4t_children_cells_within_bbox(
+                        base, extent_bbox, self.resolution
+                    )
+                )
+            return cells
+
     def outputFields(self):
         output_fields = QgsFields()
         output_fields.append(QgsField("isea4t", QVariant.String))
@@ -217,50 +247,15 @@ class ISEA4TGen(QgsProcessingAlgorithm):
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
-        canvas_crs = QgsProject.instance().crs()
-
-        if self.canvas_extent is None or self.canvas_extent.isEmpty():
-            extent_bbox = None
-        else:
-            try:
-                min_lon, min_lat, max_lon, max_lat = (
-                    self.canvas_extent.xMinimum(),
-                    self.canvas_extent.yMinimum(),
-                    self.canvas_extent.xMaximum(),
-                    self.canvas_extent.yMaximum(),
-                )
-                # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(
-                        canvas_crs, epsg4326, QgsProject.instance()
-                    )
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
-                    min_lon, min_lat, max_lon, max_lat = (
-                        transformed_extent.xMinimum(),
-                        transformed_extent.yMinimum(),
-                        transformed_extent.xMaximum(),
-                        transformed_extent.yMaximum(),
-                    )
-            except Exception:
-                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
-
-            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
-                min_lon, min_lat, max_lon, max_lat
-            )
-            extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
+        min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
+            self, parameters, self.EXTENT, context, feedback
+        )
+        extent_bbox = None if is_full_world else box(min_lon, min_lat, max_lon, max_lat)
 
         if platform.system() == "Windows":
             if extent_bbox:
-                accuracy = ISEA4T_RES_ACCURACY_DICT.get(self.resolution)
-                extent_bbox_wkt = extent_bbox.wkt  # Create a bounding box polygon
-                shapes = isea4t_dggs.convert_shape_string_to_dggs_shapes(
-                    extent_bbox_wkt, ShapeStringFormat.WKT, accuracy
-                )
-                shape = shapes[0]
-                bbox_cells = shape.get_shape().get_outer_ring().get_cells()
-                bounding_cell = isea4t_dggs.get_bounding_dggs_cell(bbox_cells)
-                bounding_children = get_isea4t_children_cells_within_bbox(
-                    bounding_cell.get_cell_id(), extent_bbox, self.resolution
+                bounding_children = self._isea4t_cells_within_bbox(
+                    extent_bbox, feedback
                 )
                 total_bounding_children = len(bounding_children)
                 feedback.pushInfo(

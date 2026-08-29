@@ -22,8 +22,10 @@ from vgrid.utils.io import validate_dggal_resolution
 
 from ...utils.binning.bin_helper import (
     BIN_STATISTICS,
+    add_shift_split_parameters,
     prepare_point_bin_algorithm,
     process_point_dggs_bin,
+    read_shift_split,
 )
 from ...utils.help_footer import social_links_footer
 from ...utils.resampling.dggsgrid import generate_dggal_grid
@@ -154,6 +156,7 @@ class DGGALBin(QgsProcessingAlgorithm):
                 parentLayerParameterName=self.INPUT,
             )
         )
+        add_shift_split_parameters(self, shift=False)
         self.addParameter(
             QgsProcessingParameterVectorDestination(self.OUTPUT, "DGGS_binning")
         )
@@ -173,6 +176,9 @@ class DGGALBin(QgsProcessingAlgorithm):
         self.category_field = self.parameterAsString(
             parameters, self.CATEGORY_FIELD, context
         )
+        _, self.split_antimeridian = read_shift_split(
+            self, parameters, context, shift=False
+        )
 
         prepare_point_bin_algorithm(
             self.point_layer,
@@ -189,8 +195,10 @@ class DGGALBin(QgsProcessingAlgorithm):
         def validate_res(resolution):
             return validate_dggal_resolution(dggs_type, resolution)
 
-        def generate_grid(resolution, extent_layer, fb):
-            return generate_dggal_grid(dggs_type, resolution, extent_layer, feedback=fb)
+        def generate_grid(resolution, extent_layer, fb, **kwargs):
+            return generate_dggal_grid(
+                dggs_type, resolution, extent_layer, feedback=fb, **kwargs
+            )
 
         return process_point_dggs_bin(
             self,
@@ -207,4 +215,7 @@ class DGGALBin(QgsProcessingAlgorithm):
             validate_res,
             generate_grid,
             metric_kind="geodesic",
+            grid_kwargs={
+                "split_antimeridian": self.split_antimeridian,
+            },
         )

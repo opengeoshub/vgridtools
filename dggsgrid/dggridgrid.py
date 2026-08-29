@@ -13,7 +13,7 @@ from qgis.gui import QgsRubberBand
 from qgis.PyQt.QtCore import QObject, QTimer, pyqtSlot
 
 from vgrid.utils.constants import DGGRID_TYPES
-from vgrid.utils.io import validate_coordinate
+from vgrid.utils.io import is_full_world_bbox, validate_coordinate
 
 from ..settings import settings
 from ..utils.dggrid_instance import (
@@ -117,7 +117,12 @@ class DGGRIDGrid(QObject):
                 min_lon, min_lat, max_lon, max_lat = validate_coordinate(
                     min_lon, min_lat, max_lon, max_lat
                 )
-                bbox = [min_lon, min_lat, max_lon, max_lat]
+                if is_full_world_bbox([min_lon, min_lat, max_lon, max_lat]) or (
+                    max_lon - min_lon
+                ) >= 350:
+                    bbox = None
+                else:
+                    bbox = [min_lon, min_lat, max_lon, max_lat]
 
             split_antimeridian = (
                 settings.splitAntimeridian

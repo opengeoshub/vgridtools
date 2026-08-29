@@ -7,12 +7,12 @@ import os
 
 from qgis.core import (
     QgsProcessing,
-    QgsProcessingParameterFeatureSource,
     QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
     QgsProcessingParameterBoolean,
     QgsProcessingException,
+    QgsCoordinateReferenceSystem,
     QgsWkbTypes,
 )
 
@@ -23,7 +23,7 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 import platform
 from ...utils.help_footer import social_links_footer
 from ...utils.conversion.qgsfeature2dggs import *
-from ...utils.conversion.crs_helper import wgs84_transform_if_needed
+from ...utils.crs_helper import wgs84_transform_if_needed
 from ...settings import settings
 
 
@@ -160,8 +160,14 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     def inputLayerTypes(self):
         return [QgsProcessing.TypeVector]
 
+    def inputParameterDescription(self):
+        return self.tr("Input vector layer")
+
     def outputName(self):
         return self.tr("Vector2DGGS")
+
+    def outputCrs(self, input_crs):
+        return QgsCoordinateReferenceSystem("EPSG:4326")
 
     def outputWkbType(self, input_wkb_type):
         return QgsWkbTypes.Polygon
@@ -170,13 +176,8 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return False
 
     def initParameters(self, config=None):
-        # Input vector layer
-        self.addParameter(
-            QgsProcessingParameterFeatureSource(
-                self.INPUT, self.tr("Input vector layer"), [QgsProcessing.TypeVector]
-            )
-        )
-
+        # INPUT is provided by QgsProcessingFeatureBasedAlgorithm
+        # (includes native "Selected features only").
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.DGGS_TYPE, "DGGS type", options=self.DGGS_TYPES, defaultValue=0
@@ -293,6 +294,9 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
     def prepareAlgorithm(self, parameters, context, feedback):
         source = self.parameterAsSource(parameters, self.INPUT, context)
+        if source is None:
+            feedback.reportError("Could not load input layer.")
+            return False
         crs = source.sourceCrs() if hasattr(source, "sourceCrs") else None
         try:
             self._to_wgs84 = wgs84_transform_if_needed(

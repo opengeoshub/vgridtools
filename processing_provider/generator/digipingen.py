@@ -39,18 +39,15 @@ from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication, Qt
 from qgis.utils import iface
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import QgsCoordinateTransform
 import os
 
 from vgrid.conversion.latlon2dggs import latlon2digipin
 from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
-from vgrid.utils.io import validate_digipin_coordinate
-from vgrid.dggs.digipin import BOUNDS
 from vgrid.utils.geometry import graticule_dggs_metrics
 
 from ...utils.help_footer import social_links_footer
 from ...settings import settings
-from ...utils.latlon import epsg4326
+from ...utils.crs_helper import normalize_extent_to_india, processing_extent_wgs84
 from vgrid.utils.constants import DGGS_TYPES
 
 
@@ -185,48 +182,13 @@ class DIGIPINGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
-        canvas_crs = QgsProject.instance().crs()
 
-        if self.canvas_extent is None or self.canvas_extent.isEmpty():
-            # Use full DIGIPIN bounds if no extent specified
-            min_lon, min_lat, max_lon, max_lat = (
-                BOUNDS["minLat"],
-                BOUNDS["minLon"],
-                BOUNDS["maxLat"],
-                BOUNDS["maxLon"],
-            )
-        else:
-            try:
-                min_lon, min_lat, max_lon, max_lat = (
-                    self.canvas_extent.xMinimum(),
-                    self.canvas_extent.yMinimum(),
-                    self.canvas_extent.xMaximum(),
-                    self.canvas_extent.yMaximum(),
-                )
-                # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(
-                        canvas_crs, epsg4326, QgsProject.instance()
-                    )
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
-                    min_lon, min_lat, max_lon, max_lat = (
-                        transformed_extent.xMinimum(),
-                        transformed_extent.yMinimum(),
-                        transformed_extent.xMaximum(),
-                        transformed_extent.yMaximum(),
-                    )
-            except Exception:
-                min_lon, min_lat, max_lon, max_lat = (
-                    BOUNDS["minLon"],
-                    BOUNDS["minLat"],
-                    BOUNDS["maxLon"],
-                    BOUNDS["maxLat"],
-                )
-
-            # Validate and constrain to DIGIPIN bounds (India region)
-            min_lon, min_lat, max_lon, max_lat = validate_digipin_coordinate(
-                min_lon, min_lat, max_lon, max_lat
-            )
+        min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
+            self, parameters, self.EXTENT, context, feedback
+        )
+        min_lon, min_lat, max_lon, max_lat = normalize_extent_to_india(
+            min_lon, min_lat, max_lon, max_lat, feedback
+        )
 
         # Calculate sampling density based on resolution
         # Each level divides the cell by 4 (2x2 grid)

@@ -6,13 +6,15 @@ __copyright__ = "(L) 2024, Thang Quach"
 import os
 
 from qgis.core import (
+    Qgis,
     QgsProcessing,
-    QgsProcessingParameterVectorLayer,
     QgsProcessingParameterField,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
+    QgsProcessingParameterBoolean,
     QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingException,
+    QgsFeatureRequest,
     QgsWkbTypes,
     QgsApplication,
     QgsVectorLayer,
@@ -23,6 +25,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
 from ...utils.help_footer import social_links_footer
+from ...utils.crs_helper import attributes_only_source
 from ...utils.conversion.dggsexpand import *
 
 
@@ -31,6 +34,8 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
     DGGS_FIELD = "DGGS_FIELD"
     DGGS_TYPE = "DGGS_TYPE"
     RESOLUTION = "RESOLUTION"
+    SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
 
     DGGS_TYPES = [
@@ -116,7 +121,17 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVectorPolygon]
+        return [QgsProcessing.TypeVector]
+
+    def sourceFlags(self):
+        # DGGS ID is the only input used; skip validity checks on input geometry.
+        return Qgis.ProcessingFeatureSourceFlag.SkipGeometryValidityChecks
+
+    def request(self):
+        return QgsFeatureRequest().setFlags(Qgis.FeatureRequestFlag.NoGeometry)
+
+    def inputParameterDescription(self):
+        return self.tr("Input DGGS")
 
     def outputName(self):
         return self.tr("DGGS_expanded")
@@ -131,12 +146,8 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         return DGGSExpand()
 
     def initParameters(self, config=None):
-        self.addParameter(
-            QgsProcessingParameterVectorLayer(
-                self.INPUT, self.tr("Input DGGS"), [QgsProcessing.TypeVectorPolygon]
-            )
-        )
-
+        # INPUT is provided by QgsProcessingFeatureBasedAlgorithm
+        # (includes native "Selected features only").
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.DGGS_TYPE, "DGGS Type", options=self.DGGS_TYPES, defaultValue=0
@@ -163,6 +174,22 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.SHIFT_ANTIMERIDIAN,
+                self.tr("Shift at Antimeridian"),
+                defaultValue=False,
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.SPLIT_ANTIMERIDIAN,
+                self.tr("Split at Antimeridian"),
+                defaultValue=False,
+            )
+        )
+
     def prepareAlgorithm(self, parameters, context, feedback):
         self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
@@ -170,6 +197,17 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
         self.dggs_field = self.parameterAsString(parameters, self.DGGS_FIELD, context)
+        self.shift_antimeridian = self.parameterAsBoolean(
+            parameters, self.SHIFT_ANTIMERIDIAN, context
+        )
+        self.split_antimeridian = self.parameterAsBoolean(
+            parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
+
+        def _dggal_fn(dggal_type):
+            return lambda layer, resolution, field, feedback, **kwargs: dggalexpand(
+                layer, resolution, field, feedback, dggal_type, **kwargs
+            )
 
         self.DGGS_TYPE_functions = {
             "h3": h3expand,
@@ -184,74 +222,37 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
             "tilecode": tilecodeexpand,
             "quadkey": quadkeyexpand,
             "digipin": digipinexpand,
-            "dggal_gnosis": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "gnosis")
-            ),
-            "dggal_isea4r": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "isea4r")
-            ),
-            "dggal_isea9r": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "isea9r")
-            ),
-            "dggal_isea3h": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "isea3h")
-            ),
-            "dggal_isea7h": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "isea7h")
-            ),
-            "dggal_isea7h_z7": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(
-                    dggal_layer, resolution, DGGALID_field, feedback, "isea7h_z7"
-                )
-            ),
-            "dggal_ivea4r": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "ivea4r")
-            ),
-            "dggal_ivea9r": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "ivea9r")
-            ),
-            "dggal_ivea3h": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "ivea3h")
-            ),
-            "dggal_ivea7h": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "ivea7h")
-            ),
-            "dggal_ivea7h_z7": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(
-                    dggal_layer, resolution, DGGALID_field, feedback, "ivea7h_z7"
-                )
-            ),
-            "dggal_rtea4r": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "rtea4r")
-            ),
-            "dggal_rtea9r": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "rtea9r")
-            ),
-            "dggal_rtea3h": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "rtea3h")
-            ),
-            "dggal_rtea7h": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "rtea7h")
-            ),
-            "dggal_rtea7h_z7": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(
-                    dggal_layer, resolution, DGGALID_field, feedback, "rtea7h_z7"
-                )
-            ),
-            "dggal_healpix": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(dggal_layer, resolution, DGGALID_field, feedback, "healpix")
-            ),
-            "dggal_rhealpix": lambda dggal_layer, resolution, DGGALID_field, feedback: (
-                dggalexpand(
-                    dggal_layer, resolution, DGGALID_field, feedback, "rhealpix"
-                )
-            ),
+            "dggal_gnosis": _dggal_fn("gnosis"),
+            "dggal_isea4r": _dggal_fn("isea4r"),
+            "dggal_isea9r": _dggal_fn("isea9r"),
+            "dggal_isea3h": _dggal_fn("isea3h"),
+            "dggal_isea7h": _dggal_fn("isea7h"),
+            "dggal_isea7h_z7": _dggal_fn("isea7h_z7"),
+            "dggal_ivea4r": _dggal_fn("ivea4r"),
+            "dggal_ivea9r": _dggal_fn("ivea9r"),
+            "dggal_ivea3h": _dggal_fn("ivea3h"),
+            "dggal_ivea7h": _dggal_fn("ivea7h"),
+            "dggal_ivea7h_z7": _dggal_fn("ivea7h_z7"),
+            "dggal_rtea4r": _dggal_fn("rtea4r"),
+            "dggal_rtea9r": _dggal_fn("rtea9r"),
+            "dggal_rtea3h": _dggal_fn("rtea3h"),
+            "dggal_rtea7h": _dggal_fn("rtea7h"),
+            "dggal_rtea7h_z7": _dggal_fn("rtea7h_z7"),
+            "dggal_healpix": _dggal_fn("healpix"),
+            "dggal_rhealpix": _dggal_fn("rhealpix"),
         }
 
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
-        dggs_layer = self.parameterAsVectorLayer(parameters, self.INPUT, context)
+        dggs_layer = self.parameterAsSource(parameters, self.INPUT, context)
+        if dggs_layer is None:
+            raise QgsProcessingException("Invalid input DGGS layer.")
+
+        dggs_layer = attributes_only_source(
+            dggs_layer, feedback=feedback, layer_name="dggs_expand_ids"
+        )
+
         conversion_function = self.DGGS_TYPE_functions.get(self.dggs_type)
 
         if conversion_function is None:
@@ -264,7 +265,12 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         )
 
         memory_layer = conversion_function(
-            dggs_layer, self.resolution, self.dggs_field, feedback
+            dggs_layer,
+            self.resolution,
+            self.dggs_field,
+            feedback,
+            shift_antimeridian=self.shift_antimeridian,
+            split_antimeridian=self.split_antimeridian,
         )
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():

@@ -394,7 +394,9 @@ def generate_grid_qgis(
     dggs_type = validate_dggrid_type(dggs_type)
     resolution = validate_dggrid_resolution(dggs_type, resolution)
     bbox = validate_bbox(bbox)
-    if bbox and is_full_world_bbox(bbox):
+    if bbox and (
+        is_full_world_bbox(bbox) or (bbox[2] - bbox[0]) >= 350
+    ):
         bbox = None
 
     if dggs_type in DGGRID_TYPES_NO_ANTIMERIDIAN:
@@ -767,6 +769,8 @@ def batch_dggrid_cells_qgis(
     output_address_type="SEQNUM",
     options=None,
     feedback=None,
+    split_antimeridian=None,
+    aggregate=False,
 ):
     """
     Convert many DGGRID cell IDs in one ``dggrid2geo`` call.
@@ -780,7 +784,13 @@ def batch_dggrid_cells_qgis(
 
     dggs_type = validate_dggrid_type(dggs_type)
     resolution = validate_dggrid_resolution(dggs_type, resolution)
-    split_antimeridian = dggs_type not in DGGRID_TYPES_NO_ANTIMERIDIAN
+    if split_antimeridian is None:
+        split_antimeridian = dggs_type not in DGGRID_TYPES_NO_ANTIMERIDIAN
+    if dggs_type in DGGRID_TYPES_NO_ANTIMERIDIAN:
+        split_antimeridian = False
+        aggregate = False
+    if aggregate and not split_antimeridian:
+        aggregate = False
     id_col = f"dggrid_{dggs_type.lower()}"
 
     batch_ids = []
@@ -805,7 +815,7 @@ def batch_dggrid_cells_qgis(
             resolution,
             input_address_type=output_address_type,
             split_antimeridian=split_antimeridian,
-            aggregate=False,
+            aggregate=aggregate,
             options=options,
         )
 
@@ -861,7 +871,14 @@ def batch_dggrid_cells_qgis(
         if row_id and row_id != cell_id_str:
             lookup[row_id] = cell_info
 
-        cache_key = (dggs_type, cell_id_str, resolution, split_antimeridian, opt_key)
+        cache_key = (
+            dggs_type,
+            cell_id_str,
+            resolution,
+            split_antimeridian,
+            aggregate,
+            opt_key,
+        )
         _dggrid_cache_put(_DGGRID_GEO_WKT_CACHE, cache_key, geom.wkt)
 
         if feedback and total and idx % 100 == 0:

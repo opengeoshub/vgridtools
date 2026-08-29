@@ -22,8 +22,10 @@ from vgrid.utils.io import validate_rhealpix_resolution
 from ...settings import settings
 from ...utils.binning.bin_helper import (
     BIN_STATISTICS,
+    add_shift_split_parameters,
     prepare_point_bin_algorithm,
     process_point_dggs_bin,
+    read_shift_split,
 )
 from ...utils.help_footer import social_links_footer
 from ...utils.resampling.dggsgrid import generate_rhealpix_grid
@@ -146,6 +148,7 @@ class rHEALPixBin(QgsProcessingAlgorithm):
                 optional=False,
             )
         )
+        add_shift_split_parameters(self)
         self.addParameter(
             QgsProcessingParameterVectorDestination(self.OUTPUT, "DGGS_binning")
         )
@@ -160,6 +163,9 @@ class rHEALPixBin(QgsProcessingAlgorithm):
         )
         self.category_field = self.parameterAsString(
             parameters, self.CATEGORY_FIELD, context
+        )
+        self.shift_antimeridian, self.split_antimeridian = read_shift_split(
+            self, parameters, context
         )
         prepare_point_bin_algorithm(
             self.point_layer,
@@ -185,4 +191,8 @@ class rHEALPixBin(QgsProcessingAlgorithm):
             validate_rhealpix_resolution,
             generate_rhealpix_grid,
             metric_kind="geodesic",
+            grid_kwargs={
+                "shift_antimeridian": self.shift_antimeridian,
+                "split_antimeridian": self.split_antimeridian,
+            },
         )

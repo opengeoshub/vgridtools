@@ -20,7 +20,6 @@ import platform
 
 from qgis.core import (
     QgsProcessing,
-    QgsProcessingParameterVectorLayer,
     QgsProcessingParameterField,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
@@ -37,6 +36,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
 from ...utils.help_footer import social_links_footer
+from ...utils.crs_helper import ensure_wgs84_source
 from ...utils.resampling.dggsresample import *
 
 
@@ -47,6 +47,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
     DGGSTYPE_FROM = "DGGSTYPE_FROM"
     DGGSTYPE_TO = "DGGSTYPE_TO"
     RESOLUTION = "RESOLUTION"
+    PREDICATE = "PREDICATE"
     SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
@@ -119,6 +120,9 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
     def inputLayerTypes(self):
         return [QgsProcessing.TypeVectorPolygon]
 
+    def inputParameterDescription(self):
+        return self.tr("Input DGGS")
+
     def outputName(self):
         return self.tr("DGGS_resampled")
 
@@ -132,12 +136,8 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         return DGGSResample()
 
     def initParameters(self, config=None):
-        self.addParameter(
-            QgsProcessingParameterVectorLayer(
-                self.INPUT, self.tr("Input DGGS"), [QgsProcessing.TypeVectorPolygon]
-            )
-        )
-
+        # INPUT is provided by QgsProcessingFeatureBasedAlgorithm
+        # (includes native "Selected features only").
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.DGGSTYPE_FROM,
@@ -188,10 +188,19 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         )
 
         self.addParameter(
+            QgsProcessingParameterEnum(
+                self.PREDICATE,
+                self.tr("Source-target predicate"),
+                options=["centroid_within", "intersects"],
+                defaultValue=0,
+            )
+        )
+
+        self.addParameter(
             QgsProcessingParameterBoolean(
                 self.SHIFT_ANTIMERIDIAN,
                 self.tr("Shift at Antimeridian"),
-                defaultValue=True,
+                defaultValue=False,
             )
         )
 
@@ -224,6 +233,8 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
             parameters, self.RESAMPLE_FIELD, context
         )
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        predicate_index = self.parameterAsEnum(parameters, self.PREDICATE, context)
+        self.predicate = ["centroid_within", "intersects"][predicate_index]
         self.shift_antimeridian = self.parameterAsBoolean(
             parameters, self.SHIFT_ANTIMERIDIAN, context
         )
@@ -233,7 +244,14 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
-        dggs_layer = self.parameterAsVectorLayer(parameters, self.INPUT, context)
+        dggs_layer = self.parameterAsSource(parameters, self.INPUT, context)
+        if dggs_layer is None:
+            raise QgsProcessingException("Invalid input DGGS layer.")
+
+        dggs_layer = ensure_wgs84_source(
+            dggs_layer, feedback=feedback, layer_name="dggs_resample_wgs84"
+        )
+
         feedback.pushInfo(
             f"Resampling from {self.dggstype_from.title()} to {self.dggstype_to.title()}"
         )
@@ -247,6 +265,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
             feedback=feedback,
             shift_antimeridian=self.shift_antimeridian,
             split_antimeridian=self.split_antimeridian,
+            predicate=self.predicate,
         )
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():

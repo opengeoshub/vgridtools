@@ -46,8 +46,7 @@ import os
 from vgrid.dggs import maidenhead
 from ...utils.help_footer import social_links_footer
 from shapely.geometry import Polygon
-from vgrid.utils.io import validate_coordinate
-from ...utils.latlon import epsg4326
+from ...utils.crs_helper import processing_extent_wgs84
 from vgrid.utils.geometry import graticule_dggs_metrics
 from ...settings import settings
 
@@ -191,12 +190,14 @@ class MaidenheadGen(QgsProcessingAlgorithm):
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
 
-        canvas_crs = QgsProject.instance().crs()
-
         x_cells, y_cells, lon_width, lat_width = grid_params[self.resolution]
         base_lat, base_lon = -90.0, -180.0
 
-        if self.canvas_extent is None or self.canvas_extent.isEmpty():
+        min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
+            self, parameters, self.EXTENT, context, feedback
+        )
+
+        if is_full_world:
             total_cells = x_cells * y_cells
             feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
             cell_count = 0  # Counter to track progress
@@ -270,32 +271,6 @@ class MaidenheadGen(QgsProcessingAlgorithm):
                     if feedback.isCanceled():
                         break
         else:
-            try:
-                min_lon, min_lat, max_lon, max_lat = (
-                    self.canvas_extent.xMinimum(),
-                    self.canvas_extent.yMinimum(),
-                    self.canvas_extent.xMaximum(),
-                    self.canvas_extent.yMaximum(),
-                )
-                # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(
-                        canvas_crs, epsg4326, QgsProject.instance()
-                    )
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
-                    min_lon, min_lat, max_lon, max_lat = (
-                        transformed_extent.xMinimum(),
-                        transformed_extent.yMinimum(),
-                        transformed_extent.xMaximum(),
-                        transformed_extent.yMaximum(),
-                    )
-            except Exception:
-                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
-
-            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
-                min_lon, min_lat, max_lon, max_lat
-            )
-
             min_x = max(0, int((min_lon - base_lon) / lon_width))
             max_x = min(x_cells, int((max_lon - base_lon) / lon_width) + 1)
             min_y = max(0, int((min_lat - base_lat) / lat_width))

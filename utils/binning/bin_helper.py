@@ -13,6 +13,7 @@ from qgis.core import (
     QgsGeometry,
     QgsPointXY,
     QgsProcessingException,
+    QgsProcessingParameterBoolean,
     QgsSpatialIndex,
     QgsVectorLayer,
     QgsWkbTypes,
@@ -23,7 +24,11 @@ from shapely.geometry import box
 from vgrid.utils.geometry import geodesic_dggs_metrics, graticule_dggs_metrics
 from vgrid.utils.io import aggregate_joined, stat_column_name
 
-from ..conversion.crs_helper import ensure_wgs84_source
+from ..crs_helper import ensure_wgs84_source, normalize_extent_to_india
+
+SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
+SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
+AGGREGATE = "AGGREGATE"
 
 _WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
 
@@ -539,6 +544,8 @@ def generate_dggrid_grid_qgis(
     extent_layer,
     feedback=None,
     densification=None,
+    split_antimeridian=False,
+    aggregate=False,
 ):
     """DGGRID grid over extent bbox for point binning."""
     from vgrid.utils.io import validate_dggrid_resolution, validate_dggrid_type
@@ -582,8 +589,8 @@ def generate_dggrid_grid_qgis(
         resolution,
         bbox_tuple,
         output_address_type="SEQNUM",
-        split_antimeridian=False,
-        aggregate=False,
+        split_antimeridian=split_antimeridian,
+        aggregate=aggregate,
         options=options,
     )
 
@@ -600,8 +607,12 @@ def generate_dggrid_grid_qgis(
 
 
 def generate_digipin_grid_qgis(resolution, extent_layer, feedback=None):
-    """DIGIPIN grid over extent (vgrid digipin_grid → QgsVectorLayer)."""
-    from vgrid.generator.digipingrid import digipin_grid
+    """DIGIPIN grid over extent (vgrid IDs → QgsVectorLayer, no tqdm)."""
+    import geopandas as gpd
+    from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
+    from vgrid.dggs.digipin import digipin_resolution
+    from vgrid.generator.digipingrid import digipin_grid_ids
+    from vgrid.utils.geometry import graticule_dggs_to_geoseries
     from vgrid.utils.io import validate_digipin_resolution
 
     from ..conversion.raster2dggs_helper import gdf_to_qgs_vector_layer
@@ -609,15 +620,48 @@ def generate_digipin_grid_qgis(resolution, extent_layer, feedback=None):
     resolution = validate_digipin_resolution(resolution)
     feat = next(extent_layer.getFeatures())
     bbox = feat.geometry().boundingBox()
-    bbox_tuple = (
+    min_lon, min_lat, max_lon, max_lat = normalize_extent_to_india(
         bbox.xMinimum(),
         bbox.yMinimum(),
         bbox.xMaximum(),
         bbox.yMaximum(),
+        feedback=feedback,
     )
     if feedback:
         feedback.pushInfo(f"Generating DIGIPIN grid at resolution {resolution}...")
-    gdf = digipin_grid(resolution, bbox_tuple)
+
+    # digipin_grid() uses tqdm, which crashes in QGIS Processing (stdout is None).
+    digipin_ids = digipin_grid_ids(
+        resolution, bbox=[min_lon, min_lat, max_lon, max_lat]
+    )
+    records = []
+    total = len(digipin_ids)
+    for i, digipin_code in enumerate(digipin_ids):
+        if feedback and feedback.isCanceled():
+            break
+        cell_polygon = digipin2geo(digipin_code)
+        if isinstance(cell_polygon, str):
+            continue
+        records.append(
+            graticule_dggs_to_geoseries(
+                "digipin",
+                digipin_code,
+                digipin_resolution(digipin_code),
+                cell_polygon,
+            )
+        )
+        if feedback and total:
+            feedback.setProgress(int(100 * (i + 1) / total))
+
+    if not records:
+        layer = QgsVectorLayer(
+            "Polygon?crs=EPSG:4326", f"digipin_grid_{resolution}", "memory"
+        )
+        if feedback:
+            feedback.pushInfo("Generated 0 DIGIPIN cells.")
+        return layer
+
+    gdf = gpd.GeoDataFrame(records, geometry="geometry", crs="EPSG:4326")
     layer = gdf_to_qgs_vector_layer(gdf, f"digipin_grid_{resolution}")
     if feedback:
         feedback.pushInfo(f"Generated {layer.featureCount()} DIGIPIN cells.")
@@ -637,6 +681,59 @@ def prepare_point_bin_algorithm(point_layer, stats, numeric_field, category_fiel
         )
 
 
+def add_shift_split_parameters(algorithm, *, shift=True, split=True):
+    """Match DGGS Generator antimeridian checkboxes (Shift and/or Split)."""
+    if shift:
+        algorithm.addParameter(
+            QgsProcessingParameterBoolean(
+                SHIFT_ANTIMERIDIAN,
+                algorithm.tr("Shift at Antimeridian"),
+                defaultValue=False,
+            )
+        )
+    if split:
+        algorithm.addParameter(
+            QgsProcessingParameterBoolean(
+                SPLIT_ANTIMERIDIAN,
+                algorithm.tr("Split at Antimeridian"),
+                defaultValue=False,
+            )
+        )
+
+
+def add_dggrid_antimeridian_parameters(algorithm):
+    """Match DGGRID Generator: Split at Antimeridian + Aggregate split cells."""
+    algorithm.addParameter(
+        QgsProcessingParameterBoolean(
+            SPLIT_ANTIMERIDIAN,
+            algorithm.tr("Split at Antimeridian"),
+            defaultValue=False,
+        )
+    )
+    algorithm.addParameter(
+        QgsProcessingParameterBoolean(
+            AGGREGATE,
+            algorithm.tr("Aggregate split cells"),
+            defaultValue=False,
+        )
+    )
+
+
+def read_shift_split(algorithm, parameters, context, *, shift=True, split=True):
+    """Return ``(shift_antimeridian, split_antimeridian)`` from algorithm params."""
+    shift_val = False
+    split_val = False
+    if shift:
+        shift_val = algorithm.parameterAsBoolean(
+            parameters, SHIFT_ANTIMERIDIAN, context
+        )
+    if split:
+        split_val = algorithm.parameterAsBoolean(
+            parameters, SPLIT_ANTIMERIDIAN, context
+        )
+    return shift_val, split_val
+
+
 def process_point_dggs_bin(
     alg,
     parameters,
@@ -652,11 +749,13 @@ def process_point_dggs_bin(
     validate_resolution_fn,
     generate_grid_fn,
     metric_kind="geodesic",
+    grid_kwargs=None,
 ):
     """
     Grid over point extent → spatial join → aggregate → write binned cells.
 
-    *generate_grid_fn* is ``(resolution, extent_layer, feedback) -> QgsVectorLayer``.
+    *generate_grid_fn* is ``(resolution, extent_layer, feedback, **grid_kwargs)
+    -> QgsVectorLayer``.
     """
     resolution = validate_resolution_fn(resolution)
     category = category_field or None
@@ -695,7 +794,9 @@ def process_point_dggs_bin(
         f"Generating {dggs_label} grid (resolution {resolution}) "
         "for point layer extent..."
     )
-    grid_layer = generate_grid_fn(resolution, extent_layer, feedback)
+    grid_layer = generate_grid_fn(
+        resolution, extent_layer, feedback, **dict(grid_kwargs or {})
+    )
     if grid_layer is None or feedback.isCanceled():
         return {}
 

@@ -48,8 +48,7 @@ from shapely.geometry import box
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from ...settings import settings
 from vgrid.utils.constants import INITIAL_GEOHASHES
-from vgrid.utils.io import validate_coordinate
-from ...utils.latlon import epsg4326
+from ...utils.crs_helper import processing_extent_wgs84
 from vgrid.utils.constants import DGGS_TYPES
 
 
@@ -270,9 +269,11 @@ class GeohashGen(QgsProcessingAlgorithm):
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
 
-        canvas_crs = QgsProject.instance().crs()
+        min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
+            self, parameters, self.EXTENT, context, feedback
+        )
 
-        if self.canvas_extent is None or self.canvas_extent.isEmpty():
+        if is_full_world:
             min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90  # Whole world
             total_cells = 32**self.resolution
             feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
@@ -282,31 +283,6 @@ class GeohashGen(QgsProcessingAlgorithm):
                 if feedback.isCanceled():
                     break
         else:
-            try:
-                min_lon, min_lat, max_lon, max_lat = (
-                    self.canvas_extent.xMinimum(),
-                    self.canvas_extent.yMinimum(),
-                    self.canvas_extent.xMaximum(),
-                    self.canvas_extent.yMaximum(),
-                )
-                # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(
-                        canvas_crs, epsg4326, QgsProject.instance()
-                    )
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
-                    min_lon, min_lat, max_lon, max_lat = (
-                        transformed_extent.xMinimum(),
-                        transformed_extent.yMinimum(),
-                        transformed_extent.xMaximum(),
-                        transformed_extent.yMaximum(),
-                    )
-            except Exception:
-                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
-
-            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
-                min_lon, min_lat, max_lon, max_lat
-            )
             extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
             total_geohashes = len(INITIAL_GEOHASHES)
             intersected_geohashes = []

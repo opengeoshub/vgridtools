@@ -22,7 +22,7 @@ from qgis.core import (
     QgsFeatureSink,
     QgsProcessingLayerPostProcessorInterface,
     QgsProcessingParameterExtent,
-    QgsProcessingParameterNumber,
+    QgsProcessingParameterEnum,
     QgsProcessingException,
     QgsProcessingParameterFeatureSink,
     QgsProcessingAlgorithm,
@@ -50,14 +50,14 @@ from vgrid.utils.geometry import graticule_dggs_metrics
 from ...utils.help_footer import social_links_footer
 from ...settings import settings
 from shapely.geometry import Polygon, box
-from vgrid.utils.io import validate_coordinate
-from ...utils.latlon import epsg4326
+from ...utils.crs_helper import processing_extent_wgs84
 
 
 class OLCGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
     OUTPUT = "OUTPUT"
+    OLC_RESOLUTIONS = [2, 4, 6, 8, 10, 11, 12, 13, 14, 15]
 
     LOC = QgsApplication.locale()[:2]
 
@@ -130,15 +130,11 @@ class OLCGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
-        min_res, max_res, _ = settings.getResolution("OLC")
-        param = QgsProcessingParameterNumber(
+        param = QgsProcessingParameterEnum(
             self.RESOLUTION,
-            self.tr(f"Resolution/ Code length [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
-            defaultValue=2,
-            minValue=min_res,
-            maxValue=max_res,
-            optional=False,
+            self.tr("Resolution / Code length"),
+            options=[str(res) for res in self.OLC_RESOLUTIONS],
+            defaultValue=0,
         )
         self.addParameter(param)
 
@@ -146,22 +142,11 @@ class OLCGen(QgsProcessingAlgorithm):
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
-
-        if self.resolution not in [2, 4, 6, 8, 10, 11, 12, 13, 14, 15]:
-            feedback.reportError(
-                "Please select a resolution in [2, 4, 6, 8, 10..15] and try again."
-            )
-            return False
+        res_index = self.parameterAsEnum(parameters, self.RESOLUTION, context)
+        self.resolution = self.OLC_RESOLUTIONS[res_index]
 
         # Get the extent parameter
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
-
-        if self.resolution == 2 and (
-            self.canvas_extent is not None and not self.canvas_extent.isEmpty()
-        ):
-            feedback.reportError("When canvas extent is set, resolution must be > 2.")
-            return False
 
         if self.resolution > 4 and (
             self.canvas_extent is None or self.canvas_extent.isEmpty()
@@ -200,9 +185,11 @@ class OLCGen(QgsProcessingAlgorithm):
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
-        canvas_crs = QgsProject.instance().crs()
+        min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
+            self, parameters, self.EXTENT, context, feedback
+        )
 
-        if self.canvas_extent is None or self.canvas_extent.isEmpty():
+        if is_full_world:
             # Define the boundaries of the world
             sw_lat, sw_lng = -90, -180
             ne_lat, ne_lng = 90, 180
@@ -278,31 +265,6 @@ class OLCGen(QgsProcessingAlgorithm):
                 lat += lat_step
 
         else:
-            try:
-                min_lon, min_lat, max_lon, max_lat = (
-                    self.canvas_extent.xMinimum(),
-                    self.canvas_extent.yMinimum(),
-                    self.canvas_extent.xMaximum(),
-                    self.canvas_extent.yMaximum(),
-                )
-                # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(
-                        canvas_crs, epsg4326, QgsProject.instance()
-                    )
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
-                    min_lon, min_lat, max_lon, max_lat = (
-                        transformed_extent.xMinimum(),
-                        transformed_extent.yMinimum(),
-                        transformed_extent.xMaximum(),
-                        transformed_extent.yMaximum(),
-                    )
-            except Exception:
-                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
-
-            min_lon, min_lat, max_lon, max_lat = validate_coordinate(
-                min_lon, min_lat, max_lon, max_lat
-            )
             extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
 
             base_resolution = 2

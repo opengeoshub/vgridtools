@@ -79,7 +79,7 @@ class DigipinBin(QgsProcessingAlgorithm):
 
     txt_en = "DIGIPIN Bin"
     txt_vi = "DIGIPIN Bin"
-    figure = "../images/tutorial/bin_digipin.png"
+    figure = "../images/tutorial/bin_tilecode.png"
 
     def shortHelpString(self):
         footer = (

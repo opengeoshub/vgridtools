@@ -21,8 +21,12 @@ from vgrid.utils.constants import DGGRID_TYPES
 from vgrid.utils.io import validate_dggrid_resolution
 
 from ...settings import settings
+from ...utils.dggrid_instance import DGGRID_TYPES_NO_ANTIMERIDIAN
 from ...utils.binning.bin_helper import (
+    AGGREGATE,
     BIN_STATISTICS,
+    SPLIT_ANTIMERIDIAN,
+    add_dggrid_antimeridian_parameters,
     generate_dggrid_grid_qgis,
     prepare_point_bin_algorithm,
     process_point_dggs_bin,
@@ -168,6 +172,7 @@ class DGGRIDBin(QgsProcessingAlgorithm):
                 parentLayerParameterName=self.INPUT,
             )
         )
+        add_dggrid_antimeridian_parameters(self)
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.DENSIFICATION,
@@ -202,6 +207,10 @@ class DGGRIDBin(QgsProcessingAlgorithm):
         self.category_field = self.parameterAsString(
             parameters, self.CATEGORY_FIELD, context
         )
+        self.split_antimeridian = self.parameterAsBoolean(
+            parameters, SPLIT_ANTIMERIDIAN, context
+        )
+        self.aggregate = self.parameterAsBoolean(parameters, AGGREGATE, context)
 
         prepare_point_bin_algorithm(
             self.point_layer,
@@ -209,6 +218,27 @@ class DGGRIDBin(QgsProcessingAlgorithm):
             self.numeric_field,
             self.category_field,
         )
+
+        if self.dggs_type in DGGRID_TYPES_NO_ANTIMERIDIAN:
+            if self.split_antimeridian:
+                feedback.reportError(
+                    f"Split at Antimeridian is not supported for {self.dggs_type} due to the current DGGRIDv8 bugs. "
+                    "Disable Split at Antimeridian or choose another DGGS type."
+                )
+                return False
+            if self.aggregate:
+                feedback.reportWarning(
+                    f"Aggregate is ignored for {self.dggs_type} "
+                    "(antimeridian splitting is not available for this type)."
+                )
+                self.aggregate = False
+        elif self.aggregate and not self.split_antimeridian:
+            feedback.reportWarning(
+                "Aggregate split cells requires Split at Antimeridian; "
+                "Aggregate will be ignored."
+            )
+            self.aggregate = False
+
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -219,13 +249,14 @@ class DGGRIDBin(QgsProcessingAlgorithm):
         def validate_res(resolution):
             return validate_dggrid_resolution(dggs_type, resolution)
 
-        def generate_grid(resolution, extent_layer, fb):
+        def generate_grid(resolution, extent_layer, fb, **kwargs):
             return generate_dggrid_grid_qgis(
                 dggs_type,
                 resolution,
                 extent_layer,
                 feedback=fb,
                 densification=densification,
+                **kwargs,
             )
 
         return process_point_dggs_bin(
@@ -243,4 +274,8 @@ class DGGRIDBin(QgsProcessingAlgorithm):
             validate_res,
             generate_grid,
             metric_kind="geodesic",
+            grid_kwargs={
+                "split_antimeridian": self.split_antimeridian,
+                "aggregate": self.aggregate,
+            },
         )

@@ -18,6 +18,7 @@ __copyright__ = "(L) 2024, Thang Quach"
 import os
 
 from qgis.core import (
+    Qgis,
     QgsProcessing,
     QgsProcessingException,
     QgsProcessingParameterFeatureSource,
@@ -25,6 +26,8 @@ from qgis.core import (
     QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
+    QgsProcessingParameterBoolean,
+    QgsFeatureRequest,
     QgsFeatureSink,
     QgsField,
     QgsFields,
@@ -39,6 +42,7 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 import platform
 
 from ...utils.help_footer import social_links_footer
+from ...utils.dggrid_instance import DGGRID_TYPES_NO_ANTIMERIDIAN
 from ...utils.conversion.dggs2qgsfeature import (
     a52qgsfeature,
     dggal2qgsfeature,
@@ -72,6 +76,9 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     CELL_ID = "CELL_ID"
     DGGS_TYPE = "DGGS_TYPE"
     RESOLUTION = "RESOLUTION"
+    SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
+    AGGREGATE = "AGGREGATE"
     DGGS_TYPES = [
         "H3",
         "S2",
@@ -199,6 +206,13 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     def inputLayerTypes(self):
         return [QgsProcessing.TypeVector]
 
+    def sourceFlags(self):
+        # Cell ID is the only input used; skip validity checks on input geometry.
+        return Qgis.ProcessingFeatureSourceFlag.SkipGeometryValidityChecks
+
+    def request(self):
+        return QgsFeatureRequest().setFlags(Qgis.FeatureRequestFlag.NoGeometry)
+
     def outputName(self):
         return self.tr("CellID2DGGS")
 
@@ -236,16 +250,38 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         )
         self.addParameter(param)
 
-        default_dggs = self.DGGS_TYPES[0]
-        _, _, default_res = settings.getResolution(default_dggs)
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
-                self.tr("Resolution (DGGRID)"),
+                self.tr("Resolution (DGGRID only; -1 otherwise)"),
                 QgsProcessingParameterNumber.Integer,
-                default_res,
-                minValue=0,
+                -1,
+                minValue=-1,
                 maxValue=40,
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.SHIFT_ANTIMERIDIAN,
+                self.tr("Shift at Antimeridian"),
+                defaultValue=False,
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.SPLIT_ANTIMERIDIAN,
+                self.tr("Split at Antimeridian (suggested for DGGRID)"),
+                defaultValue=False,
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.AGGREGATE,
+                self.tr("Aggregate split cells (DGGRID only)"),
+                defaultValue=False,
             )
         )
 
@@ -277,66 +313,80 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         self.cell_id_field = self.parameterAsString(parameters, self.CELL_ID, context)
         self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        self.shift_antimeridian = self.parameterAsBoolean(
+            parameters, self.SHIFT_ANTIMERIDIAN, context
+        )
+        self.split_antimeridian = self.parameterAsBoolean(
+            parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
+        self.aggregate = self.parameterAsBoolean(parameters, self.AGGREGATE, context)
+
+        dggs_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
+        self._dggrid_type_name = None
+        if dggs_key.startswith("dggrid_"):
+            self._dggrid_type_name = self.DGGS_TYPES[self.DGGS_TYPE_index].replace(
+                "DGGRID_", ""
+            )
+            if self._dggrid_type_name in DGGRID_TYPES_NO_ANTIMERIDIAN:
+                if self.split_antimeridian:
+                    feedback.reportError(
+                        f"Split at Antimeridian is not supported for DGGRID {self._dggrid_type_name} "
+                        "due to the current DGGRIDv8 bugs. "
+                        "Disable Split at Antimeridian or choose another DGGS type."
+                    )
+                    return False
+                if self.aggregate:
+                    feedback.reportWarning(
+                        f"Aggregate is ignored for DGGRID {self._dggrid_type_name} "
+                        "(antimeridian splitting is not available for this type)."
+                    )
+                    self.aggregate = False
+            elif self.aggregate and not self.split_antimeridian:
+                feedback.reportWarning(
+                    "Aggregate split cells requires Split at Antimeridian; "
+                    "Aggregate will be ignored."
+                )
+                self.aggregate = False
+            if self.shift_antimeridian:
+                feedback.pushInfo(
+                    "Shift at Antimeridian is not used for DGGRID; "
+                    "use Split at Antimeridian instead."
+                )
+        elif self.aggregate:
+            feedback.pushInfo(
+                "Aggregate split cells applies to DGGRID only and will be ignored."
+            )
+            self.aggregate = False
+
+        def _dggal_fn(dggal_type):
+            return lambda feature, zone_id, **kwargs: dggal2qgsfeature(
+                feature, zone_id, dggal_type, **kwargs
+            )
+
         self.DGGS_TYPE_functions = {
             "h3": h32qgsfeature,
             "s2": s22qgsfeature,
             "a5": a52qgsfeature,
             "rhealpix": rhealpix2qgsfeature,
             # 'ease': ease2qgsfeature, # prone to unexpected errors
-            "dggal_gnosis": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "gnosis"
-            ),
-            "dggal_isea4r": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "isea4r"
-            ),
-            "dggal_isea9r": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "isea9r"
-            ),
-            "dggal_isea3h": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "isea3h"
-            ),
-            "dggal_isea7h": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "isea7h"
-            ),
-            "dggal_isea7h_z7": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "isea7h_z7"
-            ),
-            "dggal_ivea4r": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "ivea4r"
-            ),
-            "dggal_ivea9r": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "ivea9r"
-            ),
-            "dggal_ivea3h": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "ivea3h"
-            ),
-            "dggal_ivea7h": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "ivea7h"
-            ),
-            "dggal_ivea7h_z7": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "ivea7h_z7"
-            ),
-            "dggal_rtea4r": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "rtea4r"
-            ),
-            "dggal_rtea9r": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "rtea9r"
-            ),
-            "dggal_rtea3h": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "rtea3h"
-            ),
-            "dggal_rtea7h": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "rtea7h"
-            ),
-            "dggal_rtea7h_z7": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "rtea7h_z7"
-            ),
-            "dggal_healpix": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "healpix"
-            ),
-            "dggal_rhealpix": lambda feature, zone_id: dggal2qgsfeature(
-                feature, zone_id, "rhealpix"
-            ),
+            "dggal_gnosis": _dggal_fn("gnosis"),
+            "dggal_isea4r": _dggal_fn("isea4r"),
+            "dggal_isea9r": _dggal_fn("isea9r"),
+            "dggal_isea3h": _dggal_fn("isea3h"),
+            "dggal_isea7h": _dggal_fn("isea7h"),
+            "dggal_isea7h_z7": _dggal_fn("isea7h_z7"),
+            "dggal_ivea4r": _dggal_fn("ivea4r"),
+            "dggal_ivea9r": _dggal_fn("ivea9r"),
+            "dggal_ivea3h": _dggal_fn("ivea3h"),
+            "dggal_ivea7h": _dggal_fn("ivea7h"),
+            "dggal_ivea7h_z7": _dggal_fn("ivea7h_z7"),
+            "dggal_rtea4r": _dggal_fn("rtea4r"),
+            "dggal_rtea9r": _dggal_fn("rtea9r"),
+            "dggal_rtea3h": _dggal_fn("rtea3h"),
+            "dggal_rtea7h": _dggal_fn("rtea7h"),
+            "dggal_rtea7h_z7": _dggal_fn("rtea7h_z7"),
+            "dggal_healpix": _dggal_fn("healpix"),
+            "dggal_rhealpix": _dggal_fn("rhealpix"),
             "qtm": qtm2qgsfeature,
             "olc": olc2qgsfeature,
             "geohash": geohash2qgsfeature,
@@ -348,13 +398,6 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             "gars": gars2qgsfeature,
             "digipin": digipin2qgsfeature,
         }
-
-        self._dggrid_type_name = None
-        dggs_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
-        if dggs_key.startswith("dggrid_"):
-            self._dggrid_type_name = self.DGGS_TYPES[self.DGGS_TYPE_index].replace(
-                "DGGRID_", ""
-            )
 
         if platform.system() == "Windows":
             self.DGGS_TYPE_functions["isea4t"] = isea4t2qgsfeature
@@ -468,7 +511,12 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             cell_id = feature[self.cell_id_field]
             DGGS_TYPE_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
             conversion_function = self.DGGS_TYPE_functions.get(DGGS_TYPE_key)
-            cell_feature = conversion_function(feature, cell_id)
+            cell_feature = conversion_function(
+                feature,
+                cell_id,
+                shift_antimeridian=self.shift_antimeridian,
+                split_antimeridian=self.split_antimeridian,
+            )
             if cell_feature:
                 return [cell_feature]
 
@@ -489,7 +537,10 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         out_fields = self.outputFields(source.fields())
         input_features = []
         cell_ids = []
-        for feat in source.getFeatures():
+        for feat in source.getFeatures(
+            self.request(),
+            Qgis.ProcessingFeatureSourceFlag.SkipGeometryValidityChecks,
+        ):
             if feedback.isCanceled():
                 break
             input_features.append(feat)
@@ -511,6 +562,8 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             self.resolution,
             out_fields,
             feedback=feedback,
+            split_antimeridian=self.split_antimeridian,
+            aggregate=self.aggregate,
         )
         self.num_bad += batch_bad
 

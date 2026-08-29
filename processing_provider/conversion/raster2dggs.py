@@ -10,7 +10,7 @@ from vgrid.stats.isea4tstats import isea4t_metrics
 from vgrid.stats.rhealpixstats import rhealpix_metrics
 from vgrid.stats.a5stats import a5_metrics
 from vgrid.stats.s2stats import s2_metrics
-from ...utils.conversion.crs_helper import ensure_wgs84_raster_layer
+from ...utils.crs_helper import ensure_wgs84_raster_layer
 from ...utils.conversion.raster2dggs import *
 from ...utils.help_footer import social_links_footer
 

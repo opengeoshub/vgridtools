@@ -304,20 +304,23 @@ def generate_grid(
     return dggs_grid
 
 
-def _build_source_spatial_index(layer1, resample_field):
-    """Build QgsSpatialIndex and fid -> (feature, numeric value) for source layer."""
+def _build_source_spatial_index(layer1, resample_field=None):
+    """Build QgsSpatialIndex and fid -> (feature, numeric value or None)."""
     index = QgsSpatialIndex()
     source_by_id = {}
     for feature in layer1.getFeatures():
-        value = feature[resample_field]
-        if not isinstance(value, Number):
-            raise TypeError(
-                f"Non-numeric value found in <{resample_field}>. "
-                "Resampled field calculation failed."
-            )
+        value = None
+        if resample_field:
+            value = feature[resample_field]
+            if not isinstance(value, Number):
+                raise TypeError(
+                    f"Non-numeric value found in <{resample_field}>. "
+                    "Resampled field calculation failed."
+                )
+            value = float(value)
         fid = feature.id()
         if index.addFeature(feature):
-            source_by_id[fid] = (feature, float(value))
+            source_by_id[fid] = (feature, value)
     return index, source_by_id
 
 
@@ -334,7 +337,86 @@ def _target_intersects_source(geom, index, source_by_id):
     return False
 
 
-def _resampling_area_weighted(layer1, layer2, resample_field, feedback=None):
+def _target_contains_source_centroid(geom, index, source_by_id):
+    """True if the target cell contains at least one source cell centroid."""
+    if geom is None or geom.isEmpty():
+        return False
+    for fid in index.intersects(geom.boundingBox()):
+        src_feature, _ = source_by_id.get(fid, (None, None))
+        if src_feature is None:
+            continue
+        src_centroid = src_feature.geometry().centroid()
+        if src_centroid.isEmpty():
+            continue
+        if geom.contains(src_centroid):
+            return True
+    return False
+
+
+def _normalize_predicate(predicate):
+    pred = (predicate or "centroid_within").strip().lower().replace("-", "_")
+    if pred in ("intersects", "intersect"):
+        return "intersects"
+    return "centroid_within"
+
+
+def _keep_target_cell(geom, index, source_by_id, predicate="centroid_within"):
+    if _normalize_predicate(predicate) == "intersects":
+        return _target_intersects_source(geom, index, source_by_id)
+    return _target_contains_source_centroid(geom, index, source_by_id)
+
+
+def _filter_target_layer_by_predicate(
+    source_layer, target_layer, predicate="centroid_within", feedback=None
+):
+    """Keep target cells that pass the source–target predicate (no attribute transfer)."""
+    if target_layer is None:
+        return target_layer
+
+    source_index, source_by_id = _build_source_spatial_index(source_layer)
+    if not source_by_id:
+        return target_layer
+
+    fields = target_layer.fields()
+    output_layer = QgsVectorLayer(
+        "Polygon?crs=" + target_layer.crs().authid(), "filtered", "memory"
+    )
+    output_layer.startEditing()
+    output_layer.dataProvider().addAttributes(fields)
+    output_layer.updateFields()
+
+    total = target_layer.featureCount()
+    kept = 0
+    pred = _normalize_predicate(predicate)
+    if feedback:
+        feedback.pushInfo(f"Filtering target cells with predicate '{pred}'...")
+
+    for i, feature in enumerate(target_layer.getFeatures()):
+        if feedback and feedback.isCanceled():
+            feedback.reportError("Operation cancelled.")
+            return output_layer
+        geom = feature.geometry()
+        if not _keep_target_cell(geom, source_index, source_by_id, predicate):
+            continue
+        new_feat = QgsFeature(fields)
+        new_feat.setGeometry(geom)
+        new_feat.setAttributes(list(feature.attributes()))
+        output_layer.addFeature(new_feat)
+        kept += 1
+        if feedback and total:
+            feedback.setProgress(int((i + 1) / total * 100))
+
+    output_layer.commitChanges()
+    output_layer.updateExtents()
+    if feedback:
+        feedback.setProgress(100)
+        feedback.pushInfo(f"Predicate filter kept {kept} of {total} target cells.")
+    return output_layer
+
+
+def _resampling_area_weighted(
+    layer1, layer2, resample_field, feedback=None, predicate="centroid_within"
+):
     try:
         source_index, source_by_id = _build_source_spatial_index(layer1, resample_field)
     except TypeError as e:
@@ -373,9 +455,12 @@ def _resampling_area_weighted(layer1, layer2, resample_field, feedback=None):
         except Exception:
             continue
 
+        qgs_target = feature.geometry()
+        if not _keep_target_cell(qgs_target, source_index, source_by_id, predicate):
+            continue
+
         resampled_value = 0.0
         intersected = False
-        qgs_target = feature.geometry()
 
         for fid in source_index.intersects(qgs_target.boundingBox()):
             src_feature, l1_value = source_by_id.get(fid, (None, None))
@@ -425,7 +510,9 @@ def _resampling_area_weighted(layer1, layer2, resample_field, feedback=None):
     return output_layer
 
 
-def _resampling_nearest(layer1, layer2, resample_field, feedback=None):
+def _resampling_nearest(
+    layer1, layer2, resample_field, feedback=None, predicate="centroid_within"
+):
     if layer1.featureCount() == 0:
         if feedback:
             feedback.reportError("No source cells for nearest-neighbour resampling.")
@@ -475,7 +562,7 @@ def _resampling_nearest(layer1, layer2, resample_field, feedback=None):
             return output_layer
 
         geom = target_feature.geometry()
-        if not _target_intersects_source(geom, source_index, source_by_id):
+        if not _keep_target_cell(geom, source_index, source_by_id, predicate):
             continue
 
         centroid = geom.centroid()
@@ -516,17 +603,28 @@ def _resampling_nearest(layer1, layer2, resample_field, feedback=None):
     return output_layer
 
 
-def resampling(layer1, layer2, resample_field, method="nearest", feedback=None):
+def resampling(
+    layer1,
+    layer2,
+    resample_field,
+    method="nearest",
+    feedback=None,
+    predicate="centroid_within",
+):
     norm = method.strip().lower().replace("-", "_")
     if norm in ("area_weighted", "area"):
-        return _resampling_area_weighted(layer1, layer2, resample_field, feedback)
+        return _resampling_area_weighted(
+            layer1, layer2, resample_field, feedback, predicate=predicate
+        )
     if norm in (
         "nearest",
         "nn",
         "nearest_neighbour",
         "nearest_neighbor",
     ):
-        return _resampling_nearest(layer1, layer2, resample_field, feedback)
+        return _resampling_nearest(
+            layer1, layer2, resample_field, feedback, predicate=predicate
+        )
 
     msg = f"Unsupported resampling method {method!r}; use 'area_weighted' or 'nearest'."
     if feedback:
@@ -545,6 +643,7 @@ def resample(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    predicate="centroid_within",
 ):
     resampled_features = None
     if resolution == -1:
@@ -567,6 +666,10 @@ def resample(
         shift_antimeridian=shift_antimeridian,
         split_antimeridian=split_antimeridian,
     )
+    if resampled_features is not None:
+        resampled_features = _filter_target_layer_by_predicate(
+            dggs_layer, resampled_features, predicate, feedback
+        )
     if resample_field and resampled_features is not None:
         resampled_features = resampling(
             dggs_layer,
@@ -574,5 +677,6 @@ def resample(
             resample_field,
             method=method,
             feedback=feedback,
+            predicate=predicate,
         )
     return resampled_features

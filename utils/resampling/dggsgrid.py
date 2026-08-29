@@ -30,7 +30,6 @@ from vgrid.utils.geometry import (
 )
 from vgrid.utils.constants import INITIAL_GEOHASHES
 from vgrid.utils.io import (
-    is_full_world_bbox,
     validate_a5_resolution,
     validate_bbox,
     validate_geohash_resolution,
@@ -43,6 +42,7 @@ from vgrid.utils.io import (
     validate_s2_resolution,
     validate_tilecode_resolution,
 )
+from ..crs_helper import is_world_covering_wgs84, normalize_wgs84_bbox
 from vgrid.conversion.dggs2geo.a52geo import a52geo_u64
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
@@ -73,6 +73,11 @@ if platform.system() == "Windows":
 
 WEB_MERCATOR_BBOX = [-180.0, -85.05112878, 180.0, 85.05112878]
 
+
+def _is_world_bbox(bbox):
+    return is_world_covering_wgs84(*bbox)
+
+
 _SHIFT_FIX = {
     "h3": "shift_west",
     "s2": "shift_east",
@@ -99,10 +104,10 @@ def _use_split_antimeridian(shift_antimeridian=False, split_antimeridian=False):
 
 def _bbox_from_unified_geom(unified_geom):
     min_lon, min_lat, max_lon, max_lat = unified_geom.bounds
-    try:
-        return validate_bbox([min_lon, min_lat, max_lon, max_lat])
-    except ValueError:
-        return [-180.0, -90.0, 180.0, 90.0]
+    min_lon, min_lat, max_lon, max_lat, _is_full_world = normalize_wgs84_bbox(
+        min_lon, min_lat, max_lon, max_lat
+    )
+    return [min_lon, min_lat, max_lon, max_lat]
 
 
 def _ensure_valid_geometry(geom):
@@ -169,6 +174,27 @@ def _unified_geom_and_bbox(qgs_features):
         max(g.bounds[3] for g in geometries),
     )
     bbox = _bbox_from_unified_geom(footprint)
+
+    # Layer extent after WGS84 conversion can exceed the globe (e.g. from
+    # an oversized EPSG:3857 source). Normalize that to world as well.
+    ext = None
+    if hasattr(qgs_features, "extent"):
+        try:
+            ext = qgs_features.extent()
+        except Exception:
+            ext = None
+    if ext is None and hasattr(qgs_features, "sourceExtent"):
+        try:
+            ext = qgs_features.sourceExtent()
+        except Exception:
+            ext = None
+    if ext is not None and not ext.isEmpty():
+        min_lon, min_lat, max_lon, max_lat, is_full_world = normalize_wgs84_bbox(
+            ext.xMinimum(), ext.yMinimum(), ext.xMaximum(), ext.yMaximum()
+        )
+        if is_full_world:
+            bbox = [min_lon, min_lat, max_lon, max_lat]
+
     return unified_geom, bbox
 
 
@@ -200,7 +226,7 @@ def generate_h3_grid(
     fix = _resolve_fix_antimeridian("h3", shift_antimeridian, split_antimeridian)
     bbox_polygon = None
 
-    if is_full_world_bbox(bbox):
+    if _is_world_bbox(bbox):
         h3_cells = _h3_cell_ids_full_world(resolution)
     else:
         bbox_polygon = box(*bbox)
@@ -492,7 +518,7 @@ def generate_isea4t_grid(
     unified_geom, bbox = _unified_geom_and_bbox(qgs_features)
     fix = _resolve_fix_antimeridian("isea4t", shift_antimeridian, split_antimeridian)
 
-    if is_full_world_bbox(bbox):
+    if _is_world_bbox(bbox):
         bounding_children = get_isea4t_children_cells(ISEA4T_BASE_CELLS, resolution)
     else:
         accuracy = ISEA4T_RES_ACCURACY_DICT.get(resolution)
@@ -912,7 +938,7 @@ def generate_olc_grid(resolution, qgs_features, feedback=None):
     _, bbox = _unified_geom_and_bbox(qgs_features)
     bbox = validate_bbox(list(bbox))
 
-    if is_full_world_bbox(bbox):
+    if _is_world_bbox(bbox):
         return _olc_build_layer(
             _olc_world_cell_records(resolution, feedback), resolution, feedback
         )
@@ -1031,7 +1057,7 @@ def generate_tilecode_grid(resolution, qgs_features, feedback=None):
 
     resolution = validate_tilecode_resolution(resolution)
     _, bbox = _unified_geom_and_bbox(qgs_features)
-    if is_full_world_bbox(bbox):
+    if _is_world_bbox(bbox):
         bbox = WEB_MERCATOR_BBOX
     min_lon, min_lat, max_lon, max_lat = bbox
     tiles = list(mercantile.tiles(min_lon, min_lat, max_lon, max_lat, resolution))
@@ -1117,7 +1143,7 @@ def generate_quadkey_grid(resolution, qgs_features, feedback=None):
 
     resolution = validate_quadkey_resolution(resolution)
     _, bbox = _unified_geom_and_bbox(qgs_features)
-    if is_full_world_bbox(bbox):
+    if _is_world_bbox(bbox):
         bbox = WEB_MERCATOR_BBOX
     min_lon, min_lat, max_lon, max_lat = bbox
     tiles = list(mercantile.tiles(min_lon, min_lat, max_lon, max_lat, resolution))
@@ -1209,7 +1235,7 @@ def generate_a5_grid(
 
     resolution = validate_a5_resolution(resolution)
     unified_geom, bbox = _unified_geom_and_bbox(qgs_features)
-    full_world = is_full_world_bbox(bbox)
+    full_world = _is_world_bbox(bbox)
     if full_world:
         min_lon, min_lat, max_lon, max_lat = -180.0, -90.0, 180.0, 90.0
     else:
@@ -1333,7 +1359,7 @@ def generate_dggal_grid(
 
     dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
     dggrs = globals()[dggs_class_name]()
-    if is_full_world_bbox(bbox):
+    if _is_world_bbox(bbox):
         geo_extent = wholeWorld
     else:
         min_lon, min_lat, max_lon, max_lat = bbox

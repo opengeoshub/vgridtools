@@ -47,8 +47,7 @@ from shapely.geometry import Polygon
 from vgrid.dggs import mercantile
 from vgrid.utils.geometry import graticule_dggs_metrics
 from ...settings import settings
-from vgrid.utils.io import validate_coordinate
-from ...utils.latlon import epsg4326
+from ...utils.crs_helper import processing_extent_wgs84
 
 
 class TilecodeGen(QgsProcessingAlgorithm):
@@ -182,36 +181,8 @@ class TilecodeGen(QgsProcessingAlgorithm):
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
 
-        canvas_crs = QgsProject.instance().crs()
-        if self.canvas_extent is None or self.canvas_extent.isEmpty():
-            # min_lon, min_lat, max_lon, max_lat =  -180.0, -85.05112878, 180.0, 85.05112878
-            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
-        else:
-            try:
-                min_lon, min_lat, max_lon, max_lat = (
-                    self.canvas_extent.xMinimum(),
-                    self.canvas_extent.yMinimum(),
-                    self.canvas_extent.xMaximum(),
-                    self.canvas_extent.yMaximum(),
-                )
-                # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(
-                        canvas_crs, epsg4326, QgsProject.instance()
-                    )
-                    self.canvas_extent = trans_to_4326.transform(self.canvas_extent)
-                    min_lon, min_lat, max_lon, max_lat = (
-                        self.canvas_extent.xMinimum(),
-                        self.canvas_extent.yMinimum(),
-                        self.canvas_extent.xMaximum(),
-                        self.canvas_extent.yMaximum(),
-                    )
-            except Exception:
-                # min_lon, min_lat, max_lon, max_lat = -180.0, -85.05112878, 180.0, 85.05112878
-                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
-
-        min_lon, min_lat, max_lon, max_lat = validate_coordinate(
-            min_lon, min_lat, max_lon, max_lat
+        min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
+            self, parameters, self.EXTENT, context, feedback
         )
 
         tiles = list(

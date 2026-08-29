@@ -45,9 +45,7 @@ import os
 from ...utils.help_footer import social_links_footer
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from ...settings import settings
-from vgrid.utils.io import validate_coordinate
-from qgis.core import QgsCoordinateTransform
-from ...utils.latlon import epsg4326
+from ...utils.crs_helper import processing_extent_wgs84
 from vgrid.utils.constants import DGGS_TYPES
 from collections import deque
 from shapely.geometry import box
@@ -215,36 +213,8 @@ class A5Gen(QgsProcessingAlgorithm):
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
-        canvas_crs = QgsProject.instance().crs()
-
-        if self.canvas_extent is None or self.canvas_extent.isEmpty():
-            min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
-        else:
-            try:
-                min_lon, min_lat, max_lon, max_lat = (
-                    self.canvas_extent.xMinimum(),
-                    self.canvas_extent.yMinimum(),
-                    self.canvas_extent.xMaximum(),
-                    self.canvas_extent.yMaximum(),
-                )
-                # Transform extent to EPSG:4326 if needed
-                if epsg4326 != canvas_crs:
-                    trans_to_4326 = QgsCoordinateTransform(
-                        canvas_crs, epsg4326, QgsProject.instance()
-                    )
-                    transformed_extent = trans_to_4326.transform(self.canvas_extent)
-                    min_lon, min_lat, max_lon, max_lat = (
-                        transformed_extent.xMinimum(),
-                        transformed_extent.yMinimum(),
-                        transformed_extent.xMaximum(),
-                        transformed_extent.yMaximum(),
-                    )
-            except Exception:
-                min_lon, min_lat, max_lon, max_lat = -180, -90, 180, 90
-
-        # validate_coordinate expects (min_lon, min_lat, max_lon, max_lat)
-        min_lon, min_lat, max_lon, max_lat = validate_coordinate(
-            min_lon, min_lat, max_lon, max_lat
+        min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
+            self, parameters, self.EXTENT, context, feedback
         )
 
         bbox_polygon = box(min_lon, min_lat, max_lon, max_lat)

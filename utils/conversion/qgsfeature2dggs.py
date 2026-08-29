@@ -51,7 +51,7 @@ import h3
 import a5
 from vgrid.dggs import s2, olc, mercantile
 
-from .crs_helper import (
+from ..crs_helper import (
     flatten_feature_geometry,
     reproject_feature,
     wgs84_transform_if_needed,

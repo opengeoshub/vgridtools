@@ -3,6 +3,7 @@
   "tasks": [
     {
       "label": "Clear Python caches",
+      "detail": "Remove __pycache__, .pyc/.pyo, and all files under dggrid/",
       "type": "shell",
       "command": "python",
       "args": [

@@ -14,7 +14,7 @@ from math import log2, floor
 
 from ..utils.latlon import epsg4326
 from ..settings import settings
-from vgrid.utils.io import validate_coordinate
+from vgrid.utils.io import is_full_world_bbox, validate_coordinate
 from vgrid.utils.constants import DGGS_TYPES
 from vgrid.utils.geometry import get_isea4t_resolution_from_scale_denominator
 
@@ -125,6 +125,35 @@ class ISEA4TGrid(QObject):
                 min_lon, min_lat, max_lon, max_lat = validate_coordinate(
                     min_lon, min_lat, max_lon, max_lat
                 )
+                if is_full_world_bbox([min_lon, min_lat, max_lon, max_lat]) or (
+                    max_lon - min_lon
+                ) >= 350:
+                    isea4t_cells = get_isea4t_children_cells(
+                        ISEA4T_BASE_CELLS, resolution
+                    )
+                    for child in isea4t_cells:
+                        isea4t_cell = DggsCell(child)
+                        isea4t_id = isea4t_cell.get_cell_id()
+                        if settings.splitAntimeridian:
+                            cell_polygon = isea4t2geo(
+                                isea4t_id, fix_antimeridian="split"
+                            )
+                        else:
+                            cell_polygon = isea4t2geo(
+                                isea4t_id, fix_antimeridian="shift_west"
+                            )
+                        if epsg4326 != canvas_crs:
+                            trans_to_canvas = QgsCoordinateTransform(
+                                epsg4326, canvas_crs, QgsProject.instance()
+                            )
+                            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                            cell_geometry.transform(trans_to_canvas)
+                        else:
+                            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+                        self.isea4t_marker.addGeometry(cell_geometry, None)
+                    self.canvas.refresh()
+                    return
+
                 extent_bbox = box(min_lon, min_lat, max_lon, max_lat)
 
                 accuracy = ISEA4T_RES_ACCURACY_DICT.get(resolution)
@@ -134,10 +163,19 @@ class ISEA4TGrid(QObject):
                 )
                 shape = shapes[0]
                 bbox_cells = shape.get_shape().get_outer_ring().get_cells()
-                bounding_cell = isea4t_dggs.get_bounding_dggs_cell(bbox_cells)
-                cells_to_draw = get_isea4t_children_cells_within_bbox(
-                    bounding_cell.get_cell_id(), extent_bbox, resolution
-                )
+                try:
+                    bounding_cell = isea4t_dggs.get_bounding_dggs_cell(bbox_cells)
+                    cells_to_draw = get_isea4t_children_cells_within_bbox(
+                        bounding_cell.get_cell_id(), extent_bbox, resolution
+                    )
+                except Exception:
+                    cells_to_draw = []
+                    for base in ISEA4T_BASE_CELLS:
+                        cells_to_draw.extend(
+                            get_isea4t_children_cells_within_bbox(
+                                base, extent_bbox, resolution
+                            )
+                        )
                 # Draw cells
                 for cell_id in cells_to_draw:
                     try:

@@ -1,7 +1,4 @@
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsProject,
     QgsFeature,
     QgsGeometry,
     QgsField,
@@ -12,6 +9,7 @@ from pyproj import Geod
 from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
 from vgrid.conversion.dggs2geo.maidenhead2geo import maidenhead2geo
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
+from vgrid.conversion.dggs2geo.mgrs2geo import mgrs2geo
 from vgrid.conversion.dggs2geo.olc2geo import olc2geo
 from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
 from vgrid.conversion.dggs2geo.ease2geo import ease2geo
@@ -33,15 +31,15 @@ import platform
 from dggal import *
 from vgrid.utils.constants import DGGAL_TYPES
 from vgrid.utils.geometry import dggal_to_geo
+from vgrid.utils.antimeridian import fix_polygon
 import re
-import os
-from shapely.geometry import Polygon, shape
-import json
+from shapely.geometry import Polygon
 
 from vgrid.dggs import s2, olc, georef, mgrs
 from gars_field.garsgrid import GARSGrid
 from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+from ..antimeridian_helper import geo_with_fix, use_split_antimeridian
 
 rhealpix_dggs = RHEALPixDGGS(
     ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3
@@ -62,8 +60,10 @@ if platform.system() == "Windows":
 geod = Geod(ellps="WGS84")
 
 
-def h32qgsfeature(feature, h3_id):
-    cell_polygon = h32geo(h3_id)
+def h32qgsfeature(feature, h3_id, shift_antimeridian=False, split_antimeridian=False):
+    cell_polygon = geo_with_fix(
+        h32geo, h3_id, "h3", shift_antimeridian, split_antimeridian
+    )
     num_edges = 6
     if h3.is_pentagon(h3_id):
         num_edges = 5
@@ -117,9 +117,13 @@ def h32qgsfeature(feature, h3_id):
     return h3_feature
 
 
-def s22qgsfeature(feature, s2_token):
+def s22qgsfeature(
+    feature, s2_token, shift_antimeridian=False, split_antimeridian=False
+):
     cell_id = s2.CellId.from_token(s2_token)
-    cell_polygon = s22geo(s2_token)
+    cell_polygon = geo_with_fix(
+        s22geo, s2_token, "s2", shift_antimeridian, split_antimeridian
+    )
     resolution = cell_id.level()
     num_edges = 4
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
@@ -169,8 +173,13 @@ def s22qgsfeature(feature, s2_token):
     return s2_feature
 
 
-def a52qgsfeature(feature, a5_hex):
-    cell_polygon = a52geo(a5_hex)
+def a52qgsfeature(feature, a5_hex, shift_antimeridian=False, split_antimeridian=False):
+    cell_polygon = a52geo(
+        a5_hex,
+        split_antimeridian=use_split_antimeridian(
+            shift_antimeridian, split_antimeridian
+        ),
+    )
     num_edges = 5
     cell_bigint = a5.hex_to_u64(a5_hex)
     resolution = a5.get_resolution(cell_bigint)
@@ -221,12 +230,16 @@ def a52qgsfeature(feature, a5_hex):
     return a5_feature
 
 
-def rhealpix2qgsfeature(feature, rhealpix_id):
+def rhealpix2qgsfeature(
+    feature, rhealpix_id, shift_antimeridian=False, split_antimeridian=False
+):
     rhealpix_id = str(rhealpix_id)
     rhealpix_uids = (rhealpix_id[0],) + tuple(map(int, rhealpix_id[1:]))
     rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
     resolution = rhealpix_cell.resolution
-    cell_polygon = rhealpix2geo(rhealpix_id)
+    cell_polygon = geo_with_fix(
+        rhealpix2geo, rhealpix_id, "rhealpix", shift_antimeridian, split_antimeridian
+    )
 
     num_edges = 4
     if rhealpix_cell.ellipsoidal_shape() == "dart":
@@ -280,10 +293,14 @@ def rhealpix2qgsfeature(feature, rhealpix_id):
     return rhealpix_feature
 
 
-def isea4t2qgsfeature(feature, isea4t_id):
+def isea4t2qgsfeature(
+    feature, isea4t_id, shift_antimeridian=False, split_antimeridian=False
+):
     if platform.system() == "Windows":
         resolution = len(isea4t_id) - 2
-        cell_polygon = isea4t2geo(isea4t_id)
+        cell_polygon = geo_with_fix(
+            isea4t2geo, isea4t_id, "isea4t", shift_antimeridian, split_antimeridian
+        )
 
         num_edges = 3
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
@@ -331,10 +348,14 @@ def isea4t2qgsfeature(feature, isea4t_id):
         return isea4t_feature
 
 
-def isea3h2qgsfeature(feature, isea3h_id):
+def isea3h2qgsfeature(
+    feature, isea3h_id, shift_antimeridian=False, split_antimeridian=False
+):
     if platform.system() == "Windows":
         DggsCell(isea3h_id)
-        cell_polygon = isea3h2geo(isea3h_id)
+        cell_polygon = geo_with_fix(
+            isea3h2geo, isea3h_id, "isea3h", shift_antimeridian, split_antimeridian
+        )
         cell_centroid = cell_polygon.centroid
         center_lat = round(cell_centroid.y, 7)
         center_lon = round(cell_centroid.x, 7)
@@ -413,7 +434,7 @@ def isea3h2qgsfeature(feature, isea3h_id):
         return isea3h_feature
 
 
-def ease2qgsfeature(feature, ease_id):
+def ease2qgsfeature(feature, ease_id, **kwargs):
     resolution = int(ease_id[1])  # Get the level (e.g., 'L0' -> 0)
     cell_polygon = ease2geo(ease_id)
 
@@ -465,7 +486,9 @@ def ease2qgsfeature(feature, ease_id):
     return ease_feature
 
 
-def dggal2qgsfeature(feature, zone_id, dggs_type):
+def dggal2qgsfeature(
+    feature, zone_id, dggs_type, shift_antimeridian=False, split_antimeridian=False
+):
     """
     Unified function to convert DGGSAL cell ID to QGIS feature for any DGGSAL type.
 
@@ -485,6 +508,8 @@ def dggal2qgsfeature(feature, zone_id, dggs_type):
     resolution = dggrs.getZoneLevel(zone)
     num_edges = dggrs.countZoneEdges(zone)
     cell_polygon = dggal_to_geo(dggs_type, zone_id)
+    if use_split_antimeridian(shift_antimeridian, split_antimeridian):
+        cell_polygon = fix_polygon(cell_polygon)
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
         geodesic_dggs_metrics(cell_polygon, num_edges)
     )
@@ -533,7 +558,7 @@ def dggal2qgsfeature(feature, zone_id, dggs_type):
     return dggal_feature
 
 
-def qtm2qgsfeature(feature, qtm_id):
+def qtm2qgsfeature(feature, qtm_id, **kwargs):
     cell_polygon = qtm2geo(qtm_id)
     resolution = len(qtm_id)
     num_edges = 3
@@ -584,7 +609,7 @@ def qtm2qgsfeature(feature, qtm_id):
     return qtm_feature
 
 
-def olc2qgsfeature(feature, olc_id):
+def olc2qgsfeature(feature, olc_id, **kwargs):
     cell_polygon = olc2geo(olc_id)
     coord = olc.decode(olc_id)
     resolution = coord.codeLength
@@ -636,85 +661,19 @@ def olc2qgsfeature(feature, olc_id):
     return olc_feature
 
 
-def mgrs2qgsfeature(feature, mgrs_id):
-    resolution, grid_size = mgrs.get_precision_and_grid_size(mgrs_id)
-    zone, hemisphere, easting, northing = mgrs._mgrsToUtm(mgrs_id)
+def mgrs2qgsfeature(feature, mgrs_id, **kwargs):
+    cell_polygon = mgrs2geo(mgrs_id)
+    if not cell_polygon or isinstance(cell_polygon, list):
+        return None
 
-    min_x, min_y = easting, northing
-    max_x, max_y = (
-        min_x + grid_size,
-        min_y + grid_size,
-    )  # Correct max_x, max_y calculation
-
-    # Determine UTM EPSG code
-    if hemisphere == "N":
-        epsg_code = 32600 + int(zone)
-    else:
-        epsg_code = 32700 + int(zone)
-
-    utm_crs = QgsCoordinateReferenceSystem(epsg_code)
-    wgs84_crs = QgsCoordinateReferenceSystem(4326)  # WGS84
-
-    transform_context = QgsProject.instance().transformContext()
-    transformer = QgsCoordinateTransform(utm_crs, wgs84_crs, transform_context)
-
-    # Convert all four corners
-    min_lon, min_lat = transformer.transform(min_x, min_y)
-    max_lon, max_lat = transformer.transform(max_x, max_y)
-
-    # Define the polygon coordinates for the MGRS cell
-    cell_polygon = Polygon(
-        [
-            (min_lon, min_lat),  # Bottom-left corner
-            (max_lon, min_lat),  # Bottom-right corner
-            (max_lon, max_lat),  # Top-right corner
-            (min_lon, max_lat),  # Top-left corner
-            (min_lon, min_lat),  # Closing the polygon
-        ]
-    )
-
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+    resolution, _ = mgrs.get_mgrs_resolution_and_cell_size(mgrs_id)
     center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
         graticule_dggs_metrics(cell_polygon)
     )
 
-    try:
-        gzd_json_path = os.path.join(os.path.dirname(__file__), "gzd.geojson")
-
-        with open(gzd_json_path, "r") as f:
-            gzd_data = json.load(f)
-
-        gzd_features = gzd_data["features"]
-        gzd_feature = [
-            feature
-            for feature in gzd_features
-            if feature["properties"].get("gzd") == mgrs_id[:3]
-        ][0]
-        gzd_geom = shape(gzd_feature["geometry"])
-
-        if mgrs_id[2] not in {"A", "B", "Y", "Z"}:  # not polar bands
-            if cell_polygon.intersects(gzd_geom) and not gzd_geom.contains(
-                cell_polygon
-            ):
-                intersected_polygon = cell_polygon.intersection(gzd_geom)
-                if intersected_polygon:
-                    cell_geometry = QgsGeometry.fromWkt(intersected_polygon.wkt)
-                    (
-                        center_lat,
-                        center_lon,
-                        cell_width,
-                        cell_height,
-                        cell_area,
-                        cell_perimeter,
-                    ) = graticule_dggs_metrics(intersected_polygon)
-    except BaseException:
-        pass
-
-    # Get all attributes from the input feature
     original_attributes = feature.attributes()
     original_fields = feature.fields()
 
-    # Define new H3-related attributes
     new_fields = QgsFields()
     new_fields.append(QgsField("mgrs", QVariant.String))
     new_fields.append(QgsField("resolution", QVariant.Int))
@@ -724,7 +683,6 @@ def mgrs2qgsfeature(feature, mgrs_id):
     new_fields.append(QgsField("cell_height", QVariant.Double))
     new_fields.append(QgsField("cell_area", QVariant.Double))
     new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    # Combine original fields and new fields
     all_fields = QgsFields()
     for field in original_fields:
         all_fields.append(field)
@@ -732,28 +690,25 @@ def mgrs2qgsfeature(feature, mgrs_id):
         all_fields.append(field)
 
     mgrs_feature = QgsFeature()
-    mgrs_feature.setGeometry(cell_geometry)
+    mgrs_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
     mgrs_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    new_attributes = [
-        mgrs_id,
-        resolution,
-        center_lat,
-        center_lon,
-        cell_width,
-        cell_height,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    mgrs_feature.setAttributes(all_attributes)
-
+    mgrs_feature.setAttributes(
+        original_attributes
+        + [
+            mgrs_id,
+            resolution,
+            center_lat,
+            center_lon,
+            cell_width,
+            cell_height,
+            cell_area,
+            cell_perimeter,
+        ]
+    )
     return mgrs_feature
 
 
-def geohash2qgsfeature(feature, geohash_id):
+def geohash2qgsfeature(feature, geohash_id, **kwargs):
     cell_polygon = geohash2geo(geohash_id)
     resolution = len(geohash_id)
     center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
@@ -804,7 +759,7 @@ def geohash2qgsfeature(feature, geohash_id):
     return geohash_feature
 
 
-def georef2qgsfeature(feature, georef_id):
+def georef2qgsfeature(feature, georef_id, **kwargs):
     center_lat, center_lon, min_lat, min_lon, max_lat, max_lon, resolution = (
         georef.georefcell(georef_id)
     )
@@ -867,7 +822,7 @@ def georef2qgsfeature(feature, georef_id):
         return georef_feature
 
 
-def tilecode2qgsfeature(feature, tilecode_id):
+def tilecode2qgsfeature(feature, tilecode_id, **kwargs):
     # Extract z, x, y from the tilecode using regex
     match = re.match(r"z(\d+)x(\d+)y(\d+)", tilecode_id)
     if not match:
@@ -943,7 +898,7 @@ def tilecode2qgsfeature(feature, tilecode_id):
         return tilecode_feature
 
 
-def quadkey2qgsfeature(feature, quadkey_id):
+def quadkey2qgsfeature(feature, quadkey_id, **kwargs):
     tile = mercantile.quadkey_to_tile(quadkey_id)
     z = tile.z
     x = tile.x
@@ -1012,7 +967,7 @@ def quadkey2qgsfeature(feature, quadkey_id):
         return quadkey_feature
 
 
-def maidenhead2qgsfeature(feature, maidenhead_id):
+def maidenhead2qgsfeature(feature, maidenhead_id, **kwargs):
     cell_polygon = maidenhead2geo(maidenhead_id)
     resolution = int(len(maidenhead_id) / 2)
 
@@ -1064,7 +1019,7 @@ def maidenhead2qgsfeature(feature, maidenhead_id):
     return maidenhead_feature
 
 
-def gars2qgsfeature(feature, gars_id):
+def gars2qgsfeature(feature, gars_id, **kwargs):
     # Create a GARS grid object and retrieve the polygon
     gars_grid = GARSGrid(gars_id)
     wkt_polygon = gars_grid.polygon
@@ -1147,7 +1102,7 @@ def gars2qgsfeature(feature, gars_id):
         return gars_feature
 
 
-def digipin2qgsfeature(feature, digipin_id):
+def digipin2qgsfeature(feature, digipin_id, **kwargs):
     cell_polygon = digipin2geo(digipin_id)
     clean_id = digipin_id.replace("-", "")
     resolution = len(clean_id)
@@ -1235,7 +1190,14 @@ def dggrid_join_qgsfeature(feature, cell_id, lookup, dggs_type, out_fields):
 
 
 def dggrid_batch2qgsfeatures(
-    features, cell_ids, dggs_type, resolution, out_fields, feedback=None
+    features,
+    cell_ids,
+    dggs_type,
+    resolution,
+    out_fields,
+    feedback=None,
+    split_antimeridian=False,
+    aggregate=False,
 ):
     """
     Convert many input features via one ``dggrid2geo`` call and join by cell ID.
@@ -1260,6 +1222,8 @@ def dggrid_batch2qgsfeatures(
         resolution,
         options=build_dggrid_options(settings.dggridDensificationSpinBox),
         feedback=feedback,
+        split_antimeridian=split_antimeridian,
+        aggregate=aggregate,
     )
 
     if not lookup:
