@@ -5,13 +5,13 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
+    QgsCoordinateReferenceSystem,
     QgsProcessing,
-    QgsProcessingAlgorithm,
+    QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingParameterNumber,
-    QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
-    QgsProcessingParameterVectorDestination,
     QgsProcessingParameterEnum,
+    QgsWkbTypes,
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
@@ -21,7 +21,8 @@ from vgrid.utils.io import validate_a5_resolution
 
 from ...settings import settings
 from ...utils.binning.bin_helper import (
-    BIN_STATISTICS,
+    load_wgs84_feature_source,
+    BIN_AGG,
     add_shift_split_parameters,
     prepare_point_bin_algorithm,
     process_point_dggs_bin,
@@ -31,15 +32,15 @@ from ...utils.help_footer import social_links_footer
 from ...utils.resampling.dggsgrid import generate_a5_grid
 
 
-class A5Bin(QgsProcessingAlgorithm):
+class A5Bin(QgsProcessingFeatureBasedAlgorithm):
     INPUT = "INPUT"
     CATEGORY_FIELD = "CATEGORY_FIELD"
     NUMERIC_FIELD = "NUMERIC_FIELD"
-    STATS = "STATS"
+    AGG = "AGG"
     RESOLUTION = "RESOLUTION"
     OUTPUT = "OUTPUT"
 
-    STATISTICS = BIN_STATISTICS
+    AGG_OPTIONS = BIN_AGG
 
     LOC = QgsApplication.locale()[:2]
 
@@ -103,26 +104,40 @@ class A5Bin(QgsProcessingAlgorithm):
         )
         return self.tr(self.txt_en, self.txt_vi) + footer
 
-    def initAlgorithm(self, config=None):
-        self.addParameter(
-            QgsProcessingParameterFeatureSource(
-                self.INPUT,
-                "Input point layer",
-                [QgsProcessing.TypeVectorPoint],
-            )
-        )
+
+    def inputLayerTypes(self):
+        return [QgsProcessing.TypeVectorPoint]
+
+    def inputParameterDescription(self):
+        return self.tr("Input point layer")
+
+    def outputName(self):
+        return self.tr("DGGS_binning")
+
+    def outputWkbType(self, input_wkb_type):
+        return QgsWkbTypes.Polygon
+
+    def outputCrs(self, input_crs):
+        return QgsCoordinateReferenceSystem("EPSG:4326")
+
+    def supportInPlaceEdit(self, layer):
+        return False
+
+    def initParameters(self, config=None):
+        # INPUT is provided by QgsProcessingFeatureBasedAlgorithm
+        # (includes native "Selected features only").
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.STATS,
-                "Statistic to compute",
-                options=self.STATISTICS,
+                self.AGG,
+                "Aggregate function",
+                options=self.AGG_OPTIONS,
                 defaultValue=0,
             )
         )
         self.addParameter(
             QgsProcessingParameterField(
                 self.NUMERIC_FIELD,
-                "Numeric field (for statistics other than 'count')",
+                "Numeric field (for aggregate function other than 'count')",
                 parentLayerParameterName=self.INPUT,
                 optional=True,
                 type=QgsProcessingParameterField.Numeric,
@@ -149,14 +164,10 @@ class A5Bin(QgsProcessingAlgorithm):
             )
         )
         add_shift_split_parameters(self, shift=False)
-        self.addParameter(
-            QgsProcessingParameterVectorDestination(self.OUTPUT, "DGGS_binning")
-        )
 
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.point_layer = self.parameterAsSource(parameters, self.INPUT, context)
-        self.stats_index = self.parameterAsEnum(parameters, self.STATS, context)
-        self.stats = self.STATISTICS[self.stats_index]
+        self.agg_index = self.parameterAsEnum(parameters, self.AGG, context)
+        self.agg = self.AGG_OPTIONS[self.agg_index]
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         self.numeric_field = self.parameterAsString(
             parameters, self.NUMERIC_FIELD, context
@@ -168,22 +179,31 @@ class A5Bin(QgsProcessingAlgorithm):
             self, parameters, context, shift=False
         )
         prepare_point_bin_algorithm(
-            self.point_layer,
-            self.stats,
+            None,
+            self.agg,
             self.numeric_field,
             self.category_field,
         )
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
+        point_layer = load_wgs84_feature_source(
+            self,
+            parameters,
+            context,
+            feedback,
+            self.INPUT,
+            layer_name="bin_points_wgs84",
+            error="Invalid input point layer.",
+        )
         return process_point_dggs_bin(
             self,
             parameters,
             context,
             feedback,
-            self.point_layer,
+            point_layer,
             self.resolution,
-            self.stats,
+            self.agg,
             self.category_field,
             self.numeric_field,
             "a5",

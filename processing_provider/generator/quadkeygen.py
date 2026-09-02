@@ -48,6 +48,7 @@ from vgrid.dggs import mercantile
 from vgrid.utils.geometry import graticule_dggs_metrics
 from ...settings import settings
 from ...utils.crs_helper import processing_extent_wgs84
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 
 
 class QuadkeyGen(QgsProcessingAlgorithm):
@@ -170,6 +171,8 @@ class QuadkeyGen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"Quadkey_{self.resolution}"
+        set_output_layer_name(parameters, self.OUTPUT, "Quadkey", layer_name)
 
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -182,6 +185,7 @@ class QuadkeyGen(QgsProcessingAlgorithm):
 
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
+        apply_loaded_layer_name(context, dest_id, "Quadkey", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
             self, parameters, self.EXTENT, context, feedback

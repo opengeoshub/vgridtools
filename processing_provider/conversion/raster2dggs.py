@@ -11,6 +11,7 @@ from vgrid.stats.rhealpixstats import rhealpix_metrics
 from vgrid.stats.a5stats import a5_metrics
 from vgrid.stats.s2stats import s2_metrics
 from ...utils.crs_helper import ensure_wgs84_raster_layer
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from ...utils.conversion.raster2dggs import *
 from ...utils.help_footer import social_links_footer
 
@@ -496,6 +497,9 @@ class Raster2DGGS(QgsProcessingAlgorithm):
                 "Invalid output layer returned from conversion function."
             )
 
+        layer_name = f"raster2{self.DGGS_TYPES[self.DGGS_TYPE_index]}"
+        set_output_layer_name(parameters, self.OUTPUT, "Raster2DGGS", layer_name)
+
         # Create output sink with the same fields and CRS
         (sink, sink_id) = self.parameterAsSink(
             parameters,
@@ -510,4 +514,5 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         for feature in memory_layer.getFeatures():
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
 
+        apply_loaded_layer_name(context, sink_id, "Raster2DGGS", layer_name)
         return {self.OUTPUT: sink_id}

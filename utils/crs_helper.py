@@ -141,6 +141,23 @@ def attributes_only_source(source, feedback=None, layer_name="dggs_ids"):
     return layer
 
 
+def load_wgs84_feature_source(
+    algorithm,
+    parameters,
+    context,
+    feedback,
+    param_name,
+    *,
+    layer_name="wgs84_reprojected",
+    error="Invalid input layer.",
+):
+    """Load a Processing feature source, honor selection, and reproject to WGS84."""
+    source = algorithm.parameterAsSource(parameters, param_name, context)
+    if source is None:
+        raise QgsProcessingException(error)
+    return ensure_wgs84_source(source, feedback=feedback, layer_name=layer_name)
+
+
 def ensure_wgs84_source(source, feedback=None, layer_name="wgs84_reprojected"):
     """Return a QgsVectorLayer in EPSG:4326.
 

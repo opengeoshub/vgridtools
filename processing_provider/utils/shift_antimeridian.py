@@ -19,6 +19,7 @@ from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
 from ...utils.help_footer import social_links_footer
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from vgrid.utils.geometry import shift_west, shift_east, shift_balanced
 from shapely.geometry import shape
 from qgis.core import QgsGeometry
@@ -36,6 +37,7 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
     BALANCED_SHIFT = "BALANCED_SHIFT"
     WEST_THRESHOLD = "WEST_THRESHOLD"
     EAST_THRESHOLD = "EAST_THRESHOLD"
+    SHIFT_TYPE_LABELS = ("West", "East", "Balanced")
 
     LOC = QgsApplication.locale()[:2]
 
@@ -190,6 +192,30 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
         self.total_features = source.featureCount()
 
         return True
+
+    def processAlgorithm(self, parameters, context, feedback):
+        layer = self.parameterAsVectorLayer(parameters, self.INPUT, context)
+        if layer is not None:
+            dggs_type = layer.name()
+        else:
+            source = self.parameterAsSource(parameters, self.INPUT, context)
+            dggs_type = source.sourceName() if source else "DGGS"
+        dggs_type = dggs_type or "DGGS"
+
+        shift_index = self.parameterAsEnum(parameters, self.WEST_SHIFT, context)
+        if shift_index < 0 or shift_index >= len(self.SHIFT_TYPE_LABELS):
+            shift_index = 0
+        layer_name = f"{dggs_type}_{self.SHIFT_TYPE_LABELS[shift_index]}"
+
+        set_output_layer_name(parameters, self.OUTPUT, "shift_antimeridian", layer_name)
+        result = super().processAlgorithm(parameters, context, feedback)
+        apply_loaded_layer_name(
+            context,
+            result.get(self.OUTPUT) if result else None,
+            "shift_antimeridian",
+            layer_name,
+        )
+        return result
 
     def processFeature(self, feature, context, feedback):
         try:

@@ -60,6 +60,7 @@ if platform.system() == "Windows":
 from ...utils.help_footer import social_links_footer
 from shapely.geometry import box
 from ...settings import settings
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from vgrid.utils.constants import ISEA4T_RES_ACCURACY_DICT
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from ...utils.crs_helper import processing_extent_wgs84
@@ -237,6 +238,8 @@ class ISEA4TGen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"ISEA4T_{self.resolution}"
+        set_output_layer_name(parameters, self.OUTPUT, "ISEA4T", layer_name)
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -246,6 +249,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
             QgsWkbTypes.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
+        apply_loaded_layer_name(context, dest_id, "ISEA4T", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
             self, parameters, self.EXTENT, context, feedback

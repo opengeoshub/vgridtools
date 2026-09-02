@@ -48,6 +48,7 @@ from shapely.geometry import box
 from ...utils.help_footer import social_links_footer
 from ...settings import settings
 from ...utils.crs_helper import processing_extent_wgs84
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 
 
 class QTMGen(QgsProcessingAlgorithm):
@@ -169,6 +170,8 @@ class QTMGen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"QTM_{self.resolution}"
+        set_output_layer_name(parameters, self.OUTPUT, "QTM", layer_name)
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -181,6 +184,7 @@ class QTMGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+        apply_loaded_layer_name(context, dest_id, "QTM", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
             self, parameters, self.EXTENT, context, feedback

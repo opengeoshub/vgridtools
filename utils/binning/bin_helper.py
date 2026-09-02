@@ -12,7 +12,9 @@ from qgis.core import (
     QgsField,
     QgsGeometry,
     QgsPointXY,
+    QgsProcessing,
     QgsProcessingException,
+    QgsProcessingOutputLayerDefinition,
     QgsProcessingParameterBoolean,
     QgsSpatialIndex,
     QgsVectorLayer,
@@ -22,9 +24,13 @@ from shapely import wkt as shapely_wkt
 from shapely.geometry import box
 
 from vgrid.utils.geometry import geodesic_dggs_metrics, graticule_dggs_metrics
-from vgrid.utils.io import aggregate_joined, stat_column_name
+from vgrid.utils.io import aggregate_joined, agg_column_name
 
-from ..crs_helper import ensure_wgs84_source, normalize_extent_to_india
+from ..crs_helper import (
+    ensure_wgs84_source,
+    load_wgs84_feature_source,
+    normalize_extent_to_india,
+)
 
 SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
 SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
@@ -32,7 +38,7 @@ AGGREGATE = "AGGREGATE"
 
 _WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
 
-BIN_STATISTICS = [
+BIN_AGG = [
     "count",
     "sum",
     "min",
@@ -48,7 +54,7 @@ BIN_STATISTICS = [
 ]
 
 
-def get_default_stats_structure():
+def get_default_agg_structure():
     return {
         "count": 0,
         "sum": [],
@@ -91,40 +97,39 @@ def normalize_category(cat):
     return cat.strip().lower()
 
 
-def bin_stat_column_name(
-    stats, numeric_field=None, category_field=None, category_value=None
+def bin_agg_column_name(
+    agg, numeric_field=None, category_field=None, category_value=None
 ):
-    """Match vgrid DGGS binning column names via :func:`stat_column_name`."""
     cat = category_value if category_field else None
-    if stats == "count":
-        return stat_column_name("count", category_value=cat)
-    return stat_column_name(stats, numeric_field=numeric_field, category_value=cat)
+    if agg == "count":
+        return agg_column_name("count", category_col_value=cat)
+    return agg_column_name(agg, numeric_col=numeric_field, category_col_value=cat)
 
 
-def stat_field_type(stats):
-    if stats in ("count", "variety"):
+def agg_field_type(agg):
+    if agg in ("count", "variety"):
         return QVariant.Int
-    if stats in ("minority", "majority"):
+    if agg in ("minority", "majority"):
         return QVariant.String
     return QVariant.Double
 
 
-def append_bin_stat_fields(
+def append_bin_agg_fields(
     out_fields,
     all_categories,
-    stats,
+    agg,
     numeric_field=None,
     category_field=None,
 ):
-    """Append statistic columns to ``out_fields`` using vgrid naming."""
+    """Append aggregate columns to ``out_fields`` using vgrid naming."""
     for cat in sorted(all_categories):
-        col_name = bin_stat_column_name(
-            stats,
+        col_name = bin_agg_column_name(
+            agg,
             numeric_field=numeric_field,
             category_field=category_field,
             category_value=cat,
         )
-        out_fields.append(QgsField(col_name, stat_field_type(stats)))
+        out_fields.append(QgsField(col_name, agg_field_type(agg)))
 
 
 def append_geodesic_metric_fields(out_fields):
@@ -227,19 +232,19 @@ def dggal_num_edges(dggs_type, zone_id):
     return dggrs.countZoneEdges(zone)
 
 
-def collect_stat_props(
+def collect_agg_props(
     bins,
     cell_id,
     all_categories,
-    stats,
+    agg,
     numeric_field=None,
     category_field=None,
 ):
     props = {}
     for cat in sorted(all_categories):
-        values = bins[cell_id].get(cat, get_default_stats_structure())
+        values = bins[cell_id].get(cat, get_default_agg_structure())
         props.update(
-            stat_props_for_category(values, stats, numeric_field, category_field, cat)
+            agg_props_for_category(values, agg, numeric_field, category_field, cat)
         )
     return props
 
@@ -251,7 +256,7 @@ def build_bin_feature_props(
     cell_id,
     bins,
     all_categories,
-    stats,
+    agg,
     numeric_field=None,
     category_field=None,
     metric_kind="geodesic",
@@ -265,8 +270,8 @@ def build_bin_feature_props(
     else:
         props = graticule_cell_props(geom, resolution)
     props.update(
-        collect_stat_props(
-            bins, cell_id, all_categories, stats, numeric_field, category_field
+        collect_agg_props(
+            bins, cell_id, all_categories, agg, numeric_field, category_field
         )
     )
     props[id_field] = cell_id
@@ -277,78 +282,78 @@ def feature_attributes(out_fields, props):
     return [props.get(f.name()) for f in out_fields]
 
 
-def compute_stat_value(values, stats):
-    """Compute one statistic from the accumulated per-category structure."""
-    if stats == "count":
+def compute_agg_value(values, agg):
+    """Compute one aggregate from the accumulated per-category structure."""
+    if agg == "count":
         return values["count"]
-    if stats == "sum":
+    if agg == "sum":
         return sum(values["sum"]) if values["sum"] else None
-    if stats == "min":
+    if agg == "min":
         return min(values["min"]) if values["min"] else None
-    if stats == "max":
+    if agg == "max":
         return max(values["max"]) if values["max"] else None
-    if stats == "mean":
+    if agg == "mean":
         return statistics.mean(values["mean"]) if values["mean"] else None
-    if stats == "median":
+    if agg == "median":
         return statistics.median(values["median"]) if values["median"] else None
-    if stats == "std":
+    if agg == "std":
         return statistics.stdev(values["std"]) if len(values["std"]) > 1 else 0
-    if stats == "var":
+    if agg == "var":
         return statistics.variance(values["var"]) if len(values["var"]) > 1 else 0
-    if stats == "range":
+    if agg == "range":
         return max(values["range"]) - min(values["range"]) if values["range"] else 0
-    if stats == "minority":
+    if agg == "minority":
         freq = Counter(values["values"])
         return min(freq.items(), key=lambda x: x[1])[0] if freq else None
-    if stats == "majority":
+    if agg == "majority":
         freq = Counter(values["values"])
         return max(freq.items(), key=lambda x: x[1])[0] if freq else None
-    if stats == "variety":
+    if agg == "variety":
         return len(set(values["values"]))
-    raise ValueError(f"Unsupported statistic: {stats}")
+    raise ValueError(f"Unsupported aggregate function: {agg}")
 
 
-def stat_props_for_category(
+def agg_props_for_category(
     values,
-    stats,
+    agg,
     numeric_field=None,
     category_field=None,
     category_value=None,
 ):
     """Return ``{column_name: value}`` for one category bucket."""
-    col_name = bin_stat_column_name(
-        stats,
+    col_name = bin_agg_column_name(
+        agg,
         numeric_field=numeric_field,
         category_field=category_field,
         category_value=category_value,
     )
-    return {col_name: compute_stat_value(values, stats)}
+    return {col_name: compute_agg_value(values, agg)}
 
 
-def append_stats_value(
-    h3_bins, h3_id, props, stats, numeric_field=None, category_field=None
+def append_agg_value(
+    h3_bins, h3_id, props, agg, numeric_field=None, category_field=None
 ):
     category_value = props.get(category_field, "all") if category_field else "all"
     norm_category = normalize_category(category_value)
 
     if h3_id not in h3_bins:
-        h3_bins[h3_id] = defaultdict(get_default_stats_structure)
+        h3_bins[h3_id] = defaultdict(get_default_agg_structure)
 
-    stats_struct = h3_bins[h3_id][norm_category]
+    agg_struct = h3_bins[h3_id][norm_category]
 
-    if stats == "count":
-        stats_struct["count"] += 1
+    if agg == "count":
+        agg_struct["count"] += 1
 
-    elif stats in ["minority", "majority", "variety"]:
+    elif agg in ["minority", "majority", "variety"]:
         value = props.get(numeric_field or category_field)
         if value is not None:
-            stats_struct["values"].append(value)
+            agg_struct["values"].append(value)
 
     elif numeric_field:
         raw_value = props.get(numeric_field)
         val = safe_float(raw_value)
         if val is not None:
-            stats_struct[stats].append(val)
+            agg_struct[agg].append(val)
 
 
 def collect_bin_points(source, category, numeric_field, feedback):
@@ -453,14 +458,14 @@ def empty_bin_output_fields(id_col, metric_kind="geodesic"):
     return out_fields
 
 
-def build_bin_output_fields(grid_layer, grouped, stats, id_col):
+def build_bin_output_fields(grid_layer, grouped, agg, id_col):
     out_fields = QgsFields()
     for i in range(grid_layer.fields().count()):
         out_fields.append(grid_layer.fields()[i])
-    stat_cols = [c for c in grouped.columns if c != id_col]
-    for col in stat_cols:
-        out_fields.append(QgsField(col, stat_field_type(stats)))
-    return out_fields, stat_cols
+    agg_cols = [c for c in grouped.columns if c != id_col]
+    for col in agg_cols:
+        out_fields.append(QgsField(col, agg_field_type(agg)))
+    return out_fields, agg_cols
 
 
 def dggrid_gdf_to_memory_layer(
@@ -673,11 +678,11 @@ def ensure_wgs84_point_source(source, feedback=None):
     return ensure_wgs84_source(source, feedback=feedback, layer_name="bin_points_wgs84")
 
 
-def prepare_point_bin_algorithm(point_layer, stats, numeric_field, category_field):
+def prepare_point_bin_algorithm(point_layer, agg, numeric_field, category_field):
     """Shared prepareAlgorithm checks for point DGGS binning tools."""
-    if stats != "count" and not numeric_field:
+    if agg != "count" and not numeric_field:
         raise QgsProcessingException(
-            "A numeric field is required for statistics other than 'count'."
+            "A numeric field is required for aggregate function other than 'count'."
         )
 
 
@@ -734,6 +739,28 @@ def read_shift_split(algorithm, parameters, context, *, shift=True, split=True):
     return shift_val, split_val
 
 
+def set_output_layer_name(parameters, output_key, default_name, layer_name):
+    """Use a typed name for the memory layer when the sink still has the default title."""
+    dest = parameters.get(output_key)
+    if isinstance(dest, QgsProcessingOutputLayerDefinition):
+        if not dest.destinationName or dest.destinationName == default_name:
+            dest.destinationName = layer_name
+            parameters[output_key] = dest
+    elif dest == QgsProcessing.TEMPORARY_OUTPUT:
+        defn = QgsProcessingOutputLayerDefinition(QgsProcessing.TEMPORARY_OUTPUT)
+        defn.destinationName = layer_name
+        parameters[output_key] = defn
+
+
+def apply_loaded_layer_name(context, dest_id, default_name, layer_name):
+    """Rename the result layer in the project if it still has the default title."""
+    if not dest_id or not context.willLoadLayerOnCompletion(dest_id):
+        return
+    details = context.layerToLoadOnCompletionDetails(dest_id)
+    if not details.name or details.name == default_name:
+        details.name = layer_name
+
+
 def process_point_dggs_bin(
     alg,
     parameters,
@@ -741,7 +768,7 @@ def process_point_dggs_bin(
     feedback,
     point_layer,
     resolution,
-    stats,
+    agg,
     category_field,
     numeric_field,
     id_col,
@@ -810,18 +837,18 @@ def process_point_dggs_bin(
         sink, dest_id = _create_sink(empty_bin_output_fields(id_col, metric_kind))
         return {alg.OUTPUT: dest_id}
 
-    feedback.pushInfo(f"Aggregating {len(joined)} point-in-cell match(es) ({stats})...")
+    feedback.pushInfo(f"Aggregating {len(joined)} point-in-cell match(es) ({agg})...")
     grouped = aggregate_joined(
         joined,
         id_col,
-        stats=stats,
+        agg=agg,
         category_col=category,
         numeric_col=numeric_field,
     )
     grouped = grouped.reset_index()
 
-    stats_by_id = {str(row[id_col]): row for _, row in grouped.iterrows()}
-    out_fields, stat_cols = build_bin_output_fields(grid_layer, grouped, stats, id_col)
+    agg_by_id = {str(row[id_col]): row for _, row in grouped.iterrows()}
+    out_fields, agg_cols = build_bin_output_fields(grid_layer, grouped, agg, id_col)
 
     sink, dest_id = _create_sink(out_fields)
 
@@ -831,13 +858,13 @@ def process_point_dggs_bin(
         if feedback.isCanceled():
             break
         cell_id = str(feat[id_col])
-        if cell_id not in stats_by_id:
+        if cell_id not in agg_by_id:
             continue
 
-        stat_row = stats_by_id[cell_id]
+        agg_row = agg_by_id[cell_id]
         attrs = list(feat.attributes())
-        for col in stat_cols:
-            val = stat_row[col]
+        for col in agg_cols:
+            val = agg_row[col]
             if val is None or (isinstance(val, float) and math.isnan(val)):
                 attrs.append(None)
             else:

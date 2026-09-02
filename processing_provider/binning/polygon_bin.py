@@ -5,6 +5,7 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
+    QgsCoordinateReferenceSystem,
     QgsFeatureSink,
     QgsProcessing,
     QgsProcessingAlgorithm,
@@ -25,11 +26,13 @@ from shapely.geometry import shape
 import json
 from ...utils.help_footer import social_links_footer
 from ...utils.binning.bin_helper import (
-    append_bin_stat_fields,
-    append_stats_value,
-    get_default_stats_structure,
-    stat_props_for_category,
+    BIN_AGG,
+    append_bin_agg_fields,
+    append_agg_value,
+    get_default_agg_structure,
+    agg_props_for_category,
 )
+from ...utils.crs_helper import load_wgs84_feature_source
 
 
 class PolygonBin(QgsProcessingAlgorithm):
@@ -37,23 +40,10 @@ class PolygonBin(QgsProcessingAlgorithm):
     POLYGON_INPUT = "POLYGON_INPUT"
     CATEGORY_FIELD = "CATEGORY_FIELD"
     NUMERIC_FIELD = "NUMERIC_FIELD"
-    STATS = "STATS"
+    AGG = "AGG"
     OUTPUT = "OUTPUT"
 
-    STATISTICS = [
-        "count",
-        "sum",
-        "min",
-        "max",
-        "mean",
-        "median",
-        "std",
-        "var",
-        "range",
-        "minority",
-        "majority",
-        "variety",
-    ]
+    AGG_OPTIONS = BIN_AGG
 
     LOC = QgsApplication.locale()[:2]
 
@@ -110,6 +100,7 @@ class PolygonBin(QgsProcessingAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def initAlgorithm(self, config=None):
+        # FeatureSource parameters include native "Selected features only".
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 self.POINT_INPUT, "Input point layer", [QgsProcessing.TypeVectorPoint]
@@ -124,16 +115,16 @@ class PolygonBin(QgsProcessingAlgorithm):
         )
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.STATS,
-                "Statistic to compute",
-                options=self.STATISTICS,
+                self.AGG,
+                "Aggregate function",
+                options=self.AGG_OPTIONS,
                 defaultValue=0,
             )
         )
         self.addParameter(
             QgsProcessingParameterField(
                 self.NUMERIC_FIELD,
-                "Numeric field (for statistics other than 'count')",
+                "Numeric field (for aggregate function other than 'count')",
                 parentLayerParameterName=self.POINT_INPUT,
                 optional=True,
                 type=QgsProcessingParameterField.Numeric,
@@ -152,12 +143,8 @@ class PolygonBin(QgsProcessingAlgorithm):
         )
 
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.point_layer = self.parameterAsSource(parameters, self.POINT_INPUT, context)
-        self.polygon_layer = self.parameterAsSource(
-            parameters, self.POLYGON_INPUT, context
-        )
-        self.stats_index = self.parameterAsEnum(parameters, self.STATS, context)
-        self.stats = self.STATISTICS[self.stats_index]
+        self.agg_index = self.parameterAsEnum(parameters, self.AGG, context)
+        self.agg = self.AGG_OPTIONS[self.agg_index]
         self.numeric_field = self.parameterAsString(
             parameters, self.NUMERIC_FIELD, context
         )
@@ -165,14 +152,32 @@ class PolygonBin(QgsProcessingAlgorithm):
             parameters, self.CATEGORY_FIELD, context
         )
 
-        if self.stats != "count" and not self.numeric_field:
+        if self.agg != "count" and not self.numeric_field:
             raise QgsProcessingException(
-                "A numeric field is required for statistics other than 'count'."
+                "A numeric field is required for aggregate function other than 'count'."
             )
 
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
+        self.point_layer = load_wgs84_feature_source(
+            self,
+            parameters,
+            context,
+            feedback,
+            self.POINT_INPUT,
+            layer_name="bin_points_wgs84",
+            error="Invalid input point layer.",
+        )
+        self.polygon_layer = load_wgs84_feature_source(
+            self,
+            parameters,
+            context,
+            feedback,
+            self.POLYGON_INPUT,
+            layer_name="bin_polygons_wgs84",
+            error="Invalid input polygon layer.",
+        )
         polygon_fields = self.polygon_layer.fields()
         fields = QgsFields(polygon_fields)
 
@@ -192,7 +197,7 @@ class PolygonBin(QgsProcessingAlgorithm):
                 continue
 
             bin_key = polygon_feature.id()
-            bin_results[bin_key] = defaultdict(get_default_stats_structure)
+            bin_results[bin_key] = defaultdict(get_default_agg_structure)
 
             progress = int((i / total_polygons) * 100)
             feedback.setProgress(progress)
@@ -212,11 +217,11 @@ class PolygonBin(QgsProcessingAlgorithm):
                         self.point_layer.fields().at(i).name(): props[i]
                         for i in range(len(props))
                     }
-                    append_stats_value(
+                    append_agg_value(
                         bin_results,
                         bin_key,
                         props_dict,
-                        self.stats,
+                        self.agg,
                         self.numeric_field,
                         self.category_field,
                     )
@@ -224,10 +229,10 @@ class PolygonBin(QgsProcessingAlgorithm):
             for cat in bin_results[bin_key].keys():
                 all_categories.add(cat)
 
-        append_bin_stat_fields(
+        append_bin_agg_fields(
             fields,
             all_categories,
-            self.stats,
+            self.agg,
             self.numeric_field,
             self.category_field,
         )
@@ -238,7 +243,7 @@ class PolygonBin(QgsProcessingAlgorithm):
             context,
             fields,
             QgsWkbTypes.Polygon,
-            self.polygon_layer.sourceCrs(),
+            QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
         for i, polygon_feature in enumerate(self.polygon_layer.getFeatures()):
@@ -249,12 +254,12 @@ class PolygonBin(QgsProcessingAlgorithm):
 
             for cat in sorted(all_categories):
                 values = bin_results.get(bin_key, {}).get(
-                    cat, get_default_stats_structure()
+                    cat, get_default_agg_structure()
                 )
                 attr_dict.update(
-                    stat_props_for_category(
+                    agg_props_for_category(
                         values,
-                        self.stats,
+                        self.agg,
                         self.numeric_field,
                         self.category_field,
                         cat,

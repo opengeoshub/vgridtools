@@ -22,6 +22,7 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 
 import platform
 from ...utils.help_footer import social_links_footer
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from ...utils.conversion.qgsfeature2dggs import *
 from ...utils.crs_helper import wgs84_transform_if_needed
 from ...settings import settings
@@ -520,6 +521,19 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             self.num_bad += 1
             feedback.reportError(f"Error processing feature {feature.id()}: {str(e)}")
             return []
+
+    def processAlgorithm(self, parameters, context, feedback):
+        dggs_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
+        layer_name = f"vector2{self.DGGS_TYPES[dggs_index]}"
+        set_output_layer_name(parameters, self.OUTPUT, "Vector2DGGS", layer_name)
+        result = super().processAlgorithm(parameters, context, feedback)
+        apply_loaded_layer_name(
+            context,
+            result.get(self.OUTPUT) if result else None,
+            "Vector2DGGS",
+            layer_name,
+        )
+        return result
 
     def postProcessAlgorithm(self, context, feedback):
         if self.num_bad:

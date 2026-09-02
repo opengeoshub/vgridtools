@@ -51,6 +51,7 @@ from ...utils.help_footer import social_links_footer  # type: ignore
 from shapely.geometry import box
 from ...settings import settings  # type: ignore
 from ...utils.crs_helper import processing_extent_wgs84
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from vgrid.conversion.dggs2geo import rhealpix2geo
 
 rhealpix_dggs = RHEALPixDGGS()  # type: ignore
@@ -196,6 +197,8 @@ class rHEALPixGen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"rHEALPix_{self.resolution}"
+        set_output_layer_name(parameters, self.OUTPUT, "rHEALPix", layer_name)
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -208,6 +211,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+        apply_loaded_layer_name(context, dest_id, "rHEALPix", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
             self, parameters, self.EXTENT, context, feedback

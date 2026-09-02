@@ -49,6 +49,7 @@ from shapely.geometry import Polygon
 from ...utils.crs_helper import processing_extent_wgs84
 from vgrid.utils.geometry import graticule_dggs_metrics
 from ...settings import settings
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 
 grid_params = {
     1: (18, 18, 20, 10),  # Fields: 20° lon, 10° lat
@@ -177,6 +178,8 @@ class MaidenheadGen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"Maidenhead_{self.resolution}"
+        set_output_layer_name(parameters, self.OUTPUT, "Maidenhead", layer_name)
         # Get the output sink and its destination ID
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -189,6 +192,7 @@ class MaidenheadGen(QgsProcessingAlgorithm):
 
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
+        apply_loaded_layer_name(context, dest_id, "Maidenhead", layer_name)
 
         x_cells, y_cells, lon_width, lat_width = grid_params[self.resolution]
         base_lat, base_lon = -90.0, -180.0

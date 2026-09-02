@@ -5,13 +5,13 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
+    QgsCoordinateReferenceSystem,
     QgsProcessing,
-    QgsProcessingAlgorithm,
+    QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingParameterNumber,
-    QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
-    QgsProcessingParameterVectorDestination,
     QgsProcessingParameterEnum,
+    QgsWkbTypes,
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
@@ -23,13 +23,16 @@ from vgrid.utils.io import validate_dggrid_resolution
 from ...settings import settings
 from ...utils.dggrid_instance import DGGRID_TYPES_NO_ANTIMERIDIAN
 from ...utils.binning.bin_helper import (
+    load_wgs84_feature_source,
     AGGREGATE,
-    BIN_STATISTICS,
+    BIN_AGG,
     SPLIT_ANTIMERIDIAN,
     add_dggrid_antimeridian_parameters,
+    apply_loaded_layer_name,
     generate_dggrid_grid_qgis,
     prepare_point_bin_algorithm,
     process_point_dggs_bin,
+    set_output_layer_name,
 )
 from ...utils.help_footer import social_links_footer
 
@@ -44,17 +47,17 @@ def _option_index(options, name, fallback=0):
         return fallback
 
 
-class DGGRIDBin(QgsProcessingAlgorithm):
+class DGGRIDBin(QgsProcessingFeatureBasedAlgorithm):
     INPUT = "INPUT"
     CATEGORY_FIELD = "CATEGORY_FIELD"
     NUMERIC_FIELD = "NUMERIC_FIELD"
-    STATS = "STATS"
+    AGG = "AGG"
     DGGS_TYPE = "DGGS_TYPE"
     RESOLUTION = "RESOLUTION"
     DENSIFICATION = "DENSIFICATION"
     OUTPUT = "OUTPUT"
 
-    STATISTICS = BIN_STATISTICS
+    AGG_OPTIONS = BIN_AGG
 
     LOC = QgsApplication.locale()[:2]
 
@@ -118,16 +121,29 @@ class DGGRIDBin(QgsProcessingAlgorithm):
         )
         return self.tr(self.txt_en, self.txt_vi) + footer
 
-    def initAlgorithm(self, config=None):
+    def inputLayerTypes(self):
+        return [QgsProcessing.TypeVectorPoint]
+
+    def inputParameterDescription(self):
+        return self.tr("Input point layer")
+
+    def outputName(self):
+        return self.tr("DGGS_binning")
+
+    def outputWkbType(self, input_wkb_type):
+        return QgsWkbTypes.Polygon
+
+    def outputCrs(self, input_crs):
+        return QgsCoordinateReferenceSystem("EPSG:4326")
+
+    def supportInPlaceEdit(self, layer):
+        return False
+
+    def initParameters(self, config=None):
+        # INPUT is provided by QgsProcessingFeatureBasedAlgorithm
+        # (includes native "Selected features only").
         settings.readSettings()
 
-        self.addParameter(
-            QgsProcessingParameterFeatureSource(
-                self.INPUT,
-                "Input point layer",
-                [QgsProcessing.TypeVectorPoint],
-            )
-        )
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.DGGS_TYPE,
@@ -149,16 +165,16 @@ class DGGRIDBin(QgsProcessingAlgorithm):
         )
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.STATS,
-                "Statistic to compute",
-                options=self.STATISTICS,
+                self.AGG,
+                "Aggregate function",
+                options=self.AGG_OPTIONS,
                 defaultValue=0,
             )
         )
         self.addParameter(
             QgsProcessingParameterField(
                 self.NUMERIC_FIELD,
-                "Numeric field (for statistics other than 'count')",
+                "Numeric field (for aggregate function other than 'count')",
                 parentLayerParameterName=self.INPUT,
                 optional=True,
                 type=QgsProcessingParameterField.Numeric,
@@ -183,14 +199,10 @@ class DGGRIDBin(QgsProcessingAlgorithm):
                 optional=False,
             )
         )
-        self.addParameter(
-            QgsProcessingParameterVectorDestination(self.OUTPUT, "DGGS_binning")
-        )
 
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.point_layer = self.parameterAsSource(parameters, self.INPUT, context)
-        self.stats_index = self.parameterAsEnum(parameters, self.STATS, context)
-        self.stats = self.STATISTICS[self.stats_index]
+        self.agg_index = self.parameterAsEnum(parameters, self.AGG, context)
+        self.agg = self.AGG_OPTIONS[self.agg_index]
 
         dggs_type_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         if dggs_type_index < 0 or dggs_type_index >= len(_DGGS_TYPE_OPTIONS):
@@ -213,8 +225,8 @@ class DGGRIDBin(QgsProcessingAlgorithm):
         self.aggregate = self.parameterAsBoolean(parameters, AGGREGATE, context)
 
         prepare_point_bin_algorithm(
-            self.point_layer,
-            self.stats,
+            None,
+            self.agg,
             self.numeric_field,
             self.category_field,
         )
@@ -245,6 +257,8 @@ class DGGRIDBin(QgsProcessingAlgorithm):
         id_col = f"dggrid_{self.dggs_type.lower()}"
         dggs_type = self.dggs_type
         densification = self.densification
+        layer_name = f"DGGRID_{dggs_type.upper()}"
+        set_output_layer_name(parameters, self.OUTPUT, "DGGS_binning", layer_name)
 
         def validate_res(resolution):
             return validate_dggrid_resolution(dggs_type, resolution)
@@ -259,14 +273,23 @@ class DGGRIDBin(QgsProcessingAlgorithm):
                 **kwargs,
             )
 
-        return process_point_dggs_bin(
+        point_layer = load_wgs84_feature_source(
             self,
             parameters,
             context,
             feedback,
-            self.point_layer,
+            self.INPUT,
+            layer_name="bin_points_wgs84",
+            error="Invalid input point layer.",
+        )
+        result = process_point_dggs_bin(
+            self,
+            parameters,
+            context,
+            feedback,
+            point_layer,
             self.resolution,
-            self.stats,
+            self.agg,
             self.category_field,
             self.numeric_field,
             id_col,
@@ -279,3 +302,7 @@ class DGGRIDBin(QgsProcessingAlgorithm):
                 "aggregate": self.aggregate,
             },
         )
+        apply_loaded_layer_name(
+            context, result.get(self.OUTPUT), "DGGS_binning", layer_name
+        )
+        return result

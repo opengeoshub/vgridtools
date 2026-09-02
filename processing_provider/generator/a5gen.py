@@ -46,6 +46,7 @@ from ...utils.help_footer import social_links_footer
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from ...settings import settings
 from ...utils.crs_helper import processing_extent_wgs84
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from vgrid.utils.constants import DGGS_TYPES
 from collections import deque
 from shapely.geometry import box
@@ -201,6 +202,8 @@ class A5Gen(QgsProcessingAlgorithm):
         Generate A5 DGGS polygons intersecting the requested extent.
         """
         fields = self.outputFields()
+        layer_name = f"A5_{self.resolution}"
+        set_output_layer_name(parameters, self.OUTPUT, "A5", layer_name)
         (sink, dest_id) = self.parameterAsSink(
             parameters,
             self.OUTPUT,
@@ -212,6 +215,7 @@ class A5Gen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+        apply_loaded_layer_name(context, dest_id, "A5", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
             self, parameters, self.EXTENT, context, feedback

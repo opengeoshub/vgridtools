@@ -23,6 +23,7 @@ from qgis.core import (
     QgsProcessing,
     QgsProcessingParameterEnum,
     QgsProcessingParameterField,
+    QgsProcessingParameterNumber,
     QgsProcessingParameterBoolean,
     QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingException,
@@ -38,6 +39,11 @@ from qgis.PyQt.QtCore import QCoreApplication
 
 from ...utils.help_footer import social_links_footer
 from ...utils.crs_helper import attributes_only_source
+from ...utils.binning.bin_helper import (
+    BIN_AGG,
+    apply_loaded_layer_name,
+    set_output_layer_name,
+)
 from ...utils.conversion.dggscompact import *
 
 
@@ -45,9 +51,14 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
     INPUT = "INPUT"
     DGGS_FIELD = "DGGS_FIELD"
     DGGS_TYPE = "DGGS_TYPE"
+    DEPTH = "DEPTH"
+    AGG = "AGG"
+    NUMERIC_FIELD = "NUMERIC_FIELD"
     SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
+
+    AGG_OPTIONS = BIN_AGG
 
     DGGS_TYPES = [
         "H3",
@@ -177,6 +188,39 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         )
 
         self.addParameter(
+            QgsProcessingParameterNumber(
+                self.DEPTH,
+                self.tr(
+                    "Compact depth -1 = compact fully, "
+                    "1 = parent, 2 = grandparent, ..."
+                ),
+                QgsProcessingParameterNumber.Integer,
+                defaultValue=-1,
+                minValue=-1,
+                maxValue=40,
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.AGG,
+                "Aggregate function",
+                options=self.AGG_OPTIONS,
+                defaultValue=0,
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterField(
+                self.NUMERIC_FIELD,
+                "Numeric field (for aggregate function other than 'count')",
+                parentLayerParameterName=self.INPUT,
+                optional=True,
+                type=QgsProcessingParameterField.Numeric,
+            )
+        )
+
+        self.addParameter(
             QgsProcessingParameterBoolean(
                 self.SHIFT_ANTIMERIDIAN,
                 self.tr("Shift at Antimeridian"),
@@ -196,6 +240,15 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
         self.dggs_field = self.parameterAsString(parameters, self.DGGS_FIELD, context)
+        self.depth = self.parameterAsInt(parameters, self.DEPTH, context)
+        self.agg = self.AGG_OPTIONS[self.parameterAsEnum(parameters, self.AGG, context)]
+        self.numeric_field = (
+            self.parameterAsString(parameters, self.NUMERIC_FIELD, context) or None
+        )
+        if self.agg != "count" and not self.numeric_field:
+            raise QgsProcessingException(
+                "A numeric field is required for aggregate function other than 'count'."
+            )
         self.shift_antimeridian = self.parameterAsBoolean(
             parameters, self.SHIFT_ANTIMERIDIAN, context
         )
@@ -265,6 +318,9 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
             dggs_layer,
             self.dggs_field,
             feedback,
+            depth=self.depth,
+            agg=self.agg,
+            numeric_col=self.numeric_field,
             shift_antimeridian=self.shift_antimeridian,
             split_antimeridian=self.split_antimeridian,
         )
@@ -273,6 +329,9 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
             raise QgsProcessingException(
                 "Invalid output layer returned from compact function."
             )
+
+        layer_name = f"{self.DGGS_TYPES[self.DGGS_TYPE_index]}_compacted"
+        set_output_layer_name(parameters, self.OUTPUT, "DGGS_compacted", layer_name)
 
         (sink, sink_id) = self.parameterAsSink(
             parameters,
@@ -286,4 +345,5 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         for feature in memory_layer.getFeatures():
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
 
+        apply_loaded_layer_name(context, sink_id, "DGGS_compacted", layer_name)
         return {self.OUTPUT: sink_id}

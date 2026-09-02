@@ -47,6 +47,7 @@ from vgrid.utils.geometry import graticule_dggs_metrics
 from shapely.geometry import box
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from ...settings import settings
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from vgrid.utils.constants import INITIAL_GEOHASHES
 from ...utils.crs_helper import processing_extent_wgs84
 from vgrid.utils.constants import DGGS_TYPES
@@ -255,6 +256,8 @@ class GeohashGen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"Geohash_{self.resolution}"
+        set_output_layer_name(parameters, self.OUTPUT, "Geohash", layer_name)
 
         # Get the output sink and its destination ID (this handles both file and temporary layers)
         (sink, dest_id) = self.parameterAsSink(
@@ -268,6 +271,7 @@ class GeohashGen(QgsProcessingAlgorithm):
 
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
+        apply_loaded_layer_name(context, dest_id, "Geohash", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
             self, parameters, self.EXTENT, context, feedback

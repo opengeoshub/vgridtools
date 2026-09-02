@@ -51,6 +51,7 @@ from shapely.geometry import box
 from vgrid.utils.geometry import geodesic_dggs_metrics
 from ...settings import settings
 from ...utils.crs_helper import processing_extent_wgs84
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from vgrid.conversion.dggs2geo import h32geo
 from vgrid.utils.constants import DGGS_TYPES
 
@@ -196,6 +197,8 @@ class H3Gen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"H3_{self.resolution}"
+        set_output_layer_name(parameters, self.OUTPUT, "H3", layer_name)
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -208,6 +211,7 @@ class H3Gen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+        apply_loaded_layer_name(context, dest_id, "H3", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
             self, parameters, self.EXTENT, context, feedback

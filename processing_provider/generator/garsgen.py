@@ -48,6 +48,7 @@ from gars_field.garsgrid import GARSGrid
 from vgrid.utils.geometry import graticule_dggs_metrics
 from ...settings import settings
 from ...utils.crs_helper import processing_extent_wgs84
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from vgrid.utils.constants import DGGS_TYPES
 from vgrid.utils.constants import GARS_RESOLUTION_MINUTES
 
@@ -176,6 +177,8 @@ class GARSGen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"GARS_{self.resolution}"
+        set_output_layer_name(parameters, self.OUTPUT, "GARS", layer_name)
         # Get the output sink and its destination ID
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -188,6 +191,7 @@ class GARSGen(QgsProcessingAlgorithm):
 
         if sink is None:
             raise QgsProcessingException("Failed to create output sink")
+        apply_loaded_layer_name(context, dest_id, "GARS", layer_name)
 
         resolution_minutes = GARS_RESOLUTION_MINUTES.get(self.resolution)
         resolution_degrees = resolution_minutes / 60.0

@@ -43,6 +43,7 @@ import platform
 
 from ...utils.help_footer import social_links_footer
 from ...utils.dggrid_instance import DGGRID_TYPES_NO_ANTIMERIDIAN
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from ...utils.conversion.dggs2qgsfeature import (
     a52qgsfeature,
     dggal2qgsfeature,
@@ -527,9 +528,24 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         dggs_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
-        if not self.DGGS_TYPES[dggs_index].startswith("DGGRID_"):
-            return super().processAlgorithm(parameters, context, feedback)
+        dggs_type = self.DGGS_TYPES[dggs_index]
+        layer_name = f"CellID2{dggs_type}"
+        set_output_layer_name(parameters, self.OUTPUT, "CellID2DGGS", layer_name)
 
+        if not dggs_type.startswith("DGGRID_"):
+            result = super().processAlgorithm(parameters, context, feedback)
+        else:
+            result = self._processDggridAlgorithm(parameters, context, feedback)
+
+        apply_loaded_layer_name(
+            context,
+            result.get(self.OUTPUT) if result else None,
+            "CellID2DGGS",
+            layer_name,
+        )
+        return result
+
+    def _processDggridAlgorithm(self, parameters, context, feedback):
         if not self.prepareAlgorithm(parameters, context, feedback):
             raise QgsProcessingException(self.invalidParameterTypes())
 

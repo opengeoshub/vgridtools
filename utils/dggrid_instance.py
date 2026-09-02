@@ -467,7 +467,7 @@ def dggrid_bin_qgis(
     dggs_type,
     points_gdf,
     resolution,
-    stats="count",
+    agg="count",
     category=None,
     numeric_field=None,
     options=None,
@@ -487,9 +487,9 @@ def dggrid_bin_qgis(
     dggs_type = validate_dggrid_type(dggs_type)
     resolution = validate_dggrid_resolution(dggs_type, resolution)
 
-    if stats != "count" and not numeric_field:
+    if agg != "count" and not numeric_field:
         raise ValueError(
-            "A numeric_field is required for statistics other than 'count'"
+            "A numeric_field is required for aggregate function other than 'count'"
         )
 
     if points_gdf is None or points_gdf.empty:
@@ -532,7 +532,7 @@ def dggrid_bin_qgis(
     join_cols = []
     if category and category in points_gdf.columns:
         join_cols.append(category)
-    if stats != "count" and numeric_field:
+    if agg != "count" and numeric_field:
         if numeric_field not in points_gdf.columns:
             raise ValueError(
                 f"numeric_field '{numeric_field}' not found in input layer"
@@ -549,11 +549,11 @@ def dggrid_bin_qgis(
 
     if feedback:
         feedback.pushInfo(
-            f"Aggregating {len(joined)} point-in-cell match(es) ({stats})..."
+            f"Aggregating {len(joined)} point-in-cell match(es) ({agg})..."
         )
 
     grouped = aggregate_joined(
-        joined, id_col, stats=stats, category_col=category, numeric_col=numeric_field
+        joined, id_col, agg=agg, category_col=category, numeric_col=numeric_field
     )
     grouped = grouped.reset_index()
 

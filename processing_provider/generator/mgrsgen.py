@@ -46,6 +46,7 @@ import os
 from vgrid.dggs import mgrs
 from ...utils.help_footer import social_links_footer
 from ...settings import settings
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from vgrid.generator.mgrsgrid import is_valid_gzd
 import json
 from shapely.geometry import shape, Polygon
@@ -174,6 +175,8 @@ class MGRSGen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"MGRS_{self.resolution}"
+        set_output_layer_name(parameters, self.OUTPUT, "MGRS", layer_name)
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -186,6 +189,7 @@ class MGRSGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+        apply_loaded_layer_name(context, dest_id, "MGRS", layer_name)
 
         cell_size = 100_000 // (10**self.resolution)
         north_bands = "NPQRSTUVWX"

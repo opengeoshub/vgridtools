@@ -5,13 +5,13 @@ __copyright__ = "(L) 2024, Thang Quach"
 
 from qgis.core import (
     QgsApplication,
+    QgsCoordinateReferenceSystem,
     QgsProcessing,
-    QgsProcessingAlgorithm,
+    QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingParameterNumber,
-    QgsProcessingParameterFeatureSource,
     QgsProcessingParameterField,
-    QgsProcessingParameterVectorDestination,
     QgsProcessingParameterEnum,
+    QgsWkbTypes,
 )
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
@@ -21,26 +21,29 @@ from vgrid.utils.constants import DGGAL_TYPES
 from vgrid.utils.io import validate_dggal_resolution
 
 from ...utils.binning.bin_helper import (
-    BIN_STATISTICS,
+    load_wgs84_feature_source,
+    BIN_AGG,
     add_shift_split_parameters,
+    apply_loaded_layer_name,
     prepare_point_bin_algorithm,
     process_point_dggs_bin,
     read_shift_split,
+    set_output_layer_name,
 )
 from ...utils.help_footer import social_links_footer
 from ...utils.resampling.dggsgrid import generate_dggal_grid
 
 
-class DGGALBin(QgsProcessingAlgorithm):
+class DGGALBin(QgsProcessingFeatureBasedAlgorithm):
     INPUT = "INPUT"
     CATEGORY_FIELD = "CATEGORY_FIELD"
     NUMERIC_FIELD = "NUMERIC_FIELD"
-    STATS = "STATS"
+    AGG = "AGG"
     DGGS_TYPE = "DGGS_TYPE"
     RESOLUTION = "RESOLUTION"
     OUTPUT = "OUTPUT"
 
-    STATISTICS = BIN_STATISTICS
+    AGG_OPTIONS = BIN_AGG
 
     LOC = QgsApplication.locale()[:2]
 
@@ -104,14 +107,28 @@ class DGGALBin(QgsProcessingAlgorithm):
         )
         return self.tr(self.txt_en, self.txt_vi) + footer
 
-    def initAlgorithm(self, config=None):
-        self.addParameter(
-            QgsProcessingParameterFeatureSource(
-                self.INPUT,
-                "Input point layer",
-                [QgsProcessing.TypeVectorPoint],
-            )
-        )
+
+    def inputLayerTypes(self):
+        return [QgsProcessing.TypeVectorPoint]
+
+    def inputParameterDescription(self):
+        return self.tr("Input point layer")
+
+    def outputName(self):
+        return self.tr("DGGS_binning")
+
+    def outputWkbType(self, input_wkb_type):
+        return QgsWkbTypes.Polygon
+
+    def outputCrs(self, input_crs):
+        return QgsCoordinateReferenceSystem("EPSG:4326")
+
+    def supportInPlaceEdit(self, layer):
+        return False
+
+    def initParameters(self, config=None):
+        # INPUT is provided by QgsProcessingFeatureBasedAlgorithm
+        # (includes native "Selected features only").
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.DGGS_TYPE,
@@ -133,16 +150,16 @@ class DGGALBin(QgsProcessingAlgorithm):
         )
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.STATS,
-                "Statistic to compute",
-                options=self.STATISTICS,
+                self.AGG,
+                "Aggregate function",
+                options=self.AGG_OPTIONS,
                 defaultValue=0,
             )
         )
         self.addParameter(
             QgsProcessingParameterField(
                 self.NUMERIC_FIELD,
-                "Numeric field (for statistics other than 'count')",
+                "Numeric field (for aggregate function other than 'count')",
                 parentLayerParameterName=self.INPUT,
                 optional=True,
                 type=QgsProcessingParameterField.Numeric,
@@ -157,14 +174,10 @@ class DGGALBin(QgsProcessingAlgorithm):
             )
         )
         add_shift_split_parameters(self, shift=False)
-        self.addParameter(
-            QgsProcessingParameterVectorDestination(self.OUTPUT, "DGGS_binning")
-        )
 
     def prepareAlgorithm(self, parameters, context, feedback):
-        self.point_layer = self.parameterAsSource(parameters, self.INPUT, context)
-        self.stats_index = self.parameterAsEnum(parameters, self.STATS, context)
-        self.stats = self.STATISTICS[self.stats_index]
+        self.agg_index = self.parameterAsEnum(parameters, self.AGG, context)
+        self.agg = self.AGG_OPTIONS[self.agg_index]
 
         dggs_type_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.dggs_type = list(DGGAL_TYPES.keys())[dggs_type_index]
@@ -181,8 +194,8 @@ class DGGALBin(QgsProcessingAlgorithm):
         )
 
         prepare_point_bin_algorithm(
-            self.point_layer,
-            self.stats,
+            None,
+            self.agg,
             self.numeric_field,
             self.category_field,
         )
@@ -191,6 +204,8 @@ class DGGALBin(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         id_col = f"dggal_{self.dggs_type}"
         dggs_type = self.dggs_type
+        layer_name = f"DGGAL_{dggs_type.upper()}"
+        set_output_layer_name(parameters, self.OUTPUT, "DGGS_binning", layer_name)
 
         def validate_res(resolution):
             return validate_dggal_resolution(dggs_type, resolution)
@@ -200,14 +215,23 @@ class DGGALBin(QgsProcessingAlgorithm):
                 dggs_type, resolution, extent_layer, feedback=fb, **kwargs
             )
 
-        return process_point_dggs_bin(
+        point_layer = load_wgs84_feature_source(
             self,
             parameters,
             context,
             feedback,
-            self.point_layer,
+            self.INPUT,
+            layer_name="bin_points_wgs84",
+            error="Invalid input point layer.",
+        )
+        result = process_point_dggs_bin(
+            self,
+            parameters,
+            context,
+            feedback,
+            point_layer,
             self.resolution,
-            self.stats,
+            self.agg,
             self.category_field,
             self.numeric_field,
             id_col,
@@ -219,3 +243,7 @@ class DGGALBin(QgsProcessingAlgorithm):
                 "split_antimeridian": self.split_antimeridian,
             },
         )
+        apply_loaded_layer_name(
+            context, result.get(self.OUTPUT), "DGGS_binning", layer_name
+        )
+        return result

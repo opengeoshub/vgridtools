@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from qgis.PyQt.QtCore import QVariant
 from qgis.core import (
     QgsVectorLayer,
@@ -38,9 +40,12 @@ from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
+from vgrid.conversion.dggscompact.h3compact import h3_compact
+from vgrid.conversion.dggscompact.s2compact import s2_compact
 from vgrid.conversion.dggscompact.a5compact import a5_compact
 from vgrid.conversion.dggscompact.rhealpixcompact import rhealpix_compact
 from vgrid.conversion.dggscompact.dggalcompact import dggal_compact
+from vgrid.utils.io import agg_column_name, aggregate_values, validate_agg
 from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
 from vgrid.conversion.dggscompact.qtmcompact import qtm_compact, get_qtm_resolution
 from vgrid.conversion.dggs2geo.olc2geo import olc2geo
@@ -65,9 +70,46 @@ from ..antimeridian_helper import (
     geo_with_fix as _geo_with_fix,
     use_split_antimeridian as _use_split_antimeridian,
 )
+from ..binning.bin_helper import agg_field_type, qgs_attribute_value
 
 geod = Geod(ellps="WGS84")
 E = WGS84_ELLIPSOID
+
+
+def prepare_qgis_compact_bags(layer, id_field, agg="count", numeric_col=None):
+    """Build per-cell value bags from a QGIS layer (same rules as vgrid compact)."""
+    if not validate_agg(agg):
+        raise QgsProcessingException(f"Invalid aggregation '{agg}'")
+    if agg != "count" and not numeric_col:
+        raise QgsProcessingException(
+            "A numeric field is required for aggregate functions other than 'count'."
+        )
+
+    bags = defaultdict(list)
+    for feat in layer.getFeatures():
+        cell = qgs_attribute_value(feat[id_field])
+        if cell is None or cell == "":
+            continue
+        cell = str(cell)
+        if agg == "count":
+            bags[cell].append(1)
+        else:
+            bags[cell].append(qgs_attribute_value(feat[numeric_col]))
+
+    agg_col = agg_column_name(
+        agg, numeric_col=None if agg == "count" else numeric_col
+    )
+    if not bags:
+        return None, agg_col
+    return bags, agg_col
+
+
+def append_compact_agg_field(fields, agg_col, agg):
+    fields.append(QgsField(agg_col, agg_field_type(agg)))
+
+
+def compact_agg_value(bags, cell_id, agg):
+    return aggregate_values(bags.get(cell_id, []), agg)
 
 
 ##########################
@@ -77,11 +119,17 @@ def h3compact(
     h3_layer: QgsVectorLayer,
     H3ID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not H3ID_field:
         H3ID_field = "h3"
+    bags, agg_col = prepare_qgis_compact_bags(
+        h3_layer, H3ID_field, agg=agg, numeric_col=numeric_col
+    )
 
     fields = QgsFields()
     fields.append(QgsField("h3", QVariant.String))
@@ -91,23 +139,21 @@ def h3compact(
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
 
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "h3_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    h3_ids = [
-        feature[H3ID_field] for feature in h3_layer.getFeatures() if feature[H3ID_field]
-    ]
-    h3_ids = list(set(h3_ids))
-
-    if h3_ids:
+    if bags:
         try:
-            h3_ids_compact = h3.compact_cells(h3_ids)
+            h3_ids_compact = h3_compact(
+                list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
         except BaseException:
-            h3_ids_compact = (
-                h3_ids  # to handle "Input cells must all share the same resolution."
+            raise QgsProcessingException(
+                "Compact cells failed. Please check your H3 ID field."
             )
 
         total_cells = len(h3_ids_compact)
@@ -147,6 +193,7 @@ def h3compact(
                 "avg_edge_len": avg_edge_len,
                 "cell_area": cell_area,
                 "cell_perimeter": cell_perimeter,
+                agg_col: compact_agg_value(bags, h3_id_compact, agg),
             }
             h3_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([h3_feature])
@@ -165,11 +212,17 @@ def s2compact(
     s2_layer: QgsVectorLayer,
     S2ID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not S2ID_field:
         S2ID_field = "s2"
+    bags, agg_col = prepare_qgis_compact_bags(
+        s2_layer, S2ID_field, agg=agg, numeric_col=numeric_col
+    )
 
     fields = QgsFields()
     fields.append(QgsField("s2", QVariant.String))
@@ -179,73 +232,69 @@ def s2compact(
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "s2_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    s2_tokens = [
-        feature[S2ID_field] for feature in s2_layer.getFeatures() if feature[S2ID_field]
-    ]
+    if bags:
+        try:
+            s2_tokens_compact = s2_compact(
+                list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
+        except BaseException:
+            raise QgsProcessingException(
+                "Compact cells failed. Please check your S2 ID field."
+            )
 
-    try:
-        s2_ids = [s2.CellId.from_token(token) for token in s2_tokens]
-        s2_ids = list(set(s2_ids))
-        if s2_ids:
-            covering = s2.CellUnion(s2_ids)
-            covering.normalize()
-            s2_tokens_compact = [cell_id.to_token() for cell_id in covering.cell_ids()]
-    except BaseException:
-        raise QgsProcessingException(
-            "Compact cells failed. Please check your S2 ID field."
-        )
+        total_cells = len(s2_tokens_compact)
 
-    total_cells = len(s2_tokens_compact)
+        for i, s2_token_compact in enumerate(s2_tokens_compact):
+            if feedback:
+                feedback.setProgress(int((i / total_cells) * 100))
+                if feedback.isCanceled():
+                    return None
 
-    for i, s2_token_compact in enumerate(s2_tokens_compact):
+            cell_polygon = _geo_with_fix(
+                s22geo,
+                s2_token_compact,
+                "s2",
+                shift_antimeridian,
+                split_antimeridian,
+            )
+
+            if not cell_polygon.is_valid:
+                continue
+
+            resolution = s2.CellId.from_token(s2_token_compact).level()
+            num_edges = 4
+            center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+                geodesic_dggs_metrics(cell_polygon, num_edges)
+            )
+
+            cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
+            s2_feature = QgsFeature(fields)
+            s2_feature.setGeometry(cell_geom)
+
+            attributes = {
+                "s2": s2_token_compact,
+                "resolution": resolution,
+                "center_lat": center_lat,
+                "center_lon": center_lon,
+                "avg_edge_len": avg_edge_len,
+                "cell_area": cell_area,
+                "cell_perimeter": cell_perimeter,
+                agg_col: compact_agg_value(bags, s2_token_compact, agg),
+            }
+            s2_feature.setAttributes([attributes[field.name()] for field in fields])
+            mem_provider.addFeatures([s2_feature])
+
         if feedback:
-            feedback.setProgress(int((i / total_cells) * 100))
-            if feedback.isCanceled():
-                return None
+            feedback.setProgress(100)
+            feedback.pushInfo("S2 Compact completed.")
 
-        cell_polygon = _geo_with_fix(
-            s22geo,
-            s2_token_compact,
-            "s2",
-            shift_antimeridian,
-            split_antimeridian,
-        )
-
-        if not cell_polygon.is_valid:
-            continue
-
-        resolution = s2.CellId.from_token(s2_token_compact).level()
-        num_edges = 4
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
-        )
-
-        cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
-        s2_feature = QgsFeature(fields)
-        s2_feature.setGeometry(cell_geom)
-
-        attributes = {
-            "s2": s2_token_compact,
-            "resolution": resolution,
-            "center_lat": center_lat,
-            "center_lon": center_lon,
-            "avg_edge_len": avg_edge_len,
-            "cell_area": cell_area,
-            "cell_perimeter": cell_perimeter,
-        }
-        s2_feature.setAttributes([attributes[field.name()] for field in fields])
-        mem_provider.addFeatures([s2_feature])
-
-    if feedback:
-        feedback.setProgress(100)
-        feedback.pushInfo("S2 Compact completed.")
-
-    return mem_layer
+        return mem_layer
 
 
 ##########################
@@ -255,11 +304,17 @@ def a5compact(
     a5_layer: QgsVectorLayer,
     A5ID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not A5ID_field:
         A5ID_field = "a5"
+    bags, agg_col = prepare_qgis_compact_bags(
+        a5_layer, A5ID_field, agg=agg, numeric_col=numeric_col
+    )
 
     fields = QgsFields()
     fields.append(QgsField("a5", QVariant.String))
@@ -269,19 +324,17 @@ def a5compact(
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "a5_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    a5_hexes = [
-        feature[A5ID_field] for feature in a5_layer.getFeatures() if feature[A5ID_field]
-    ]
-    a5_hexes = list(set(a5_hexes))
-
-    if a5_hexes:
+    if bags:
         try:
-            a5_hexes_compact = a5_compact(a5_hexes)
+            a5_hexes_compact = a5_compact(
+                list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
         except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your A5 ID field."
@@ -328,6 +381,7 @@ def a5compact(
                 "avg_edge_len": avg_edge_len,
                 "cell_area": cell_area,
                 "cell_perimeter": cell_perimeter,
+                agg_col: compact_agg_value(bags, a5_hex_compact, agg),
             }
             a5_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([a5_feature])
@@ -346,11 +400,17 @@ def rhealpixcompact(
     rhealpix_layer: QgsVectorLayer,
     rHEALPixID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not rHEALPixID_field:
         rHEALPixID_field = "rhealpix"
+    bags, agg_col = prepare_qgis_compact_bags(
+        rhealpix_layer, rHEALPixID_field, agg=agg, numeric_col=numeric_col
+    )
 
     rhealpix_dggs = RHEALPixDGGS()
 
@@ -362,20 +422,17 @@ def rhealpixcompact(
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "rhealpix_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    rhealpix_ids = [
-        feature[rHEALPixID_field]
-        for feature in rhealpix_layer.getFeatures()
-        if feature[rHEALPixID_field]
-    ]
-
-    if rhealpix_ids:
+    if bags:
         try:
-            rhealpix_ids_compact = rhealpix_compact(rhealpix_ids)
+            rhealpix_ids_compact = rhealpix_compact(
+                list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
         except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your rHEALPix ID field."
@@ -424,6 +481,7 @@ def rhealpixcompact(
                 "avg_edge_len": avg_edge_len,
                 "cell_area": cell_area,
                 "cell_perimeter": cell_perimeter,
+                agg_col: compact_agg_value(bags, rhealpix_id_compact, agg),
             }
             rhealpix_feature.setAttributes(
                 [attributes[field.name()] for field in fields]
@@ -444,12 +502,18 @@ def isea4tcompact(
     isea4t_layer: QgsVectorLayer,
     ISEA4TID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if platform.system() == "Windows":
         if not ISEA4TID_field:
             ISEA4TID_field = "isea4t"
+        bags, agg_col = prepare_qgis_compact_bags(
+            isea4t_layer, ISEA4TID_field, agg=agg, numeric_col=numeric_col
+        )
 
         fields = QgsFields()
         fields.append(QgsField("isea4t", QVariant.String))
@@ -459,20 +523,17 @@ def isea4tcompact(
         fields.append(QgsField("avg_edge_len", QVariant.Double))
         fields.append(QgsField("cell_area", QVariant.Double))
         fields.append(QgsField("cell_perimeter", QVariant.Double))
+        append_compact_agg_field(fields, agg_col, agg)
         mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "isea4t_compacted", "memory")
         mem_provider = mem_layer.dataProvider()
         mem_provider.addAttributes(fields)
         mem_layer.updateFields()
 
-        isea4t_ids = [
-            feature[ISEA4TID_field]
-            for feature in isea4t_layer.getFeatures()
-            if feature[ISEA4TID_field]
-        ]
-
-        if isea4t_ids:
+        if bags:
             try:
-                isea4t_ids_compact = isea4t_compact(isea4t_ids)
+                isea4t_ids_compact = isea4t_compact(
+                    list(bags.keys()), depth=depth, bags=bags, verbose=False
+                )
             except BaseException:
                 raise QgsProcessingException(
                     "Compact cells failed. Please check your ISEA4T ID field."
@@ -513,6 +574,7 @@ def isea4tcompact(
                     "avg_edge_len": avg_edge_len,
                     "cell_area": cell_area,
                     "cell_perimeter": cell_perimeter,
+                    agg_col: compact_agg_value(bags, isea4t_id_compact, agg),
                 }
                 ISEA4T_feature.setAttributes(
                     [attributes[field.name()] for field in fields]
@@ -533,12 +595,18 @@ def isea3hcompact(
     isea3h_layer: QgsVectorLayer,
     ISEA3HID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if platform.system() == "Windows":
         if not ISEA3HID_field:
             ISEA3HID_field = "isea3h"
+        bags, agg_col = prepare_qgis_compact_bags(
+            isea3h_layer, ISEA3HID_field, agg=agg, numeric_col=numeric_col
+        )
 
         fields = QgsFields()
         fields.append(QgsField("isea3h", QVariant.String))
@@ -548,20 +616,17 @@ def isea3hcompact(
         fields.append(QgsField("avg_edge_len", QVariant.Double))
         fields.append(QgsField("cell_area", QVariant.Double))
         fields.append(QgsField("cell_perimeter", QVariant.Double))
+        append_compact_agg_field(fields, agg_col, agg)
         mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "isea3h_compacted", "memory")
         mem_provider = mem_layer.dataProvider()
         mem_provider.addAttributes(fields)
         mem_layer.updateFields()
 
-        isea3h_ids = [
-            feature[ISEA3HID_field]
-            for feature in isea3h_layer.getFeatures()
-            if feature[ISEA3HID_field]
-        ]
-
-        if isea3h_ids:
+        if bags:
             try:
-                isea3h_ids_compact = isea3h_compact(isea3h_ids)
+                isea3h_ids_compact = isea3h_compact(
+                    list(bags.keys()), depth=depth, bags=bags, verbose=False
+                )
             except BaseException:
                 raise QgsProcessingException(
                     "Compact cells failed. Please check your ISEA3H ID field."
@@ -601,6 +666,7 @@ def isea3hcompact(
                     "avg_edge_len": avg_edge_len,
                     "cell_area": cell_area,
                     "cell_perimeter": cell_perimeter,
+                    agg_col: compact_agg_value(bags, isea3h_id_compact, agg),
                 }
 
                 isea3h_feature.setAttributes(
@@ -622,11 +688,17 @@ def qtmcompact(
     qtm_layer: QgsVectorLayer,
     QTMID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not QTMID_field:
         QTMID_field = "qtm"
+    bags, agg_col = prepare_qgis_compact_bags(
+        qtm_layer, QTMID_field, agg=agg, numeric_col=numeric_col
+    )
 
     fields = QgsFields()
     fields.append(QgsField("qtm", QVariant.String))
@@ -636,20 +708,17 @@ def qtmcompact(
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "qtm_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    qtm_ids = [
-        feature[QTMID_field]
-        for feature in qtm_layer.getFeatures()
-        if feature[QTMID_field]
-    ]
-
-    if qtm_ids:
+    if bags:
         try:
-            qtm_ids_compact = qtm_compact(qtm_ids)
+            qtm_ids_compact = qtm_compact(
+                list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
         except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your QTM ID field."
@@ -681,6 +750,7 @@ def qtmcompact(
                 "avg_edge_len": avg_edge_len,
                 "cell_area": cell_area,
                 "cell_perimeter": cell_perimeter,
+                agg_col: compact_agg_value(bags, qtm_id_compact, agg),
             }
             qtm_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([qtm_feature])
@@ -699,11 +769,17 @@ def olccompact(
     olc_layer: QgsVectorLayer,
     OLCID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not OLCID_field:
         OLCID_field = "olc"
+    bags, agg_col = prepare_qgis_compact_bags(
+        olc_layer, OLCID_field, agg=agg, numeric_col=numeric_col
+    )
 
     fields = QgsFields()
     fields.append(QgsField("olc", QVariant.String))
@@ -714,20 +790,17 @@ def olccompact(
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "olc_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    olc_ids = [
-        feature[OLCID_field]
-        for feature in olc_layer.getFeatures()
-        if feature[OLCID_field]
-    ]
-
-    if olc_ids:
+    if bags:
         try:
-            olc_ids_compact = olc_compact(olc_ids)
+            olc_ids_compact = olc_compact(
+                list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
         except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your OLC ID field."
@@ -763,6 +836,7 @@ def olccompact(
                 "cell_height": cell_height,
                 "cell_area": cell_area,
                 "cell_perimeter": cell_perimeter,
+                agg_col: compact_agg_value(bags, olc_id_compact, agg),
             }
             olc_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([olc_feature])
@@ -781,11 +855,17 @@ def geohashcompact(
     geohash_layer: QgsVectorLayer,
     GeohashID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not GeohashID_field:
         GeohashID_field = "geohash"
+    bags, agg_col = prepare_qgis_compact_bags(
+        geohash_layer, GeohashID_field, agg=agg, numeric_col=numeric_col
+    )
 
     fields = QgsFields()
     fields.append(QgsField("geohash", QVariant.String))
@@ -796,20 +876,17 @@ def geohashcompact(
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "geohash_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    geohash_ids = [
-        feature[GeohashID_field]
-        for feature in geohash_layer.getFeatures()
-        if feature[GeohashID_field]
-    ]
-
-    if geohash_ids:
+    if bags:
         try:
-            geohash_ids_compact = geohash_compact(geohash_ids)
+            geohash_ids_compact = geohash_compact(
+                list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
         except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your geohash ID field."
@@ -846,6 +923,7 @@ def geohashcompact(
                 "cell_height": cell_height,
                 "cell_area": cell_area,
                 "cell_perimeter": cell_perimeter,
+                agg_col: compact_agg_value(bags, geohash_id_compact, agg),
             }
             geohash_feature.setAttributes(
                 [attributes[field.name()] for field in fields]
@@ -866,11 +944,17 @@ def tilecodecompact(
     tilecode_layer: QgsVectorLayer,
     TilecodeID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not TilecodeID_field:
         TilecodeID_field = "tilecode"
+    bags, agg_col = prepare_qgis_compact_bags(
+        tilecode_layer, TilecodeID_field, agg=agg, numeric_col=numeric_col
+    )
 
     fields = QgsFields()
     fields.append(QgsField("tilecode", QVariant.String))
@@ -881,20 +965,17 @@ def tilecodecompact(
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "tilecode_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    tilecode_ids = [
-        feature[TilecodeID_field]
-        for feature in tilecode_layer.getFeatures()
-        if feature[TilecodeID_field]
-    ]
-
-    if tilecode_ids:
+    if bags:
         try:
-            tilecode_ids_compact = tilecode_compact(tilecode_ids)
+            tilecode_ids_compact = tilecode_compact(
+                list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
         except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your tilecode ID field."
@@ -931,6 +1012,7 @@ def tilecodecompact(
                 "cell_height": cell_height,
                 "cell_area": cell_area,
                 "cell_perimeter": cell_perimeter,
+                agg_col: compact_agg_value(bags, tilecode_id_compact, agg),
             }
             tilecode_feature.setAttributes(
                 [attributes[field.name()] for field in fields]
@@ -951,11 +1033,17 @@ def quadkeycompact(
     quadkey_layer: QgsVectorLayer,
     QuadkeyID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not QuadkeyID_field:
         QuadkeyID_field = "quadkey"
+    bags, agg_col = prepare_qgis_compact_bags(
+        quadkey_layer, QuadkeyID_field, agg=agg, numeric_col=numeric_col
+    )
 
     fields = QgsFields()
     fields.append(QgsField("quadkey", QVariant.String))
@@ -966,20 +1054,17 @@ def quadkeycompact(
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "quadkey_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    quadkey_ids = [
-        feature[QuadkeyID_field]
-        for feature in quadkey_layer.getFeatures()
-        if feature[QuadkeyID_field]
-    ]
-
-    if quadkey_ids:
+    if bags:
         try:
-            quadkey_ids_compact = quadkey_compact(quadkey_ids)
+            quadkey_ids_compact = quadkey_compact(
+                list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
         except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your Quadkey ID field."
@@ -1015,6 +1100,7 @@ def quadkeycompact(
                 "cell_height": cell_height,
                 "cell_area": cell_area,
                 "cell_perimeter": cell_perimeter,
+                agg_col: compact_agg_value(bags, quadkey_id_compact, agg),
             }
             quadkey_feature.setAttributes(
                 [attributes[field.name()] for field in fields]
@@ -1036,11 +1122,17 @@ def dggalcompact(
     DGGALID_field=None,
     feedback=None,
     dggal_type=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not DGGALID_field:
         DGGALID_field = f"dggal_{dggal_type}"
+    bags, agg_col = prepare_qgis_compact_bags(
+        dggal_layer, DGGALID_field, agg=agg, numeric_col=numeric_col
+    )
 
     fields = QgsFields()
     # Use the specific DGGAL type for the field name
@@ -1052,21 +1144,18 @@ def dggalcompact(
     fields.append(QgsField("avg_edge_len", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
     layer_name = f"dggal_{dggal_type}_compacted" if dggal_type else "dggal_compacted"
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", layer_name, "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    dggal_ids = [
-        feature[DGGALID_field]
-        for feature in dggal_layer.getFeatures()
-        if feature[DGGALID_field]
-    ]
-
-    if dggal_ids:
+    if bags:
         try:
-            dggal_ids_compact = dggal_compact(dggal_type, dggal_ids)
+            dggal_ids_compact = dggal_compact(
+                dggal_type, list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
         except Exception as e:
             raise QgsProcessingException(
                 f"Compact cells failed. Please check your DGGAL ID field. Error: {str(e)}"
@@ -1122,6 +1211,7 @@ def dggalcompact(
                 "avg_edge_len": avg_edge_len,
                 "cell_area": cell_area,
                 "cell_perimeter": cell_perimeter,
+                agg_col: compact_agg_value(bags, dggal_id_compact, agg),
             }
             dggal_feature.setAttributes([attributes[field.name()] for field in fields])
             mem_provider.addFeatures([dggal_feature])
@@ -1140,11 +1230,17 @@ def digipincompact(
     digipin_layer: QgsVectorLayer,
     DIGIPINID_field=None,
     feedback=None,
+    depth=-1,
+    agg="count",
+    numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
 ) -> QgsVectorLayer:
     if not DIGIPINID_field:
         DIGIPINID_field = "digipin"
+    bags, agg_col = prepare_qgis_compact_bags(
+        digipin_layer, DIGIPINID_field, agg=agg, numeric_col=numeric_col
+    )
 
     fields = QgsFields()
     fields.append(QgsField("digipin", QVariant.String))
@@ -1155,20 +1251,17 @@ def digipincompact(
     fields.append(QgsField("cell_height", QVariant.Double))
     fields.append(QgsField("cell_area", QVariant.Double))
     fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "digipin_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
     mem_layer.updateFields()
 
-    digipin_ids = [
-        feature[DIGIPINID_field]
-        for feature in digipin_layer.getFeatures()
-        if feature[DIGIPINID_field]
-    ]
-
-    if digipin_ids:
+    if bags:
         try:
-            digipin_ids_compact = digipin_compact(digipin_ids)
+            digipin_ids_compact = digipin_compact(
+                list(bags.keys()), depth=depth, bags=bags, verbose=False
+            )
         except BaseException:
             raise QgsProcessingException(
                 "Compact cells failed. Please check your DIGIPIN ID field."
@@ -1207,6 +1300,7 @@ def digipincompact(
                     "cell_height": cell_height,
                     "cell_area": cell_area,
                     "cell_perimeter": cell_perimeter,
+                    agg_col: compact_agg_value(bags, digipin_id_compact, agg),
                 }
                 digipin_feature.setAttributes(
                     [attributes[field.name()] for field in fields]

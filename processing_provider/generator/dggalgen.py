@@ -44,6 +44,8 @@ from qgis.core import (
     QgsVectorLayerSimpleLabeling,
     QgsProcessingParameterEnum,
     QgsProcessingParameterBoolean,
+    QgsProcessingOutputLayerDefinition,
+    QgsProcessing,
 )
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication, Qt
@@ -57,6 +59,19 @@ from dggal import *
 # Initialize dggal application
 app = Application(appGlobals=globals())
 pydggal_setup(app)
+
+
+def _set_output_layer_name(parameters, output_key, default_name, layer_name):
+    """Use DGGAL_<TYPE> as the memory layer name when the sink still has the default title."""
+    dest = parameters.get(output_key)
+    if isinstance(dest, QgsProcessingOutputLayerDefinition):
+        if not dest.destinationName or dest.destinationName == default_name:
+            dest.destinationName = layer_name
+            parameters[output_key] = dest
+    elif dest == QgsProcessing.TEMPORARY_OUTPUT:
+        defn = QgsProcessingOutputLayerDefinition(QgsProcessing.TEMPORARY_OUTPUT)
+        defn.destinationName = layer_name
+        parameters[output_key] = defn
 
 
 class DGGALGen(QgsProcessingAlgorithm):
@@ -201,6 +216,8 @@ class DGGALGen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"DGGAL_{self.dggs_type.upper()}_{self.resolution}"
+        _set_output_layer_name(parameters, self.OUTPUT, "DGGAL", layer_name)
         # Output layer initialization
         (sink, dest_id) = self.parameterAsSink(
             parameters,
@@ -266,8 +283,11 @@ class DGGALGen(QgsProcessingAlgorithm):
             lineColor = settings.dggal_gnosisColor
             fontColor = QColor("#000000")
             field_name = f"dggal_{self.dggs_type}"
-            context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
-                StylePostProcessor.create(lineColor, fontColor, field_name)
+            details = context.layerToLoadOnCompletionDetails(dest_id)
+            if not details.name or details.name == "DGGAL":
+                details.name = layer_name
+            details.setPostProcessor(
+                StylePostProcessor.create(lineColor, fontColor, field_name, layer_name)
             )
 
         return {self.OUTPUT: dest_id}
@@ -278,16 +298,20 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
     line_color = None
     font_color = None
     field_name = None
+    layer_name = None
 
-    def __init__(self, line_color, font_color, field_name):
+    def __init__(self, line_color, font_color, field_name, layer_name=None):
         self.line_color = line_color
         self.font_color = font_color
         self.field_name = field_name
+        self.layer_name = layer_name
         super().__init__()
 
     def postProcessLayer(self, layer, context, feedback):
         if not isinstance(layer, QgsVectorLayer):
             return
+        if self.layer_name and layer.name() == "DGGAL":
+            layer.setName(self.layer_name)
         sym = layer.renderer().symbol().symbolLayer(0)
         sym.setBrushStyle(Qt.BrushStyle.NoBrush)
         sym.setStrokeColor(self.line_color)
@@ -315,13 +339,13 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
 
     # Hack to work around sip bug!
     @staticmethod
-    def create(line_color, font_color, field_name) -> "StylePostProcessor":
+    def create(line_color, font_color, field_name, layer_name=None) -> "StylePostProcessor":
         """
         Returns a new instance of the post processor, keeping a reference to the sip
         wrapper so that sip doesn't get confused with the Python subclass and call
         the base wrapper implementation instead... ahhh sip, you wonderful piece of sip
         """
         StylePostProcessor.instance = StylePostProcessor(
-            line_color, font_color, field_name
+            line_color, font_color, field_name, layer_name
         )
         return StylePostProcessor.instance

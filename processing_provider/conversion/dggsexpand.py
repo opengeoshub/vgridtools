@@ -26,6 +26,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 
 from ...utils.help_footer import social_links_footer
 from ...utils.crs_helper import attributes_only_source
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from ...utils.conversion.dggsexpand import *
 
 
@@ -278,6 +279,9 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
                 "Invalid output layer returned from conversion function."
             )
 
+        layer_name = f"{self.DGGS_TYPES[self.DGGS_TYPE_index]}_expanded"
+        set_output_layer_name(parameters, self.OUTPUT, "DGGS_expanded", layer_name)
+
         (sink, sink_id) = self.parameterAsSink(
             parameters,
             self.OUTPUT,
@@ -290,4 +294,5 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         for feature in memory_layer.getFeatures():
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
 
+        apply_loaded_layer_name(context, sink_id, "DGGS_expanded", layer_name)
         return {self.OUTPUT: sink_id}

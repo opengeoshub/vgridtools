@@ -39,6 +39,8 @@ from qgis.core import (
     QgsProcessingParameterEnum,
     QgsProcessingParameterBoolean,
     QgsCoordinateTransform,
+    QgsProcessingOutputLayerDefinition,
+    QgsProcessing,
 )
 from qgis.PyQt.QtGui import QIcon, QColor
 from qgis.PyQt.QtCore import QCoreApplication, Qt, QVariant
@@ -75,6 +77,19 @@ def _option_index(options, name, fallback=0):
         return options.index(name)
     except ValueError:
         return fallback
+
+
+def _set_output_layer_name(parameters, output_key, default_name, layer_name):
+    """Use DGGRID_<TYPE> as the memory layer name when the sink still has the default title."""
+    dest = parameters.get(output_key)
+    if isinstance(dest, QgsProcessingOutputLayerDefinition):
+        if not dest.destinationName or dest.destinationName == default_name:
+            dest.destinationName = layer_name
+            parameters[output_key] = dest
+    elif dest == QgsProcessing.TEMPORARY_OUTPUT:
+        defn = QgsProcessingOutputLayerDefinition(QgsProcessing.TEMPORARY_OUTPUT)
+        defn.destinationName = layer_name
+        parameters[output_key] = defn
 
 
 class DGGRIDGen(QgsProcessingAlgorithm):
@@ -301,6 +316,8 @@ class DGGRIDGen(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         fields = self.outputFields()
+        layer_name = f"DGGRID_{self.dggs_type.upper()}_{self.resolution}"
+        _set_output_layer_name(parameters, self.OUTPUT, "DGGRID", layer_name)
         sink, dest_id = self.parameterAsSink(
             parameters,
             self.OUTPUT,
@@ -386,8 +403,13 @@ class DGGRIDGen(QgsProcessingAlgorithm):
         if context.willLoadLayerOnCompletion(dest_id):
             line_color = settings.isea3hColor
             font_color = QColor("#000000")
-            context.layerToLoadOnCompletionDetails(dest_id).setPostProcessor(
-                StylePostProcessor.create(line_color, font_color, self.id_field)
+            details = context.layerToLoadOnCompletionDetails(dest_id)
+            if not details.name or details.name == "DGGRID":
+                details.name = layer_name
+            details.setPostProcessor(
+                StylePostProcessor.create(
+                    line_color, font_color, self.id_field, layer_name
+                )
             )
 
         return {self.OUTPUT: dest_id}
@@ -398,16 +420,20 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
     line_color = None
     font_color = None
     field_name = None
+    layer_name = None
 
-    def __init__(self, line_color, font_color, field_name):
+    def __init__(self, line_color, font_color, field_name, layer_name=None):
         self.line_color = line_color
         self.font_color = font_color
         self.field_name = field_name
+        self.layer_name = layer_name
         super().__init__()
 
     def postProcessLayer(self, layer, context, feedback):
         if not isinstance(layer, QgsVectorLayer):
             return
+        if self.layer_name and layer.name() == "DGGRID":
+            layer.setName(self.layer_name)
         sym = layer.renderer().symbol().symbolLayer(0)
         sym.setBrushStyle(Qt.BrushStyle.NoBrush)
         sym.setStrokeColor(self.line_color)
@@ -433,8 +459,10 @@ class StylePostProcessor(QgsProcessingLayerPostProcessorInterface):
         iface.mapCanvas().refresh()
 
     @staticmethod
-    def create(line_color, font_color, field_name) -> "StylePostProcessor":
+    def create(
+        line_color, font_color, field_name, layer_name=None
+    ) -> "StylePostProcessor":
         StylePostProcessor.instance = StylePostProcessor(
-            line_color, font_color, field_name
+            line_color, font_color, field_name, layer_name
         )
         return StylePostProcessor.instance

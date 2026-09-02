@@ -37,6 +37,7 @@ from qgis.PyQt.QtCore import QCoreApplication
 
 from ...utils.help_footer import social_links_footer
 from ...utils.crs_helper import ensure_wgs84_source
+from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 from ...utils.resampling.dggsresample import *
 
 
@@ -304,6 +305,12 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
                 "Invalid output layer returned from resampling function."
             )
 
+        layer_name = (
+            f"{self.DGGS_TYPES[self.DGGSTYPE_FROM_index]}"
+            f"_to_{self.DGGS_TYPES[self.DGGSTYPE_TO_index]}"
+        )
+        set_output_layer_name(parameters, self.OUTPUT, "DGGS_resampled", layer_name)
+
         (sink, sink_id) = self.parameterAsSink(
             parameters,
             self.OUTPUT,
@@ -316,4 +323,5 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         for feature in memory_layer.getFeatures():
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
 
+        apply_loaded_layer_name(context, sink_id, "DGGS_resampled", layer_name)
         return {self.OUTPUT: sink_id}
