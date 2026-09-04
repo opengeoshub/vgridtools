@@ -686,7 +686,9 @@ def prepare_point_bin_algorithm(point_layer, agg, numeric_field, category_field)
         )
 
 
-def add_shift_split_parameters(algorithm, *, shift=True, split=True):
+def add_shift_split_parameters(
+    algorithm, *, shift=True, split=True, aggregate=False, dggrid_hints=False
+):
     """Match DGGS Generator antimeridian checkboxes (Shift and/or Split)."""
     if shift:
         algorithm.addParameter(
@@ -701,6 +703,19 @@ def add_shift_split_parameters(algorithm, *, shift=True, split=True):
             QgsProcessingParameterBoolean(
                 SPLIT_ANTIMERIDIAN,
                 algorithm.tr("Split at Antimeridian"),
+                defaultValue=False,
+            )
+        )
+    if aggregate:
+        agg_label = (
+            "Aggregate split cells (DGGRID only)"
+            if dggrid_hints
+            else "Aggregate split cells"
+        )
+        algorithm.addParameter(
+            QgsProcessingParameterBoolean(
+                AGGREGATE,
+                algorithm.tr(agg_label),
                 defaultValue=False,
             )
         )
@@ -737,6 +752,61 @@ def read_shift_split(algorithm, parameters, context, *, shift=True, split=True):
             parameters, SPLIT_ANTIMERIDIAN, context
         )
     return shift_val, split_val
+
+
+def read_shift_split_aggregate(algorithm, parameters, context):
+    """Return ``(shift_antimeridian, split_antimeridian, aggregate)``."""
+    shift_val, split_val = read_shift_split(algorithm, parameters, context)
+    aggregate = algorithm.parameterAsBoolean(parameters, AGGREGATE, context)
+    return shift_val, split_val, aggregate
+
+
+def normalize_antimeridian_options(
+    feedback,
+    dggs_key,
+    shift_antimeridian,
+    split_antimeridian,
+    aggregate,
+    *,
+    has_dggrid=True,
+):
+    """Apply Cell ID to DGGS rules for Shift/Split/Aggregate. May return False to abort."""
+    from ..dggrid_instance import DGGRID_TYPES_NO_ANTIMERIDIAN
+
+    dggrid_type_name = None
+    if has_dggrid and dggs_key.startswith("dggrid_"):
+        dggrid_type_name = dggs_key.replace("dggrid_", "").upper()
+        if dggrid_type_name in DGGRID_TYPES_NO_ANTIMERIDIAN:
+            if split_antimeridian:
+                feedback.reportError(
+                    f"Split at Antimeridian is not supported for DGGRID {dggrid_type_name} "
+                    "due to the current DGGRIDv8 bugs. "
+                    "Disable Split at Antimeridian or choose another DGGS type."
+                )
+                return None
+            if aggregate:
+                feedback.reportWarning(
+                    f"Aggregate is ignored for DGGRID {dggrid_type_name} "
+                    "(antimeridian splitting is not available for this type)."
+                )
+                aggregate = False
+        elif aggregate and not split_antimeridian:
+            feedback.reportWarning(
+                "Aggregate split cells requires Split at Antimeridian; "
+                "Aggregate will be ignored."
+            )
+            aggregate = False
+        if shift_antimeridian:
+            feedback.pushInfo(
+                "Shift at Antimeridian is not used for DGGRID; "
+                "use Split at Antimeridian instead."
+            )
+    elif aggregate:
+        feedback.pushInfo(
+            "Aggregate split cells applies to DGGRID only and will be ignored."
+        )
+        aggregate = False
+    return shift_antimeridian, split_antimeridian, aggregate
 
 
 def set_output_layer_name(parameters, output_key, default_name, layer_name):

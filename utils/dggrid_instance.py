@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import os
 import platform
+import shutil
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -407,7 +408,7 @@ def generate_grid_qgis(
         if bbox:
             bounding_box = box(*bbox)
             kwargs = {
-                "split_dateline": False,
+                "split_dateline": split_antimeridian,
                 "output_address_type": output_address_type,
             }
             if options:
@@ -573,6 +574,8 @@ def vector_geom_to_dggrid_gdf_qgis(
     predicate=None,
     output_address_type="SEQNUM",
     options=None,
+    split_antimeridian=False,
+    aggregate=False,
 ):
     """
     DGGRID cells for one Shapely geometry (point/line/polygon).
@@ -603,7 +606,9 @@ def vector_geom_to_dggrid_gdf_qgis(
             dggs_type,
             cell_id,
             resolution,
-            split_antimeridian=dggs_type not in DGGRID_TYPES_NO_ANTIMERIDIAN,
+            split_antimeridian=split_antimeridian
+            and dggs_type not in DGGRID_TYPES_NO_ANTIMERIDIAN,
+            aggregate=aggregate,
             options=options,
         )
         id_col = (
@@ -621,8 +626,8 @@ def vector_geom_to_dggrid_gdf_qgis(
         resolution,
         shapely_geom.bounds,
         output_address_type=output_address_type,
-        split_antimeridian=False,
-        aggregate=False,
+        split_antimeridian=split_antimeridian,
+        aggregate=aggregate,
         options=options,
     )
 
@@ -896,6 +901,7 @@ def cached_dggrid_cell_geometry(
     cell_id,
     res,
     split_antimeridian=False,
+    aggregate=False,
     options=None,
 ):
     """Cached wrapper around vgrid ``dggrid2geo`` returning a Shapely geometry."""
@@ -903,7 +909,7 @@ def cached_dggrid_cell_geometry(
 
     cell_id_str = str(cell_id).strip()
     opt_key = tuple(sorted((options or {}).items()))
-    key = (dggs_type, cell_id_str, res, split_antimeridian, opt_key)
+    key = (dggs_type, cell_id_str, res, split_antimeridian, aggregate, opt_key)
     if key in _DGGRID_GEO_WKT_CACHE:
         return wkt.loads(_DGGRID_GEO_WKT_CACHE[key])
 
@@ -913,6 +919,7 @@ def cached_dggrid_cell_geometry(
         [cell_id_str],
         res,
         split_antimeridian=split_antimeridian,
+        aggregate=aggregate,
         options=options,
     )
     info = lookup.get(cell_id_str)
@@ -946,19 +953,15 @@ def get_plugin_dggrid_instance(feedback=None, force_new: bool = False) -> DGGRID
     return _plugin_dggrid_instance
 
 
-def _is_dggrid_cache_artifact(name: str) -> bool:
-    """True for DGGRID run leftovers (not the portable executable)."""
-    low = name.lower()
-    return low.endswith(".txt") or low.startswith("meta") or low.startswith("temp")
-
-
 def clear_dggrid_cache_files() -> tuple[list[str], list[tuple[str, str]]]:
     """
-    Delete DGGRID cache artifacts under the plugin ``dggrid/`` folder:
-    ``*.txt``, names starting with ``meta``, and names starting with ``temp``.
+    Drop the shared DGGRID instance and delete every file and subdirectory
+    under the plugin ``dggrid/`` folder (including the portable executable).
+    The ``dggrid/`` folder itself is kept.
 
     Returns ``(removed_names, [(name, error), ...])``.
     """
+    reset_plugin_dggrid_instance()
     folder = dggrid_work_dir()
     removed: list[str] = []
     errors: list[tuple[str, str]] = []
@@ -966,16 +969,15 @@ def clear_dggrid_cache_files() -> tuple[list[str], list[tuple[str, str]]]:
         return removed, errors
 
     for name in os.listdir(folder):
-        if not _is_dggrid_cache_artifact(name):
-            continue
         path = os.path.join(folder, name)
         try:
-            if os.path.isfile(path) or os.path.islink(path):
+            if os.path.isdir(path) and not os.path.islink(path):
+                shutil.rmtree(path)
+            else:
                 os.remove(path)
-                removed.append(name)
+            removed.append(name)
         except OSError as exc:
             errors.append((name, str(exc)))
-    clear_dggrid_conversion_cache()
     return removed, errors
 
 

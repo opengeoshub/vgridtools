@@ -452,7 +452,7 @@ class VgridTools(object):
         )
         self.clearDGGRIDCachesAction.setObjectName("clearDGGRIDCaches")
         self.clearDGGRIDCachesAction.setToolTip(
-            tr("Delete temp_* and metafile_* files in the dggrid folder")
+            tr("Delete the DGGRID instance and all files in the dggrid folder")
         )
         self.clearDGGRIDCachesAction.triggered.connect(self.clearDGGRIDCaches)
         self.utils_menu.addAction(self.clearDGGRIDCachesAction)
@@ -1001,13 +1001,9 @@ class VgridTools(object):
             )
 
     def clearDGGRIDCaches(self):
-        """Remove DGGRID cache artifacts (*.txt, meta*, temp*) from the dggrid folder."""
-        from .utils.dggrid_instance import (
-            clear_dggrid_cache_files,
-            reset_plugin_dggrid_instance,
-        )
+        """Drop the DGGRID instance and delete all files in the dggrid folder."""
+        from .utils.dggrid_instance import clear_dggrid_cache_files
 
-        reset_plugin_dggrid_instance()
         removed, errors = clear_dggrid_cache_files()
         if errors:
             detail = "\n".join(f"{name}: {err}" for name, err in errors[:10])
@@ -1015,14 +1011,16 @@ class VgridTools(object):
                 self.iface.mainWindow(),
                 tr("Vgrid"),
                 tr(
-                    "Removed {0} file(s). Some files could not be deleted:\n\n{1}"
+                    "Removed {0} item(s). Some files could not be deleted:\n\n{1}"
                 ).format(len(removed), detail),
             )
         else:
             QMessageBox.information(
                 self.iface.mainWindow(),
                 tr("Vgrid"),
-                tr("Removed {0} DGGRID cache file(s).").format(len(removed)),
+                tr(
+                    "DGGRID instance cleared. Removed {0} item(s) from the dggrid folder."
+                ).format(len(removed)),
             )
 
     def VgridHome(self):

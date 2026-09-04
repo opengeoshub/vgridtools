@@ -35,6 +35,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
     DGGS_FIELD = "DGGS_FIELD"
     DGGS_TYPE = "DGGS_TYPE"
     RESOLUTION = "RESOLUTION"
+    DEPTH = "DEPTH"
     SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     OUTPUT = "OUTPUT"
@@ -167,10 +168,26 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
-                "Resolution",
+                self.tr(
+                    "Resolution (if set, depth is ignored; -1 to use depth)"
+                ),
                 QgsProcessingParameterNumber.Integer,
-                10,
-                minValue=0,
+                5,
+                minValue=-1,
+                maxValue=40,
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.DEPTH,
+                self.tr(
+                    "Expand depth (-1: unused, "
+                    "1: children, 2: grandchildren,...)"
+                ),
+                QgsProcessingParameterNumber.Integer,
+                defaultValue=-1,
+                minValue=-1,
                 maxValue=40,
             )
         )
@@ -193,7 +210,15 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
 
     def prepareAlgorithm(self, parameters, context, feedback):
         self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
-        self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        depth = self.parameterAsInt(parameters, self.DEPTH, context)
+        self.resolution = None if resolution < 0 else resolution
+        self.depth = None if depth < 1 else depth
+        if self.resolution is None and self.depth is None:
+            raise QgsProcessingException(
+                "Specify Resolution (>= 0) or Expand depth (>= 1). "
+                "When Resolution is set, depth is ignored."
+            )
 
         self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
@@ -261,9 +286,14 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
                 f"No conversion function for DGGS type: {self.dggs_type}"
             )
 
-        feedback.pushInfo(
-            f"Expanding {self.dggs_type.upper()} at resolution {self.resolution}"
-        )
+        if self.resolution is not None:
+            feedback.pushInfo(
+                f"Expanding {self.dggs_type.upper()} to resolution {self.resolution}"
+            )
+        else:
+            feedback.pushInfo(
+                f"Expanding {self.dggs_type.upper()} by depth {self.depth}"
+            )
 
         memory_layer = conversion_function(
             dggs_layer,
@@ -272,6 +302,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
             feedback,
             shift_antimeridian=self.shift_antimeridian,
             split_antimeridian=self.split_antimeridian,
+            depth=self.depth,
         )
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():

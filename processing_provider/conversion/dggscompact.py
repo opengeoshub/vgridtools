@@ -27,6 +27,7 @@ from qgis.core import (
     QgsProcessingParameterBoolean,
     QgsProcessingFeatureBasedAlgorithm,
     QgsProcessingException,
+    NULL,
     QgsFeatureRequest,
     QgsWkbTypes,
     QgsApplication,
@@ -191,8 +192,8 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterNumber(
                 self.DEPTH,
                 self.tr(
-                    "Compact depth -1 = compact fully, "
-                    "1 = parent, 2 = grandparent, ..."
+                    "Compact depth (-1: full compact, "
+                    "1: parent, 2: grandparent,...)"
                 ),
                 QgsProcessingParameterNumber.Integer,
                 defaultValue=-1,
@@ -204,16 +205,21 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.AGG,
-                "Aggregate function",
+                self.tr(
+                    "Aggregate function (optional; leave unset to compact without aggregating)"
+                ),
                 options=self.AGG_OPTIONS,
-                defaultValue=0,
+                optional=True,
+                defaultValue=None,
             )
         )
 
         self.addParameter(
             QgsProcessingParameterField(
                 self.NUMERIC_FIELD,
-                "Numeric field (for aggregate function other than 'count')",
+                self.tr(
+                    "Numeric field (required when aggregate is not 'count')"
+                ),
                 parentLayerParameterName=self.INPUT,
                 optional=True,
                 type=QgsProcessingParameterField.Numeric,
@@ -241,11 +247,20 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         self.dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
         self.dggs_field = self.parameterAsString(parameters, self.DGGS_FIELD, context)
         self.depth = self.parameterAsInt(parameters, self.DEPTH, context)
-        self.agg = self.AGG_OPTIONS[self.parameterAsEnum(parameters, self.AGG, context)]
+        raw_agg = parameters.get(self.AGG)
+        if raw_agg is None or raw_agg == NULL or raw_agg == "" or raw_agg == -1:
+            self.agg = None
+        else:
+            agg_idx = self.parameterAsEnum(parameters, self.AGG, context)
+            self.agg = (
+                self.AGG_OPTIONS[agg_idx]
+                if 0 <= agg_idx < len(self.AGG_OPTIONS)
+                else None
+            )
         self.numeric_field = (
             self.parameterAsString(parameters, self.NUMERIC_FIELD, context) or None
         )
-        if self.agg != "count" and not self.numeric_field:
+        if self.agg and self.agg != "count" and not self.numeric_field:
             raise QgsProcessingException(
                 "A numeric field is required for aggregate function other than 'count'."
             )

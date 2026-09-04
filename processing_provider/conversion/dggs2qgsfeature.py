@@ -273,7 +273,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.SPLIT_ANTIMERIDIAN,
-                self.tr("Split at Antimeridian (suggested for DGGRID)"),
+                self.tr("Split at Antimeridian"),
                 defaultValue=False,
             )
         )

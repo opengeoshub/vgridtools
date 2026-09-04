@@ -51,7 +51,7 @@ class Settings:
 
         ### General Settings ###
         self.zoomLevel = int(qset.value("/vgrid/zoomLevel", Qt.CheckState.Checked))
-        self.gridLabel = int(qset.value("/vgrid/gridLabel", Qt.CheckState.Checked))
+        self.gridLabel = int(qset.value("/vgrid/gridLabel", Qt.CheckState.Unchecked))
         self.persistentMarker = int(
             qset.value("/vgrid/persistentMarker", Qt.CheckState.Checked)
         )
@@ -74,107 +74,107 @@ class Settings:
         )
 
         ### Other DGGS Settings ###
-        self.h3Res = int(qset.value("/vgrid/h3Res", 10))
+        self.h3Res = int(qset.value("/vgrid/h3Res", 5))
         self.h3Color = QColor(qset.value("/vgrid/h3Color", "#1e54b7"))
         self.h3Color.setAlpha(int(qset.value("/vgrid/h3ColorOpacity", 255)))
         self.h3Visible = int(qset.value("/vgrid/h3Visible", Qt.CheckState.Checked))
 
-        self.s2Res = int(qset.value("/vgrid/s2Res", 16))
+        self.s2Res = int(qset.value("/vgrid/s2Res", 8))
         self.s2Color = QColor(qset.value("/vgrid/s2Color", "#de6b00"))
         self.s2Color.setAlpha(int(qset.value("/vgrid/s2ColorOpacity", 255)))
         self.s2Visible = int(qset.value("/vgrid/s2Visible", Qt.CheckState.Checked))
 
-        self.a5Res = int(qset.value("/vgrid/a5Res", 15))
+        self.a5Res = int(qset.value("/vgrid/a5Res", 7))
         self.a5Color = QColor(qset.value("/vgrid/a5Color", "#00aa55"))
         self.a5Color.setAlpha(int(qset.value("/vgrid/a5ColorOpacity", 255)))
         self.a5Visible = int(qset.value("/vgrid/a5Visible", Qt.CheckState.Checked))
 
-        self.rhealpixRes = int(qset.value("/vgrid/rhealpixRes", 10))
+        self.rhealpixRes = int(qset.value("/vgrid/rhealpixRes", 5))
         self.rhealpixColor = QColor(qset.value("/vgrid/rhealpixColor", "#7b0bff"))
         self.rhealpixColor.setAlpha(int(qset.value("/vgrid/rhealpixColorOpacity", 255)))
         self.rhealpixVisible = int(
-            qset.value("/vgrid/rhealpixVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/rhealpixVisible", Qt.CheckState.Unchecked)
         )
 
-        self.isea4tRes = int(qset.value("/vgrid/isea4tRes", 16))
+        self.isea4tRes = int(qset.value("/vgrid/isea4tRes", 8))
         self.isea4tColor = QColor(qset.value("/vgrid/isea4tColor", "#159bc1"))
         self.isea4tColor.setAlpha(int(qset.value("/vgrid/isea4tColorOpacity", 255)))
         self.isea4tVisible = int(
-            qset.value("/vgrid/isea4tVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/isea4tVisible", Qt.CheckState.Unchecked)
         )
 
-        self.isea3hRes = int(qset.value("/vgrid/isea3hRes", 20))
+        self.isea3hRes = int(qset.value("/vgrid/isea3hRes", 10))
         self.isea3hColor = QColor(qset.value("/vgrid/isea3hColor", "#159bc1"))
         self.isea3hColor.setAlpha(int(qset.value("/vgrid/isea3hColorOpacity", 255)))
         self.isea3hVisible = int(
             qset.value("/vgrid/isea3hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.easeRes = int(qset.value("/vgrid/easeRes", 4))
+        self.easeRes = int(qset.value("/vgrid/easeRes", 2))
         self.easeColor = QColor(qset.value("/vgrid/easeColor", "#7a0019"))
         self.easeColor.setAlpha(int(qset.value("/vgrid/easeColorOpacity", 255)))
         self.easeVisible = int(
             qset.value("/vgrid/easeVisible", Qt.CheckState.Unchecked)
         )
 
-        self.qtmRes = int(qset.value("/vgrid/qtmRes", 18))
+        self.qtmRes = int(qset.value("/vgrid/qtmRes", 9))
         self.qtmColor = QColor(qset.value("/vgrid/qtmColor", "#672a5c"))
         self.qtmColor.setAlpha(int(qset.value("/vgrid/qtmColorOpacity", 255)))
         self.qtmVisible = int(qset.value("/vgrid/qtmVisible", Qt.CheckState.Unchecked))
 
-        self.olcRes = int(qset.value("/vgrid/olcRes", 8))
+        self.olcRes = int(qset.value("/vgrid/olcRes", 4))
         self.olcColor = QColor(qset.value("/vgrid/olcColor", "#4285f4"))
         self.olcColor.setAlpha(int(qset.value("/vgrid/olcColorOpacity", 255)))
-        self.olcVisible = int(qset.value("/vgrid/olcVisible", Qt.CheckState.Checked))
+        self.olcVisible = int(qset.value("/vgrid/olcVisible", Qt.CheckState.Unchecked))
 
-        self.geohashRes = int(qset.value("/vgrid/geohashRes", 7))
+        self.geohashRes = int(qset.value("/vgrid/geohashRes", 3))
         self.geohashColor = QColor(qset.value("/vgrid/geohashColor", "#672a5c"))
         self.geohashColor.setAlpha(int(qset.value("/vgrid/geohashColorOpacity", 255)))
         self.geohashVisible = int(
-            qset.value("/vgrid/geohashVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/geohashVisible", Qt.CheckState.Unchecked)
         )
 
-        self.georefRes = int(qset.value("/vgrid/georefRes", 3))
+        self.georefRes = int(qset.value("/vgrid/georefRes", 0))
         self.georefColor = QColor(qset.value("/vgrid/georefColor", "#672a5c"))
         self.georefColor.setAlpha(int(qset.value("/vgrid/georefColorOpacity", 255)))
         self.georefVisible = int(
-            qset.value("/vgrid/georefVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/georefVisible", Qt.CheckState.Unchecked)
         )
 
-        self.mgrsRes = int(qset.value("/vgrid/mgrsRes", 3))
+        self.mgrsRes = int(qset.value("/vgrid/mgrsRes", 0))
         self.mgrsColor = QColor(qset.value("/vgrid/mgrsColor", "#0052b4"))
         self.mgrsColor.setAlpha(int(qset.value("/vgrid/mgrsColorOpacity", 255)))
-        self.mgrsVisible = int(qset.value("/vgrid/mgrsVisible", Qt.CheckState.Checked))
+        self.mgrsVisible = int(qset.value("/vgrid/mgrsVisible", Qt.CheckState.Unchecked))
 
-        self.tilecodeRes = int(qset.value("/vgrid/tilecodeRes", 18))
+        self.tilecodeRes = int(qset.value("/vgrid/tilecodeRes", 9))
         self.tilecodeColor = QColor(qset.value("/vgrid/tilecodeColor", "#672a5c"))
         self.tilecodeColor.setAlpha(int(qset.value("/vgrid/tilecodeColorOpacity", 255)))
         self.tilecodeVisible = int(
-            qset.value("/vgrid/tilecodeVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/tilecodeVisible", Qt.CheckState.Unchecked)
         )
 
-        self.quadkeyRes = int(qset.value("/vgrid/quadkeyRes", 18))
+        self.quadkeyRes = int(qset.value("/vgrid/quadkeyRes", 9))
         self.quadkeyColor = QColor(qset.value("/vgrid/quadkeyColor", "#672a5c"))
         self.quadkeyColor.setAlpha(int(qset.value("/vgrid/quadkeyColorOpacity", 255)))
         self.quadkeyVisible = int(
-            qset.value("/vgrid/quadkeyVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/quadkeyVisible", Qt.CheckState.Unchecked)
         )
 
-        self.maidenheadRes = int(qset.value("/vgrid/maidenheadRes", 4))
+        self.maidenheadRes = int(qset.value("/vgrid/maidenheadRes", 1))
         self.maidenheadColor = QColor(qset.value("/vgrid/maidenheadColor", "#672a5c"))
         self.maidenheadColor.setAlpha(
             int(qset.value("/vgrid/maidenheadColorOpacity", 255))
         )
         self.maidenheadVisible = int(
-            qset.value("/vgrid/maidenheadVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/maidenheadVisible", Qt.CheckState.Unchecked)
         )
 
-        self.garsRes = int(qset.value("/vgrid/garsRes", 4))
+        self.garsRes = int(qset.value("/vgrid/garsRes", 1))
         self.garsColor = QColor(qset.value("/vgrid/garsColor", "#672a5c"))
         self.garsColor.setAlpha(int(qset.value("/vgrid/garsColorOpacity", 255)))
-        self.garsVisible = int(qset.value("/vgrid/garsVisible", Qt.CheckState.Checked))
+        self.garsVisible = int(qset.value("/vgrid/garsVisible", Qt.CheckState.Unchecked))
 
-        self.digipinRes = int(qset.value("/vgrid/digipinRes", 4))
+        self.digipinRes = int(qset.value("/vgrid/digipinRes", 3))
         self.digipinColor = QColor(qset.value("/vgrid/digipinColor", "#672a5c"))
         self.digipinColor.setAlpha(int(qset.value("/vgrid/digipinColorOpacity", 255)))
         self.digipinVisible = int(
@@ -182,7 +182,7 @@ class Settings:
         )
 
         ### DGGAL Settings ###
-        self.dggal_gnosisRes = int(qset.value("/vgrid/dggal_gnosisRes", 16))
+        self.dggal_gnosisRes = int(qset.value("/vgrid/dggal_gnosisRes", 8))
         self.dggal_gnosisColor = QColor(
             qset.value("/vgrid/dggal_gnosisColor", "#00008B")
         )
@@ -190,10 +190,10 @@ class Settings:
             int(qset.value("/vgrid/dggal_gnosisColorOpacity", 255))
         )
         self.dggal_gnosisVisible = int(
-            qset.value("/vgrid/dggal_gnosisVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggal_gnosisVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_isea4rRes = int(qset.value("/vgrid/dggal_isea4rRes", 12))
+        self.dggal_isea4rRes = int(qset.value("/vgrid/dggal_isea4rRes", 6))
         self.dggal_isea4rColor = QColor(
             qset.value("/vgrid/dggal_isea4rColor", "#00008B")
         )
@@ -204,7 +204,7 @@ class Settings:
             qset.value("/vgrid/dggal_isea4rVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_isea9rRes = int(qset.value("/vgrid/dggal_isea9rRes", 10))
+        self.dggal_isea9rRes = int(qset.value("/vgrid/dggal_isea9rRes", 5))
         self.dggal_isea9rColor = QColor(
             qset.value("/vgrid/dggal_isea9rColor", "#00008B")
         )
@@ -215,7 +215,7 @@ class Settings:
             qset.value("/vgrid/dggal_isea9rVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_isea3hRes = int(qset.value("/vgrid/dggal_isea3hRes", 21))
+        self.dggal_isea3hRes = int(qset.value("/vgrid/dggal_isea3hRes", 10))
         self.dggal_isea3hColor = QColor(
             qset.value("/vgrid/dggal_isea3hColor", "#00008B")
         )
@@ -226,7 +226,7 @@ class Settings:
             qset.value("/vgrid/dggal_isea3hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_isea7hRes = int(qset.value("/vgrid/dggal_isea7hRes", 12))
+        self.dggal_isea7hRes = int(qset.value("/vgrid/dggal_isea7hRes", 5))
         self.dggal_isea7hColor = QColor(
             qset.value("/vgrid/dggal_isea7hColor", "#00008B")
         )
@@ -237,7 +237,7 @@ class Settings:
             qset.value("/vgrid/dggal_isea7hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_isea7h_z7Res = int(qset.value("/vgrid/dggal_isea7h_z7Res", 12))
+        self.dggal_isea7h_z7Res = int(qset.value("/vgrid/dggal_isea7h_z7Res", 5))
         self.dggal_isea7h_z7Color = QColor(
             qset.value("/vgrid/dggal_isea7h_z7Color", "#00008B")
         )
@@ -248,7 +248,7 @@ class Settings:
             qset.value("/vgrid/dggal_isea7h_z7Visible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_ivea4rRes = int(qset.value("/vgrid/dggal_ivea4rRes", 15))
+        self.dggal_ivea4rRes = int(qset.value("/vgrid/dggal_ivea4rRes", 6))
         self.dggal_ivea4rColor = QColor(
             qset.value("/vgrid/dggal_ivea4rColor", "#00008B")
         )
@@ -256,9 +256,9 @@ class Settings:
             int(qset.value("/vgrid/dggal_ivea4rColorOpacity", 255))
         )
         self.dggal_ivea4rVisible = int(
-            qset.value("/vgrid/dggal_ivea4rVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggal_ivea4rVisible", Qt.CheckState.Unchecked)
         )
-        self.dggal_ivea9rRes = int(qset.value("/vgrid/dggal_ivea9rRes", 10))
+        self.dggal_ivea9rRes = int(qset.value("/vgrid/dggal_ivea9rRes", 5))
         self.dggal_ivea9rColor = QColor(
             qset.value("/vgrid/dggal_ivea9rColor", "#00008B")
         )
@@ -266,10 +266,10 @@ class Settings:
             int(qset.value("/vgrid/dggal_ivea9rColorOpacity", 255))
         )
         self.dggal_ivea9rVisible = int(
-            qset.value("/vgrid/dggal_ivea9rVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggal_ivea9rVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_ivea3hRes = int(qset.value("/vgrid/dggal_ivea3hRes", 21))
+        self.dggal_ivea3hRes = int(qset.value("/vgrid/dggal_ivea3hRes", 10))
         self.dggal_ivea3hColor = QColor(
             qset.value("/vgrid/dggal_ivea3hColor", "#00008B")
         )
@@ -277,10 +277,10 @@ class Settings:
             int(qset.value("/vgrid/dggal_ivea3hColorOpacity", 255))
         )
         self.dggal_ivea3hVisible = int(
-            qset.value("/vgrid/dggal_ivea3hVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggal_ivea3hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_ivea7hRes = int(qset.value("/vgrid/dggal_ivea7hRes", 12))
+        self.dggal_ivea7hRes = int(qset.value("/vgrid/dggal_ivea7hRes", 5))
         self.dggal_ivea7hColor = QColor(
             qset.value("/vgrid/dggal_ivea7hColor", "#00008B")
         )
@@ -288,10 +288,10 @@ class Settings:
             int(qset.value("/vgrid/dggal_ivea7hColorOpacity", 255))
         )
         self.dggal_ivea7hVisible = int(
-            qset.value("/vgrid/dggal_ivea7hVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggal_ivea7hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_ivea7h_z7Res = int(qset.value("/vgrid/dggal_ivea7h_z7Res", 12))
+        self.dggal_ivea7h_z7Res = int(qset.value("/vgrid/dggal_ivea7h_z7Res", 5))
         self.dggal_ivea7h_z7Color = QColor(
             qset.value("/vgrid/dggal_ivea7h_z7Color", "#00008B")
         )
@@ -299,10 +299,10 @@ class Settings:
             int(qset.value("/vgrid/dggal_ivea7h_z7ColorOpacity", 255))
         )
         self.dggal_ivea7h_z7Visible = int(
-            qset.value("/vgrid/dggal_ivea7h_z7Visible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggal_ivea7h_z7Visible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_rtea4rRes = int(qset.value("/vgrid/dggal_rtea4rRes", 15))
+        self.dggal_rtea4rRes = int(qset.value("/vgrid/dggal_rtea4rRes", 6))
         self.dggal_rtea4rColor = QColor(
             qset.value("/vgrid/dggal_rtea4rColor", "#00008B")
         )
@@ -312,7 +312,7 @@ class Settings:
         self.dggal_rtea4rVisible = int(
             qset.value("/vgrid/dggal_rtea4rVisible", Qt.CheckState.Unchecked)
         )
-        self.dggal_rtea9rRes = int(qset.value("/vgrid/dggal_rtea9rRes", 10))
+        self.dggal_rtea9rRes = int(qset.value("/vgrid/dggal_rtea9rRes", 5))
         self.dggal_rtea9rColor = QColor(
             qset.value("/vgrid/dggal_rtea9rColor", "#00008B")
         )
@@ -323,7 +323,7 @@ class Settings:
             qset.value("/vgrid/dggal_rtea9rVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_rtea3hRes = int(qset.value("/vgrid/dggal_rtea3hRes", 21))
+        self.dggal_rtea3hRes = int(qset.value("/vgrid/dggal_rtea3hRes", 10))
         self.dggal_rtea3hColor = QColor(
             qset.value("/vgrid/dggal_rtea3hColor", "#00008B")
         )
@@ -334,7 +334,7 @@ class Settings:
             qset.value("/vgrid/dggal_rtea3hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_rtea7hRes = int(qset.value("/vgrid/dggal_rtea7hRes", 12))
+        self.dggal_rtea7hRes = int(qset.value("/vgrid/dggal_rtea7hRes", 5))
         self.dggal_rtea7hColor = QColor(
             qset.value("/vgrid/dggal_rtea7hColor", "#00008B")
         )
@@ -345,7 +345,7 @@ class Settings:
             qset.value("/vgrid/dggal_rtea7hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_rtea7h_z7Res = int(qset.value("/vgrid/dggal_rtea7h_z7Res", 12))
+        self.dggal_rtea7h_z7Res = int(qset.value("/vgrid/dggal_rtea7h_z7Res", 5))
         self.dggal_rtea7h_z7Color = QColor(
             qset.value("/vgrid/dggal_rtea7h_z7Color", "#00008B")
         )
@@ -356,7 +356,7 @@ class Settings:
             qset.value("/vgrid/dggal_rtea7h_z7Visible", Qt.CheckState.Unchecked)
         )
 
-        self.dggal_healpixRes = int(qset.value("/vgrid/dggal_healpixRes", 16))
+        self.dggal_healpixRes = int(qset.value("/vgrid/dggal_healpixRes", 9))
         self.dggal_healpixColor = QColor(
             qset.value("/vgrid/dggal_healpixColor", "#00008B")
         )
@@ -367,7 +367,7 @@ class Settings:
             qset.value("/vgrid/dggal_healpixVisible", Qt.CheckState.Checked)
         )
 
-        self.dggal_rhealpixRes = int(qset.value("/vgrid/dggal_rhealpixRes", 10))
+        self.dggal_rhealpixRes = int(qset.value("/vgrid/dggal_rhealpixRes", 5))
         self.dggal_rhealpixColor = QColor(
             qset.value("/vgrid/dggal_rhealpixColor", "#00008B")
         )
@@ -379,7 +379,7 @@ class Settings:
         )
 
         ### DGGRID  Settings ###
-        self.dggrid_superfundRes = int(qset.value("/vgrid/dggrid_superfundRes", 9))
+        self.dggrid_superfundRes = int(qset.value("/vgrid/dggrid_superfundRes", 4))
         self.dggrid_superfundColor = QColor(
             qset.value("/vgrid/dggrid_superfundColor", "#6025b0")
         )
@@ -387,10 +387,10 @@ class Settings:
             int(qset.value("/vgrid/dggrid_superfundColorOpacity", 255))
         )
         self.dggrid_superfundVisible = int(
-            qset.value("/vgrid/dggrid_superfundVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggrid_superfundVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_planetriskRes = int(qset.value("/vgrid/dggrid_planetriskRes", 13))
+        self.dggrid_planetriskRes = int(qset.value("/vgrid/dggrid_planetriskRes", 6))
         self.dggrid_planetriskColor = QColor(
             qset.value("/vgrid/dggrid_planetriskColor", "#6025b0")
         )
@@ -398,10 +398,10 @@ class Settings:
             int(qset.value("/vgrid/dggrid_planetriskColorOpacity", 255))
         )
         self.dggrid_planetriskVisible = int(
-            qset.value("/vgrid/dggrid_planetriskVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggrid_planetriskVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_isea3hRes = int(qset.value("/vgrid/dggrid_isea3hRes", 20))
+        self.dggrid_isea3hRes = int(qset.value("/vgrid/dggrid_isea3hRes", 10))
         self.dggrid_isea3hColor = QColor(
             qset.value("/vgrid/dggrid_isea3hColor", "#6025b0")
         )
@@ -409,10 +409,10 @@ class Settings:
             int(qset.value("/vgrid/dggrid_isea3hColorOpacity", 255))
         )
         self.dggrid_isea3hVisible = int(
-            qset.value("/vgrid/dggrid_isea3hVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggrid_isea3hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_isea4hRes = int(qset.value("/vgrid/dggrid_isea4hRes", 16))
+        self.dggrid_isea4hRes = int(qset.value("/vgrid/dggrid_isea4hRes", 8))
         self.dggrid_isea4hColor = QColor(
             qset.value("/vgrid/dggrid_isea4hColor", "#6025b0")
         )
@@ -420,10 +420,10 @@ class Settings:
             int(qset.value("/vgrid/dggrid_isea4hColorOpacity", 255))
         )
         self.dggrid_isea4hVisible = int(
-            qset.value("/vgrid/dggrid_isea4hVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggrid_isea4hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_isea4tRes = int(qset.value("/vgrid/dggrid_isea4tRes", 15))
+        self.dggrid_isea4tRes = int(qset.value("/vgrid/dggrid_isea4tRes", 7))
         self.dggrid_isea4tColor = QColor(
             qset.value("/vgrid/dggrid_isea4tColor", "#6025b0")
         )
@@ -431,10 +431,10 @@ class Settings:
             int(qset.value("/vgrid/dggrid_isea4tColorOpacity", 255))
         )
         self.dggrid_isea4tVisible = int(
-            qset.value("/vgrid/dggrid_isea4tVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggrid_isea4tVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_isea4dRes = int(qset.value("/vgrid/dggrid_isea4dRes", 16))
+        self.dggrid_isea4dRes = int(qset.value("/vgrid/dggrid_isea4dRes", 8))
         self.dggrid_isea4dColor = QColor(
             qset.value("/vgrid/dggrid_isea4dColor", "#6025b0")
         )
@@ -442,10 +442,10 @@ class Settings:
             int(qset.value("/vgrid/dggrid_isea4dColorOpacity", 255))
         )
         self.dggrid_isea4dVisible = int(
-            qset.value("/vgrid/dggrid_isea4dVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggrid_isea4dVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_isea43hRes = int(qset.value("/vgrid/dggrid_isea43hRes", 10))
+        self.dggrid_isea43hRes = int(qset.value("/vgrid/dggrid_isea43hRes", 5))
         self.dggrid_isea43hColor = QColor(
             qset.value("/vgrid/dggrid_isea43hColor", "#6025b0")
         )
@@ -453,10 +453,10 @@ class Settings:
             int(qset.value("/vgrid/dggrid_isea43hColorOpacity", 255))
         )
         self.dggrid_isea43hVisible = int(
-            qset.value("/vgrid/dggrid_isea43hVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggrid_isea43hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_isea7hRes = int(qset.value("/vgrid/dggrid_isea7hRes", 11))
+        self.dggrid_isea7hRes = int(qset.value("/vgrid/dggrid_isea7hRes", 5))
         self.dggrid_isea7hColor = QColor(
             qset.value("/vgrid/dggrid_isea7hColor", "#6025b0")
         )
@@ -464,10 +464,10 @@ class Settings:
             int(qset.value("/vgrid/dggrid_isea7hColorOpacity", 255))
         )
         self.dggrid_isea7hVisible = int(
-            qset.value("/vgrid/dggrid_isea7hVisible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggrid_isea7hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_igeo7Res = int(qset.value("/vgrid/dggrid_igeo7Res", 12))
+        self.dggrid_igeo7Res = int(qset.value("/vgrid/dggrid_igeo7Res", 6))
         self.dggrid_igeo7Color = QColor(
             qset.value("/vgrid/dggrid_igeo7Color", "#6025b0")
         )
@@ -475,10 +475,10 @@ class Settings:
             int(qset.value("/vgrid/dggrid_igeo7ColorOpacity", 255))
         )
         self.dggrid_igeo7Visible = int(
-            qset.value("/vgrid/dggrid_igeo7Visible", Qt.CheckState.Checked)
+            qset.value("/vgrid/dggrid_igeo7Visible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_fuller3hRes = int(qset.value("/vgrid/dggrid_fuller3hRes", 20))
+        self.dggrid_fuller3hRes = int(qset.value("/vgrid/dggrid_fuller3hRes", 10))
         self.dggrid_fuller3hColor = QColor(
             qset.value("/vgrid/dggrid_fuller3hColor", "#6025b0")
         )
@@ -489,7 +489,7 @@ class Settings:
             qset.value("/vgrid/dggrid_fuller3hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_fuller4hRes = int(qset.value("/vgrid/dggrid_fuller4hRes", 16))
+        self.dggrid_fuller4hRes = int(qset.value("/vgrid/dggrid_fuller4hRes", 8))
         self.dggrid_fuller4hColor = QColor(
             qset.value("/vgrid/dggrid_fuller4hColor", "#6025b0")
         )
@@ -500,7 +500,7 @@ class Settings:
             qset.value("/vgrid/dggrid_fuller4hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_fuller4tRes = int(qset.value("/vgrid/dggrid_fuller4tRes", 15))
+        self.dggrid_fuller4tRes = int(qset.value("/vgrid/dggrid_fuller4tRes", 7))
         self.dggrid_fuller4tColor = QColor(
             qset.value("/vgrid/dggrid_fuller4tColor", "#6025b0")
         )
@@ -511,7 +511,7 @@ class Settings:
             qset.value("/vgrid/dggrid_fuller4tVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_fuller4dRes = int(qset.value("/vgrid/dggrid_fuller4dRes", 16))
+        self.dggrid_fuller4dRes = int(qset.value("/vgrid/dggrid_fuller4dRes", 8))
         self.dggrid_fuller4dColor = QColor(
             qset.value("/vgrid/dggrid_fuller4dColor", "#6025b0")
         )
@@ -522,7 +522,7 @@ class Settings:
             qset.value("/vgrid/dggrid_fuller4dVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_fuller43hRes = int(qset.value("/vgrid/dggrid_fuller43hRes", 10))
+        self.dggrid_fuller43hRes = int(qset.value("/vgrid/dggrid_fuller43hRes", 5))
         self.dggrid_fuller43hColor = QColor(
             qset.value("/vgrid/dggrid_fuller43hColor", "#6025b0")
         )
@@ -533,7 +533,7 @@ class Settings:
             qset.value("/vgrid/dggrid_fuller43hVisible", Qt.CheckState.Unchecked)
         )
 
-        self.dggrid_fuller7hRes = int(qset.value("/vgrid/dggrid_fuller7hRes", 11))
+        self.dggrid_fuller7hRes = int(qset.value("/vgrid/dggrid_fuller7hRes", 5))
         self.dggrid_fuller7hColor = QColor(
             qset.value("/vgrid/dggrid_fuller7hColor", "#6025b0")
         )
@@ -642,7 +642,7 @@ class SettingsWidget(QDialog, FORM_CLASS):
 
         ### General Settings ###
         self.zoomLevelCheckBox.setCheckState(Qt.CheckState.Checked)
-        self.gridLabelCheckBox.setCheckState(Qt.CheckState.Checked)
+        self.gridLabelCheckBox.setCheckState(Qt.CheckState.Unchecked)
         self.persistentMarkerCheckBox.setCheckState(Qt.CheckState.Checked)
         self.splitAntimeridianCheckBox.setCheckState(Qt.CheckState.Checked)
         self.coordOrderComboBox.setCurrentIndex(CoordOrder.OrderYX)
@@ -665,238 +665,238 @@ class SettingsWidget(QDialog, FORM_CLASS):
         # Other DGGS settings
 
         # H3
-        self.h3ResSpinBox.setValue(10)
+        self.h3ResSpinBox.setValue(5)
         self.h3ColorButton.setColor(QColor("#1e54b7"))
         self.h3VisibleCheckBox.setChecked(True)
 
         # S2
-        self.s2ResSpinBox.setValue(16)
+        self.s2ResSpinBox.setValue(8)
         self.s2ColorButton.setColor(QColor("#de6b00"))
         self.s2VisibleCheckBox.setChecked(True)
 
         # A5
-        self.a5ResSpinBox.setValue(15)
+        self.a5ResSpinBox.setValue(7)
         self.a5ColorButton.setColor(QColor("#00aa55"))
         self.a5VisibleCheckBox.setChecked(True)
 
         # rHEALPix
-        self.rhealpixResSpinBox.setValue(10)
+        self.rhealpixResSpinBox.setValue(5)
         self.rhealpixColorButton.setColor(QColor("#7b0bff"))
-        self.isea4tVisibleCheckBox.setChecked(True)
+        self.isea4tVisibleCheckBox.setChecked(False)
 
         # ISEA4T
-        self.isea4tResSpinBox.setValue(16)
+        self.isea4tResSpinBox.setValue(8)
         self.isea4tColorButton.setColor(QColor("#159bc1"))
-        self.isea4tVisibleCheckBox_2.setChecked(True)
+        self.isea4tVisibleCheckBox_2.setChecked(False)
 
         # ISEA3H
-        self.isea3hResSpinBox.setValue(20)
+        self.isea3hResSpinBox.setValue(10)
         self.isea3hColorButton.setColor(QColor("#159bc1"))
         self.isea3hVisibleCheckBox.setChecked(False)
 
         # EASE
-        self.easeResSpinBox.setValue(4)
+        self.easeResSpinBox.setValue(2)
         self.easeColorButton.setColor(QColor("#7a0019"))
         self.ease2VisibleCheckBox.setChecked(False)
 
         # QTM
-        self.qtmResSpinBox.setValue(18)
+        self.qtmResSpinBox.setValue(9)
         self.qtmColorButton.setColor(QColor("#672a5c"))
         self.qtmVisibleCheckBox.setChecked(False)
 
         # OLC
-        self.olcResSpinBox.setValue(8)
+        self.olcResSpinBox.setValue(4)
         self.olcColorButton.setColor(QColor("#4285f4"))
-        self.olcVisibleCheckBox.setChecked(True)
+        self.olcVisibleCheckBox.setChecked(False)
 
         # Geohash
-        self.geohashResSpinBox.setValue(7)
+        self.geohashResSpinBox.setValue(3)
         self.geohashColorButton.setColor(QColor("#672a5c"))
-        self.geohashVisibleCheckBox.setChecked(True)
+        self.geohashVisibleCheckBox.setChecked(False)
 
         # GEOREF
-        self.georefResSpinBox.setValue(3)
+        self.georefResSpinBox.setValue(0)
         self.georefColorButton.setColor(QColor("#672a5c"))
-        self.georefVisibleCheckbox.setChecked(True)
+        self.georefVisibleCheckbox.setChecked(False)
 
         # MGRS
-        self.mgrsResSpinBox.setValue(3)
+        self.mgrsResSpinBox.setValue(0)
         self.mgrsColorButton.setColor(QColor("#0052b4"))
-        self.mgrsVisibleCheckBox.setChecked(True)
+        self.mgrsVisibleCheckBox.setChecked(False)
 
         # Tilecode
-        self.tilecodeResSpinBox.setValue(18)
+        self.tilecodeResSpinBox.setValue(9)
         self.tilecodeColorButton.setColor(QColor("#672a5c"))
-        self.tilecodeVisibleCheckBox.setChecked(True)
+        self.tilecodeVisibleCheckBox.setChecked(False)
 
         # Quadkey
-        self.quadkeyResSpinBox.setValue(18)
+        self.quadkeyResSpinBox.setValue(9)
         self.quadkeyColorButton.setColor(QColor("#672a5c"))
-        self.quadkeyVisibleCheckBox.setChecked(True)
+        self.quadkeyVisibleCheckBox.setChecked(False)
 
         # Maidenhead
-        self.maidenheadResSpinBox.setValue(4)
+        self.maidenheadResSpinBox.setValue(1)
         self.maidenheadColorButton.setColor(QColor("#672a5c"))
-        self.maidenheadVisibleCheckBox.setChecked(True)
+        self.maidenheadVisibleCheckBox.setChecked(False)
 
         # GARS
-        self.garsResSpinBox.setValue(4)
+        self.garsResSpinBox.setValue(1)
         self.garsColorButton.setColor(QColor("#672a5c"))
-        self.garsVisibleCheckBox.setChecked(True)
+        self.garsVisibleCheckBox.setChecked(False)
 
         # DIGIPIN
-        self.digipinResSpinBox.setValue(6)
+        self.digipinResSpinBox.setValue(3)
         self.digipinColorButton.setColor(QColor("#672a5c"))
         self.digipinVisibleCheckBox.setChecked(False)
 
         # DGGAL_GNOSIS
-        self.dggal_gnosisResSpinBox.setValue(16)
+        self.dggal_gnosisResSpinBox.setValue(8)
         self.dggal_gnosisColorButton.setColor(QColor("#00008B"))
-        self.dggal_gnosisVisibleCheckBox.setChecked(True)
+        self.dggal_gnosisVisibleCheckBox.setChecked(False)
 
         # DGGAL_ISEA4R
-        self.dggal_isea4rResSpinBox.setValue(12)
+        self.dggal_isea4rResSpinBox.setValue(6)
         self.dggal_isea4rColorButton.setColor(QColor("#00008B"))
         self.dggal_isea4rVisibleCheckBox.setChecked(False)
 
         # DGGAL_ISEA9R
-        self.dggal_isea9rResSpinBox.setValue(10)
+        self.dggal_isea9rResSpinBox.setValue(5)
         self.dggal_isea9rColorButton.setColor(QColor("#00008B"))
         self.dggal_isea9rVisibleCheckBox.setChecked(False)
 
         # DGGAL_ISEA3H
-        self.dggal_isea3hResSpinBox.setValue(21)
+        self.dggal_isea3hResSpinBox.setValue(10)
         self.dggal_isea3hColorButton.setColor(QColor("#00008B"))
         self.dggal_isea3hVisibleCheckBox.setChecked(False)
 
         # DGGAL_ISEA7H
-        self.dggal_isea7hResSpinBox.setValue(11)
+        self.dggal_isea7hResSpinBox.setValue(5)
         self.dggal_isea7hColorButton.setColor(QColor("#00008B"))
         self.dggal_isea7hVisibleCheckBox.setChecked(False)
 
         # DGGAL_ISEA7H_Z7
-        self.dggal_isea7h_z7ResSpinBox.setValue(11)
+        self.dggal_isea7h_z7ResSpinBox.setValue(5)
         self.dggal_isea7h_z7ColorButton.setColor(QColor("#00008B"))
         self.dggal_isea3h_z7VisibleCheckBox.setChecked(False)
 
         # DGGAL_IVEA4R
-        self.dggal_ivea4rResSpinBox.setValue(15)
+        self.dggal_ivea4rResSpinBox.setValue(6)
         self.dggal_ivea4rColorButton.setColor(QColor("#00008B"))
-        self.dggal_ivea4rVisibleCheckBox.setChecked(True)
+        self.dggal_ivea4rVisibleCheckBox.setChecked(False)
 
         # DGGAL_IVEA9R
-        self.dggal_ivea9rResSpinBox.setValue(10)
+        self.dggal_ivea9rResSpinBox.setValue(5)
         self.dggal_ivea9rColorButton.setColor(QColor("#00008B"))
-        self.dggal_ivea9rVisibleCheckBox.setChecked(True)
+        self.dggal_ivea9rVisibleCheckBox.setChecked(False)
 
         # DGGAL_IVEA3H
-        self.dggal_ivea3hResSpinBox.setValue(21)
+        self.dggal_ivea3hResSpinBox.setValue(10)
         self.dggal_ivea3hColorButton.setColor(QColor("#00008B"))
-        self.dggal_ivea3hVisibleCheckBox.setChecked(True)
+        self.dggal_ivea3hVisibleCheckBox.setChecked(False)
 
         # DGGAL_IVEA7H
-        self.dggal_ivea7hResSpinBox.setValue(11)
+        self.dggal_ivea7hResSpinBox.setValue(5)
         self.dggal_ivea7hColorButton.setColor(QColor("#00008B"))
-        self.dggal_ivea7hVisibleCheckBox.setChecked(True)
+        self.dggal_ivea7hVisibleCheckBox.setChecked(False)
 
         # DGGAL_IVEA7H_Z7
-        self.dggal_ivea7h_z7ResSpinBox.setValue(11)
+        self.dggal_ivea7h_z7ResSpinBox.setValue(5)
         self.dggal_ivea7h_z7ColorButton.setColor(QColor("#00008B"))
-        self.dggal_ivea7h_z7VisibleCheckBox.setChecked(True)
+        self.dggal_ivea7h_z7VisibleCheckBox.setChecked(False)
 
         # DGGAL_RTEA4R
-        self.dggal_rtea4rResSpinBox.setValue(12)
+        self.dggal_rtea4rResSpinBox.setValue(6)
         self.dggal_rtea4rColorButton.setColor(QColor("#00008B"))
         self.dggal_rtea4rVisibleCheckBox.setChecked(False)
 
         # DGGAL_RTEA9R
-        self.dggal_rtea9rResSpinBox.setValue(10)
+        self.dggal_rtea9rResSpinBox.setValue(5)
         self.dggal_rtea9rColorButton.setColor(QColor("#00008B"))
         self.dggal_rtea9rVisibleCheckBox.setChecked(False)
 
         # DGGAL_RTEA3H
-        self.dggal_rtea3hResSpinBox.setValue(21)
+        self.dggal_rtea3hResSpinBox.setValue(10)
         self.dggal_rtea3hColorButton.setColor(QColor("#00008B"))
         self.dggal_rtea3hVisibleCheckBox.setChecked(False)
 
         # DGGAL_RTEA7H
-        self.dggal_rtea7hResSpinBox.setValue(11)
+        self.dggal_rtea7hResSpinBox.setValue(5)
         self.dggal_rtea7hColorButton.setColor(QColor("#00008B"))
         self.dggal_rtea7hCheckBox.setChecked(False)
 
         # DGGAL_RTEA7H_Z7
-        self.dggal_rtea7h_z7ResSpinBox.setValue(11)
+        self.dggal_rtea7h_z7ResSpinBox.setValue(5)
         self.dggal_rtea7h_z7ColorButton.setColor(QColor("#00008B"))
         self.dggal_rtea7h_z7VisibleCheckBox.setChecked(False)
 
         # DGGAL_HEALPix
-        self.dggal_healpixResSpinBox.setValue(18)
+        self.dggal_healpixResSpinBox.setValue(9)
         self.dggal_healpixColorButton.setColor(QColor("#00008B"))
         self.dggal_healpixVisibleCheckBox.setChecked(True)
 
         # DGGAL_RHEALPIX
-        self.dggal_rhealpixResSpinBox.setValue(10)
+        self.dggal_rhealpixResSpinBox.setValue(5)
         self.dggal_rhealpixColorButton.setColor(QColor("#00008B"))
         self.dggal_rhealpixVisibleCheckBox.setChecked(True)
 
         ### DGGRID Settings ###
-        self.dggrid_superfundResSpinBox.setValue(9)
+        self.dggrid_superfundResSpinBox.setValue(4)
         self.dggrid_superfundColorButton.setColor(QColor("#6025b0"))
-        self.dggrid_superfundVisibleCheckBox.setChecked(True)
+        self.dggrid_superfundVisibleCheckBox.setChecked(False)
 
-        self.dggrid_planetriskResSpinBox.setValue(13)
+        self.dggrid_planetriskResSpinBox.setValue(6)
         self.dggrid_planetriskColorButton.setColor(QColor("#6025b0"))
-        self.dggrid_planetVisibleCheckBox.setChecked(True)
+        self.dggrid_planetVisibleCheckBox.setChecked(False)
 
-        self.dggrid_isea3hResSpinBox.setValue(20)
+        self.dggrid_isea3hResSpinBox.setValue(10)
         self.dggrid_isea3hColorButton.setColor(QColor("#6025b0"))
-        self.dggrid_isea3hVisibleCheckBox.setChecked(True)
+        self.dggrid_isea3hVisibleCheckBox.setChecked(False)
 
-        self.dggrid_isea4hResSpinBox.setValue(16)
+        self.dggrid_isea4hResSpinBox.setValue(8)
         self.dggrid_isea4hColorButton.setColor(QColor("#6025b0"))
-        self.dggrid_isea4hVisibleCheckBox.setChecked(True)
+        self.dggrid_isea4hVisibleCheckBox.setChecked(False)
 
-        self.dggrid_isea4tResSpinBox.setValue(15)
+        self.dggrid_isea4tResSpinBox.setValue(7)
         self.dggrid_isea4tColorButton.setColor(QColor("#6025b0"))
-        self.dggrid_isea4tVisibleCheckBox.setChecked(True)
+        self.dggrid_isea4tVisibleCheckBox.setChecked(False)
 
-        self.dggrid_isea4dResSpinBox.setValue(16)
+        self.dggrid_isea4dResSpinBox.setValue(8)
         self.dggrid_isea4dColorButton.setColor(QColor("#6025b0"))
-        self.dggrid_isea4dVisibleCheckBox.setChecked(True)
+        self.dggrid_isea4dVisibleCheckBox.setChecked(False)
 
-        self.dggrid_isea43hResSpinBox.setValue(10)
+        self.dggrid_isea43hResSpinBox.setValue(5)
         self.dggrid_isea43hColorButton.setColor(QColor("#6025b0"))
-        self.dggrid_isea43hVisibleCheckBox.setChecked(True)
+        self.dggrid_isea43hVisibleCheckBox.setChecked(False)
 
-        self.dggrid_isea7hResSpinBox.setValue(11)
+        self.dggrid_isea7hResSpinBox.setValue(5)
         self.dggrid_isea7hColorButton.setColor(QColor("#6025b0"))
-        self.dggrid_isea7hVisibleCheckBox.setChecked(True)
+        self.dggrid_isea7hVisibleCheckBox.setChecked(False)
 
-        self.dggrid_igeo7ResSpinBox.setValue(12)
+        self.dggrid_igeo7ResSpinBox.setValue(6)
         self.dggrid_igeo7ColorButton.setColor(QColor("#6025b0"))
-        self.dggrid_igeo7VisibleCheckBox.setChecked(True)
+        self.dggrid_igeo7VisibleCheckBox.setChecked(False)
 
-        self.dggrid_fuller3hResSpinBox.setValue(20)
+        self.dggrid_fuller3hResSpinBox.setValue(10)
         self.dggrid_fuller3hColorButton.setColor(QColor("#6025b0"))
         self.dggrid_fuller3hVisibleCheckBox.setChecked(False)
 
-        self.dggrid_fuller4hResSpinBox.setValue(16)
+        self.dggrid_fuller4hResSpinBox.setValue(8)
         self.dggrid_fuller4hColorButton.setColor(QColor("#6025b0"))
         self.dggrid_fuller4hVisibleCheckBox.setChecked(False)
 
-        self.dggrid_fuller4tResSpinBox.setValue(15)
+        self.dggrid_fuller4tResSpinBox.setValue(7)
         self.dggrid_fuller4tColorButton.setColor(QColor("#6025b0"))
         self.dggrid_fuller4tVisibleCheckBox.setChecked(False)
 
-        self.dggrid_fuller4dResSpinBox.setValue(16)
+        self.dggrid_fuller4dResSpinBox.setValue(8)
         self.dggrid_fuller4dColorButton.setColor(QColor("#6025b0"))
         self.dggrid_fuller4dVisibleCheckBox.setChecked(False)
 
-        self.dggrid_fuller43hResSpinBox.setValue(10)
+        self.dggrid_fuller43hResSpinBox.setValue(5)
         self.dggrid_fuller43hColorButton.setColor(QColor("#6025b0"))
         self.dggrid_fuller43hVisibleCheckBox.setChecked(False)
 
-        self.dggrid_fuller7hResSpinBox.setValue(11)
+        self.dggrid_fuller7hResSpinBox.setValue(5)
         self.dggrid_fuller7hColorButton.setColor(QColor("#6025b0"))
         self.dggrid_fuller7hVisibleCheckBox.setChecked(False)
 

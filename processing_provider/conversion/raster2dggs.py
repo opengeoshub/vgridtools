@@ -11,7 +11,13 @@ from vgrid.stats.rhealpixstats import rhealpix_metrics
 from vgrid.stats.a5stats import a5_metrics
 from vgrid.stats.s2stats import s2_metrics
 from ...utils.crs_helper import ensure_wgs84_raster_layer
-from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
+from ...utils.binning.bin_helper import (
+    add_shift_split_parameters,
+    apply_loaded_layer_name,
+    normalize_antimeridian_options,
+    read_shift_split_aggregate,
+    set_output_layer_name,
+)
 from ...utils.conversion.raster2dggs import *
 from ...utils.help_footer import social_links_footer
 
@@ -53,6 +59,9 @@ class Raster2DGGS(QgsProcessingAlgorithm):
     RESOLUTION = "RESOLUTION"
     METHOD = "METHOD"
     STATS = "STATS"
+    SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
+    AGGREGATE = "AGGREGATE"
     OUTPUT = "OUTPUT"
 
     METHODS = ["nearest", "binning"]
@@ -232,6 +241,8 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             )
         )
 
+        add_shift_split_parameters(self, aggregate=True, dggrid_hints=True)
+
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr("Raster2DGGS"), QgsProcessing.TypeVectorPolygon
@@ -392,8 +403,27 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         self.method = self.METHODS[method_index]
         stats_index = self.parameterAsEnum(parameters, self.STATS, context)
         self.stats = RASTER_STATS_OPTIONS[stats_index]
+        antimeridian = normalize_antimeridian_options(
+            feedback,
+            self.dggs_type,
+            *read_shift_split_aggregate(self, parameters, context),
+            has_dggrid=False,
+        )
+        if antimeridian is None:
+            return False
+        (
+            self.shift_antimeridian,
+            self.split_antimeridian,
+            self.aggregate,
+        ) = antimeridian
 
-        _kw = {"method": self.method, "stats": self.stats}
+        _kw = {
+            "method": self.method,
+            "stats": self.stats,
+            "shift_antimeridian": self.shift_antimeridian,
+            "split_antimeridian": self.split_antimeridian,
+            "aggregate": self.aggregate,
+        }
 
         def _fn(conv):
             return lambda rl, res, fb: conv(rl, res, fb, **_kw)
@@ -410,58 +440,58 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             "quadkey": _fn(raster2quadkey),
             "digipin": _fn(raster2digipin),
             "dggal_gnosis": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "gnosis", method=self.method, stats=self.stats
+                rl, res, fb, "gnosis", **_kw
             ),
             "dggal_isea4r": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "isea4r", method=self.method, stats=self.stats
+                rl, res, fb, "isea4r", **_kw
             ),
             "dggal_isea9r": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "isea9r", method=self.method, stats=self.stats
+                rl, res, fb, "isea9r", **_kw
             ),
             "dggal_isea3h": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "isea3h", method=self.method, stats=self.stats
+                rl, res, fb, "isea3h", **_kw
             ),
             "dggal_isea7h": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "isea7h", method=self.method, stats=self.stats
+                rl, res, fb, "isea7h", **_kw
             ),
             "dggal_isea7h_z7": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "isea7h_z7", method=self.method, stats=self.stats
+                rl, res, fb, "isea7h_z7", **_kw
             ),
             "dggal_ivea4r": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "ivea4r", method=self.method, stats=self.stats
+                rl, res, fb, "ivea4r", **_kw
             ),
             "dggal_ivea9r": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "ivea9r", method=self.method, stats=self.stats
+                rl, res, fb, "ivea9r", **_kw
             ),
             "dggal_ivea3h": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "ivea3h", method=self.method, stats=self.stats
+                rl, res, fb, "ivea3h", **_kw
             ),
             "dggal_ivea7h": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "ivea7h", method=self.method, stats=self.stats
+                rl, res, fb, "ivea7h", **_kw
             ),
             "dggal_ivea7h_z7": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "ivea7h_z7", method=self.method, stats=self.stats
+                rl, res, fb, "ivea7h_z7", **_kw
             ),
             "dggal_rtea4r": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "rtea4r", method=self.method, stats=self.stats
+                rl, res, fb, "rtea4r", **_kw
             ),
             "dggal_rtea9r": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "rtea9r", method=self.method, stats=self.stats
+                rl, res, fb, "rtea9r", **_kw
             ),
             "dggal_rtea3h": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "rtea3h", method=self.method, stats=self.stats
+                rl, res, fb, "rtea3h", **_kw
             ),
             "dggal_rtea7h": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "rtea7h", method=self.method, stats=self.stats
+                rl, res, fb, "rtea7h", **_kw
             ),
             "dggal_rtea7h_z7": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "rtea7h_z7", method=self.method, stats=self.stats
+                rl, res, fb, "rtea7h_z7", **_kw
             ),
             "dggal_healpix": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "healpix", method=self.method, stats=self.stats
+                rl, res, fb, "healpix", **_kw
             ),
             "dggal_rhealpix": lambda rl, res, fb: raster2dggal(
-                rl, res, fb, "rhealpix", method=self.method, stats=self.stats
+                rl, res, fb, "rhealpix", **_kw
             ),
         }
         if platform.system() == "Windows":

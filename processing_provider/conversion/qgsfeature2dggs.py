@@ -14,6 +14,8 @@ from qgis.core import (
     QgsProcessingException,
     QgsCoordinateReferenceSystem,
     QgsWkbTypes,
+    QgsFeature,
+    QgsGeometry,
 )
 
 from qgis.core import QgsApplication
@@ -22,7 +24,13 @@ from qgis.PyQt.QtCore import QCoreApplication, QVariant
 
 import platform
 from ...utils.help_footer import social_links_footer
-from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
+from ...utils.binning.bin_helper import (
+    add_shift_split_parameters,
+    apply_loaded_layer_name,
+    normalize_antimeridian_options,
+    read_shift_split_aggregate,
+    set_output_layer_name,
+)
 from ...utils.conversion.qgsfeature2dggs import *
 from ...utils.crs_helper import wgs84_transform_if_needed
 from ...settings import settings
@@ -37,6 +45,10 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     DGGS_TYPE = "DGGS_TYPE"
     RESOLUTION = "RESOLUTION"
     COMPACT = "COMPACT"
+    DEPTH = "DEPTH"
+    SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
+    SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
+    AGGREGATE = "AGGREGATE"
     PREDICATE = "PREDICATE"
     PREDICATES = ["intersects", "within", "centroid_within", "largest_overlap"]
     DGGS_TYPES = [
@@ -214,6 +226,22 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterBoolean(self.COMPACT, "Compact", defaultValue=False)
         )
 
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.DEPTH,
+                self.tr(
+                    "Compact depth (-1: full compact, "
+                    "1: parent, 2: grandparent,...)"
+                ),
+                QgsProcessingParameterNumber.Integer,
+                defaultValue=-1,
+                minValue=-1,
+                maxValue=40,
+            )
+        )
+
+        add_shift_split_parameters(self, aggregate=True, dggrid_hints=True)
+
     def checkParameterValues(self, parameters, context):
         """Dynamically update resolution limits before execution"""
         selected_dggs_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
@@ -309,12 +337,31 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         self.compact = self.parameterAsBool(parameters, self.COMPACT, context)
+        self.depth = self.parameterAsInt(parameters, self.DEPTH, context)
         self.predicate = self.parameterAsEnum(parameters, self.PREDICATE, context)
+        self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
+        antimeridian = normalize_antimeridian_options(
+            feedback,
+            self.DGGS_TYPES[self.DGGS_TYPE_index].lower(),
+            *read_shift_split_aggregate(self, parameters, context),
+        )
+        if antimeridian is None:
+            return False
+        (
+            self.shift_antimeridian,
+            self.split_antimeridian,
+            self.aggregate,
+        ) = antimeridian
+        self._anti_kw = {
+            "shift_antimeridian": self.shift_antimeridian,
+            "split_antimeridian": self.split_antimeridian,
+            "aggregate": self.aggregate,
+            "depth": self.depth,
+        }
 
         self.total_features = source.featureCount()
         self.num_bad = 0
 
-        self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.DGGS_TYPE_functions = {
             "h3": qgsfeature2h3,
             "s2": qgsfeature2s2,
@@ -328,94 +375,94 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             "tilecode": qgsfeature2tilecode,
             "quadkey": qgsfeature2quadkey,
             "digipin": qgsfeature2digipin,
-            "dggal_gnosis": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_gnosis": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "gnosis", feature, resolution, predicate, compact, feedback
+                    "gnosis", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_isea4r": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_isea4r": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "isea4r", feature, resolution, predicate, compact, feedback
+                    "isea4r", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_isea9r": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_isea9r": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "isea9r", feature, resolution, predicate, compact, feedback
+                    "isea9r", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_isea3h": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_isea3h": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "isea3h", feature, resolution, predicate, compact, feedback
+                    "isea3h", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_isea7h": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_isea7h": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "isea7h", feature, resolution, predicate, compact, feedback
+                    "isea7h", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_isea7h_z7": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_isea7h_z7": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "isea7h_z7", feature, resolution, predicate, compact, feedback
+                    "isea7h_z7", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_ivea4r": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_ivea4r": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "ivea4r", feature, resolution, predicate, compact, feedback
+                    "ivea4r", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_ivea9r": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_ivea9r": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "ivea9r", feature, resolution, predicate, compact, feedback
+                    "ivea9r", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_ivea3h": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_ivea3h": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "ivea3h", feature, resolution, predicate, compact, feedback
+                    "ivea3h", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_ivea7h": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_ivea7h": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "ivea7h", feature, resolution, predicate, compact, feedback
+                    "ivea7h", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_ivea7h_z7": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_ivea7h_z7": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "ivea7h_z7", feature, resolution, predicate, compact, feedback
+                    "ivea7h_z7", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_rtea4r": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_rtea4r": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "rtea4r", feature, resolution, predicate, compact, feedback
+                    "rtea4r", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_rtea9r": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_rtea9r": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "rtea9r", feature, resolution, predicate, compact, feedback
+                    "rtea9r", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_rtea3h": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_rtea3h": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "rtea3h", feature, resolution, predicate, compact, feedback
+                    "rtea3h", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_rtea7h": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_rtea7h": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "rtea7h", feature, resolution, predicate, compact, feedback
+                    "rtea7h", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_rtea7h_z7": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_rtea7h_z7": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "rtea7h_z7", feature, resolution, predicate, compact, feedback
+                    "rtea7h_z7", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_healpix": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_healpix": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "healpix", feature, resolution, predicate, compact, feedback
+                    "healpix", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
-            "dggal_rhealpix": lambda feature, resolution, predicate, compact, feedback: (
+            "dggal_rhealpix": lambda feature, resolution, predicate, compact, feedback, **kwargs: (
                 qgsfeature2dggal(
-                    "rhealpix", feature, resolution, predicate, compact, feedback
+                    "rhealpix", feature, resolution, predicate, compact, feedback, **kwargs
                 )
             ),
         }
@@ -438,9 +485,9 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         ):
             key = f"dggrid_{dggrid_name.lower()}"
             self.DGGS_TYPE_functions[key] = (
-                lambda feature, resolution, predicate, compact, feedback, t=dggrid_name: (
+                lambda feature, resolution, predicate, compact, feedback, t=dggrid_name, **kwargs: (
                     qgsfeature2dggrid(
-                        t, feature, resolution, predicate, compact, feedback
+                        t, feature, resolution, predicate, compact, feedback, **kwargs
                     )
                 )
             )
@@ -457,6 +504,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             if conversion_function is None:
                 return []
 
+            anti_kw = getattr(self, "_anti_kw", {})
             feature_geom = feature.geometry()
             flat_type = QgsWkbTypes.flatType(feature_geom.wkbType())
 
@@ -474,6 +522,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                         self.predicate,
                         self.compact,
                         feedback,
+                        **anti_kw,
                     )
                     if cell_polygons:
                         multi_cell_polygons.extend(cell_polygons)
@@ -490,6 +539,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                         self.predicate,
                         self.compact,
                         feedback,
+                        **anti_kw,
                     )
                     if cell_polygons:
                         multi_cell_polygons.extend(cell_polygons)
@@ -506,6 +556,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                         self.predicate,
                         self.compact,
                         feedback,
+                        **anti_kw,
                     )
                     if cell_polygons:
                         multi_cell_polygons.extend(cell_polygons)
@@ -513,7 +564,12 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
             else:  # Single part features
                 result = conversion_function(
-                    feature, self.resolution, self.predicate, self.compact, feedback
+                    feature,
+                    self.resolution,
+                    self.predicate,
+                    self.compact,
+                    feedback,
+                    **anti_kw,
                 )
                 return result if result is not None else []
 

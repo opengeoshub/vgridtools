@@ -76,14 +76,18 @@ geod = Geod(ellps="WGS84")
 E = WGS84_ELLIPSOID
 
 
-def prepare_qgis_compact_bags(layer, id_field, agg="count", numeric_col=None):
-    """Build per-cell value bags from a QGIS layer (same rules as vgrid compact)."""
-    if not validate_agg(agg):
-        raise QgsProcessingException(f"Invalid aggregation '{agg}'")
-    if agg != "count" and not numeric_col:
-        raise QgsProcessingException(
-            "A numeric field is required for aggregate functions other than 'count'."
-        )
+def prepare_qgis_compact_bags(layer, id_field, agg=None, numeric_col=None):
+    """Build per-cell value bags from a QGIS layer (same rules as vgrid compact).
+
+    When ``agg`` is None, unique cell IDs are collected without aggregating values.
+    """
+    if agg is not None:
+        if not validate_agg(agg):
+            raise QgsProcessingException(f"Invalid aggregation '{agg}'")
+        if agg != "count" and not numeric_col:
+            raise QgsProcessingException(
+                "A numeric field is required for aggregate functions other than 'count'."
+            )
 
     bags = defaultdict(list)
     for feat in layer.getFeatures():
@@ -91,24 +95,32 @@ def prepare_qgis_compact_bags(layer, id_field, agg="count", numeric_col=None):
         if cell is None or cell == "":
             continue
         cell = str(cell)
-        if agg == "count":
+        if agg is None:
+            bags.setdefault(cell, [])
+        elif agg == "count":
             bags[cell].append(1)
         else:
             bags[cell].append(qgs_attribute_value(feat[numeric_col]))
 
-    agg_col = agg_column_name(
-        agg, numeric_col=None if agg == "count" else numeric_col
-    )
+    agg_col = None
+    if agg is not None:
+        agg_col = agg_column_name(
+            agg, numeric_col=None if agg == "count" else numeric_col
+        )
     if not bags:
         return None, agg_col
     return bags, agg_col
 
 
 def append_compact_agg_field(fields, agg_col, agg):
+    if not agg or not agg_col:
+        return
     fields.append(QgsField(agg_col, agg_field_type(agg)))
 
 
 def compact_agg_value(bags, cell_id, agg):
+    if not agg:
+        return None
     return aggregate_values(bags.get(cell_id, []), agg)
 
 
@@ -120,7 +132,7 @@ def h3compact(
     H3ID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -213,7 +225,7 @@ def s2compact(
     S2ID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -305,7 +317,7 @@ def a5compact(
     A5ID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -401,7 +413,7 @@ def rhealpixcompact(
     rHEALPixID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -503,7 +515,7 @@ def isea4tcompact(
     ISEA4TID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -596,7 +608,7 @@ def isea3hcompact(
     ISEA3HID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -689,7 +701,7 @@ def qtmcompact(
     QTMID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -770,7 +782,7 @@ def olccompact(
     OLCID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -856,7 +868,7 @@ def geohashcompact(
     GeohashID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -945,7 +957,7 @@ def tilecodecompact(
     TilecodeID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -1034,7 +1046,7 @@ def quadkeycompact(
     QuadkeyID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -1123,7 +1135,7 @@ def dggalcompact(
     feedback=None,
     dggal_type=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
@@ -1231,7 +1243,7 @@ def digipincompact(
     DIGIPINID_field=None,
     feedback=None,
     depth=-1,
-    agg="count",
+    agg=None,
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,

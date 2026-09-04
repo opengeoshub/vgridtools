@@ -10,6 +10,8 @@ from vgrid.generator.geohashgrid import expand_geohash_bbox
 from vgrid.dggs import qtm
 from vgrid.dggs.qtm import QTM_INITIAL_FACETS
 from vgrid.conversion.dggscompact.a5compact import a5_compact
+from vgrid.conversion.dggscompact.h3compact import h3_compact
+from vgrid.conversion.dggscompact.s2compact import s2_compact
 from vgrid.conversion.dggscompact.digipincompact import digipin_compact
 from vgrid.conversion.dggscompact.quadkeycompact import quadkey_compact
 from vgrid.conversion.dggscompact.tilecodecompact import tilecode_compact
@@ -23,8 +25,13 @@ from vgrid.utils.geometry import (
     graticule_dggs_to_feature,
     geodesic_dggs_metrics,
     check_predicate,
+    strip_duplicate_and_collinear_vertices,
 )
 from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
+from vgrid.conversion.vector2dggs.vector2dggal import _dggal_segment_cells
+from vgrid.conversion.vector2dggs.vector2s2 import _s2_segment_cells
+from vgrid.conversion.vector2dggs.vector2tilecode import _tilecode_segment_cells
+from vgrid.conversion.vector2dggs.vector2quadkey import _quadkey_segment_cells
 from vgrid.dggs.digipin import BOUNDS
 from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
 from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
@@ -56,6 +63,7 @@ from ..crs_helper import (
     reproject_feature,
     wgs84_transform_if_needed,
 )
+from ..antimeridian_helper import geo_with_fix, use_split_antimeridian, resolve_fix_antimeridian
 
 from vgrid.conversion.latlon2dggs import (
     latlon2h3,
@@ -132,25 +140,25 @@ def prepare_feature_for_dggs_conversion(feature, to_wgs84_transform):
 #######################
 # QgsFeatures to H3
 #######################
-def qgsfeature2h3(feature, resolution, predicate=None, compact=None, feedback=None):
+def qgsfeature2h3(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     resolution = validate_h3_resolution(resolution)
     gfeature_geom = feature.geometry()
     if gfeature_geom.wkbType() == QgsWkbTypes.Point:
-        return point2h3(feature, resolution, feedback)
+        return point2h3(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
     elif gfeature_geom.wkbType() == QgsWkbTypes.LineString:
-        return polyline2h3(feature, resolution, None, None, feedback)
+        return polyline2h3(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
     elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
-        return polygon2h3(feature, resolution, predicate, compact, feedback)
+        return polygon2h3(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
-def point2h3(feature, resolution, feedback):
+def point2h3(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
 
     feature_geometry = feature.geometry()
     point = feature_geometry.asPoint()
     h3_id = latlon2h3(point.y(), point.x(), resolution)
-    cell_polygon = h32geo(h3_id)
+    cell_polygon = geo_with_fix(h32geo, h3_id, "h3", shift_antimeridian, split_antimeridian)
 
     num_edges = 6
     if h3.is_pentagon(h3_id):
@@ -201,7 +209,7 @@ def point2h3(feature, resolution, feedback):
     return [h3_feature]
 
 
-def polyline2h3(feature, resolution, predicate=None, compact=None, feedback=None):
+def polyline2h3(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     h3_features = []
     feature_geometry = feature.geometry()
     feature_rect = feature_geometry.boundingBox()
@@ -224,7 +232,7 @@ def polyline2h3(feature, resolution, predicate=None, compact=None, feedback=None
     for i, bbox_buffer_cell in enumerate(bbox_buffer_cells):
         if feedback and feedback.isCanceled():
             return []
-        cell_polygon = h32geo(bbox_buffer_cell)
+        cell_polygon = geo_with_fix(h32geo, bbox_buffer_cell, "h3", shift_antimeridian, split_antimeridian)
         num_edges = 6
         if h3.is_pentagon(bbox_buffer_cell):
             num_edges = 5
@@ -289,7 +297,7 @@ def polyline2h3(feature, resolution, predicate=None, compact=None, feedback=None
     return h3_features
 
 
-def polygon2h3(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2h3(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     h3_features = []
     feature_geometry = feature.geometry()
     shapely_geom = wkt_loads(feature_geometry.asWkt())
@@ -317,7 +325,7 @@ def polygon2h3(feature, resolution, predicate=None, compact=None, feedback=None)
         if feedback and feedback.isCanceled():
             return []
 
-        cell_polygon = h32geo(bbox_buffer_cell)
+        cell_polygon = geo_with_fix(h32geo, bbox_buffer_cell, "h3", shift_antimeridian, split_antimeridian)
         if not check_predicate(cell_polygon, shapely_geom, predicate):
             continue  # Skip non-matching cells
         filtered_cells.append(bbox_buffer_cell)
@@ -327,7 +335,9 @@ def polygon2h3(feature, resolution, predicate=None, compact=None, feedback=None)
 
     # Apply compact after predicate check
     if compact:
-        filtered_cells = h3.compact_cells(filtered_cells)
+        filtered_cells = h3_compact(
+            filtered_cells, depth=_kwargs.get("depth", -1), verbose=False
+        )
 
     # Convert filtered/compacted cells to features
     total_filtered_cells = len(filtered_cells)
@@ -338,7 +348,7 @@ def polygon2h3(feature, resolution, predicate=None, compact=None, feedback=None)
         if feedback and feedback.isCanceled():
             return []
 
-        cell_polygon = h32geo(cell_id)
+        cell_polygon = geo_with_fix(h32geo, cell_id, "h3", shift_antimeridian, split_antimeridian)
         num_edges = 6
         if h3.is_pentagon(cell_id):
             num_edges = 5
@@ -403,25 +413,25 @@ def polygon2h3(feature, resolution, predicate=None, compact=None, feedback=None)
 #######################
 # QgsFeatures to S2
 #######################
-def qgsfeature2s2(feature, resolution, predicate=None, compact=None, feedback=None):
+def qgsfeature2s2(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     resolution = validate_s2_resolution(resolution)
     gfeature_geom = feature.geometry()
     if gfeature_geom.wkbType() == QgsWkbTypes.Point:
-        return point2s2(feature, resolution, feedback)
+        return point2s2(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
     elif gfeature_geom.wkbType() == QgsWkbTypes.LineString:
-        return polyline2s2(feature, resolution, None, None, feedback)
+        return polyline2s2(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
     elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
-        return polygon2s2(feature, resolution, predicate, compact, feedback)
+        return polygon2s2(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
-def point2s2(feature, resolution, feedback):
+def point2s2(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
     # Convert point to the seed cell
     feature_geometry = feature.geometry()
     point = feature_geometry.asPoint()
     s2_token = latlon2s2(point.y(), point.x(), resolution)
-    cell_polygon = s22geo(s2_token)
+    cell_polygon = geo_with_fix(s22geo, s2_token, "s2", shift_antimeridian, split_antimeridian)
     num_edges = 4
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
         geodesic_dggs_metrics(cell_polygon, num_edges)
@@ -471,107 +481,117 @@ def point2s2(feature, resolution, feedback):
     return [s2_feature]
 
 
-def polyline2s2(feature, resolution, predicate=None, compact=None, feedback=None):
-    s2_features = []
+def polyline2s2(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
+    """
+    Convert a polyline feature to S2 cells.
+
+    Mirrors ``vgrid.conversion.vector2dggs.vector2s2.polyline2s2``:
+    strip duplicate/collinear vertices, then walk intersecting edge
+    neighbors along each segment until the endpoint cell is reached.
+    """
+    if feature is None:
+        return []
+
+    if feedback and feedback.isCanceled():
+        return []
 
     feature_geometry = feature.geometry()
     shapely_geom = wkt_loads(feature_geometry.asWkt())
-    feature_rect = feature_geometry.boundingBox()
-    min_x = feature_rect.xMinimum()
-    min_y = feature_rect.yMinimum()
-    max_x = feature_rect.xMaximum()
-    max_y = feature_rect.yMaximum()
-    level = resolution
-    coverer = s2.RegionCoverer()
-    coverer.min_level = level
-    coverer.max_level = level
+    if shapely_geom.geom_type == "LineString":
+        polylines = [shapely_geom]
+    elif shapely_geom.geom_type == "MultiLineString":
+        polylines = list(shapely_geom.geoms)
+    else:
+        return []
 
-    region = s2.LatLngRect(
-        s2.LatLng.from_degrees(min_y, min_x), s2.LatLng.from_degrees(max_y, max_x)
-    )
-
-    covering = coverer.get_covering(region)
-    cell_ids = covering
-    if compact:
-        covering = s2.CellUnion(covering)
-        covering.normalize()
-        cell_ids = covering.cell_ids()
-
-    total_cells = len(cell_ids)
+    fix = resolve_fix_antimeridian("s2", shift_antimeridian, split_antimeridian)
 
     if feedback:
         feedback.pushInfo(f"Processing feature {feature.id()}")
         feedback.setProgress(0)
 
-    for i, cell_id in enumerate(cell_ids):
+    s2_features = []
+    original_attributes = feature.attributes()
+    original_fields = feature.fields()
+    new_fields = QgsFields()
+    new_fields.append(QgsField("s2", QVariant.String))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+
+    n_parts = len(polylines)
+    for part_i, polyline in enumerate(polylines):
         if feedback and feedback.isCanceled():
             return []
-
-        cell_polygon = s22geo(cell_id)
-        if not check_predicate(cell_polygon, shapely_geom, "intersects"):
+        coords = strip_duplicate_and_collinear_vertices(polyline)
+        if len(coords) < 2:
             continue
 
-        cell_token = s2.CellId.to_token(cell_id)
-        cell_resolution = cell_id.level()
+        ordered_cells = []
+        n_seg = len(coords) - 1
+        for i in range(n_seg):
+            if feedback and feedback.isCanceled():
+                return []
+            segment_cells = _s2_segment_cells(
+                resolution,
+                coords[i],
+                coords[i + 1],
+                fix_antimeridian=fix,
+            )
+            for cell_id in segment_cells:
+                if ordered_cells and ordered_cells[-1] == cell_id:
+                    continue
+                ordered_cells.append(cell_id)
+            if feedback:
+                done = part_i + (i + 1) / n_seg
+                feedback.setProgress(int(50 * done / n_parts))
 
-        num_edges = 4
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
-        )
-
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-        s2_feature = QgsFeature()
-        s2_feature.setGeometry(cell_geometry)
-
-        # Get all attributes from the input feature
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        # Define new S2-related attributes
-        new_fields = QgsFields()
-        new_fields.append(QgsField("s2", QVariant.String))  # Dynamic cell ID field
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-        # Combine original fields and new fields
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
-        s2_feature.setFields(all_fields)
-
-        # Combine original attributes with new attributes
-        new_attributes = [
-            cell_token,
-            cell_resolution,
-            center_lat,
-            center_lon,
-            avg_edge_len,
-            cell_area,
-            cell_perimeter,
-        ]
-        all_attributes = original_attributes + new_attributes
-
-        s2_feature.setAttributes(all_attributes)
-
-        s2_features.append(s2_feature)
-
-        if feedback and i % 100 == 0:
-            feedback.setProgress(int(100 * i / total_cells))
+        total_cells = len(ordered_cells)
+        for idx, cell_id in enumerate(ordered_cells):
+            if feedback and feedback.isCanceled():
+                return []
+            cell_polygon = s22geo(cell_id, fix_antimeridian=fix)
+            if cell_polygon is None or cell_polygon.is_empty:
+                continue
+            cell = s2.CellId.from_token(cell_id)
+            cell_resolution = cell.level()
+            num_edges = 4
+            center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+                geodesic_dggs_metrics(cell_polygon, num_edges)
+            )
+            s2_feature = QgsFeature()
+            s2_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+            s2_feature.setFields(all_fields)
+            s2_feature.setAttributes(
+                original_attributes
+                + [
+                    cell_id,
+                    cell_resolution,
+                    center_lat,
+                    center_lon,
+                    avg_edge_len,
+                    cell_area,
+                    cell_perimeter,
+                ]
+            )
+            s2_features.append(s2_feature)
+            if feedback and total_cells and idx % 50 == 0:
+                feedback.setProgress(int(50 + 50 * (part_i + (idx + 1) / total_cells) / n_parts))
 
     if feedback:
         feedback.setProgress(100)
-
     return s2_features
 
 
-def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     s2_features = []
     feature_geometry = feature.geometry()
     shapely_geom = wkt_loads(feature_geometry.asWkt())
@@ -622,7 +642,7 @@ def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None)
             return []
 
         cell_token = s2.CellId.to_token(cell_id)
-        cell_polygon = s22geo(cell_token)
+        cell_polygon = geo_with_fix(s22geo, cell_token, "s2", shift_antimeridian, split_antimeridian)
         if not check_predicate(cell_polygon, shapely_geom, predicate):
             continue
 
@@ -662,62 +682,56 @@ def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None)
 
     if compact and polygon_features:
         s2_tokens = [feat["s2"] for feat in polygon_features if feat["s2"]]
-        try:
-            polygon_cell_ids = [s2.CellId.from_token(token) for token in s2_tokens]
-        except Exception:
-            polygon_cell_ids = []
+        compact_tokens = s2_compact(
+            s2_tokens, depth=_kwargs.get("depth", -1), verbose=False
+        )
+        compact_features = []
 
-        if polygon_cell_ids:
-            covering = s2.CellUnion(polygon_cell_ids)
-            covering.normalize()
-            compact_cell_ids = covering.cell_ids()
-            compact_features = []
+        if feedback:
+            feedback.pushInfo("Compacting cells")
+            feedback.setProgress(0)
 
-            if feedback:
-                feedback.pushInfo("Compacting cells")
-                feedback.setProgress(0)
+        total_cells = len(compact_tokens)
+        for i, cell_token in enumerate(compact_tokens):
+            if feedback and feedback.isCanceled():
+                return []
 
-            total_cells = len(compact_cell_ids)
-            for i, compact_cell in enumerate(compact_cell_ids):
-                if feedback and feedback.isCanceled():
-                    return []
+            compact_cell = s2.CellId.from_token(cell_token)
+            cell_polygon = geo_with_fix(s22geo, cell_token, "s2", shift_antimeridian, split_antimeridian)
+            cell_resolution = compact_cell.level()
 
-                cell_token = s2.CellId.to_token(compact_cell)
-                cell_polygon = s22geo(cell_token)
-                cell_resolution = compact_cell.level()
+            num_edges = 4
+            center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+                geodesic_dggs_metrics(cell_polygon, num_edges)
+            )
 
-                num_edges = 4
-                center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(cell_polygon, num_edges)
-                )
+            cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
-                cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+            s2_feature = QgsFeature()
+            s2_feature.setGeometry(cell_geometry)
+            s2_feature.setFields(all_fields)
 
-                s2_feature = QgsFeature()
-                s2_feature.setGeometry(cell_geometry)
-                s2_feature.setFields(all_fields)
+            new_attributes = [
+                cell_token,
+                cell_resolution,
+                center_lat,
+                center_lon,
+                avg_edge_len,
+                cell_area,
+                cell_perimeter,
+            ]
+            all_attributes = original_attributes + new_attributes
 
-                new_attributes = [
-                    cell_token,
-                    cell_resolution,
-                    center_lat,
-                    center_lon,
-                    avg_edge_len,
-                    cell_area,
-                    cell_perimeter,
-                ]
-                all_attributes = original_attributes + new_attributes
+            s2_feature.setAttributes(all_attributes)
+            compact_features.append(s2_feature)
 
-                s2_feature.setAttributes(all_attributes)
-                compact_features.append(s2_feature)
+            if feedback and total_cells and i % 100 == 0:
+                feedback.setProgress(int(100 * i / total_cells))
 
-                if feedback and total_cells and i % 100 == 0:
-                    feedback.setProgress(int(100 * i / total_cells))
+        if feedback:
+            feedback.setProgress(100)
 
-            if feedback:
-                feedback.setProgress(100)
-
-            polygon_features = compact_features
+        polygon_features = compact_features
 
     s2_features = polygon_features
 
@@ -729,25 +743,25 @@ def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None)
 #######################
 
 
-def qgsfeature2a5(feature, resolution, predicate=None, compact=None, feedback=None):
+def qgsfeature2a5(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     resolution = validate_a5_resolution(resolution)
     gfeature_geom = feature.geometry()
     if gfeature_geom.wkbType() == QgsWkbTypes.Point:
-        return point2a5(feature, resolution, feedback)
+        return point2a5(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
     elif gfeature_geom.wkbType() == QgsWkbTypes.LineString:
-        return polyline2a5(feature, resolution, None, None, feedback)
+        return polyline2a5(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
     elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
-        return polygon2a5(feature, resolution, predicate, compact, feedback)
+        return polygon2a5(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
-def point2a5(feature, resolution, feedback):
+def point2a5(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
     # Convert point to the seed cell
     feature_geometry = feature.geometry()
     point = feature_geometry.asPoint()
     a5_hex = latlon2a5(point.y(), point.x(), resolution)
-    cell_polygon = a52geo(a5_hex)
+    cell_polygon = a52geo(a5_hex, split_antimeridian=use_split_antimeridian(shift_antimeridian, split_antimeridian))
     num_edges = 5
     if resolution == 1:
         num_edges = 3
@@ -799,7 +813,7 @@ def point2a5(feature, resolution, feedback):
     return [a5_feature]
 
 
-def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None):
+def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     """
     Convert a polyline feature to A5 grid cells.
 
@@ -826,7 +840,7 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
     seed_cell_id = a5.lonlat_to_cell((bbox_center_lon, bbox_center_lat), resolution)
     seed_cell_resolution = a5.get_resolution(seed_cell_id)
     seed_a5_hex = a5.u64_to_hex(seed_cell_id)
-    seed_cell_polygon = a52geo(seed_a5_hex)
+    seed_cell_polygon = a52geo(seed_a5_hex, split_antimeridian=use_split_antimeridian(shift_antimeridian, split_antimeridian))
 
     if seed_cell_polygon is None or seed_cell_polygon.is_empty:
         return []
@@ -897,7 +911,7 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
         covered_cells.add(current_cell_id)
 
         cell_hex = a5.u64_to_hex(current_cell_id)
-        cell_polygon = a52geo(cell_hex)
+        cell_polygon = a52geo(cell_hex, split_antimeridian=use_split_antimeridian(shift_antimeridian, split_antimeridian))
         if cell_polygon is None or cell_polygon.is_empty:
             continue
 
@@ -972,7 +986,7 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
     return a5_features
 
 
-def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     """
     Convert a polygon feature to A5 grid cells.
 
@@ -998,7 +1012,7 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None)
     seed_cell_id = a5.lonlat_to_cell((bbox_center_lon, bbox_center_lat), resolution)
     seed_cell_resolution = a5.get_resolution(seed_cell_id)
     seed_a5_hex = a5.u64_to_hex(seed_cell_id)
-    seed_cell_polygon = a52geo(seed_a5_hex)
+    seed_cell_polygon = a52geo(seed_a5_hex, split_antimeridian=use_split_antimeridian(shift_antimeridian, split_antimeridian))
 
     if seed_cell_polygon is None or seed_cell_polygon.is_empty:
         return []
@@ -1074,7 +1088,7 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None)
         covered_cells.add(current_cell_id)
 
         cell_hex = a5.u64_to_hex(current_cell_id)
-        cell_polygon = a52geo(cell_hex)
+        cell_polygon = a52geo(cell_hex, split_antimeridian=use_split_antimeridian(shift_antimeridian, split_antimeridian))
         if cell_polygon is None or cell_polygon.is_empty:
             continue
 
@@ -1149,12 +1163,14 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None)
         feedback.setProgress(100)
 
     if compact and a5_features:
-        a5_features = a5compact_from_qgsfeatures(a5_features, feedback)
+        a5_features = a5compact_from_qgsfeatures(
+            a5_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return a5_features
 
 
-def a5compact_from_qgsfeatures(qgs_features, feedback):
+def a5compact_from_qgsfeatures(qgs_features, feedback, depth=-1):
     original_fields = qgs_features[0].fields()
     # Get original attributes from the first feature (excluding A5-specific fields)
     original_attributes = qgs_features[0].attributes()
@@ -1182,7 +1198,7 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
 
     a5_hexes = [f["a5"] for f in qgs_features if f["a5"]]
 
-    a5_hexes_compact = a5_compact(a5_hexes)
+    a5_hexes_compact = a5_compact(a5_hexes, depth=depth, verbose=False)
     a5_features = []
     total_cells = len(a5_hexes_compact)
     if feedback:
@@ -1192,7 +1208,7 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
     for i, a5_hex_compact in enumerate(a5_hexes_compact):
         if feedback and feedback.isCanceled():
             return []
-        cell_polygon = a52geo(a5_hex_compact)
+        cell_polygon = a52geo(a5_hex_compact, split_antimeridian=use_split_antimeridian(shift_antimeridian, split_antimeridian))
         cell_resolution = a5.get_resolution(a5.hex_to_u64(a5_hex_compact))
         num_edges = 5  # A5 cells are pentagons
         if cell_resolution == 1:
@@ -1235,21 +1251,22 @@ def a5compact_from_qgsfeatures(qgs_features, feedback):
 # QgsFeatures to DGGAL
 #######################
 def qgsfeature2dggal(
-    dggal_type, feature, resolution, predicate=None, compact=None, feedback=None
+    dggal_type, feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     resolution = validate_dggal_resolution(dggal_type, resolution)
     feature_geom = feature.geometry()
     if feature_geom.wkbType() == QgsWkbTypes.Point:
-        return point2dggal(dggal_type, feature, resolution, feedback)
+        return point2dggal(dggal_type, feature, resolution, feedback, shift_antimeridian, split_antimeridian)
     elif feature_geom.wkbType() == QgsWkbTypes.LineString:
-        return polyline2dggal(dggal_type, feature, resolution, None, None, feedback)
+        return polyline2dggal(dggal_type, feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
     elif feature_geom.wkbType() == QgsWkbTypes.Polygon:
         return polygon2dggal(
-            dggal_type, feature, resolution, predicate, compact, feedback
+            dggal_type, feature, resolution, predicate, compact, feedback,
+            shift_antimeridian, split_antimeridian, **_kwargs
         )
 
 
-def point2dggal(dggal_type, feature, resolution, feedback):
+def point2dggal(dggal_type, feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
     resolution = validate_dggal_resolution(dggal_type, resolution)
@@ -1261,7 +1278,7 @@ def point2dggal(dggal_type, feature, resolution, feedback):
     zone = dggrs.getZoneFromTextID(dggal_id)
     num_edges = dggrs.countZoneEdges(zone)
 
-    cell_polygon = dggal2geo(dggal_type, dggal_id)
+    cell_polygon = dggal2geo(dggal_type, dggal_id, split_antimeridian=use_split_antimeridian(shift_antimeridian, split_antimeridian))
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
         geodesic_dggs_metrics(cell_polygon, num_edges)
     )
@@ -1277,7 +1294,7 @@ def point2dggal(dggal_type, feature, resolution, feedback):
 
     # Define new s2-related attributes
     new_fields = QgsFields()
-    new_fields.append(QgsField(dggal_type, QVariant.String))
+    new_fields.append(QgsField(f"dggal_{dggal_type}", QVariant.String))
     new_fields.append(QgsField("resolution", QVariant.Int))
     new_fields.append(QgsField("center_lat", QVariant.Double))
     new_fields.append(QgsField("center_lon", QVariant.Double))
@@ -1311,115 +1328,126 @@ def point2dggal(dggal_type, feature, resolution, feedback):
 
 
 def polyline2dggal(
-    dggal_type, feature, resolution, predicate=None, compact=None, feedback=None
+    dggal_type, feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
+    """
+    Convert a polyline feature to DGGAL cells.
+
+    Mirrors ``vgrid.conversion.vector2dggs.vector2dggal.polyline2dggal``:
+    strip duplicate/collinear vertices, then walk intersecting neighbors
+    along each segment until the endpoint cell is reached.
+    """
     resolution = validate_dggal_resolution(dggal_type, resolution)
 
     if feature is None:
         return []
 
+    if feedback and feedback.isCanceled():
+        return []
+
     feature_geometry = feature.geometry()
     shapely_geom = wkt_loads(feature_geometry.asWkt())
-    feature_rect = feature_geometry.boundingBox()
+    if shapely_geom.geom_type == "LineString":
+        polylines = [shapely_geom]
+    elif shapely_geom.geom_type == "MultiLineString":
+        polylines = list(shapely_geom.geoms)
+    else:
+        return []
+
+    split_flag = use_split_antimeridian(shift_antimeridian, split_antimeridian)
+    dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
+    dggrs = globals()[dggs_class_name]()
 
     if feedback:
         feedback.pushInfo(f"Processing feature {feature.id()}")
         feedback.setProgress(0)
 
-    # Create the appropriate DGGS instance
-    dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
-    dggrs = globals()[dggs_class_name]()
-
-    # Convert bounds from (minx, miny, maxx, maxy) to (min_lon, min_lat, max_lon, max_lat)
-    min_lon, min_lat = feature_rect.xMinimum(), feature_rect.yMinimum()
-    max_lon, max_lat = feature_rect.xMaximum(), feature_rect.yMaximum()
-
-    # Create GeoExtent for DGGAL
-    ll = GeoPoint(min_lat, min_lon)
-    ur = GeoPoint(max_lat, max_lon)
-    geo_extent = GeoExtent(ll, ur)
-
-    # Get zones from DGGAL
-    zones = dggrs.listZones(resolution, geo_extent)
-
-    dggal_features = []
-    total_zones = len(zones)
-
-    for idx, zone in enumerate(zones):
+    ordered_cells = []
+    n_parts = len(polylines)
+    for part_i, polyline in enumerate(polylines):
         if feedback and feedback.isCanceled():
             return []
-
-        zone_id = dggrs.getZoneTextID(zone)
-        num_edges = dggrs.countZoneEdges(zone)
-        cell_resolution = dggrs.getZoneLevel(zone)
-
-        # Convert zone to geometry using dggal2geo
-        cell_polygon = dggal2geo(dggal_type, zone_id)
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-
-        # Check intersection with the feature geometry
-        if not check_predicate(cell_polygon, shapely_geom, "intersects"):
+        coords = strip_duplicate_and_collinear_vertices(polyline)
+        if len(coords) < 2:
             continue
+        n_seg = len(coords) - 1
+        for i in range(n_seg):
+            if feedback and feedback.isCanceled():
+                return []
+            segment_cells = _dggal_segment_cells(
+                dggal_type,
+                dggrs,
+                resolution,
+                coords[i],
+                coords[i + 1],
+                split_antimeridian=split_flag,
+            )
+            for cell_id in segment_cells:
+                if ordered_cells and ordered_cells[-1] == cell_id:
+                    continue
+                ordered_cells.append(cell_id)
+            if feedback:
+                done = part_i + (i + 1) / n_seg
+                feedback.setProgress(int(100 * done / n_parts))
 
-        # Calculate metrics
+    dggal_features = []
+    total_cells = len(ordered_cells)
+    original_attributes = feature.attributes()
+    original_fields = feature.fields()
+    new_fields = QgsFields()
+    new_fields.append(QgsField(f"dggal_{dggal_type}", QVariant.String))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+
+    for idx, cell_id in enumerate(ordered_cells):
+        if feedback and feedback.isCanceled():
+            return []
+        cell_polygon = dggal2geo(
+            dggal_type, cell_id, split_antimeridian=split_flag
+        )
+        if cell_polygon is None or cell_polygon.is_empty:
+            continue
+        zone = dggrs.getZoneFromTextID(cell_id)
+        cell_resolution = dggrs.getZoneLevel(zone)
+        num_edges = dggrs.countZoneEdges(zone)
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
             geodesic_dggs_metrics(cell_polygon, num_edges)
         )
-
-        # Create QGIS feature
         dggal_feature = QgsFeature()
-        dggal_feature.setGeometry(cell_geometry)
-
-        # Get all attributes from the input feature
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        # Define new DGGAL-related attributes
-        new_fields = QgsFields()
-        new_fields.append(QgsField(f"dggal_{dggal_type}", QVariant.String))
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-
-        # Combine original fields and new fields
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
+        dggal_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
         dggal_feature.setFields(all_fields)
-
-        # Combine original attributes with new attributes
-        new_attributes = [
-            zone_id,
-            cell_resolution,
-            center_lat,
-            center_lon,
-            avg_edge_len,
-            cell_area,
-            cell_perimeter,
-        ]
-        all_attributes = original_attributes + new_attributes
-
-        dggal_feature.setAttributes(all_attributes)
-
+        dggal_feature.setAttributes(
+            original_attributes
+            + [
+                cell_id,
+                cell_resolution,
+                center_lat,
+                center_lon,
+                avg_edge_len,
+                cell_area,
+                cell_perimeter,
+            ]
+        )
         dggal_features.append(dggal_feature)
-
-        if feedback and idx % 100 == 0:
-            feedback.setProgress(int(100 * idx / total_zones))
+        if feedback and total_cells and idx % 50 == 0:
+            feedback.setProgress(int(100 * idx / total_cells))
 
     if feedback:
         feedback.setProgress(100)
-
     return dggal_features
 
 
 def polygon2dggal(
-    dggal_type, feature, resolution, predicate=None, compact=None, feedback=None
+    dggal_type, feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     resolution = validate_dggal_resolution(dggal_type, resolution)
 
@@ -1461,7 +1489,7 @@ def polygon2dggal(
         cell_resolution = dggrs.getZoneLevel(zone)
 
         # Convert zone to geometry using dggal2geo
-        cell_polygon = dggal2geo(dggal_type, zone_id)
+        cell_polygon = dggal2geo(dggal_type, zone_id, split_antimeridian=use_split_antimeridian(shift_antimeridian, split_antimeridian))
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
         # Check predicate with the feature geometry
@@ -1524,12 +1552,24 @@ def polygon2dggal(
 
     # Apply compact mode if enabled
     if compact and dggal_features:
-        dggal_features = dggalcompact_from_qgsfeatures(dggal_features, feedback)
+        dggal_features = dggalcompact_from_qgsfeatures(
+            dggal_features,
+            feedback,
+            shift_antimeridian=shift_antimeridian,
+            split_antimeridian=split_antimeridian,
+            depth=_kwargs.get("depth", -1),
+        )
 
     return dggal_features
 
 
-def dggalcompact_from_qgsfeatures(qgs_features, feedback):
+def dggalcompact_from_qgsfeatures(
+    qgs_features,
+    feedback,
+    shift_antimeridian=False,
+    split_antimeridian=False,
+    depth=-1,
+):
     # Find the DGGAL field name from the fields
     original_fields = qgs_features[0].fields()
     dggal_field_name = None
@@ -1569,7 +1609,7 @@ def dggalcompact_from_qgsfeatures(qgs_features, feedback):
 
     dggal_ids = [f[dggal_field_name] for f in qgs_features if f[dggal_field_name]]
 
-    dggal_ids_compact = dggal_compact(dggal_type, dggal_ids)
+    dggal_ids_compact = dggal_compact(dggal_type, dggal_ids, depth=depth, verbose=False)
     dggal_features = []
     total_cells = len(dggal_ids_compact)
     if feedback:
@@ -1580,10 +1620,16 @@ def dggalcompact_from_qgsfeatures(qgs_features, feedback):
         if feedback and feedback.isCanceled():
             return []
         dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
-        dggrs = getattr(dggal, dggs_class_name)()
+        dggrs = globals()[dggs_class_name]()
         zone = dggrs.getZoneFromTextID(dggal_id_compact)
         num_edges = dggrs.countZoneEdges(zone)
-        cell_polygon = dggal2geo(dggal_type, dggal_id_compact)
+        cell_polygon = dggal2geo(
+            dggal_type,
+            dggal_id_compact,
+            split_antimeridian=use_split_antimeridian(
+                shift_antimeridian, split_antimeridian
+            ),
+        )
         cell_resolution = dggrs.getZoneLevel(zone)
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
             geodesic_dggs_metrics(cell_polygon, num_edges)
@@ -1627,19 +1673,19 @@ def dggalcompact_from_qgsfeatures(qgs_features, feedback):
 
 
 def qgsfeature2rhealpix(
-    feature, resolution, predicate=None, compact=None, feedback=None
+    feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     resolution = validate_rhealpix_resolution(resolution)
     gfeature_geom = feature.geometry()
     if gfeature_geom.wkbType() == QgsWkbTypes.Point:
-        return point2rhealpix(feature, resolution, feedback)
+        return point2rhealpix(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
     elif gfeature_geom.wkbType() == QgsWkbTypes.LineString:
-        return polyline2rhealpix(feature, resolution, None, None, feedback)
+        return polyline2rhealpix(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
     elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
-        return polygon2rhealpix(feature, resolution, predicate, compact, feedback)
+        return polygon2rhealpix(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
-def point2rhealpix(feature, resolution, feedback):
+def point2rhealpix(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
 
@@ -1653,7 +1699,7 @@ def point2rhealpix(feature, resolution, feedback):
         resolution, (longitude, latitude), plane=False
     )
     seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
-    seed_cell_polygon = rhealpix2geo(seed_cell_id)
+    seed_cell_polygon = geo_with_fix(rhealpix2geo, seed_cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
 
     num_edges = 4
     if seed_cell.ellipsoidal_shape() == "dart":
@@ -1707,7 +1753,7 @@ def point2rhealpix(feature, resolution, feedback):
     return [rhealpix_feature]
 
 
-def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedback=None):
+def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     rhealpix_features = []
 
     feature_geometry = feature.geometry()
@@ -1728,7 +1774,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
 
     seed_cell = rhealpix_dggs.cell_from_point(resolution, seed_point, plane=False)
     seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
-    seed_cell_polygon = rhealpix2geo(seed_cell_id)
+    seed_cell_polygon = geo_with_fix(rhealpix2geo, seed_cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
 
     if seed_cell_polygon.contains(bbox_polygon):
         num_edges = 4
@@ -1800,7 +1846,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
             covered_cells.add(current_cell_id)
 
             # Convert current cell to polygon
-            cell_polygon = rhealpix2geo(current_cell_id)
+            cell_polygon = geo_with_fix(rhealpix2geo, current_cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
             if not cell_polygon.intersects(bbox_polygon):
                 continue  # Get neighbors and add to queue
             neighbors = current_cell.neighbors(plane=False)
@@ -1821,7 +1867,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
 
             rhealpix_uids = (cell_id[0],) + tuple(map(int, cell_id[1:]))
             rhelpix_cell = rhealpix_dggs.cell(rhealpix_uids)
-            cell_polygon = rhealpix2geo(cell_id)
+            cell_polygon = geo_with_fix(rhealpix2geo, cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
 
             num_edges = 4
             if seed_cell.ellipsoidal_shape() == "dart":
@@ -1884,7 +1930,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
     return rhealpix_features
 
 
-def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     rhealpix_features = []
 
     feature_geometry = feature.geometry()
@@ -1905,7 +1951,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
 
     seed_cell = rhealpix_dggs.cell_from_point(resolution, seed_point, plane=False)
     seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
-    seed_cell_polygon = rhealpix2geo(seed_cell_id)
+    seed_cell_polygon = geo_with_fix(rhealpix2geo, seed_cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
 
     if seed_cell_polygon.contains(bbox_polygon):
         num_edges = 4
@@ -1977,7 +2023,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
             covered_cells.add(current_cell_id)
 
             # Convert current cell to polygon
-            cell_polygon = rhealpix2geo(current_cell_id)
+            cell_polygon = geo_with_fix(rhealpix2geo, current_cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
             if not cell_polygon.intersects(bbox_polygon):
                 continue
             # Get neighbors and add to queue
@@ -1999,7 +2045,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
 
             rhealpix_uids = (cell_id[0],) + tuple(map(int, cell_id[1:]))
             rhelpix_cell = rhealpix_dggs.cell(rhealpix_uids)
-            cell_polygon = rhealpix2geo(cell_id)
+            cell_polygon = geo_with_fix(rhealpix2geo, cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
             if not check_predicate(cell_polygon, shapely_geom, predicate):
                 continue
 
@@ -2063,7 +2109,9 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
                 f["rhealpix"] for f in rhealpix_features if f["rhealpix"]
             ]
             # Apply compact
-            cells_to_process = rhealpix_compact(cells_to_process)
+            cells_to_process = rhealpix_compact(
+                cells_to_process, depth=_kwargs.get("depth", -1), verbose=False
+            )
             # Rebuild rhealpix_features with compacted cells
             rhealpix_features = []
             total_cells = len(cells_to_process)
@@ -2077,7 +2125,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
 
                 rhealpix_uids = (cell_id[0],) + tuple(map(int, cell_id[1:]))
                 rhelpix_cell = rhealpix_dggs.cell(rhealpix_uids)
-                cell_polygon = rhealpix2geo(cell_id)
+                cell_polygon = geo_with_fix(rhealpix2geo, cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
 
                 # No need to re-check predicate for parent cells from compact mode
 
@@ -2146,26 +2194,26 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
 #######################
 
 
-def qgsfeature2isea4t(feature, resolution, predicate=None, compact=None, feedback=None):
+def qgsfeature2isea4t(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if platform.system() == "Windows":
         resolution = validate_isea4t_resolution(resolution)
         feature_geom = feature.geometry()
         if feature_geom.wkbType() == QgsWkbTypes.Point:
-            return point2isea4t(feature, resolution, feedback)
+            return point2isea4t(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
         elif feature_geom.wkbType() == QgsWkbTypes.LineString:
-            return polyline2isea4t(feature, resolution, None, None, feedback)
+            return polyline2isea4t(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
         elif feature_geom.wkbType() == QgsWkbTypes.Polygon:
-            return polygon2isea4t(feature, resolution, predicate, compact, feedback)
+            return polygon2isea4t(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
-def point2isea4t(feature, resolution, feedback):
+def point2isea4t(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
 
     feature_geometry = feature.geometry()
     point = feature_geometry.asPoint()
     isea4t_id = latlon2isea4t(point.y(), point.x(), resolution)
-    cell_polygon = isea4t2geo(isea4t_id)
+    cell_polygon = geo_with_fix(isea4t2geo, isea4t_id, "isea4t", shift_antimeridian, split_antimeridian)
 
     num_edges = 3
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
@@ -2217,7 +2265,7 @@ def point2isea4t(feature, resolution, feedback):
     return [isea4t_feature]
 
 
-def polyline2isea4t(feature, resolution, predicate=None, compact=None, feedback=None):
+def polyline2isea4t(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     isea4t_features = []
     feature_geometry = feature.geometry()
     shapely_geom = wkt_loads(feature_geometry.asWkt())
@@ -2244,7 +2292,9 @@ def polyline2isea4t(feature, resolution, predicate=None, compact=None, feedback=
     )
 
     if compact:
-        bounding_child_cells = isea4t_compact(bounding_child_cells)
+        bounding_child_cells = isea4t_compact(
+            bounding_child_cells, depth=_kwargs.get("depth", -1), verbose=False
+        )
 
     total_cells = len(bounding_child_cells)
 
@@ -2256,7 +2306,7 @@ def polyline2isea4t(feature, resolution, predicate=None, compact=None, feedback=
         if feedback and feedback.isCanceled():
             return []
         isea4t_id = child
-        cell_polygon = isea4t2geo(isea4t_id)
+        cell_polygon = geo_with_fix(isea4t2geo, isea4t_id, "isea4t", shift_antimeridian, split_antimeridian)
         if not check_predicate(cell_polygon, shapely_geom, "intersects"):
             continue
 
@@ -2318,7 +2368,7 @@ def polyline2isea4t(feature, resolution, predicate=None, compact=None, feedback=
     return isea4t_features
 
 
-def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     isea4t_features = []
     feature_geometry = feature.geometry()
     shapely_geom = wkt_loads(feature_geometry.asWkt())
@@ -2371,7 +2421,7 @@ def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=N
         if feedback and feedback.isCanceled():
             return []
         isea4t_id = child
-        cell_polygon = isea4t2geo(isea4t_id)
+        cell_polygon = geo_with_fix(isea4t2geo, isea4t_id, "isea4t", shift_antimeridian, split_antimeridian)
         if not check_predicate(cell_polygon, shapely_geom, predicate):
             continue
 
@@ -2412,7 +2462,9 @@ def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=N
     # Compact mode: apply after predicate filtering similar to vector2isea4t
     if compact and isea4t_features:
         cells_to_process = [f["isea4t"] for f in isea4t_features if f["isea4t"]]
-        cells_to_process = isea4t_compact(cells_to_process)
+        cells_to_process = isea4t_compact(
+            cells_to_process, depth=_kwargs.get("depth", -1), verbose=False
+        )
         compact_features = []
         total_cells = len(cells_to_process)
         if feedback:
@@ -2423,7 +2475,7 @@ def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=N
             if feedback and feedback.isCanceled():
                 return []
 
-            cell_polygon = isea4t2geo(cell_id)
+            cell_polygon = geo_with_fix(isea4t2geo, cell_id, "isea4t", shift_antimeridian, split_antimeridian)
             num_edges = 3
             cell_resolution = len(cell_id) - 2
             (
@@ -2465,25 +2517,25 @@ def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=N
 #######################
 # QgsFeatures to OpenEAGGR ISEA3H
 #######################
-def qgsfeature2isea3h(feature, resolution, predicate=None, compact=None, feedback=None):
+def qgsfeature2isea3h(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if platform.system() == "Windows":
         resolution = validate_isea3h_resolution(resolution)
         feature_geometry = feature.geometry()
         if feature_geometry.wkbType() == QgsWkbTypes.Point:
-            return point2isea3h(feature, resolution, feedback)
+            return point2isea3h(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
         elif feature_geometry.wkbType() == QgsWkbTypes.LineString:
-            return polyline2isea3h(feature, resolution, None, None, feedback)
+            return polyline2isea3h(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
         elif feature_geometry.wkbType() == QgsWkbTypes.Polygon:
-            return polygon2isea3h(feature, resolution, predicate, compact, feedback)
+            return polygon2isea3h(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
-def point2isea3h(feature, resolution, feedback):
+def point2isea3h(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
     feature_geometry = feature.geometry()
     point = feature_geometry.asPoint()
     isea3h_id = latlon2isea3h(point.y(), point.x(), resolution)
-    cell_polygon = isea3h2geo(isea3h_id)
+    cell_polygon = geo_with_fix(isea3h2geo, isea3h_id, "isea3h", shift_antimeridian, split_antimeridian)
 
     num_edges = 6
     cell_resolution = resolution
@@ -2538,7 +2590,7 @@ def point2isea3h(feature, resolution, feedback):
     return [isea3h_feature]
 
 
-def polyline2isea3h(feature, resolution, predicate=None, compact=None, feedback=None):
+def polyline2isea3h(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     isea3h_features = []
 
     feature_geometry = feature.geometry()
@@ -2575,7 +2627,7 @@ def polyline2isea3h(feature, resolution, predicate=None, compact=None, feedback=
             return []
         isea3h_cell = DggsCell(child)
         isea3h_id = isea3h_cell.get_cell_id()
-        cell_polygon = isea3h2geo(isea3h_id)
+        cell_polygon = geo_with_fix(isea3h2geo, isea3h_id, "isea3h", shift_antimeridian, split_antimeridian)
         if not check_predicate(cell_polygon, shapely_geom, "intersects"):
             continue
         isea3h2point = isea3h_dggs.convert_dggs_cell_to_point(isea3h_cell)
@@ -2637,7 +2689,7 @@ def polyline2isea3h(feature, resolution, predicate=None, compact=None, feedback=
     return isea3h_features
 
 
-def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     isea3h_features = []
 
     feature_geometry = feature.geometry()
@@ -2692,7 +2744,7 @@ def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=N
             return []
         isea3h_cell = DggsCell(child)
         isea3h_id = isea3h_cell.get_cell_id()
-        cell_polygon = isea3h2geo(isea3h_id)
+        cell_polygon = geo_with_fix(isea3h2geo, isea3h_id, "isea3h", shift_antimeridian, split_antimeridian)
         if not check_predicate(cell_polygon, shapely_geom, predicate):
             continue
         isea3h2point = isea3h_dggs.convert_dggs_cell_to_point(isea3h_cell)
@@ -2734,7 +2786,9 @@ def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=N
     # Compact mode: apply after predicate filtering similar to vector2isea3h
     if compact and isea3h_features:
         cells_to_process = [f["isea3h"] for f in isea3h_features if f["isea3h"]]
-        cells_to_process = isea3h_compact(cells_to_process)
+        cells_to_process = isea3h_compact(
+            cells_to_process, depth=_kwargs.get("depth", -1), verbose=False
+        )
         compact_features = []
         total_cells = len(cells_to_process)
         if feedback:
@@ -2745,7 +2799,7 @@ def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=N
             if feedback and feedback.isCanceled():
                 return []
 
-            cell_polygon = isea3h2geo(cell_id)
+            cell_polygon = geo_with_fix(isea3h2geo, cell_id, "isea3h", shift_antimeridian, split_antimeridian)
             isea3h_cell = DggsCell(cell_id)
             isea3h2point = isea3h_dggs.convert_dggs_cell_to_point(isea3h_cell)
             cell_accuracy = isea3h2point._accuracy
@@ -2788,18 +2842,18 @@ def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=N
 #######################
 
 
-def qgsfeature2qtm(feature, resolution, predicate=None, compact=None, feedback=None):
+def qgsfeature2qtm(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     resolution = validate_qtm_resolution(resolution)
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2qtm(feature, resolution, feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return polyline2qtm(feature, resolution, None, None, feedback)
+        return polyline2qtm(feature, resolution, None, None, feedback, **_kwargs)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return polygon2qtm(feature, resolution, predicate, compact, feedback)
+        return polygon2qtm(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
-def point2qtm(feature, resolution, feedback):
+def point2qtm(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
     feature_geometry = feature.geometry()
@@ -2855,12 +2909,12 @@ def point2qtm(feature, resolution, feedback):
     return [qtm_feature]
 
 
-def qtmcompact_from_qgsfeatures(qgs_features, feedback):
+def qtmcompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
     original_fields = qgs_features[0].fields()
 
     qtm_ids = [f["qtm"] for f in qgs_features if f["qtm"]]
 
-    qtm_ids_compact = qtm_compact(qtm_ids)
+    qtm_ids_compact = qtm_compact(qtm_ids, depth=depth, verbose=False)
     qtm_features = []
     total_cells = len(qtm_ids_compact)
     if feedback:
@@ -2899,7 +2953,7 @@ def qtmcompact_from_qgsfeatures(qgs_features, feedback):
     return qtm_features
 
 
-def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=None):
+def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     qtm_features = []
 
     feature_geometry = feature.geometry()
@@ -3046,12 +3100,14 @@ def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=Non
         feedback.setProgress(100)
 
     if compact:
-        qtm_features = qtmcompact_from_qgsfeatures(qtm_features, feedback)
+        qtm_features = qtmcompact_from_qgsfeatures(
+            qtm_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return qtm_features
 
 
-def polygon2qtm(feature, resolution, predicate, compact, feedback):
+def polygon2qtm(feature, resolution, predicate, compact, feedback, **_kwargs):
     qtm_features = []
 
     feature_geometry = feature.geometry()
@@ -3199,7 +3255,9 @@ def polygon2qtm(feature, resolution, predicate, compact, feedback):
         feedback.setProgress(100)
 
     if compact:
-        qtm_features = qtmcompact_from_qgsfeatures(qtm_features, feedback)
+        qtm_features = qtmcompact_from_qgsfeatures(
+            qtm_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return qtm_features
 
@@ -3207,18 +3265,18 @@ def polygon2qtm(feature, resolution, predicate, compact, feedback):
 #######################
 # QgsFeatures to OLC
 #######################
-def qgsfeature2olc(feature, resolution, predicate=None, compact=None, feedback=None):
+def qgsfeature2olc(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     resolution = validate_olc_resolution(resolution)
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2olc(feature, resolution, feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return polyline2olc(feature, resolution, None, None, feedback)
+        return polyline2olc(feature, resolution, None, None, feedback, **_kwargs)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return polygon2olc(feature, resolution, predicate, compact, feedback)
+        return polygon2olc(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
-def point2olc(feature, resolution, feedback):
+def point2olc(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
 
@@ -3274,10 +3332,10 @@ def point2olc(feature, resolution, feedback):
     return [olc_feature]
 
 
-def olccompact_from_qgsfeatures(qgs_features, feedback):
+def olccompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
     original_fields = qgs_features[0].fields()
     olc_ids = [f["olc"] for f in qgs_features if f["olc"]]
-    olc_ids_compact = olc_compact(olc_ids)
+    olc_ids_compact = olc_compact(olc_ids, depth=depth, verbose=False)
     olc_features = []
 
     total_cells = len(olc_ids_compact)
@@ -3380,7 +3438,7 @@ def generate_olc_grid(resolution):
     return {"type": "FeatureCollection", "features": olc_features}
 
 
-def polyline2olc(feature, resolution, predicate=None, compact=None, feedback=None):
+def polyline2olc(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     olc_features = []
 
     feature_geometry = feature.geometry()
@@ -3529,12 +3587,14 @@ def polyline2olc(feature, resolution, predicate=None, compact=None, feedback=Non
         feedback.setProgress(100)
 
     if compact:
-        olc_features = olccompact_from_qgsfeatures(olc_features, feedback)
+        olc_features = olccompact_from_qgsfeatures(
+            olc_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return olc_features
 
 
-def polygon2olc(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2olc(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     olc_features = []
 
     feature_geometry = feature.geometry()
@@ -3682,7 +3742,9 @@ def polygon2olc(feature, resolution, predicate=None, compact=None, feedback=None
         feedback.setProgress(100)
 
     if compact:
-        olc_features = olccompact_from_qgsfeatures(olc_features, feedback)
+        olc_features = olccompact_from_qgsfeatures(
+            olc_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return olc_features
 
@@ -3691,19 +3753,19 @@ def polygon2olc(feature, resolution, predicate=None, compact=None, feedback=None
 # QgsFeatures to Geohash
 #######################
 def qgsfeature2geohash(
-    feature, resolution, predicate=None, compact=None, feedback=None
+    feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     resolution = validate_geohash_resolution(resolution)
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2geohash(feature, resolution, feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return polyline2geohash(feature, resolution, None, None, feedback)
+        return polyline2geohash(feature, resolution, None, None, feedback, **_kwargs)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return polygon2geohash(feature, resolution, predicate, compact, feedback)
+        return polygon2geohash(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
-def point2geohash(feature, resolution, feedback):
+def point2geohash(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
 
@@ -3760,12 +3822,12 @@ def point2geohash(feature, resolution, feedback):
     return [geohash_feature]
 
 
-def geohashcompact_from_qgsfeatures(qgs_features, feedback):
+def geohashcompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
     original_fields = qgs_features[0].fields()
 
     geohash_ids = [f["geohash"] for f in qgs_features if f["geohash"]]
 
-    geohash_ids_compact = geohash_compact(geohash_ids)
+    geohash_ids_compact = geohash_compact(geohash_ids, depth=depth, verbose=False)
     geohash_features = []
 
     total_cells = len(geohash_ids_compact)
@@ -3807,7 +3869,7 @@ def geohashcompact_from_qgsfeatures(qgs_features, feedback):
     return geohash_features
 
 
-def polyline2geohash(feature, resolution, predicate=None, compact=None, feedback=None):
+def polyline2geohash(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     geohash_features = []
     feature_geometry = feature.geometry()
     feature_shapely = wkt_loads(feature_geometry.asWkt())
@@ -3894,12 +3956,14 @@ def polyline2geohash(feature, resolution, predicate=None, compact=None, feedback
         feedback.setProgress(100)
 
     if compact:
-        geohash_features = geohashcompact_from_qgsfeatures(geohash_features, feedback)
+        geohash_features = geohashcompact_from_qgsfeatures(
+            geohash_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return geohash_features
 
 
-def polygon2geohash(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2geohash(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     geohash_features = []
     feature_geometry = feature.geometry()
     feature_shapely = wkt_loads(feature_geometry.asWkt())
@@ -3985,7 +4049,9 @@ def polygon2geohash(feature, resolution, predicate=None, compact=None, feedback=
         feedback.setProgress(100)
 
     if compact:
-        geohash_features = geohashcompact_from_qgsfeatures(geohash_features, feedback)
+        geohash_features = geohashcompact_from_qgsfeatures(
+            geohash_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return geohash_features
 
@@ -3994,19 +4060,19 @@ def polygon2geohash(feature, resolution, predicate=None, compact=None, feedback=
 # QgsFeatures to Tilecode
 #######################
 def qgsfeature2tilecode(
-    feature, resolution, predicate=None, compact=None, feedback=None
+    feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     resolution = validate_tilecode_resolution(resolution)
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2tilecode(feature, resolution, feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return polyline2tilecode(feature, resolution, None, None, feedback)
+        return polyline2tilecode(feature, resolution, None, None, feedback, **_kwargs)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return polygon2tilecode(feature, resolution, predicate, compact, feedback)
+        return polygon2tilecode(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
-def point2tilecode(feature, resolution, feedback):
+def point2tilecode(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
 
@@ -4067,12 +4133,12 @@ def point2tilecode(feature, resolution, feedback):
     return [tilecode_feature]
 
 
-def tilecodecompact_from_qgsfeatures(qgs_features, feedback):
+def tilecodecompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
     original_fields = qgs_features[0].fields()
 
     tilecode_ids = [f["tilecode"] for f in qgs_features if f["tilecode"]]
 
-    tilecode_ids_compact = tilecode_compact(tilecode_ids)
+    tilecode_ids_compact = tilecode_compact(tilecode_ids, depth=depth, verbose=False)
     tilecode_features = []
     total_cells = len(tilecode_ids_compact)
 
@@ -4139,110 +4205,123 @@ def tilecodecompact_from_qgsfeatures(qgs_features, feedback):
     return tilecode_features
 
 
-def polyline2tilecode(feature, resolution, predicate=None, compact=None, feedback=None):
-    tilecode_features = []
-    feature_geometry = feature.geometry()
-    feature_rect = feature_geometry.boundingBox()
-    min_x = feature_rect.xMinimum()
-    min_y = feature_rect.yMinimum()
-    max_x = feature_rect.xMaximum()
-    max_y = feature_rect.yMaximum()
+def polyline2tilecode(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
+    """
+    Convert a polyline feature to Tilecode cells.
 
-    tiles = list(mercantile.tiles(min_x, min_y, max_x, max_y, resolution))
-    total_cells = len(tiles)
+    Mirrors ``vgrid.conversion.vector2dggs.vector2tilecode.polyline2tilecode``:
+    strip duplicate/collinear vertices, then walk intersecting edge
+    neighbors along each segment until the endpoint cell is reached.
+    """
+    if feature is None:
+        return []
+
+    if feedback and feedback.isCanceled():
+        return []
+
+    feature_geometry = feature.geometry()
+    shapely_geom = wkt_loads(feature_geometry.asWkt())
+    if shapely_geom.geom_type == "LineString":
+        polylines = [shapely_geom]
+    elif shapely_geom.geom_type == "MultiLineString":
+        polylines = list(shapely_geom.geoms)
+    else:
+        return []
 
     if feedback:
         feedback.pushInfo(f"Processing feature {feature.id()}")
         feedback.setProgress(0)
 
-    for i, tile in enumerate(tiles):
+    tilecode_features = []
+    original_attributes = feature.attributes()
+    original_fields = feature.fields()
+    new_fields = QgsFields()
+    new_fields.append(QgsField("tilecode", QVariant.String))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("cell_width", QVariant.Double))
+    new_fields.append(QgsField("cell_height", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+
+    n_parts = len(polylines)
+    for part_i, polyline in enumerate(polylines):
         if feedback and feedback.isCanceled():
             return []
-        z, x, y = tile.z, tile.x, tile.y
-        tilecode_id = f"z{tile.z}x{tile.x}y{tile.y}"
-        bounds = mercantile.bounds(x, y, z)
-        # Create the bounding box coordinates for the polygon
-        min_lat, min_lon = bounds.south, bounds.west
-        max_lat, max_lon = bounds.north, bounds.east
-
-        cell_polygon = Polygon(
-            [
-                [min_lon, min_lat],  # Bottom-left corner
-                [max_lon, min_lat],  # Bottom-right corner
-                [max_lon, max_lat],  # Top-right corner
-                [min_lon, max_lat],  # Top-left corner
-                [min_lon, min_lat],  # Closing the polygon (same as the first point)
-            ]
-        )
-
-        # if cell_polygon.intersects(feature):
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-        if not check_predicate(cell_geometry, feature_geometry, "intersects"):
+        coords = strip_duplicate_and_collinear_vertices(polyline)
+        if len(coords) < 2:
             continue
 
-        # Create a single QGIS feature
-        tilecode_feature = QgsFeature()
-        tilecode_feature.setGeometry(cell_geometry)
+        ordered_cells = []
+        n_seg = len(coords) - 1
+        for i in range(n_seg):
+            if feedback and feedback.isCanceled():
+                return []
+            segment_cells = _tilecode_segment_cells(
+                resolution,
+                coords[i],
+                coords[i + 1],
+            )
+            for cell_id in segment_cells:
+                if ordered_cells and ordered_cells[-1] == cell_id:
+                    continue
+                ordered_cells.append(cell_id)
+            if feedback:
+                done = part_i + (i + 1) / n_seg
+                feedback.setProgress(int(50 * done / n_parts))
 
-        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
-        )
-        resolution = tile.z
-
-        # Get all attributes from the input feature
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        # Define new H3-related attributes
-        new_fields = QgsFields()
-        new_fields.append(QgsField("tilecode", QVariant.String))
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("cell_width", QVariant.Double))
-        new_fields.append(QgsField("cell_height", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-        # Combine original fields and new fields
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
-        tilecode_feature.setFields(all_fields)
-
-        # Combine original attributes with new attributes
-        new_attributes = [
-            tilecode_id,
-            resolution,
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ]
-        all_attributes = original_attributes + new_attributes
-
-        tilecode_feature.setAttributes(all_attributes)
-
-        tilecode_features.append(tilecode_feature)
-        if feedback and i % 100 == 0:
-            feedback.setProgress(int(100 * i / total_cells))
+        total_cells = len(ordered_cells)
+        for idx, cell_id in enumerate(ordered_cells):
+            if feedback and feedback.isCanceled():
+                return []
+            cell_polygon = tilecode2geo(cell_id)
+            if cell_polygon is None:
+                continue
+            match = re.match(r"z(\d+)x(\d+)y(\d+)", cell_id)
+            cell_resolution = int(match.group(1)) if match else resolution
+            center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+                graticule_dggs_metrics(cell_polygon)
+            )
+            tilecode_feature = QgsFeature()
+            tilecode_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+            tilecode_feature.setFields(all_fields)
+            tilecode_feature.setAttributes(
+                original_attributes
+                + [
+                    cell_id,
+                    cell_resolution,
+                    center_lat,
+                    center_lon,
+                    cell_width,
+                    cell_height,
+                    cell_area,
+                    cell_perimeter,
+                ]
+            )
+            tilecode_features.append(tilecode_feature)
+            if feedback and total_cells and idx % 50 == 0:
+                feedback.setProgress(
+                    int(50 + 50 * (part_i + (idx + 1) / total_cells) / n_parts)
+                )
 
     if feedback:
         feedback.setProgress(100)
 
-    if compact:
+    if compact and tilecode_features:
         tilecode_features = tilecodecompact_from_qgsfeatures(
-            tilecode_features, feedback
+            tilecode_features, feedback, depth=_kwargs.get("depth", -1)
         )
 
     return tilecode_features
 
 
-def polygon2tilecode(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2tilecode(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     tilecode_features = []
     feature_geometry = feature.geometry()
     feature_rect = feature_geometry.boundingBox()
@@ -4339,7 +4418,7 @@ def polygon2tilecode(feature, resolution, predicate=None, compact=None, feedback
 
     if compact:
         tilecode_features = tilecodecompact_from_qgsfeatures(
-            tilecode_features, feedback
+            tilecode_features, feedback, depth=_kwargs.get("depth", -1)
         )
 
     return tilecode_features
@@ -4349,19 +4428,19 @@ def polygon2tilecode(feature, resolution, predicate=None, compact=None, feedback
 # QgsFeatures to Quadkey
 #######################
 def qgsfeature2quadkey(
-    feature, resolution, predicate=None, compact=None, feedback=None
+    feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     resolution = validate_quadkey_resolution(resolution)
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2quadkey(feature, resolution, feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return polyline2quadkey(feature, resolution, None, None, feedback)
+        return polyline2quadkey(feature, resolution, None, None, feedback, **_kwargs)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return polygon2quadkey(feature, resolution, predicate, compact, feedback)
+        return polygon2quadkey(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
-def point2quadkey(feature, resolution, feedback):
+def point2quadkey(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
 
@@ -4421,12 +4500,12 @@ def point2quadkey(feature, resolution, feedback):
     return [quadkey_feature]
 
 
-def quadkeycompact_from_qgsfeatures(qgs_features, feedback):
+def quadkeycompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
     original_fields = qgs_features[0].fields()
 
     quadkey_ids = [f["quadkey"] for f in qgs_features if f["quadkey"]]
 
-    quadkey_ids_compact = quadkey_compact(quadkey_ids)
+    quadkey_ids_compact = quadkey_compact(quadkey_ids, depth=depth, verbose=False)
     quadkey_features = []
 
     total_cells = len(quadkey_ids_compact)
@@ -4488,104 +4567,122 @@ def quadkeycompact_from_qgsfeatures(qgs_features, feedback):
     return quadkey_features
 
 
-def polyline2quadkey(feature, resolution, predicate=None, compact=None, feedback=None):
-    quadkey_features = []
-    feature_geometry = feature.geometry()
-    feature_rect = feature_geometry.boundingBox()
-    min_x = feature_rect.xMinimum()
-    min_y = feature_rect.yMinimum()
-    max_x = feature_rect.xMaximum()
-    max_y = feature_rect.yMaximum()
+def polyline2quadkey(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
+    """
+    Convert a polyline feature to Quadkey cells.
 
-    tiles = list(mercantile.tiles(min_x, min_y, max_x, max_y, resolution))
-    total_cells = len(tiles)
+    Mirrors ``vgrid.conversion.vector2dggs.vector2quadkey.polyline2quadkey``:
+    strip duplicate/collinear vertices, then walk intersecting edge
+    neighbors along each segment until the endpoint cell is reached.
+    """
+    if feature is None:
+        return []
+
+    if feedback and feedback.isCanceled():
+        return []
+
+    feature_geometry = feature.geometry()
+    shapely_geom = wkt_loads(feature_geometry.asWkt())
+    if shapely_geom.geom_type == "LineString":
+        polylines = [shapely_geom]
+    elif shapely_geom.geom_type == "MultiLineString":
+        polylines = list(shapely_geom.geoms)
+    else:
+        return []
 
     if feedback:
         feedback.pushInfo(f"Processing feature {feature.id()}")
         feedback.setProgress(0)
 
-    for i, tile in enumerate(tiles):
+    quadkey_features = []
+    original_attributes = feature.attributes()
+    original_fields = feature.fields()
+    new_fields = QgsFields()
+    new_fields.append(QgsField("quadkey", QVariant.String))
+    new_fields.append(QgsField("resolution", QVariant.Int))
+    new_fields.append(QgsField("center_lat", QVariant.Double))
+    new_fields.append(QgsField("center_lon", QVariant.Double))
+    new_fields.append(QgsField("cell_width", QVariant.Double))
+    new_fields.append(QgsField("cell_height", QVariant.Double))
+    new_fields.append(QgsField("cell_area", QVariant.Double))
+    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
+    all_fields = QgsFields()
+    for field in original_fields:
+        all_fields.append(field)
+    for field in new_fields:
+        all_fields.append(field)
+
+    n_parts = len(polylines)
+    for part_i, polyline in enumerate(polylines):
         if feedback and feedback.isCanceled():
             return []
-        z, x, y = tile.z, tile.x, tile.y
-        quadkey_id = mercantile.quadkey(tile)
-        bounds = mercantile.bounds(x, y, z)
-        # Create the bounding box coordinates for the polygon
-        min_lat, min_lon = bounds.south, bounds.west
-        max_lat, max_lon = bounds.north, bounds.east
-
-        cell_polygon = Polygon(
-            [
-                [min_lon, min_lat],  # Bottom-left corner
-                [max_lon, min_lat],  # Bottom-right corner
-                [max_lon, max_lat],  # Top-right corner
-                [min_lon, max_lat],  # Top-left corner
-                [min_lon, min_lat],  # Closing the polygon (same as the first point)
-            ]
-        )
-
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
-        # Predicate-based filtering
-        if not check_predicate(cell_geometry, feature_geometry, "intersects"):
+        coords = strip_duplicate_and_collinear_vertices(polyline)
+        if len(coords) < 2:
             continue
 
-        quadkey_feature = QgsFeature()
-        quadkey_feature.setGeometry(cell_geometry)
+        ordered_cells = []
+        n_seg = len(coords) - 1
+        for i in range(n_seg):
+            if feedback and feedback.isCanceled():
+                return []
+            segment_cells = _quadkey_segment_cells(
+                resolution,
+                coords[i],
+                coords[i + 1],
+            )
+            for cell_id in segment_cells:
+                if ordered_cells and ordered_cells[-1] == cell_id:
+                    continue
+                ordered_cells.append(cell_id)
+            if feedback:
+                done = part_i + (i + 1) / n_seg
+                feedback.setProgress(int(50 * done / n_parts))
 
-        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
-        )
-        cell_resolution = tile.z
-
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        new_fields = QgsFields()
-        new_fields.append(QgsField("quadkey", QVariant.String))
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("cell_width", QVariant.Double))
-        new_fields.append(QgsField("cell_height", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
-        quadkey_feature.setFields(all_fields)
-
-        new_attributes = [
-            quadkey_id,
-            cell_resolution,
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ]
-        all_attributes = original_attributes + new_attributes
-
-        quadkey_feature.setAttributes(all_attributes)
-
-        quadkey_features.append(quadkey_feature)
-
-        if feedback and i % 100 == 0:
-            feedback.setProgress(int(100 * i / total_cells))
+        total_cells = len(ordered_cells)
+        for idx, cell_id in enumerate(ordered_cells):
+            if feedback and feedback.isCanceled():
+                return []
+            cell_polygon = quadkey2geo(cell_id)
+            if cell_polygon is None:
+                continue
+            cell_resolution = len(cell_id)
+            center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
+                graticule_dggs_metrics(cell_polygon)
+            )
+            quadkey_feature = QgsFeature()
+            quadkey_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+            quadkey_feature.setFields(all_fields)
+            quadkey_feature.setAttributes(
+                original_attributes
+                + [
+                    cell_id,
+                    cell_resolution,
+                    center_lat,
+                    center_lon,
+                    cell_width,
+                    cell_height,
+                    cell_area,
+                    cell_perimeter,
+                ]
+            )
+            quadkey_features.append(quadkey_feature)
+            if feedback and total_cells and idx % 50 == 0:
+                feedback.setProgress(
+                    int(50 + 50 * (part_i + (idx + 1) / total_cells) / n_parts)
+                )
 
     if feedback:
         feedback.setProgress(100)
 
-    if compact:
-        quadkey_features = quadkeycompact_from_qgsfeatures(quadkey_features, feedback)
+    if compact and quadkey_features:
+        quadkey_features = quadkeycompact_from_qgsfeatures(
+            quadkey_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return quadkey_features
 
 
-def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     quadkey_features = []
     feature_geometry = feature.geometry()
     feature_rect = feature_geometry.boundingBox()
@@ -4678,7 +4775,9 @@ def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=
         feedback.setProgress(100)
 
     if compact:
-        quadkey_features = quadkeycompact_from_qgsfeatures(quadkey_features, feedback)
+        quadkey_features = quadkeycompact_from_qgsfeatures(
+            quadkey_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return quadkey_features
 
@@ -4689,19 +4788,19 @@ def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=
 
 
 def qgsfeature2digipin(
-    feature, resolution, predicate=None, compact=None, feedback=None
+    feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     resolution = validate_digipin_resolution(resolution)
     geometry = feature.geometry()
     if geometry.wkbType() == QgsWkbTypes.Point:
         return point2digipin(feature, resolution, feedback)
     elif geometry.wkbType() == QgsWkbTypes.LineString:
-        return polyline2digipin(feature, resolution, None, None, feedback)
+        return polyline2digipin(feature, resolution, None, None, feedback, **_kwargs)
     elif geometry.wkbType() == QgsWkbTypes.Polygon:
-        return polygon2digipin(feature, resolution, predicate, compact, feedback)
+        return polygon2digipin(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
-def point2digipin(feature, resolution, feedback):
+def point2digipin(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
 
@@ -4759,12 +4858,12 @@ def point2digipin(feature, resolution, feedback):
     return [digipin_feature]
 
 
-def digipincompact_from_qgsfeatures(qgs_features, feedback):
+def digipincompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
     original_fields = qgs_features[0].fields()
 
     digipin_ids = [f["digipin"] for f in qgs_features if f["digipin"]]
 
-    digipin_ids_compact = digipin_compact(digipin_ids)
+    digipin_ids_compact = digipin_compact(digipin_ids, depth=depth, verbose=False)
     digipin_features = []
 
     total_cells = len(digipin_ids_compact)
@@ -4808,7 +4907,7 @@ def digipincompact_from_qgsfeatures(qgs_features, feedback):
     return digipin_features
 
 
-def polyline2digipin(feature, resolution, predicate=None, compact=None, feedback=None):
+def polyline2digipin(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     digipin_features = []
     feature_geometry = feature.geometry()
     feature_rect = feature_geometry.boundingBox()
@@ -4932,12 +5031,14 @@ def polyline2digipin(feature, resolution, predicate=None, compact=None, feedback
         feedback.setProgress(100)
 
     if compact:
-        digipin_features = digipincompact_from_qgsfeatures(digipin_features, feedback)
+        digipin_features = digipincompact_from_qgsfeatures(
+            digipin_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return digipin_features
 
 
-def polygon2digipin(feature, resolution, predicate=None, compact=None, feedback=None):
+def polygon2digipin(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     digipin_features = []
     feature_geometry = feature.geometry()
     feature_rect = feature_geometry.boundingBox()
@@ -5065,7 +5166,9 @@ def polygon2digipin(feature, resolution, predicate=None, compact=None, feedback=
         feedback.setProgress(100)
 
     if compact:
-        digipin_features = digipincompact_from_qgsfeatures(digipin_features, feedback)
+        digipin_features = digipincompact_from_qgsfeatures(
+            digipin_features, feedback, depth=_kwargs.get("depth", -1)
+        )
 
     return digipin_features
 
@@ -5161,7 +5264,7 @@ def _dggrid_gdf_to_qgs_features(gdf, field_name, resolution, input_feature, feed
 
 
 def qgsfeature2dggrid(
-    dggs_type, feature, resolution, predicate=None, compact=None, feedback=None
+    dggs_type, feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, aggregate=False, **_kwargs
 ):
     resolution = validate_dggrid_resolution(dggs_type, resolution)
     dggrid_instance = get_plugin_dggrid_instance()
@@ -5186,6 +5289,8 @@ def qgsfeature2dggrid(
         predicate=predicate,
         output_address_type="SEQNUM",
         options=dggrid_options,
+        split_antimeridian=split_antimeridian,
+        aggregate=aggregate,
     )
 
     return _dggrid_gdf_to_qgs_features(gdf, field_name, resolution, feature, feedback)

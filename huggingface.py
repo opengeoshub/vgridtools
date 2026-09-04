@@ -60,7 +60,7 @@ def _default_h3_resolution():
 
         return int(settings.h3Res)
     except Exception:
-        return 7
+        return 5
 
 
 def _parse_h3_resolution(text):

@@ -31,18 +31,26 @@ from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
+from vgrid.conversion.dggscompact.h3compact import h3_expand
+from vgrid.conversion.dggscompact.s2compact import s2_expand
 from vgrid.conversion.dggscompact.a5compact import a5_expand
 from vgrid.conversion.dggscompact.rhealpixcompact import (
     get_rhealpix_resolution,
     rhealpix_expand,
 )
-from vgrid.conversion.dggscompact.isea4tcompact import isea4t_expand
+from vgrid.conversion.dggscompact.isea4tcompact import (
+    get_isea4t_resolution,
+    isea4t_expand,
+)
 from vgrid.conversion.dggscompact.isea3hcompact import isea3h_expand
-from vgrid.conversion.dggscompact.qtmcompact import qtm_expand
+from vgrid.conversion.dggscompact.qtmcompact import get_qtm_resolution, qtm_expand
 from vgrid.conversion.dggs2geo.qtm2geo import qtm2geo
-from vgrid.conversion.dggscompact.olccompact import olc_expand
+from vgrid.conversion.dggscompact.olccompact import get_olc_resolution, olc_expand
 from vgrid.conversion.dggs2geo.olc2geo import olc2geo
-from vgrid.conversion.dggscompact.geohashcompact import geohash_expand
+from vgrid.conversion.dggscompact.geohashcompact import (
+    get_geohash_resolution,
+    geohash_expand,
+)
 from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.conversion.dggscompact.tilecodecompact import tilecode_expand
 from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
@@ -53,6 +61,8 @@ from vgrid.conversion.dggs2geo.dggal2geo import dggal2geo
 from vgrid.conversion.dggscompact.digipincompact import digipin_expand
 from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
 from vgrid.utils.constants import DGGAL_TYPES
+from vgrid.dggs.tilecode import quadkey_resolution, tilecode_resolution
+from vgrid.dggs.digipin import digipin_resolution
 from dggal import *
 
 from pyproj import Geod
@@ -65,6 +75,26 @@ from ..antimeridian_helper import (
 geod = Geod(ellps="WGS84")
 
 
+def _expand_resolution_depth(resolution, depth):
+    """Map QGIS sentinels to vgrid expand kwargs (resolution wins when set)."""
+    res = None if resolution is None or int(resolution) < 0 else int(resolution)
+    d = None if depth is None or int(depth) < 1 else int(depth)
+    if res is None and d is None:
+        raise QgsProcessingException(
+            "Specify Resolution (>= 0) or Expand depth (>= 1). "
+            "When Resolution is set, depth is ignored."
+        )
+    return res, d
+
+
+def _report_expand_res_too_coarse(feedback, resolution, max_res):
+    if feedback:
+        feedback.reportError(
+            f"Target expand resolution ({resolution}) must >= {max_res}."
+        )
+    return None
+
+
 ##########################
 # H3
 #########################
@@ -75,6 +105,7 @@ def h3expand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not H3ID_field:
         H3ID_field = "h3"
@@ -100,14 +131,16 @@ def h3expand(
 
     if h3_ids:
         try:
-            max_res = max(h3.get_resolution(h3_id) for h3_id in h3_ids)
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )
-                    return None
-            h3_ids_expand = h3.uncompact_cells(h3_ids, resolution)
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                max_res = max(h3.get_resolution(h3_id) for h3_id in h3_ids)
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            h3_ids_expand = h3_expand(
+                h3_ids, resolution=res, depth=d, verbose=False
+            )
+        except QgsProcessingException:
+            raise
         except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your H3 cell Ids."
@@ -143,7 +176,7 @@ def h3expand(
 
             attributes = {
                 "h3": h3_id_expand,
-                "resolution": resolution,
+                "resolution": h3.get_resolution(h3_id_expand),
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "avg_edge_len": avg_edge_len,
@@ -170,6 +203,7 @@ def s2expand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not S2Token_field:
         S2Token_field = "s2"
@@ -192,30 +226,26 @@ def s2expand(
         for feature in s2_layer.getFeatures()
         if feature[S2Token_field]
     ]
+    s2_tokens = list(set(s2_tokens))
+    s2_tokens_expand = []
 
-    try:
-        s2_ids = [s2.CellId.from_token(token) for token in s2_tokens]
-        s2_ids = list(set(s2_ids))
-        if s2_ids:
-            max_res = max(s2_id.level() for s2_id in s2_ids)
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )
-                    return None
-            expanded_cells = []
-            for s2_id in s2_ids:
-                if s2_id.level() >= resolution:
-                    expanded_cells.append(s2_id)
-                else:
-                    expanded_cells.extend(s2_id.children(resolution))
-            s2_tokens_expand = [cell_id.to_token() for cell_id in expanded_cells]
-
-    except BaseException:
-        raise QgsProcessingException(
-            "Expand cells failed. Please check your S2 Tokens."
-        )
+    if s2_tokens:
+        try:
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                s2_ids = [s2.CellId.from_token(token) for token in s2_tokens]
+                max_res = max(s2_id.level() for s2_id in s2_ids)
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            s2_tokens_expand = s2_expand(
+                s2_tokens, resolution=res, depth=d, verbose=False
+            )
+        except QgsProcessingException:
+            raise
+        except BaseException:
+            raise QgsProcessingException(
+                "Expand cells failed. Please check your S2 Tokens."
+            )
 
     total_cells = len(s2_tokens_expand)
 
@@ -247,7 +277,7 @@ def s2expand(
 
         attributes = {
             "s2": s2_token_expand,
-            "resolution": resolution,
+            "resolution": s2.CellId.from_token(s2_token_expand).level(),
             "center_lat": center_lat,
             "center_lon": center_lon,
             "avg_edge_len": avg_edge_len,
@@ -274,6 +304,7 @@ def a5expand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not A5ID_field:
         A5ID_field = "a5"
@@ -298,16 +329,18 @@ def a5expand(
 
     if a5_hexes:
         try:
-            max_res = max(
-                a5.get_resolution(a5.hex_to_u64(a5_hex)) for a5_hex in a5_hexes
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                max_res = max(
+                    a5.get_resolution(a5.hex_to_u64(a5_hex)) for a5_hex in a5_hexes
+                )
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            a5_hexes_expand = a5_expand(
+                a5_hexes, resolution=res, depth=d, verbose=False
             )
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )
-                    return None
-            a5_hexes_expand = a5_expand(a5_hexes, resolution)
+        except QgsProcessingException:
+            raise
         except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your A5 cell Ids."
@@ -342,7 +375,7 @@ def a5expand(
 
             attributes = {
                 "a5": a5_hex_expand,
-                "resolution": resolution,
+                "resolution": a5.get_resolution(a5.hex_to_u64(a5_hex_expand)),
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "avg_edge_len": avg_edge_len,
@@ -369,6 +402,7 @@ def rhealpixexpand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not rHealPixID_field:
         rHealPixID_field = "rhealpix"
@@ -396,26 +430,21 @@ def rhealpixexpand(
 
     if rhealpix_ids:
         try:
-            max_res = max(
-                get_rhealpix_resolution(rhealpix_id) for rhealpix_id in rhealpix_ids
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                max_res = max(
+                    get_rhealpix_resolution(rhealpix_id) for rhealpix_id in rhealpix_ids
+                )
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            rhealpix_cells_expand = rhealpix_expand(
+                rhealpix_ids, resolution=res, depth=d, verbose=False
             )
+        except QgsProcessingException:
+            raise
         except Exception as e:
             raise QgsProcessingException(
-                f"Error determining cell resolution from rHEALPix cell Ids: {e}"
-            )
-
-        if resolution < max_res:
-            if feedback:
-                feedback.reportError(
-                    f"Target expand resolution ({resolution}) must >= {max_res}."
-                )
-            return None
-
-        try:
-            rhealpix_cells_expand = rhealpix_expand(rhealpix_ids, resolution)
-        except BaseException:
-            raise QgsProcessingException(
-                "Expand cells failed. Please check your rHEALPix cell Ids."
+                f"Expand cells failed. Please check your rHEALPix cell Ids: {e}"
             )
 
         total_cells = len(rhealpix_cells_expand)
@@ -448,7 +477,7 @@ def rhealpixexpand(
 
             attributes = {
                 "rhealpix": rhealpix_id_expand,
-                "resolution": resolution,
+                "resolution": rhealpix_cell_expand.resolution,
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "avg_edge_len": avg_edge_len,
@@ -477,6 +506,7 @@ def isea4texpand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if platform.system() == "Windows":
         if not ISEA4TID_field:
@@ -503,16 +533,19 @@ def isea4texpand(
         isea4t_ids = list(set(isea4t_ids))
 
         if isea4t_ids:
-            max_res = max(len(isea4t_id) - 2 for isea4t_id in isea4t_ids)
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )
-                return None
-
             try:
-                isea4t_cells_expand = isea4t_expand(isea4t_ids, resolution)
+                res, d = _expand_resolution_depth(resolution, depth)
+                if res is not None:
+                    max_res = max(
+                        get_isea4t_resolution(isea4t_id) for isea4t_id in isea4t_ids
+                    )
+                    if res < max_res:
+                        return _report_expand_res_too_coarse(feedback, res, max_res)
+                isea4t_cells_expand = isea4t_expand(
+                    isea4t_ids, resolution=res, depth=d, verbose=False
+                )
+            except QgsProcessingException:
+                raise
             except BaseException:
                 raise QgsProcessingException(
                     "Expand cells failed. Please check your ISEA4T cell Ids."
@@ -547,7 +580,7 @@ def isea4texpand(
 
                 attributes = {
                     "isea4t": isea4t_id_expand,
-                    "resolution": resolution,
+                    "resolution": get_isea4t_resolution(isea4t_id_expand),
                     "center_lat": center_lat,
                     "center_lon": center_lon,
                     "avg_edge_len": avg_edge_len,
@@ -576,6 +609,7 @@ def isea3hexpand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not ISEA3HID_field:
         ISEA3HID_field = "isea3h"
@@ -602,24 +636,21 @@ def isea3hexpand(
 
     if isea3h_ids:
         try:
-            max_res = max(get_isea3h_resolution(isea3h_id) for isea3h_id in isea3h_ids)
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                max_res = max(
+                    get_isea3h_resolution(isea3h_id) for isea3h_id in isea3h_ids
+                )
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            isea3h_cells_expand = isea3h_expand(
+                isea3h_ids, resolution=res, depth=d, verbose=False
+            )
+        except QgsProcessingException:
+            raise
         except Exception as e:
             raise QgsProcessingException(
-                f"Error determining cell resolution from rHEALPix cell Ids: {e}"
-            )
-
-        if resolution < max_res:
-            if feedback:
-                feedback.reportError(
-                    f"Target expand resolution ({resolution}) must >= {max_res}."
-                )
-            return None
-
-        try:
-            isea3h_cells_expand = isea3h_expand(isea3h_ids, resolution)
-        except BaseException:
-            raise QgsProcessingException(
-                "Expand cells failed. Please check your ISEA3H cell Ids."
+                f"Expand cells failed. Please check your ISEA3H cell Ids: {e}"
             )
 
         isea3h_ids_expand = [c.get_cell_id() for c in isea3h_cells_expand]
@@ -652,7 +683,7 @@ def isea3hexpand(
 
             attributes = {
                 "isea3h": isea3h_id_expand,
-                "resolution": resolution,
+                "resolution": get_isea3h_resolution(isea3h_id_expand),
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "avg_edge_len": round(avg_edge_len, 3),
@@ -679,6 +710,7 @@ def qtmexpand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not QTMID_field:
         QTMID_field = "qtm"
@@ -705,14 +737,16 @@ def qtmexpand(
 
     if qtm_ids:
         try:
-            max_res = max(len(qtm_id) for qtm_id in qtm_ids)
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )
-                    return None
-            qtm_ids_expand = qtm_expand(qtm_ids, resolution)
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                max_res = max(get_qtm_resolution(qtm_id) for qtm_id in qtm_ids)
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            qtm_ids_expand = qtm_expand(
+                qtm_ids, resolution=res, depth=d, verbose=False
+            )
+        except QgsProcessingException:
+            raise
         except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your QTM cell Ids."
@@ -741,7 +775,7 @@ def qtmexpand(
 
             attributes = {
                 "qtm": qtm_id_expand,
-                "resolution": resolution,
+                "resolution": get_qtm_resolution(qtm_id_expand),
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "avg_edge_len": avg_edge_len,
@@ -768,6 +802,7 @@ def olcexpand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not OLCID_field:
         OLCID_field = "olc"
@@ -795,14 +830,16 @@ def olcexpand(
 
     if olc_ids:
         try:
-            max_res = max(olc.decode(olc_id).codeLength for olc_id in olc_ids)
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )
-                    return None
-            olc_ids_expand = olc_expand(olc_ids, resolution)
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                max_res = max(get_olc_resolution(olc_id) for olc_id in olc_ids)
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            olc_ids_expand = olc_expand(
+                olc_ids, resolution=res, depth=d, verbose=False
+            )
+        except QgsProcessingException:
+            raise
         except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your OLC cell Ids."
@@ -835,7 +872,7 @@ def olcexpand(
 
             attributes = {
                 "olc": olc_id_expand,
-                "resolution": resolution,
+                "resolution": get_olc_resolution(olc_id_expand),
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "cell_width": cell_width,
@@ -863,6 +900,7 @@ def geohashexpand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not GeohashID_field:
         GeohashID_field = "geohash"
@@ -890,14 +928,18 @@ def geohashexpand(
 
     if geohash_ids:
         try:
-            max_res = max(len(geohash_id) for geohash_id in geohash_ids)
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )
-                    return None
-            geohash_ids_expand = geohash_expand(geohash_ids, resolution)
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                max_res = max(
+                    get_geohash_resolution(geohash_id) for geohash_id in geohash_ids
+                )
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            geohash_ids_expand = geohash_expand(
+                geohash_ids, resolution=res, depth=d, verbose=False
+            )
+        except QgsProcessingException:
+            raise
         except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your Geohash cell Ids."
@@ -931,7 +973,7 @@ def geohashexpand(
 
             attributes = {
                 "geohash": geohash_id_expand,
-                "resolution": resolution,
+                "resolution": get_geohash_resolution(geohash_id_expand),
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "cell_width": cell_width,
@@ -961,6 +1003,7 @@ def tilecodeexpand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not TilecodeID_field:
         TilecodeID_field = "tilecode"
@@ -988,14 +1031,18 @@ def tilecodeexpand(
 
     if tilecode_ids:
         try:
-            max_res = max(len(tilecode_id) for tilecode_id in tilecode_ids)
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )
-                    return None
-            tilecode_ids_expand = tilecode_expand(tilecode_ids, resolution)
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                max_res = max(
+                    tilecode_resolution(tilecode_id) for tilecode_id in tilecode_ids
+                )
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            tilecode_ids_expand = tilecode_expand(
+                tilecode_ids, resolution=res, depth=d, verbose=False
+            )
+        except QgsProcessingException:
+            raise
         except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your tilecode cell Ids."
@@ -1029,7 +1076,7 @@ def tilecodeexpand(
 
             attributes = {
                 "tilecode": tilecode_id_expand,
-                "resolution": resolution,
+                "resolution": tilecode_resolution(tilecode_id_expand),
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "cell_width": cell_width,
@@ -1059,6 +1106,7 @@ def quadkeyexpand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not QuadkeyID_field:
         QuadkeyID_field = "quadkey"
@@ -1086,14 +1134,18 @@ def quadkeyexpand(
 
     if quadkey_ids:
         try:
-            max_res = max(len(quadkey_id) for quadkey_id in quadkey_ids)
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )
-                    return None
-            quadkey_ids_expand = quadkey_expand(quadkey_ids, resolution)
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                max_res = max(
+                    quadkey_resolution(quadkey_id) for quadkey_id in quadkey_ids
+                )
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            quadkey_ids_expand = quadkey_expand(
+                quadkey_ids, resolution=res, depth=d, verbose=False
+            )
+        except QgsProcessingException:
+            raise
         except BaseException:
             raise QgsProcessingException(
                 "Expand cells failed. Please check your quadkey cell Ids."
@@ -1127,7 +1179,7 @@ def quadkeyexpand(
 
             attributes = {
                 "quadkey": quadkey_id_expand,
-                "resolution": resolution,
+                "resolution": quadkey_resolution(quadkey_id_expand),
                 "center_lat": center_lat,
                 "center_lon": center_lon,
                 "cell_width": cell_width,
@@ -1158,6 +1210,7 @@ def dggalexpand(
     dggal_type=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not DGGALID_field:
         DGGALID_field = f"dggal_{dggal_type}"
@@ -1187,29 +1240,29 @@ def dggalexpand(
 
     if dggal_ids:
         try:
-            # Get max resolution from input IDs
+            res, d = _expand_resolution_depth(resolution, depth)
             app = Application(appGlobals=globals())
             pydggal_setup(app)
             dggs_class_name = DGGAL_TYPES[dggal_type]["class_name"]
             dggrs = getattr(dggal, dggs_class_name)()
 
-            max_res = 0
-            for dggal_id in dggal_ids:
-                try:
-                    zone = dggrs.getZoneFromTextID(dggal_id)
-                    zone_res = dggrs.getZoneLevel(zone)
-                    max_res = max(max_res, zone_res)
-                except BaseException:
-                    continue
+            if res is not None:
+                max_res = 0
+                for dggal_id in dggal_ids:
+                    try:
+                        zone = dggrs.getZoneFromTextID(dggal_id)
+                        zone_res = dggrs.getZoneLevel(zone)
+                        max_res = max(max_res, zone_res)
+                    except BaseException:
+                        continue
+                if res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
 
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >=  {max_res}."
-                    )
-                    return None
-
-            dggal_ids_expand = dggal_expand(dggal_type, dggal_ids, resolution)
+            dggal_ids_expand = dggal_expand(
+                dggal_type, dggal_ids, resolution=res, depth=d, verbose=False
+            )
+        except QgsProcessingException:
+            raise
         except Exception as e:
             raise QgsProcessingException(
                 f"Expand cells failed. Please check your DGGAL ID field. Error: {str(e)}"
@@ -1286,6 +1339,7 @@ def digipinexpand(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    depth=None,
 ) -> QgsVectorLayer:
     if not DIGIPINID_field:
         DIGIPINID_field = "digipin"
@@ -1313,18 +1367,16 @@ def digipinexpand(
 
     if digipin_ids:
         try:
-            max_res = max(
-                len(digipin_id.replace("-", "")) for digipin_id in digipin_ids
+            res, d = _expand_resolution_depth(resolution, depth)
+            if res is not None:
+                max_res = max(digipin_resolution(digipin_id) for digipin_id in digipin_ids)
+                if isinstance(max_res, str) or res < max_res:
+                    return _report_expand_res_too_coarse(feedback, res, max_res)
+            digipin_ids_expand = digipin_expand(
+                digipin_ids, resolution=res, depth=d, verbose=False
             )
-            if resolution < max_res:
-                if feedback:
-                    feedback.reportError(
-                        f"Target expand resolution ({resolution}) must >= {max_res}."
-                    )
-                    return None
-
-            digipin_ids_expand = digipin_expand(digipin_ids, resolution)
-
+        except QgsProcessingException:
+            raise
         except Exception as e:
             raise QgsProcessingException(
                 f"Expand cells failed. Please check your DIGIPIN ID field. Error: {str(e)}"
@@ -1359,7 +1411,7 @@ def digipinexpand(
 
                 attributes = {
                     "digipin": digipin_id_expand,
-                    "resolution": resolution,
+                    "resolution": digipin_resolution(digipin_id_expand),
                     "center_lat": center_lat,
                     "center_lon": center_lon,
                     "cell_width": cell_width,
