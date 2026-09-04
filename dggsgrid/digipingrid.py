@@ -24,7 +24,7 @@ class DIGIPINGrid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.digipin_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.digipin_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.digipin_marker.setStrokeColor(
             settings.digipinColor
             if hasattr(settings, "digipinColor")
@@ -48,7 +48,7 @@ class DIGIPINGrid(QObject):
         try:
             # Clear previous grid before drawing a new one
             self.removeMarker()
-            self.digipin_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.digipin_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.digipin_marker.setStrokeColor(settings.digipinColor)
             self.digipin_marker.setWidth(settings.gridWidth)
 
@@ -128,7 +128,7 @@ class DIGIPINGrid(QObject):
                             cell_geometry.transform(trans)
                         self.digipin_marker.addGeometry(cell_geometry, None)
 
-                    except Exception:
+                    except Exception:  # nosec B110
                         # Skip cells with errors
                         pass
 
@@ -175,7 +175,7 @@ class DIGIPINGrid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.digipin_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.digipin_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         # Disconnect signals and delete rubber band
@@ -183,17 +183,17 @@ class DIGIPINGrid(QObject):
             self._extentTimer.stop()
             try:
                 self._extentTimer.timeout.disconnect(self._refreshDigipinGridOnExtent)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.digipin_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.digipin_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.digipin_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass

@@ -134,7 +134,7 @@ class GeohashGen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=1,
             minValue=min_res,
             maxValue=max_res,
@@ -265,7 +265,7 @@ class GeohashGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 

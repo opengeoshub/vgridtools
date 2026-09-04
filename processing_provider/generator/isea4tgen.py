@@ -148,7 +148,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=1,
             minValue=min_res,
             maxValue=max_res,
@@ -246,7 +246,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
         apply_loaded_layer_name(context, dest_id, "ISEA4T", layer_name)
@@ -300,7 +300,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
                             cell_perimeter,
                         ]
                     )
-                    sink.addFeature(isea4t_feature, QgsFeatureSink.FastInsert)
+                    sink.addFeature(isea4t_feature, QgsFeatureSink.Flag.FastInsert)
 
                     if feedback.isCanceled():
                         break
@@ -343,7 +343,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
                             cell_perimeter,
                         ]
                     )
-                    sink.addFeature(isea4t_feature, QgsFeatureSink.FastInsert)
+                    sink.addFeature(isea4t_feature, QgsFeatureSink.Flag.FastInsert)
 
                     if feedback.isCanceled():
                         break

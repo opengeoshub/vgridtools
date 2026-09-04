@@ -25,7 +25,7 @@ class QTMGrid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.qtm_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.qtm_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.qtm_marker.setStrokeColor(settings.qtmColor)
         self.qtm_marker.setWidth(settings.gridWidth)
 
@@ -87,7 +87,7 @@ class QTMGrid(QObject):
         """Draw QTM cells for the canvas extent (aligned with vgrid qtm_grid_within_bbox)."""
         try:
             self.removeMarker()
-            self.qtm_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.qtm_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.qtm_marker.setStrokeColor(settings.qtmColor)
             self.qtm_marker.setWidth(settings.gridWidth)
 
@@ -148,24 +148,24 @@ class QTMGrid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.qtm_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.qtm_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         try:
             self._extentTimer.stop()
             try:
                 self._extentTimer.timeout.disconnect(self._refreshQTMGridOnExtent)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.qtm_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.qtm_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.qtm_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass

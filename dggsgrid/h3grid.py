@@ -26,7 +26,7 @@ class H3Grid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.h3_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.h3_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.h3_marker.setStrokeColor(settings.h3Color)
         self.h3_marker.setWidth(settings.gridWidth)
 
@@ -46,7 +46,7 @@ class H3Grid(QObject):
         try:
             # Clear previous grid before drawing a new one
             self.removeMarker()
-            self.h3_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.h3_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.h3_marker.setStrokeColor(settings.h3Color)
             self.h3_marker.setWidth(settings.gridWidth)
 
@@ -153,7 +153,7 @@ class H3Grid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.h3_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.h3_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         # Disconnect signals and delete rubber band
@@ -161,17 +161,17 @@ class H3Grid(QObject):
             self._extentTimer.stop()
             try:
                 self._extentTimer.timeout.disconnect(self._refreshH3GridOnExtent)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.h3_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.h3_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.h3_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass

@@ -17,7 +17,7 @@ class DGGSGen(QObject):
         self.canvas = canvas
         self.vgridtools = vgridtools
         self.iface = iface
-        self.polygon_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.polygon_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.polygon_marker.setStrokeColor(QColor("#FF0000"))
         self.polygon_marker.setWidth(2)
 
@@ -32,7 +32,7 @@ class DGGSGen(QObject):
     def H3Grid(self):
         try:
             # Clear previous grid before drawing a new one
-            self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.polygon_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
@@ -78,7 +78,7 @@ class DGGSGen(QObject):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -132,4 +132,4 @@ class DGGSGen(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.polygon_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.polygon_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)

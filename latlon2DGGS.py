@@ -442,262 +442,262 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.updateMarker()
 
     def updateMarker(self):
-        self.marker = QgsRubberBand(self.canvas, QgsWkbTypes.PointGeometry)
+        self.marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PointGeometry)
         self.marker.setColor(settings.markerColor)
         self.marker.setStrokeColor(settings.markerColor)
         self.marker.setWidth(settings.markerWidth)
         self.marker.setIconSize(settings.markerSize)
         self.marker.setIcon(QgsRubberBand.ICON_CROSS)
 
-        self.h3_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.h3_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.h3_marker.setStrokeColor(settings.markerColor)
         self.h3_marker.setWidth(settings.gridWidth)
 
-        self.s2_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.s2_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.s2_marker.setStrokeColor(settings.markerColor)
         self.s2_marker.setWidth(settings.gridWidth)
 
-        self.a5_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.a5_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.a5_marker.setStrokeColor(settings.markerColor)
         self.a5_marker.setWidth(settings.gridWidth)
 
-        self.rhealpix_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.rhealpix_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.rhealpix_marker.setStrokeColor(settings.markerColor)
         self.rhealpix_marker.setWidth(settings.gridWidth)
 
         self.dggal_gnosis_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_gnosis_marker.setStrokeColor(settings.markerColor)
         self.dggal_gnosis_marker.setWidth(settings.gridWidth)
 
         self.dggal_isea4r_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_isea4r_marker.setStrokeColor(settings.markerColor)
         self.dggal_isea4r_marker.setWidth(settings.gridWidth)
         self.dggal_isea9r_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_isea9r_marker.setStrokeColor(settings.markerColor)
         self.dggal_isea9r_marker.setWidth(settings.gridWidth)
         self.dggal_isea3h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_isea3h_marker.setStrokeColor(settings.markerColor)
         self.dggal_isea3h_marker.setWidth(settings.gridWidth)
         self.dggal_isea7h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_isea7h_marker.setStrokeColor(settings.markerColor)
         self.dggal_isea7h_marker.setWidth(settings.gridWidth)
 
         self.dggal_isea7h_z7_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_isea7h_z7_marker.setStrokeColor(settings.markerColor)
         self.dggal_isea7h_z7_marker.setWidth(settings.gridWidth)
 
         self.dggal_ivea4r_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_ivea4r_marker.setStrokeColor(settings.markerColor)
         self.dggal_ivea4r_marker.setWidth(settings.gridWidth)
         self.dggal_ivea9r_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_ivea9r_marker.setStrokeColor(settings.markerColor)
         self.dggal_ivea9r_marker.setWidth(settings.gridWidth)
         self.dggal_ivea3h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_ivea3h_marker.setStrokeColor(settings.markerColor)
         self.dggal_ivea3h_marker.setWidth(settings.gridWidth)
         self.dggal_ivea7h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_ivea7h_marker.setStrokeColor(settings.markerColor)
         self.dggal_ivea7h_marker.setWidth(settings.gridWidth)
         self.dggal_ivea7h_z7_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_ivea7h_z7_marker.setStrokeColor(settings.markerColor)
         self.dggal_ivea7h_z7_marker.setWidth(settings.gridWidth)
 
         self.dggal_rtea4r_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_rtea4r_marker.setStrokeColor(settings.markerColor)
         self.dggal_rtea4r_marker.setWidth(settings.gridWidth)
         self.dggal_rtea9r_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_rtea9r_marker.setStrokeColor(settings.markerColor)
         self.dggal_rtea9r_marker.setWidth(settings.gridWidth)
         self.dggal_rtea3h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_rtea3h_marker.setStrokeColor(settings.markerColor)
         self.dggal_rtea3h_marker.setWidth(settings.gridWidth)
         self.dggal_rtea7h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_rtea7h_marker.setStrokeColor(settings.markerColor)
         self.dggal_rtea7h_marker.setWidth(settings.gridWidth)
         self.dggal_rtea7h_z7_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_rtea7h_z7_marker.setStrokeColor(settings.markerColor)
         self.dggal_rtea7h_z7_marker.setWidth(settings.gridWidth)
 
         self.dggal_healpix_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_healpix_marker.setStrokeColor(settings.markerColor)
         self.dggal_healpix_marker.setWidth(settings.gridWidth)
 
         self.dggal_rhealpix_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggal_rhealpix_marker.setStrokeColor(settings.markerColor)
         self.dggal_rhealpix_marker.setWidth(settings.gridWidth)
 
         self.dggrid_superfund_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_superfund_marker.setStrokeColor(settings.markerColor)
         self.dggrid_superfund_marker.setWidth(settings.gridWidth)
 
         self.dggrid_planetrisk_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_planetrisk_marker.setStrokeColor(settings.markerColor)
         self.dggrid_planetrisk_marker.setWidth(settings.gridWidth)
 
         self.dggrid_isea3h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_isea3h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea3h_marker.setWidth(settings.gridWidth)
 
         self.dggrid_isea4h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_isea4h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea4h_marker.setWidth(settings.gridWidth)
 
         self.dggrid_isea4t_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_isea4t_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea4t_marker.setWidth(settings.gridWidth)
 
         self.dggrid_isea4d_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_isea4d_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea4d_marker.setWidth(settings.gridWidth)
 
         self.dggrid_isea43h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_isea43h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea43h_marker.setWidth(settings.gridWidth)
 
         self.dggrid_isea7h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_isea7h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_isea7h_marker.setWidth(settings.gridWidth)
 
         self.dggrid_igeo7_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_igeo7_marker.setStrokeColor(settings.markerColor)
         self.dggrid_igeo7_marker.setWidth(settings.gridWidth)
 
         self.dggrid_fuller3h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_fuller3h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller3h_marker.setWidth(settings.gridWidth)
 
         self.dggrid_fuller4h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_fuller4h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller4h_marker.setWidth(settings.gridWidth)
 
         self.dggrid_fuller4t_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_fuller4t_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller4t_marker.setWidth(settings.gridWidth)
 
         self.dggrid_fuller4d_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_fuller4d_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller4d_marker.setWidth(settings.gridWidth)
 
         self.dggrid_fuller43h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_fuller43h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller43h_marker.setWidth(settings.gridWidth)
 
         self.dggrid_fuller7h_marker = QgsRubberBand(
-            self.canvas, QgsWkbTypes.PolygonGeometry
+            self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry
         )
         self.dggrid_fuller7h_marker.setStrokeColor(settings.markerColor)
         self.dggrid_fuller7h_marker.setWidth(settings.gridWidth)
 
-        self.isea4t_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.isea4t_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.isea4t_marker.setStrokeColor(settings.markerColor)
         self.isea4t_marker.setWidth(settings.gridWidth)
-        self.isea3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.isea3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.isea3h_marker.setStrokeColor(settings.markerColor)
-        self.ease_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.ease_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.ease_marker.setStrokeColor(settings.markerColor)
         self.ease_marker.setWidth(settings.gridWidth)
 
-        self.qtm_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.qtm_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.qtm_marker.setStrokeColor(settings.markerColor)
         self.qtm_marker.setWidth(settings.gridWidth)
 
-        self.olc_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.olc_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.olc_marker.setStrokeColor(settings.markerColor)
         self.olc_marker.setWidth(settings.gridWidth)
 
-        self.geohash_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.geohash_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.geohash_marker.setStrokeColor(settings.markerColor)
         self.geohash_marker.setWidth(settings.gridWidth)
 
-        self.georef_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.georef_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.georef_marker.setStrokeColor(settings.markerColor)
         self.georef_marker.setWidth(settings.gridWidth)
 
-        self.mgrs_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.mgrs_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.mgrs_marker.setStrokeColor(settings.markerColor)
         self.mgrs_marker.setWidth(settings.gridWidth)
 
-        self.tilecode_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.tilecode_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.tilecode_marker.setStrokeColor(settings.markerColor)
         self.tilecode_marker.setWidth(settings.gridWidth)
 
-        self.quadkey_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.quadkey_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.quadkey_marker.setStrokeColor(settings.markerColor)
         self.quadkey_marker.setWidth(settings.gridWidth)
 
-        self.maidenhead_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.maidenhead_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.maidenhead_marker.setStrokeColor(settings.markerColor)
         self.maidenhead_marker.setWidth(settings.gridWidth)
 
-        self.gars_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.gars_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.gars_marker.setStrokeColor(settings.markerColor)
         self.gars_marker.setWidth(settings.gridWidth)
 
-        self.digipin_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.digipin_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.digipin_marker.setStrokeColor(settings.markerColor)
         self.digipin_marker.setWidth(settings.gridWidth)
 
@@ -795,7 +795,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.configure()
         try:
             get_plugin_dggrid_instance()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def closeEvent(self, e):
@@ -1741,7 +1741,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 cell_polygon, num_edges
             )
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -1755,14 +1755,14 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.setExtent(bbox)
             self.canvas.refresh()
             if not settings.persistentMarker:
-                marker.reset(QgsWkbTypes.PolygonGeometry)
+                marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             marker.addGeometry(cell_geometry, None)
         except Exception as e:
             traceback.print_exc()
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
 
@@ -2352,7 +2352,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 return
             lat, lon = parseDMSString(text, self.inputXYOrder)
             pt = self.vgridtools.zoomTo(epsg4326, lat, lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
         except Exception:
             self.showInvalid(0)
@@ -2372,7 +2372,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
                 cell_polygon, num_edges
             )
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             if epsg4326 != canvas_crs:
@@ -2393,7 +2393,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.setExtent(bbox)
             self.canvas.refresh()
             if not settings.persistentMarker:
-                self.h3_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.h3_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.h3_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
@@ -2401,7 +2401,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2421,7 +2421,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2436,7 +2436,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.setExtent(bbox)
             self.canvas.refresh()
             if not settings.persistentMarker:
-                self.s2_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.s2_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.s2_marker.addGeometry(cell_geometry, None)
 
         except Exception as e:
@@ -2444,7 +2444,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2463,7 +2463,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             if epsg4326 != canvas_crs:
@@ -2484,7 +2484,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.a5_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.a5_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.a5_marker.addGeometry(cell_geometry, None)
 
@@ -2493,7 +2493,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2518,7 +2518,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2540,7 +2540,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.rhealpix_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.rhealpix_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.rhealpix_marker.addGeometry(cell_geometry, None)
 
@@ -2549,7 +2549,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2568,7 +2568,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2585,7 +2585,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_gnosis_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_gnosis_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_gnosis_marker.addGeometry(cell_geometry, None)
 
@@ -2594,7 +2594,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2612,7 +2612,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2633,7 +2633,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_isea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_isea4r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_isea4r_marker.addGeometry(cell_geometry, None)
 
@@ -2642,7 +2642,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2660,7 +2660,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2681,7 +2681,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_isea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_isea9r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_isea9r_marker.addGeometry(cell_geometry, None)
 
@@ -2690,7 +2690,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2708,7 +2708,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2730,7 +2730,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_isea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_isea3h_marker.addGeometry(cell_geometry, None)
 
@@ -2739,7 +2739,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2757,7 +2757,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2778,7 +2778,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_isea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_isea7h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_isea7h_marker.addGeometry(cell_geometry, None)
 
@@ -2787,7 +2787,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2805,7 +2805,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2826,7 +2826,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_isea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_isea7h_z7_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_isea7h_z7_marker.addGeometry(cell_geometry, None)
 
@@ -2835,7 +2835,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2853,7 +2853,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2874,7 +2874,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_ivea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_ivea4r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_ivea4r_marker.addGeometry(cell_geometry, None)
 
@@ -2883,7 +2883,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2901,7 +2901,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2923,7 +2923,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_ivea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_ivea9r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_ivea9r_marker.addGeometry(cell_geometry, None)
 
@@ -2932,7 +2932,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2950,7 +2950,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -2972,7 +2972,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_ivea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_ivea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_ivea3h_marker.addGeometry(cell_geometry, None)
 
@@ -2981,7 +2981,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -2999,7 +2999,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3020,7 +3020,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_ivea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_ivea7h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_ivea7h_marker.addGeometry(cell_geometry, None)
 
@@ -3029,7 +3029,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3047,7 +3047,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3068,7 +3068,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_ivea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_ivea7h_z7_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_ivea7h_z7_marker.addGeometry(cell_geometry, None)
 
@@ -3077,7 +3077,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3095,7 +3095,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3116,7 +3116,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_rtea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_rtea4r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_rtea4r_marker.addGeometry(cell_geometry, None)
 
@@ -3125,7 +3125,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3143,7 +3143,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3165,7 +3165,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_rtea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_rtea9r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_rtea9r_marker.addGeometry(cell_geometry, None)
 
@@ -3174,7 +3174,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3192,7 +3192,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3213,7 +3213,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_rtea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_rtea7h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_rtea7h_marker.addGeometry(cell_geometry, None)
 
@@ -3222,7 +3222,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3240,7 +3240,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3261,7 +3261,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_rtea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_rtea7h_z7_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_rtea7h_z7_marker.addGeometry(cell_geometry, None)
 
@@ -3270,7 +3270,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3288,7 +3288,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3311,7 +3311,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_rtea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_rtea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_rtea3h_marker.addGeometry(cell_geometry, None)
 
@@ -3320,7 +3320,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3338,7 +3338,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3359,7 +3359,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_healpix_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_healpix_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_healpix_marker.addGeometry(cell_geometry, None)
 
@@ -3368,7 +3368,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3386,7 +3386,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3405,11 +3405,11 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             bbox.scale(2.0, QgsPointXY(bbox.center()))
             self.canvas.setExtent(bbox)
             self.canvas.refresh()
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             if not settings.persistentMarker:
-                self.dggal_isea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_isea9r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_isea9r_marker.addGeometry(cell_geometry, None)
 
@@ -3418,7 +3418,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3556,7 +3556,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             )
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3578,7 +3578,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.isea4t_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.isea4t_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.isea4t_marker.addGeometry(cell_geometry, None)
 
@@ -3587,7 +3587,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3607,7 +3607,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3624,7 +3624,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.isea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.isea3h_marker.addGeometry(cell_geometry, None)
 
@@ -3633,7 +3633,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3653,7 +3653,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3670,7 +3670,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.ease_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.ease_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.ease_marker.addGeometry(cell_geometry, None)
 
@@ -3679,7 +3679,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3699,7 +3699,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3716,7 +3716,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_ivea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_ivea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_ivea3h_marker.addGeometry(cell_geometry, None)
 
@@ -3725,7 +3725,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3741,7 +3741,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3758,7 +3758,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_ivea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_ivea9r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_ivea9r_marker.addGeometry(cell_geometry, None)
 
@@ -3767,7 +3767,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3784,7 +3784,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3801,7 +3801,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.dggal_rtea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.dggal_rtea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.dggal_rtea3h_marker.addGeometry(cell_geometry, None)
 
@@ -3810,7 +3810,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3827,7 +3827,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3844,7 +3844,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.georef_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.georef_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.georef_marker.addGeometry(cell_geometry, None)
 
@@ -3853,7 +3853,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3869,7 +3869,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3886,7 +3886,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.mgrs_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.mgrs_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.mgrs_marker.addGeometry(cell_geometry, None)
 
@@ -3895,7 +3895,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3912,7 +3912,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3929,7 +3929,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.tilecode_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.tilecode_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.tilecode_marker.addGeometry(cell_geometry, None)
 
@@ -3938,7 +3938,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3955,7 +3955,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -3972,7 +3972,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.quadkey_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.quadkey_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.quadkey_marker.addGeometry(cell_geometry, None)
 
@@ -3981,7 +3981,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -3998,7 +3998,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -4015,7 +4015,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.maidenhead_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.maidenhead_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.maidenhead_marker.addGeometry(cell_geometry, None)
 
@@ -4024,7 +4024,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -4041,7 +4041,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -4058,7 +4058,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.gars_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.gars_marker.addGeometry(cell_geometry, None)
 
@@ -4067,7 +4067,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -4082,7 +4082,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             center_lat, center_lon, _, _, _, _ = graticule_dggs_metrics(cell_polygon)
 
             pt = self.vgridtools.zoomTo(epsg4326, center_lat, center_lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
 
             canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -4103,7 +4103,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.canvas.refresh()
 
             if not settings.persistentMarker:
-                self.digipin_marker.reset(QgsWkbTypes.PolygonGeometry)
+                self.digipin_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             self.digipin_marker.addGeometry(cell_geometry, None)
 
@@ -4112,7 +4112,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.iface.messageBar().pushMessage(
                 "",
                 tr("Invalid Coordinate: {}").format(str(e)),
-                level=Qgis.Warning,
+                level=Qgis.MessageLevel.Warning,
                 duration=2,
             )
             return
@@ -4136,61 +4136,61 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         self.coordCaptureButton.setChecked(False)
 
     def removeMarker(self):
-        self.marker.reset(QgsWkbTypes.PointGeometry)
+        self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
 
-        self.h3_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.s2_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.a5_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.rhealpix_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.h3_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.s2_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.a5_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.rhealpix_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
-        self.dggal_gnosis_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_isea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_ivea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_ivea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_rtea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_rtea9r_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_rhealpix_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_isea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_isea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_isea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_ivea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_ivea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_ivea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_rtea4r_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_rtea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_rtea7h_z7_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggal_healpix_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggal_gnosis_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_isea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_isea9r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_ivea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_ivea9r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_rtea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_rtea9r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_rhealpix_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_isea4r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_isea7h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_isea7h_z7_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_ivea4r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_ivea7h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_ivea7h_z7_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_rtea4r_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_rtea7h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_rtea7h_z7_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggal_healpix_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
-        self.dggrid_superfund_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_planetrisk_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_isea4h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_isea4t_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_isea4d_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_isea43h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_isea7h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_igeo7_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_fuller3h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_fuller4h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_fuller4t_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_fuller4d_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_fuller43h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.dggrid_fuller7h_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggrid_superfund_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_planetrisk_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_isea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_isea4h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_isea4t_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_isea4d_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_isea43h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_isea7h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_igeo7_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_fuller3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_fuller4h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_fuller4t_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_fuller4d_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_fuller43h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.dggrid_fuller7h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
-        self.isea4t_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.ease_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.qtm_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.olc_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.geohash_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.georef_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.mgrs_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.tilecode_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.quadkey_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.maidenhead_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
-        self.digipin_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.isea4t_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.isea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.ease_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.qtm_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.olc_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.geohash_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.georef_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.mgrs_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.tilecode_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.quadkey_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.maidenhead_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.gars_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.digipin_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def showSettings(self):
         self.settings.showTab(1)
@@ -4200,7 +4200,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
         try:
             lat, lon = parseDMSString(text, self.inputXYOrder)
             pt = self.vgridtools.zoomTo(epsg4326, lat, lon)
-            self.marker.reset(QgsWkbTypes.PointGeometry)
+            self.marker.reset(QgsWkbTypes.GeometryType.PointGeometry)
             self.marker.addPoint(pt)
-        except Exception:
+        except Exception:  # nosec B110
             pass

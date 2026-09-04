@@ -138,7 +138,7 @@ class A5Gen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=1,
             minValue=min_res,
             maxValue=max_res,
@@ -149,7 +149,7 @@ class A5Gen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.SEGMENTS,
             self.tr("Segments"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=settings.A5SgementsSpinBox,
             minValue=1,
             optional=False,
@@ -209,7 +209,7 @@ class A5Gen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -312,7 +312,7 @@ class A5Gen(QgsProcessingAlgorithm):
                     cell_perimeter,
                 ]
             )
-            sink.addFeature(a5_feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(a5_feature, QgsFeatureSink.Flag.FastInsert)
 
         feedback.pushInfo("A5 DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):

@@ -106,7 +106,7 @@ class S2Bin(QgsProcessingFeatureBasedAlgorithm):
 
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVectorPoint]
+        return [QgsProcessing.SourceType.TypeVectorPoint]
 
     def inputParameterDescription(self):
         return self.tr("Input point layer")
@@ -115,7 +115,7 @@ class S2Bin(QgsProcessingFeatureBasedAlgorithm):
         return self.tr("DGGS_binning")
 
     def outputWkbType(self, input_wkb_type):
-        return QgsWkbTypes.Polygon
+        return QgsWkbTypes.Type.Polygon
 
     def outputCrs(self, input_crs):
         return QgsCoordinateReferenceSystem("EPSG:4326")
@@ -140,7 +140,7 @@ class S2Bin(QgsProcessingFeatureBasedAlgorithm):
                 "Numeric field (for aggregate function other than 'count')",
                 parentLayerParameterName=self.INPUT,
                 optional=True,
-                type=QgsProcessingParameterField.Numeric,
+                type=QgsProcessingParameterField.DataType.Numeric,
             )
         )
         self.addParameter(
@@ -156,7 +156,7 @@ class S2Bin(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
                 self.tr(f"Resolution [{min_res}..{max_res}]"),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 defaultValue=default_res,
                 minValue=min_res,
                 maxValue=max_res,

@@ -136,7 +136,7 @@ class MGRSGen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=0,
             minValue=min_res,
             maxValue=max_res,
@@ -183,7 +183,7 @@ class MGRSGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -318,7 +318,7 @@ class MGRSGen(QgsProcessingAlgorithm):
                                 ]
                             )
 
-                    sink.addFeature(mgrs_feature, QgsFeatureSink.FastInsert)
+                    sink.addFeature(mgrs_feature, QgsFeatureSink.Flag.FastInsert)
 
                 if feedback.isCanceled():
                     break

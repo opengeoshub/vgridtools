@@ -25,7 +25,7 @@ class GARSGrid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.gars_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.gars_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.gars_marker.setStrokeColor(settings.garsColor)
         self.gars_marker.setWidth(settings.gridWidth)
 
@@ -43,7 +43,7 @@ class GARSGrid(QObject):
 
     def gars_grid(self):
         self.removeMarker()
-        self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.gars_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
         self.gars_marker.setStrokeColor(settings.garsColor)
         self.gars_marker.setWidth(settings.gridWidth)
 
@@ -103,7 +103,7 @@ class GARSGrid(QObject):
                             )
                             cell_geometry.transform(trans)
                         self.gars_marker.addGeometry(cell_geometry, None)
-                    except Exception:
+                    except Exception:  # nosec B112
                         continue
 
             self.canvas.refresh()
@@ -133,7 +133,7 @@ class GARSGrid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.gars_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         # Disconnect signals and delete rubber band
@@ -141,17 +141,17 @@ class GARSGrid(QObject):
             self._extentTimer.stop()
             try:
                 self._extentTimer.timeout.disconnect(self._refreshGARSGridOnExtent)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.gars_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.gars_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.gars_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass

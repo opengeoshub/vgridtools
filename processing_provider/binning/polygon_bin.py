@@ -103,14 +103,14 @@ class PolygonBin(QgsProcessingAlgorithm):
         # FeatureSource parameters include native "Selected features only".
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.POINT_INPUT, "Input point layer", [QgsProcessing.TypeVectorPoint]
+                self.POINT_INPUT, "Input point layer", [QgsProcessing.SourceType.TypeVectorPoint]
             )
         )
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 self.POLYGON_INPUT,
                 "Input polygon layer",
-                [QgsProcessing.TypeVectorPolygon],
+                [QgsProcessing.SourceType.TypeVectorPolygon],
             )
         )
         self.addParameter(
@@ -127,7 +127,7 @@ class PolygonBin(QgsProcessingAlgorithm):
                 "Numeric field (for aggregate function other than 'count')",
                 parentLayerParameterName=self.POINT_INPUT,
                 optional=True,
-                type=QgsProcessingParameterField.Numeric,
+                type=QgsProcessingParameterField.DataType.Numeric,
             )
         )
         self.addParameter(
@@ -242,7 +242,7 @@ class PolygonBin(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -269,6 +269,6 @@ class PolygonBin(QgsProcessingAlgorithm):
             out_feature = QgsFeature(fields)
             out_feature.setGeometry(geom)
             out_feature.setAttributes([attr_dict.get(f.name(), None) for f in fields])
-            sink.addFeature(out_feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(out_feature, QgsFeatureSink.Flag.FastInsert)
 
         return {self.OUTPUT: dest_id}

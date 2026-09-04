@@ -186,7 +186,7 @@ class DGGRIDGen(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
                 self.tr("Resolution"),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 defaultValue=1,
                 minValue=0,
                 maxValue=35,
@@ -225,7 +225,7 @@ class DGGRIDGen(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber(
                 self.DENSIFICATION,
                 self.tr("Densification"),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 defaultValue=settings.dggridDensificationSpinBox,
                 minValue=1,
                 optional=False,
@@ -323,7 +323,7 @@ class DGGRIDGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -396,7 +396,7 @@ class DGGRIDGen(QgsProcessingAlgorithm):
                     cell_perimeter,
                 ]
             )
-            sink.addFeature(feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(feature, QgsFeatureSink.Flag.FastInsert)
 
         feedback.pushInfo(f"{self.dggs_type} DGGRID generation completed.")
 

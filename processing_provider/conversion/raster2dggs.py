@@ -216,7 +216,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
                 "Resolution (leave -1 for automatic)",
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 -1,
                 minValue=-1,
                 maxValue=40,
@@ -245,7 +245,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
 
         self.addParameter(
             QgsProcessingParameterFeatureSink(
-                self.OUTPUT, self.tr("Raster2DGGS"), QgsProcessing.TypeVectorPolygon
+                self.OUTPUT, self.tr("Raster2DGGS"), QgsProcessing.SourceType.TypeVectorPolygon
             )
         )
 
@@ -542,7 +542,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
 
         # Copy features
         for feature in memory_layer.getFeatures():
-            sink.addFeature(feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(feature, QgsFeatureSink.Flag.FastInsert)
 
         apply_loaded_layer_name(context, sink_id, "Raster2DGGS", layer_name)
         return {self.OUTPUT: sink_id}

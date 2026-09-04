@@ -122,7 +122,7 @@ class DGGRIDBin(QgsProcessingFeatureBasedAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVectorPoint]
+        return [QgsProcessing.SourceType.TypeVectorPoint]
 
     def inputParameterDescription(self):
         return self.tr("Input point layer")
@@ -131,7 +131,7 @@ class DGGRIDBin(QgsProcessingFeatureBasedAlgorithm):
         return self.tr("DGGS_binning")
 
     def outputWkbType(self, input_wkb_type):
-        return QgsWkbTypes.Polygon
+        return QgsWkbTypes.Type.Polygon
 
     def outputCrs(self, input_crs):
         return QgsCoordinateReferenceSystem("EPSG:4326")
@@ -156,7 +156,7 @@ class DGGRIDBin(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
                 self.tr("Resolution"),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 defaultValue=1,
                 minValue=0,
                 maxValue=35,
@@ -177,7 +177,7 @@ class DGGRIDBin(QgsProcessingFeatureBasedAlgorithm):
                 "Numeric field (for aggregate function other than 'count')",
                 parentLayerParameterName=self.INPUT,
                 optional=True,
-                type=QgsProcessingParameterField.Numeric,
+                type=QgsProcessingParameterField.DataType.Numeric,
             )
         )
         self.addParameter(
@@ -193,7 +193,7 @@ class DGGRIDBin(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterNumber(
                 self.DENSIFICATION,
                 self.tr("Densification"),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 defaultValue=settings.dggridDensificationSpinBox,
                 minValue=1,
                 optional=False,

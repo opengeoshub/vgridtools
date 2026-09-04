@@ -32,7 +32,7 @@ class DGGALRTEA7H_Z7Grid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.dggal_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.dggal_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.dggal_marker.setStrokeColor(settings.dggal_rtea7h_z7Color)
         self.dggal_marker.setWidth(settings.gridWidth)
 
@@ -57,7 +57,7 @@ class DGGALRTEA7H_Z7Grid(QObject):
         try:
             # Clear previous grid before drawing a new one
             self.removeMarker()
-            self.dggal_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.dggal_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.dggal_marker.setStrokeColor(settings.dggal_rtea7h_z7Color)
             self.dggal_marker.setWidth(settings.gridWidth)
 
@@ -126,7 +126,7 @@ class DGGALRTEA7H_Z7Grid(QObject):
                         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                     self.dggal_marker.addGeometry(cell_geometry, None)
 
-                except Exception:
+                except Exception:  # nosec B112
                     continue
 
             self.canvas.refresh()
@@ -154,7 +154,7 @@ class DGGALRTEA7H_Z7Grid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.dggal_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.dggal_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         # Disconnect signals and delete rubber band
@@ -162,17 +162,17 @@ class DGGALRTEA7H_Z7Grid(QObject):
             self._extentTimer.stop()
             try:
                 self._extentTimer.timeout.disconnect(self._refreshDGGALGridOnExtent)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.dggal_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.dggal_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.dggal_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass

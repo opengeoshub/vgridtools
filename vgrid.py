@@ -161,7 +161,7 @@ class VgridTools(object):
         self.toolbar.setObjectName("VgridToolbar")
         self.toolbar.setToolTip(tr("Vgrid Toolbar"))
 
-        self.crossRb = QgsRubberBand(self.canvas, QgsWkbTypes.LineGeometry)
+        self.crossRb = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.LineGeometry)
         self.crossRb.setColor(Qt.GlobalColor.red)
 
         self.iface.mapCanvas().scaleChanged.connect(self.displayZoomLevel)
@@ -736,7 +736,7 @@ class VgridTools(object):
             for dggrid_grid in self.dggrid_grids.values():
                 try:
                     dggrid_grid.cleanup()
-                except Exception:
+                except Exception:  # nosec B110
                     pass
         from .utils.dggrid_instance import reset_plugin_dggrid_instance
 
@@ -800,7 +800,7 @@ class VgridTools(object):
         horizLine = QgsGeometry.fromPolyline([leftPt, rightPt])
         vertLine = QgsGeometry.fromPolyline([topPt, bottomPt])
 
-        self.crossRb.reset(QgsWkbTypes.LineGeometry)
+        self.crossRb.reset(QgsWkbTypes.GeometryType.LineGeometry)
         self.crossRb.setWidth(settings.markerWidth)
         self.crossRb.setColor(settings.markerColor)
         self.crossRb.addGeometry(horizLine, None)

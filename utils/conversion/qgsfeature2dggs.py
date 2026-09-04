@@ -143,11 +143,11 @@ def prepare_feature_for_dggs_conversion(feature, to_wgs84_transform):
 def qgsfeature2h3(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     resolution = validate_h3_resolution(resolution)
     gfeature_geom = feature.geometry()
-    if gfeature_geom.wkbType() == QgsWkbTypes.Point:
+    if gfeature_geom.wkbType() == QgsWkbTypes.Type.Point:
         return point2h3(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
-    elif gfeature_geom.wkbType() == QgsWkbTypes.LineString:
+    elif gfeature_geom.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2h3(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
-    elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
+    elif gfeature_geom.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2h3(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
@@ -416,11 +416,11 @@ def polygon2h3(feature, resolution, predicate=None, compact=None, feedback=None,
 def qgsfeature2s2(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     resolution = validate_s2_resolution(resolution)
     gfeature_geom = feature.geometry()
-    if gfeature_geom.wkbType() == QgsWkbTypes.Point:
+    if gfeature_geom.wkbType() == QgsWkbTypes.Type.Point:
         return point2s2(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
-    elif gfeature_geom.wkbType() == QgsWkbTypes.LineString:
+    elif gfeature_geom.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2s2(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
-    elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
+    elif gfeature_geom.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2s2(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
@@ -746,11 +746,11 @@ def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None,
 def qgsfeature2a5(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     resolution = validate_a5_resolution(resolution)
     gfeature_geom = feature.geometry()
-    if gfeature_geom.wkbType() == QgsWkbTypes.Point:
+    if gfeature_geom.wkbType() == QgsWkbTypes.Type.Point:
         return point2a5(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
-    elif gfeature_geom.wkbType() == QgsWkbTypes.LineString:
+    elif gfeature_geom.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2a5(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
-    elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
+    elif gfeature_geom.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2a5(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
@@ -1255,11 +1255,11 @@ def qgsfeature2dggal(
 ):
     resolution = validate_dggal_resolution(dggal_type, resolution)
     feature_geom = feature.geometry()
-    if feature_geom.wkbType() == QgsWkbTypes.Point:
+    if feature_geom.wkbType() == QgsWkbTypes.Type.Point:
         return point2dggal(dggal_type, feature, resolution, feedback, shift_antimeridian, split_antimeridian)
-    elif feature_geom.wkbType() == QgsWkbTypes.LineString:
+    elif feature_geom.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2dggal(dggal_type, feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
-    elif feature_geom.wkbType() == QgsWkbTypes.Polygon:
+    elif feature_geom.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2dggal(
             dggal_type, feature, resolution, predicate, compact, feedback,
             shift_antimeridian, split_antimeridian, **_kwargs
@@ -1677,11 +1677,11 @@ def qgsfeature2rhealpix(
 ):
     resolution = validate_rhealpix_resolution(resolution)
     gfeature_geom = feature.geometry()
-    if gfeature_geom.wkbType() == QgsWkbTypes.Point:
+    if gfeature_geom.wkbType() == QgsWkbTypes.Type.Point:
         return point2rhealpix(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
-    elif gfeature_geom.wkbType() == QgsWkbTypes.LineString:
+    elif gfeature_geom.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2rhealpix(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
-    elif gfeature_geom.wkbType() == QgsWkbTypes.Polygon:
+    elif gfeature_geom.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2rhealpix(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
@@ -2198,11 +2198,11 @@ def qgsfeature2isea4t(feature, resolution, predicate=None, compact=None, feedbac
     if platform.system() == "Windows":
         resolution = validate_isea4t_resolution(resolution)
         feature_geom = feature.geometry()
-        if feature_geom.wkbType() == QgsWkbTypes.Point:
+        if feature_geom.wkbType() == QgsWkbTypes.Type.Point:
             return point2isea4t(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
-        elif feature_geom.wkbType() == QgsWkbTypes.LineString:
+        elif feature_geom.wkbType() == QgsWkbTypes.Type.LineString:
             return polyline2isea4t(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
-        elif feature_geom.wkbType() == QgsWkbTypes.Polygon:
+        elif feature_geom.wkbType() == QgsWkbTypes.Type.Polygon:
             return polygon2isea4t(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
@@ -2521,11 +2521,11 @@ def qgsfeature2isea3h(feature, resolution, predicate=None, compact=None, feedbac
     if platform.system() == "Windows":
         resolution = validate_isea3h_resolution(resolution)
         feature_geometry = feature.geometry()
-        if feature_geometry.wkbType() == QgsWkbTypes.Point:
+        if feature_geometry.wkbType() == QgsWkbTypes.Type.Point:
             return point2isea3h(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
-        elif feature_geometry.wkbType() == QgsWkbTypes.LineString:
+        elif feature_geometry.wkbType() == QgsWkbTypes.Type.LineString:
             return polyline2isea3h(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
-        elif feature_geometry.wkbType() == QgsWkbTypes.Polygon:
+        elif feature_geometry.wkbType() == QgsWkbTypes.Type.Polygon:
             return polygon2isea3h(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
 
@@ -2845,11 +2845,11 @@ def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=N
 def qgsfeature2qtm(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     resolution = validate_qtm_resolution(resolution)
     geometry = feature.geometry()
-    if geometry.wkbType() == QgsWkbTypes.Point:
+    if geometry.wkbType() == QgsWkbTypes.Type.Point:
         return point2qtm(feature, resolution, feedback)
-    elif geometry.wkbType() == QgsWkbTypes.LineString:
+    elif geometry.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2qtm(feature, resolution, None, None, feedback, **_kwargs)
-    elif geometry.wkbType() == QgsWkbTypes.Polygon:
+    elif geometry.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2qtm(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
@@ -3268,11 +3268,11 @@ def polygon2qtm(feature, resolution, predicate, compact, feedback, **_kwargs):
 def qgsfeature2olc(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     resolution = validate_olc_resolution(resolution)
     geometry = feature.geometry()
-    if geometry.wkbType() == QgsWkbTypes.Point:
+    if geometry.wkbType() == QgsWkbTypes.Type.Point:
         return point2olc(feature, resolution, feedback)
-    elif geometry.wkbType() == QgsWkbTypes.LineString:
+    elif geometry.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2olc(feature, resolution, None, None, feedback, **_kwargs)
-    elif geometry.wkbType() == QgsWkbTypes.Polygon:
+    elif geometry.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2olc(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
@@ -3757,11 +3757,11 @@ def qgsfeature2geohash(
 ):
     resolution = validate_geohash_resolution(resolution)
     geometry = feature.geometry()
-    if geometry.wkbType() == QgsWkbTypes.Point:
+    if geometry.wkbType() == QgsWkbTypes.Type.Point:
         return point2geohash(feature, resolution, feedback)
-    elif geometry.wkbType() == QgsWkbTypes.LineString:
+    elif geometry.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2geohash(feature, resolution, None, None, feedback, **_kwargs)
-    elif geometry.wkbType() == QgsWkbTypes.Polygon:
+    elif geometry.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2geohash(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
@@ -4064,11 +4064,11 @@ def qgsfeature2tilecode(
 ):
     resolution = validate_tilecode_resolution(resolution)
     geometry = feature.geometry()
-    if geometry.wkbType() == QgsWkbTypes.Point:
+    if geometry.wkbType() == QgsWkbTypes.Type.Point:
         return point2tilecode(feature, resolution, feedback)
-    elif geometry.wkbType() == QgsWkbTypes.LineString:
+    elif geometry.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2tilecode(feature, resolution, None, None, feedback, **_kwargs)
-    elif geometry.wkbType() == QgsWkbTypes.Polygon:
+    elif geometry.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2tilecode(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
@@ -4432,11 +4432,11 @@ def qgsfeature2quadkey(
 ):
     resolution = validate_quadkey_resolution(resolution)
     geometry = feature.geometry()
-    if geometry.wkbType() == QgsWkbTypes.Point:
+    if geometry.wkbType() == QgsWkbTypes.Type.Point:
         return point2quadkey(feature, resolution, feedback)
-    elif geometry.wkbType() == QgsWkbTypes.LineString:
+    elif geometry.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2quadkey(feature, resolution, None, None, feedback, **_kwargs)
-    elif geometry.wkbType() == QgsWkbTypes.Polygon:
+    elif geometry.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2quadkey(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
@@ -4792,11 +4792,11 @@ def qgsfeature2digipin(
 ):
     resolution = validate_digipin_resolution(resolution)
     geometry = feature.geometry()
-    if geometry.wkbType() == QgsWkbTypes.Point:
+    if geometry.wkbType() == QgsWkbTypes.Type.Point:
         return point2digipin(feature, resolution, feedback)
-    elif geometry.wkbType() == QgsWkbTypes.LineString:
+    elif geometry.wkbType() == QgsWkbTypes.Type.LineString:
         return polyline2digipin(feature, resolution, None, None, feedback, **_kwargs)
-    elif geometry.wkbType() == QgsWkbTypes.Polygon:
+    elif geometry.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2digipin(feature, resolution, predicate, compact, feedback, **_kwargs)
 
 
@@ -5275,9 +5275,9 @@ def qgsfeature2dggrid(
     shapely_geom = wkt_loads(geometry.asWkt())
 
     if geometry.wkbType() not in (
-        QgsWkbTypes.Point,
-        QgsWkbTypes.LineString,
-        QgsWkbTypes.Polygon,
+        QgsWkbTypes.Type.Point,
+        QgsWkbTypes.Type.LineString,
+        QgsWkbTypes.Type.Polygon,
     ):
         return []
 

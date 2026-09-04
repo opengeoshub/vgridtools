@@ -134,7 +134,7 @@ class S2Gen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=1,
             minValue=min_res,
             maxValue=max_res,
@@ -199,7 +199,7 @@ class S2Gen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -261,7 +261,7 @@ class S2Gen(QgsProcessingAlgorithm):
                     cell_perimeter,
                 ]
             )
-            sink.addFeature(s2_feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(s2_feature, QgsFeatureSink.Flag.FastInsert)
 
         feedback.pushInfo("S2 DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):

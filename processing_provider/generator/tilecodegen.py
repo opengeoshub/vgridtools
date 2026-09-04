@@ -131,7 +131,7 @@ class TilecodeGen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution/ zoom level [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=1,
             minValue=min_res,
             maxValue=max_res,
@@ -177,7 +177,7 @@ class TilecodeGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -240,7 +240,7 @@ class TilecodeGen(QgsProcessingAlgorithm):
                     cell_perimeter,
                 ]
             )
-            sink.addFeature(tilecode_feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(tilecode_feature, QgsFeatureSink.Flag.FastInsert)
 
         feedback.pushInfo("Tilecode DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):

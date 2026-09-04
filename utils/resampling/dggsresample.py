@@ -452,7 +452,7 @@ def _resampling_area_weighted(
             target_area = layer2_geom.area
             if target_area == 0:
                 continue
-        except Exception:
+        except Exception:  # nosec B112
             continue
 
         qgs_target = feature.geometry()
@@ -478,7 +478,7 @@ def _resampling_area_weighted(
                 proportion = intersection.area / target_area
                 resampled_value += l1_value * proportion
                 intersected = True
-            except Exception:
+            except Exception:  # nosec B112
                 continue
 
         if not intersected:

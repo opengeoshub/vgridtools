@@ -47,7 +47,7 @@ class CaptureCoordinate(QgsMapToolEmitPoint):
                 self.vertex.setIconSize(12)
                 self.vertex.setPenWidth(2)
                 self.vertex.setColor(self.snapcolor)
-                self.vertex.setIconType(QgsVertexMarker.ICON_BOX)
+                self.vertex.setIconType(QgsVertexMarker.IconType.ICON_BOX)
             self.vertex.setCenter(match.point())
             return match.point()  # Returns QgsPointXY
         else:
@@ -72,7 +72,7 @@ class CaptureCoordinate(QgsMapToolEmitPoint):
             )
             pt4326 = transform.transform(pt.x(), pt.y())
             self.capturePoint.emit(pt4326)
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     def removeVertexMarker(self):

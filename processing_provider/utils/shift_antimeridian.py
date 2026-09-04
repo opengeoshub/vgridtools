@@ -105,7 +105,7 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVectorPolygon, QgsProcessing.TypeVectorLine]
+        return [QgsProcessing.SourceType.TypeVectorPolygon, QgsProcessing.SourceType.TypeVectorLine]
 
     def outputName(self):
         return self.tr("shift_antimeridian")
@@ -122,7 +122,7 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterFeatureSource(
                 self.INPUT,
                 self.tr("Input (multi)polygon layer with EPSG:4326 CRS"),
-                [QgsProcessing.TypeVectorPolygon, QgsProcessing.TypeVectorLine],
+                [QgsProcessing.SourceType.TypeVectorPolygon, QgsProcessing.SourceType.TypeVectorLine],
             )
         )
 
@@ -145,7 +145,7 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterNumber(
                 self.WEST_THRESHOLD,
                 self.tr("West Threshold (degrees)", "West Threshold (degrees)"),
-                type=QgsProcessingParameterNumber.Double,
+                type=QgsProcessingParameterNumber.Type.Double,
                 defaultValue=-130.0,
                 minValue=-180.0,
                 maxValue=180.0,
@@ -157,7 +157,7 @@ class ShiftAntimeridian(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterNumber(
                 self.EAST_THRESHOLD,
                 self.tr("East Threshold (degrees)", "East Threshold (degrees)"),
-                type=QgsProcessingParameterNumber.Double,
+                type=QgsProcessingParameterNumber.Type.Double,
                 defaultValue=146.0,
                 minValue=-180.0,
                 maxValue=180.0,

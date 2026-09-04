@@ -31,7 +31,7 @@ class EASEGrid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.ease_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.ease_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.ease_marker.setStrokeColor(settings.easeColor)
         self.ease_marker.setWidth(settings.gridWidth)
 
@@ -51,7 +51,7 @@ class EASEGrid(QObject):
         try:
             # Reset rubber band
             self.removeMarker()
-            self.ease_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.ease_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.ease_marker.setStrokeColor(settings.easeColor)
             self.ease_marker.setWidth(settings.gridWidth)
 
@@ -147,7 +147,7 @@ class EASEGrid(QObject):
                             )
                             geom.transform(trans_to_canvas)
                         self.ease_marker.addGeometry(geom, None)
-                    except Exception:
+                    except Exception:  # nosec B112
                         continue
 
                 self.canvas.refresh()
@@ -185,7 +185,7 @@ class EASEGrid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.ease_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.ease_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         # Disconnect signals and delete rubber band
@@ -193,17 +193,17 @@ class EASEGrid(QObject):
             self._extentTimer.stop()
             try:
                 self._extentTimer.timeout.disconnect(self._refreshEASEGridOnExtent)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.ease_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.ease_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.ease_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass

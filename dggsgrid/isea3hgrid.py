@@ -40,7 +40,7 @@ class ISEA3HGrid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.isea3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.isea3h_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.isea3h_marker.setStrokeColor(settings.isea3hColor)
         self.isea3h_marker.setWidth(settings.gridWidth)
 
@@ -62,7 +62,7 @@ class ISEA3HGrid(QObject):
         try:
             # Clear previous grid before drawing a new one
             self.removeMarker()
-            self.isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.isea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.isea3h_marker.setStrokeColor(settings.isea3hColor)
             self.isea3h_marker.setWidth(settings.gridWidth)
 
@@ -156,7 +156,7 @@ class ISEA3HGrid(QObject):
                         else:
                             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
                         self.isea3h_marker.addGeometry(cell_geometry, None)
-                    except Exception:
+                    except Exception:  # nosec B112
                         continue
 
             self.canvas.refresh()
@@ -184,7 +184,7 @@ class ISEA3HGrid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.isea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         # Disconnect signals and delete rubber band
@@ -192,17 +192,17 @@ class ISEA3HGrid(QObject):
             self._extentTimer.stop()
             try:
                 self._extentTimer.timeout.disconnect(self._refreshISEA3HGridOnExtent)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.isea3h_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.isea3h_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.isea3h_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass

@@ -138,7 +138,7 @@ def _safe_intersection(geom_a, geom_b):
         inter = geom_a.intersection(geom_b)
         if not inter.is_empty:
             return inter
-    except Exception:
+    except Exception:  # nosec B110
         pass
     a = _ensure_valid_geometry(geom_a)
     b = _ensure_valid_geometry(geom_b)

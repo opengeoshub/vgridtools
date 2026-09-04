@@ -133,7 +133,7 @@ class GEOREFGen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"RESOLUTION [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=0,
             minValue=min_res,
             maxValue=max_res,
@@ -184,7 +184,7 @@ class GEOREFGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -234,7 +234,7 @@ class GEOREFGen(QgsProcessingAlgorithm):
                         cell_perimeter,
                     ]
                 )
-                sink.addFeature(georef_feature, QgsFeatureSink.FastInsert)
+                sink.addFeature(georef_feature, QgsFeatureSink.Flag.FastInsert)
                 # Update progress and feedback message
                 cell_count += 1
                 feedback.setProgress(int((cell_count / total_cells) * 100))

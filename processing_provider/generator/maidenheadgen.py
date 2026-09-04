@@ -139,7 +139,7 @@ class MaidenheadGen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=1,
             minValue=min_res,
             maxValue=max_res,
@@ -186,7 +186,7 @@ class MaidenheadGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -266,7 +266,7 @@ class MaidenheadGen(QgsProcessingAlgorithm):
                         ]
                     )
 
-                    sink.addFeature(maidenhead_feature, QgsFeatureSink.FastInsert)
+                    sink.addFeature(maidenhead_feature, QgsFeatureSink.Flag.FastInsert)
 
                     # Update progress and feedback message
                     cell_count += 1
@@ -346,7 +346,7 @@ class MaidenheadGen(QgsProcessingAlgorithm):
                         ]
                     )
 
-                    sink.addFeature(maidenhead_feature, QgsFeatureSink.FastInsert)
+                    sink.addFeature(maidenhead_feature, QgsFeatureSink.Flag.FastInsert)
 
                     # Update progress and feedback message
                     cell_count += 1

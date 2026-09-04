@@ -140,7 +140,7 @@ class H3Gen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=1,
             minValue=min_res,
             maxValue=max_res,
@@ -205,7 +205,7 @@ class H3Gen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -259,7 +259,7 @@ class H3Gen(QgsProcessingAlgorithm):
                         cell_perimeter,
                     ]
                 )
-                sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)
+                sink.addFeature(h3_feature, QgsFeatureSink.Flag.FastInsert)
 
         else:
             base_cells = h3.get_res0_cells()
@@ -304,7 +304,7 @@ class H3Gen(QgsProcessingAlgorithm):
                             cell_perimeter,
                         ]
                     )
-                    sink.addFeature(h3_feature, QgsFeatureSink.FastInsert)
+                    sink.addFeature(h3_feature, QgsFeatureSink.Flag.FastInsert)
 
         feedback.pushInfo("H3 DGGS generation completed.")
 

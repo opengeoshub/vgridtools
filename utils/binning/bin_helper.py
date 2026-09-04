@@ -379,7 +379,7 @@ def collect_bin_points(source, category, numeric_field, feedback):
         geom = feat.geometry()
         if geom is None or geom.isEmpty():
             continue
-        if QgsWkbTypes.geometryType(geom.wkbType()) != QgsWkbTypes.PointGeometry:
+        if QgsWkbTypes.geometryType(geom.wkbType()) != QgsWkbTypes.GeometryType.PointGeometry:
             continue
 
         attrs = {}
@@ -873,7 +873,7 @@ def process_point_dggs_bin(
             alg.OUTPUT,
             context,
             out_fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             _WGS84,
         )
 
@@ -943,7 +943,7 @@ def process_point_dggs_bin(
         out_feat = QgsFeature(out_fields)
         out_feat.setGeometry(QgsGeometry(feat.geometry()))
         out_feat.setAttributes(attrs)
-        sink.addFeature(out_feat, QgsFeatureSink.FastInsert)
+        sink.addFeature(out_feat, QgsFeatureSink.Flag.FastInsert)
         written += 1
         if grid_count:
             feedback.setProgress(30 + int(70 * (i + 1) / grid_count))

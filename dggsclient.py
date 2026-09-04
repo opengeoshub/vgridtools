@@ -290,7 +290,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                         status_callback(((i + 1) / len(collections)) * 100, None)
                     message = str(i + 1) + " layers loaded"
                     MessageBar = self.iface.messageBar()
-                    MessageBar.pushMessage("Info", message, level=Qgis.Info, duration=2)
+                    MessageBar.pushMessage("Info", message, level=Qgis.MessageLevel.Info, duration=2)
                     self.LblZones.setText(message)
                     self.Filter.setEnabled(True)
                     self.Filter.setFocus(True)
@@ -298,7 +298,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                     message = " 0 layer loaded"
                     self.LblZones.setText(message)
                     MessageBar = self.iface.messageBar()
-                    MessageBar.pushMessage("Info", message, level=Qgis.Info, duration=2)
+                    MessageBar.pushMessage("Info", message, level=Qgis.MessageLevel.Info, duration=2)
                     self.Filter.setEnabled(False)
                     self.Filter.setFocus(False)
 
@@ -382,7 +382,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 if len(collections) > 0:
                     message = str(len(collections)) + " collections loaded"
                     MessageBar = self.iface.messageBar()
-                    MessageBar.pushMessage("Info", message, level=Qgis.Info, duration=2)
+                    MessageBar.pushMessage("Info", message, level=Qgis.MessageLevel.Info, duration=2)
                     # Update status - completed
                     self.LblStatus.setText("Collections loaded")
                     self.status_bar.setValue(100)
@@ -710,7 +710,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                     message = str(len(zones)) + " zones loaded"
                     self.LblZones.setText(message)
                     MessageBar = self.iface.messageBar()
-                    MessageBar.pushMessage("Info", message, level=Qgis.Info, duration=2)
+                    MessageBar.pushMessage("Info", message, level=Qgis.MessageLevel.Info, duration=2)
                     self.Filter.setEnabled(True)
                     # Update status - completed
                     self.LblStatus.setText("Zones loaded")
@@ -981,7 +981,7 @@ class DGGSClientWidget(QDialog, FORM_CLASS):
                 MessageBar.pushMessage(
                     "Info",
                     "Zone " + zone_id + " downloaded and loaded",
-                    level=Qgis.Info,
+                    level=Qgis.MessageLevel.Info,
                     duration=2,
                 )
             else:

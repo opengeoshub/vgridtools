@@ -153,7 +153,7 @@ class GZDGen(QgsProcessingAlgorithm):
         f.append(QgsField("gzd", QVariant.String))
 
         (sink, dest_id) = self.parameterAsSink(
-            parameters, self.OUTPUT, context, f, QgsWkbTypes.Polygon, epsg4326
+            parameters, self.OUTPUT, context, f, QgsWkbTypes.Type.Polygon, epsg4326
         )
         if polar:
             self.exportPolygon(sink, -180, -90, 180, 10, "A")

@@ -163,7 +163,7 @@ class DGGALGen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr("Resolution"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=1,
             minValue=0,
             maxValue=33,
@@ -224,7 +224,7 @@ class DGGALGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -273,7 +273,7 @@ class DGGALGen(QgsProcessingAlgorithm):
                     cell_perimeter,
                 ]
             )
-            sink.addFeature(dggal_feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(dggal_feature, QgsFeatureSink.Flag.FastInsert)
 
             if feedback.isCanceled():
                 break

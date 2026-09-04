@@ -264,7 +264,7 @@ def _read_geofile_ignore_bad_crs(path_or_buffer, driver=None):
                 if isinstance(gdf.geometry.iloc[0], BaseGeometry):
                     gdf.crs = None
                     return gdf
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         import fiona

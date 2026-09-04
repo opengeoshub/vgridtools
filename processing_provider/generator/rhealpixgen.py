@@ -139,7 +139,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=1,
             minValue=min_res,
             maxValue=max_res,
@@ -205,7 +205,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -261,7 +261,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                         cell_perimeter,
                     ]
                 )
-                sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)
+                sink.addFeature(rhealpix_feature, QgsFeatureSink.Flag.FastInsert)
 
             else:
                 # Store intersecting cells with their polygons and cell objects
@@ -348,7 +348,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                             cell_perimeter,
                         ]
                     )
-                    sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)
+                    sink.addFeature(rhealpix_feature, QgsFeatureSink.Flag.FastInsert)
 
                     if feedback.isCanceled():
                         break
@@ -394,7 +394,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                         cell_perimeter,
                     ]
                 )
-                sink.addFeature(rhealpix_feature, QgsFeatureSink.FastInsert)
+                sink.addFeature(rhealpix_feature, QgsFeatureSink.Flag.FastInsert)
                 if feedback.isCanceled():
                     break
 

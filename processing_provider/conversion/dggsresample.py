@@ -138,7 +138,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVectorPolygon]
+        return [QgsProcessing.SourceType.TypeVectorPolygon]
 
     def inputParameterDescription(self):
         return self.tr("Input DGGS")
@@ -147,7 +147,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         return self.tr("DGGS_resampled")
 
     def outputWkbType(self, input_wkb_type):
-        return QgsWkbTypes.Polygon
+        return QgsWkbTypes.Type.Polygon
 
     def supportInPlaceEdit(self, layer):
         return False
@@ -172,7 +172,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
                 self.DGGS_FIELD,
                 self.tr("Input DGGS ID field"),
                 parentLayerParameterName=self.INPUT,
-                type=QgsProcessingParameterField.String,
+                type=QgsProcessingParameterField.DataType.String,
             )
         )
 
@@ -181,7 +181,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
                 self.RESAMPLE_FIELD,
                 self.tr("Input resample field"),
                 parentLayerParameterName=self.INPUT,
-                type=QgsProcessingParameterField.Numeric,
+                type=QgsProcessingParameterField.DataType.Numeric,
                 optional=True,
                 defaultValue=None,
             )
@@ -200,7 +200,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
                 self.tr("Output resolution (leave -1 for automatic)"),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 -1,
                 minValue=-1,
                 maxValue=40,
@@ -321,7 +321,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         )
 
         for feature in memory_layer.getFeatures():
-            sink.addFeature(feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(feature, QgsFeatureSink.Flag.FastInsert)
 
         apply_loaded_layer_name(context, sink_id, "DGGS_resampled", layer_name)
         return {self.OUTPUT: sink_id}

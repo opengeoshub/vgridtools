@@ -131,7 +131,7 @@ class QTMGen(QgsProcessingAlgorithm):
         param = QgsProcessingParameterNumber(
             self.RESOLUTION,
             self.tr(f"Resolution [{min_res}..{max_res}]"),
-            QgsProcessingParameterNumber.Integer,
+            QgsProcessingParameterNumber.Type.Integer,
             defaultValue=2,
             minValue=min_res,
             maxValue=max_res,
@@ -178,7 +178,7 @@ class QTMGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -227,7 +227,7 @@ class QTMGen(QgsProcessingAlgorithm):
                                     cell_perimeter,
                                 ]
                             )
-                            sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)
+                            sink.addFeature(qtm_feature, QgsFeatureSink.Flag.FastInsert)
                         if feedback.isCanceled():
                             break
                 else:
@@ -268,7 +268,7 @@ class QTMGen(QgsProcessingAlgorithm):
                                         ]
                                     )
                                     sink.addFeature(
-                                        qtm_feature, QgsFeatureSink.FastInsert
+                                        qtm_feature, QgsFeatureSink.Flag.FastInsert
                                     )
                             if feedback.isCanceled():
                                 break
@@ -310,7 +310,7 @@ class QTMGen(QgsProcessingAlgorithm):
                                     cell_perimeter,
                                 ]
                             )
-                            sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)
+                            sink.addFeature(qtm_feature, QgsFeatureSink.Flag.FastInsert)
                             # Update progress
                             processed_cells += 1
                             feedback.setProgress(
@@ -351,7 +351,7 @@ class QTMGen(QgsProcessingAlgorithm):
                                         cell_perimeter,
                                     ]
                                 )
-                                sink.addFeature(qtm_feature, QgsFeatureSink.FastInsert)
+                                sink.addFeature(qtm_feature, QgsFeatureSink.Flag.FastInsert)
                                 # Update progress
                                 processed_cells += 1
                                 feedback.setProgress(

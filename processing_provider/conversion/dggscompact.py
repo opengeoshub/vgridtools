@@ -146,7 +146,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVector]
+        return [QgsProcessing.SourceType.TypeVector]
 
     def sourceFlags(self):
         # DGGS ID is the only input used; skip validity checks on input geometry.
@@ -162,7 +162,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         return self.tr("DGGS_compacted")
 
     def outputWkbType(self, input_wkb_type):
-        return QgsWkbTypes.Polygon
+        return QgsWkbTypes.Type.Polygon
 
     def supportInPlaceEdit(self, layer):
         return False
@@ -184,7 +184,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
                 self.DGGS_FIELD,
                 "DGGS ID",
                 parentLayerParameterName=self.INPUT,
-                type=QgsProcessingParameterField.String,
+                type=QgsProcessingParameterField.DataType.String,
             )
         )
 
@@ -195,7 +195,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
                     "Compact depth (-1: full compact, "
                     "1: parent, 2: grandparent,...)"
                 ),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 defaultValue=-1,
                 minValue=-1,
                 maxValue=40,
@@ -222,7 +222,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
                 ),
                 parentLayerParameterName=self.INPUT,
                 optional=True,
-                type=QgsProcessingParameterField.Numeric,
+                type=QgsProcessingParameterField.DataType.Numeric,
             )
         )
 
@@ -358,7 +358,7 @@ class DGGSCompact(QgsProcessingFeatureBasedAlgorithm):
         )
 
         for feature in memory_layer.getFeatures():
-            sink.addFeature(feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(feature, QgsFeatureSink.Flag.FastInsert)
 
         apply_loaded_layer_name(context, sink_id, "DGGS_compacted", layer_name)
         return {self.OUTPUT: sink_id}

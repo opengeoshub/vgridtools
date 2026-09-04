@@ -107,7 +107,7 @@ class FixAntimeridian(QgsProcessingFeatureBasedAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + reference + footer
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVectorPolygon]
+        return [QgsProcessing.SourceType.TypeVectorPolygon]
 
     def outputName(self):
         return self.tr("fix_antimeridian")
@@ -124,7 +124,7 @@ class FixAntimeridian(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterFeatureSource(
                 self.INPUT,
                 self.tr("Input (multi)polygon layer with EPSG:4326 CRS"),
-                [QgsProcessing.TypeVectorPolygon],
+                [QgsProcessing.SourceType.TypeVectorPolygon],
             )
         )
 

@@ -31,7 +31,7 @@ class RhealpixGrid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.rhealpix_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.rhealpix_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.rhealpix_marker.setStrokeColor(settings.rhealpixColor)
         self.rhealpix_marker.setWidth(settings.gridWidth)
 
@@ -54,7 +54,7 @@ class RhealpixGrid(QObject):
         try:
             # Clear previous grid before drawing a new one
             self.removeMarker()
-            self.rhealpix_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.rhealpix_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
@@ -239,7 +239,7 @@ class RhealpixGrid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.rhealpix_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.rhealpix_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         # Disconnect signals and delete rubber band
@@ -247,17 +247,17 @@ class RhealpixGrid(QObject):
             self._extentTimer.stop()
             try:
                 self._extentTimer.timeout.disconnect(self._refreshRhealpixGridOnExtent)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.rhealpix_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.rhealpix_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.rhealpix_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass

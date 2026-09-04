@@ -181,7 +181,7 @@ class OLCGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -258,7 +258,7 @@ class OLCGen(QgsProcessingAlgorithm):
                             cell_perimeter,
                         ]
                     )
-                    sink.addFeature(olc_feature, QgsFeatureSink.FastInsert)
+                    sink.addFeature(olc_feature, QgsFeatureSink.Flag.FastInsert)
 
                     lng += lng_step
                     current_step += 1
@@ -361,7 +361,7 @@ class OLCGen(QgsProcessingAlgorithm):
                         cell_perimeter,
                     ]
                 )
-                sink.addFeature(olc_feature, QgsFeatureSink.FastInsert)
+                sink.addFeature(olc_feature, QgsFeatureSink.Flag.FastInsert)
 
         feedback.pushInfo("OLC DGGS generation completed.")
         if context.willLoadLayerOnCompletion(dest_id):

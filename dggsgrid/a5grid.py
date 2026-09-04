@@ -30,7 +30,7 @@ class A5Grid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.a5_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.a5_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.a5_marker.setStrokeColor(settings.a5Color)
         self.a5_marker.setWidth(settings.gridWidth)
 
@@ -50,7 +50,7 @@ class A5Grid(QObject):
         try:
             # Clear previous grid before drawing a new one
             self.removeMarker()
-            self.a5_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.a5_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.a5_marker.setStrokeColor(settings.a5Color)
             self.a5_marker.setWidth(settings.gridWidth)
 
@@ -184,7 +184,7 @@ class A5Grid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.a5_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.a5_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         # Disconnect signals and delete rubber band
@@ -192,17 +192,17 @@ class A5Grid(QObject):
             self._extentTimer.stop()
             try:
                 self._extentTimer.timeout.disconnect(self._refreshA5GridOnExtent)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.a5_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.a5_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.a5_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass

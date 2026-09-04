@@ -171,7 +171,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVector]
+        return [QgsProcessing.SourceType.TypeVector]
 
     def inputParameterDescription(self):
         return self.tr("Input vector layer")
@@ -183,7 +183,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return QgsCoordinateReferenceSystem("EPSG:4326")
 
     def outputWkbType(self, input_wkb_type):
-        return QgsWkbTypes.Polygon
+        return QgsWkbTypes.Type.Polygon
 
     def supportInPlaceEdit(self, layer):
         return False
@@ -206,7 +206,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
                 "Resolution",
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 default_res,
                 minValue=0,
                 maxValue=40,
@@ -233,7 +233,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                     "Compact depth (-1: full compact, "
                     "1: parent, 2: grandparent,...)"
                 ),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 defaultValue=-1,
                 minValue=-1,
                 maxValue=40,
@@ -512,7 +512,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             multi_cell_polygons = []
 
             # Handle MultiPoint geometry
-            if flat_type == QgsWkbTypes.MultiPoint:
+            if flat_type == QgsWkbTypes.Type.MultiPoint:
                 for point in feature_geom.asMultiPoint():
                     point_feature = QgsFeature(feature)
                     point_feature.setGeometry(QgsGeometry.fromPointXY(point))
@@ -529,7 +529,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 return multi_cell_polygons
 
             # Handle MultiLineString geometry
-            elif flat_type == QgsWkbTypes.MultiLineString:
+            elif flat_type == QgsWkbTypes.Type.MultiLineString:
                 for line in feature_geom.asMultiPolyline():
                     line_feature = QgsFeature(feature)
                     line_feature.setGeometry(QgsGeometry.fromPolylineXY(line))
@@ -546,7 +546,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 return multi_cell_polygons
 
             # Handle MultiPolygon geometry
-            elif flat_type == QgsWkbTypes.MultiPolygon:
+            elif flat_type == QgsWkbTypes.Type.MultiPolygon:
                 for polygon in feature_geom.asMultiPolygon():
                     polygon_feature = QgsFeature(feature)
                     polygon_feature.setGeometry(QgsGeometry.fromPolygonXY(polygon))

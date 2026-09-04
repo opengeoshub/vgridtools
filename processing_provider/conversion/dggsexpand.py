@@ -123,7 +123,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVector]
+        return [QgsProcessing.SourceType.TypeVector]
 
     def sourceFlags(self):
         # DGGS ID is the only input used; skip validity checks on input geometry.
@@ -139,7 +139,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         return self.tr("DGGS_expanded")
 
     def outputWkbType(self, input_wkb_type):
-        return QgsWkbTypes.Polygon
+        return QgsWkbTypes.Type.Polygon
 
     def supportInPlaceEdit(self, layer):
         return False
@@ -161,7 +161,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
                 self.DGGS_FIELD,
                 "DGGS ID",
                 parentLayerParameterName=self.INPUT,
-                type=QgsProcessingParameterField.String,
+                type=QgsProcessingParameterField.DataType.String,
             )
         )
 
@@ -171,7 +171,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
                 self.tr(
                     "Resolution (if set, depth is ignored; -1 to use depth)"
                 ),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 5,
                 minValue=-1,
                 maxValue=40,
@@ -185,7 +185,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
                     "Expand depth (-1: unused, "
                     "1: children, 2: grandchildren,...)"
                 ),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 defaultValue=-1,
                 minValue=-1,
                 maxValue=40,
@@ -323,7 +323,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         )
 
         for feature in memory_layer.getFeatures():
-            sink.addFeature(feature, QgsFeatureSink.FastInsert)
+            sink.addFeature(feature, QgsFeatureSink.Flag.FastInsert)
 
         apply_loaded_layer_name(context, sink_id, "DGGS_expanded", layer_name)
         return {self.OUTPUT: sink_id}

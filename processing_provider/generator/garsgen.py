@@ -185,7 +185,7 @@ class GARSGen(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
@@ -237,7 +237,7 @@ class GARSGen(QgsProcessingAlgorithm):
                         cell_perimeter,
                     ]
                 )
-                sink.addFeature(gars_feature, QgsFeatureSink.FastInsert)
+                sink.addFeature(gars_feature, QgsFeatureSink.Flag.FastInsert)
                 # Update progress and feedback message
                 cell_count += 1
                 feedback.setProgress(int((cell_count / total_cells) * 100))

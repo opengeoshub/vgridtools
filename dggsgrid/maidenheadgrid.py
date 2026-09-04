@@ -36,7 +36,7 @@ class MaidenheadGrid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.maidenhead_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.maidenhead_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.maidenhead_marker.setStrokeColor(settings.maidenheadColor)
         self.maidenhead_marker.setWidth(settings.gridWidth)
 
@@ -56,7 +56,7 @@ class MaidenheadGrid(QObject):
         try:
             # Clear previous grid before drawing a new one
             self.removeMarker()
-            self.maidenhead_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.maidenhead_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.maidenhead_marker.setStrokeColor(settings.maidenheadColor)
             self.maidenhead_marker.setWidth(settings.gridWidth)
 
@@ -178,7 +178,7 @@ class MaidenheadGrid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.maidenhead_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.maidenhead_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         # Disconnect signals and delete rubber band
@@ -188,17 +188,17 @@ class MaidenheadGrid(QObject):
                 self._extentTimer.timeout.disconnect(
                     self._refreshMaidenheadGridOnExtent
                 )
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.maidenhead_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.maidenhead_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.maidenhead_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass

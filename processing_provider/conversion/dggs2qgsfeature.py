@@ -205,7 +205,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return self.tr(self.txt_en, self.txt_vi) + footer
 
     def inputLayerTypes(self):
-        return [QgsProcessing.TypeVector]
+        return [QgsProcessing.SourceType.TypeVector]
 
     def sourceFlags(self):
         # Cell ID is the only input used; skip validity checks on input geometry.
@@ -221,7 +221,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return QgsCoordinateReferenceSystem("EPSG:4326")
 
     def outputWkbType(self, input_wkb_type):
-        return QgsWkbTypes.Polygon
+        return QgsWkbTypes.Type.Polygon
 
     def supportInPlaceEdit(self, layer):
         return False
@@ -229,7 +229,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     def initParameters(self, config=None):
         # Input layer
         param = QgsProcessingParameterFeatureSource(
-            self.INPUT, self.tr("Input layer"), [QgsProcessing.TypeVector]
+            self.INPUT, self.tr("Input layer"), [QgsProcessing.SourceType.TypeVector]
         )
         self.addParameter(param)
 
@@ -237,7 +237,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
         param = QgsProcessingParameterField(
             self.CELL_ID,
             self.tr("Cell ID field"),
-            type=QgsProcessingParameterField.String,
+            type=QgsProcessingParameterField.DataType.String,
             parentLayerParameterName=self.INPUT,
         )
         self.addParameter(param)
@@ -255,7 +255,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             QgsProcessingParameterNumber(
                 self.RESOLUTION,
                 self.tr("Resolution (DGGRID only; -1 otherwise)"),
-                QgsProcessingParameterNumber.Integer,
+                QgsProcessingParameterNumber.Type.Integer,
                 -1,
                 minValue=-1,
                 maxValue=40,
@@ -594,14 +594,14 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             self.OUTPUT,
             context,
             out_fields,
-            QgsWkbTypes.Polygon,
+            QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
         for out_feat in out_features:
             if feedback.isCanceled():
                 break
-            sink.addFeature(out_feat, QgsFeatureSink.FastInsert)
+            sink.addFeature(out_feat, QgsFeatureSink.Flag.FastInsert)
 
         feedback.setProgress(100)
         return {self.OUTPUT: dest_id}

@@ -29,7 +29,7 @@ class TilecodeGrid(QObject):
         self.vgridtools = vgridtools
         self.iface = iface
 
-        self.tilecode_marker = QgsRubberBand(self.canvas, QgsWkbTypes.PolygonGeometry)
+        self.tilecode_marker = QgsRubberBand(self.canvas, QgsWkbTypes.GeometryType.PolygonGeometry)
         self.tilecode_marker.setStrokeColor(settings.tilecodeColor)
         self.tilecode_marker.setWidth(settings.gridWidth)
 
@@ -49,7 +49,7 @@ class TilecodeGrid(QObject):
         try:
             # Clear previous grid before drawing a new one
             self.removeMarker()
-            self.tilecode_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.tilecode_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
@@ -160,7 +160,7 @@ class TilecodeGrid(QObject):
 
     @pyqtSlot()
     def removeMarker(self):
-        self.tilecode_marker.reset(QgsWkbTypes.PolygonGeometry)
+        self.tilecode_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
     def cleanup(self):
         # Disconnect signals and delete rubber band
@@ -168,17 +168,17 @@ class TilecodeGrid(QObject):
             self._extentTimer.stop()
             try:
                 self._extentTimer.timeout.disconnect(self._refreshTilecodeGridOnExtent)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             try:
                 self.canvas.extentsChanged.disconnect(self._onExtentsChanged)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
         try:
-            self.tilecode_marker.reset(QgsWkbTypes.PolygonGeometry)
+            self.tilecode_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
             self.tilecode_marker.deleteLater()
-        except Exception:
+        except Exception:  # nosec B110
             pass
