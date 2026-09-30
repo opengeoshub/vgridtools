@@ -54,6 +54,16 @@ from ...utils.crs_helper import processing_extent_wgs84
 from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
 
 
+from ...utils.generator_helper import (
+    add_cell_metrics_parameter,
+    read_cell_metrics,
+    generator_output_fields,
+    MetricFilteringSink,
+    geodesic_metric_values,
+    graticule_metric_values,
+)
+
+
 class OLCGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
@@ -139,10 +149,13 @@ class OLCGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        add_cell_metrics_parameter(self)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "OLC")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
+        self.cell_metrics = read_cell_metrics(self, parameters, context)
         res_index = self.parameterAsEnum(parameters, self.RESOLUTION, context)
         self.resolution = self.OLC_RESOLUTIONS[res_index]
 
@@ -172,7 +185,8 @@ class OLCGen(QgsProcessingAlgorithm):
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
-        fields = self.outputFields()
+        full_fields = self.outputFields()
+        fields = generator_output_fields(full_fields, self.cell_metrics)
         layer_name = f"OLC_{self.resolution}"
         set_output_layer_name(parameters, self.OUTPUT, "OLC", layer_name)
         # Get the output sink and its destination ID
@@ -187,6 +201,8 @@ class OLCGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+
+        sink = MetricFilteringSink(sink, full_fields, self.cell_metrics)
         apply_loaded_layer_name(context, dest_id, "OLC", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
@@ -244,7 +260,7 @@ class OLCGen(QgsProcessingAlgorithm):
                         cell_height,
                         cell_area,
                         cell_perimeter,
-                    ) = graticule_dggs_metrics(cell_polygon)
+                    ) = graticule_metric_values(cell_polygon, self.cell_metrics)
 
                     olc_feature.setAttributes(
                         [
@@ -348,7 +364,7 @@ class OLCGen(QgsProcessingAlgorithm):
                     cell_height,
                     cell_area,
                     cell_perimeter,
-                ) = graticule_dggs_metrics(cell_polygon)
+                ) = graticule_metric_values(cell_polygon, self.cell_metrics)
                 olc_feature.setAttributes(
                     [
                         olc_id,

@@ -237,18 +237,21 @@ def nearest_neighbour_from_qgs_grid(raster_layer, grid_layer, feedback=None):
     return gdf_to_qgs_vector_layer(out, grid_layer.name())
 
 
-def build_standard_fields(band_count: int, digipin: bool = False) -> QgsFields:
+def build_standard_fields(
+    band_count: int, digipin: bool = False, cell_metrics: bool = True
+) -> QgsFields:
     fields = QgsFields()
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    if digipin:
-        fields.append(QgsField("cell_width", QVariant.Double))
-        fields.append(QgsField("cell_height", QVariant.Double))
-    else:
-        fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    if cell_metrics:
+        fields.append(QgsField("center_lat", QVariant.Double))
+        fields.append(QgsField("center_lon", QVariant.Double))
+        if digipin:
+            fields.append(QgsField("cell_width", QVariant.Double))
+            fields.append(QgsField("cell_height", QVariant.Double))
+        else:
+            fields.append(QgsField("avg_edge_len", QVariant.Double))
+        fields.append(QgsField("cell_area", QVariant.Double))
+        fields.append(QgsField("cell_perimeter", QVariant.Double))
     for i in range(band_count):
         fields.append(QgsField(f"band_{i + 1}", QVariant.Double))
     return fields
@@ -265,6 +268,7 @@ def build_binning_qgs_layer(
     feedback=None,
     layer_name="DGGS",
     digipin_metrics_fn=False,
+    cell_metrics=True,
 ):
     """
     Build a memory layer from a binning accumulator.
@@ -277,7 +281,9 @@ def build_binning_qgs_layer(
 
     fields = QgsFields()
     fields.append(QgsField(id_field, QVariant.String))
-    for f in build_standard_fields(band_count, digipin=digipin_metrics_fn):
+    for f in build_standard_fields(
+        band_count, digipin=digipin_metrics_fn, cell_metrics=cell_metrics
+    ):
         fields.append(f)
     provider.addAttributes(fields)
     layer.updateFields()
@@ -333,6 +339,7 @@ def run_raster2(
     feedback=None,
     layer_name="DGGS",
     digipin_metrics_fn=False,
+    cell_metrics=True,
 ):
     """Dispatch binning vs nearest for one DGGS type."""
     method = normalize_method(method)
@@ -359,6 +366,7 @@ def run_raster2(
             feedback=feedback,
             layer_name=layer_name,
             digipin_metrics_fn=digipin_metrics_fn,
+            cell_metrics=cell_metrics,
         )
 
     if feedback:

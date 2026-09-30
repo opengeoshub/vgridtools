@@ -52,6 +52,16 @@ from vgrid.conversion.dggs2geo import s22geo
 from vgrid.dggs import s2
 
 
+from ...utils.generator_helper import (
+    add_cell_metrics_parameter,
+    read_cell_metrics,
+    generator_output_fields,
+    MetricFilteringSink,
+    geodesic_metric_values,
+    graticule_metric_values,
+)
+
+
 class S2Gen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
@@ -156,10 +166,13 @@ class S2Gen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        add_cell_metrics_parameter(self)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "S2")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
+        self.cell_metrics = read_cell_metrics(self, parameters, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         # Get the extent parameter
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
@@ -191,7 +204,8 @@ class S2Gen(QgsProcessingAlgorithm):
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
-        fields = self.outputFields()
+        full_fields = self.outputFields()
+        fields = generator_output_fields(full_fields, self.cell_metrics)
         layer_name = f"S2_{self.resolution}"
         set_output_layer_name(parameters, self.OUTPUT, "S2", layer_name)
         (sink, dest_id) = self.parameterAsSink(
@@ -205,6 +219,8 @@ class S2Gen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+
+        sink = MetricFilteringSink(sink, full_fields, self.cell_metrics)
         apply_loaded_layer_name(context, dest_id, "S2", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
@@ -248,7 +264,7 @@ class S2Gen(QgsProcessingAlgorithm):
 
             num_edges = 4
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, self.cell_metrics)
             )
             s2_feature.setAttributes(
                 [

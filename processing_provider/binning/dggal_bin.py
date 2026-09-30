@@ -21,6 +21,7 @@ from vgrid.utils.constants import DGGAL_TYPES
 from vgrid.utils.io import validate_dggal_resolution
 
 from ...utils.binning.bin_helper import (
+    add_cell_metrics_parameter,
     load_wgs84_feature_source,
     BIN_AGG,
     add_shift_split_parameters,
@@ -174,6 +175,8 @@ class DGGALBin(QgsProcessingFeatureBasedAlgorithm):
             )
         )
         add_shift_split_parameters(self, shift=False)
+
+        add_cell_metrics_parameter(self)
 
     def prepareAlgorithm(self, parameters, context, feedback):
         self.agg_index = self.parameterAsEnum(parameters, self.AGG, context)

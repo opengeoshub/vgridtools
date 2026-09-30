@@ -10,6 +10,7 @@ from vgrid.stats.isea4tstats import isea4t_metrics
 from vgrid.stats.rhealpixstats import rhealpix_metrics
 from vgrid.stats.a5stats import a5_metrics
 from vgrid.stats.s2stats import s2_metrics
+from ...settings import settings
 from ...utils.crs_helper import ensure_wgs84_raster_layer
 from ...utils.binning.bin_helper import (
     add_shift_split_parameters,
@@ -34,6 +35,7 @@ from qgis.core import (
     QgsProcessingAlgorithm,
     QgsProcessingParameterEnum,
     QgsProcessingParameterNumber,
+    QgsProcessingParameterBoolean,
     QgsProcessing,
     QgsProcessingException,
     QgsVectorLayer,
@@ -62,6 +64,7 @@ class Raster2DGGS(QgsProcessingAlgorithm):
     SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     AGGREGATE = "AGGREGATE"
+    CELL_METRICS = "CELL_METRICS"
     OUTPUT = "OUTPUT"
 
     METHODS = ["nearest", "binning"]
@@ -244,6 +247,14 @@ class Raster2DGGS(QgsProcessingAlgorithm):
         add_shift_split_parameters(self, aggregate=True, dggrid_hints=True)
 
         self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.CELL_METRICS,
+                self.tr("Compute cell metrics"),
+                defaultValue=False,
+            )
+        )
+
+        self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr("Raster2DGGS"), QgsProcessing.SourceType.TypeVectorPolygon
             )
@@ -416,6 +427,9 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             self.split_antimeridian,
             self.aggregate,
         ) = antimeridian
+        self.cell_metrics = self.parameterAsBoolean(
+            parameters, self.CELL_METRICS, context
+        )
 
         _kw = {
             "method": self.method,
@@ -423,6 +437,8 @@ class Raster2DGGS(QgsProcessingAlgorithm):
             "shift_antimeridian": self.shift_antimeridian,
             "split_antimeridian": self.split_antimeridian,
             "aggregate": self.aggregate,
+            "N_side": getattr(settings, "rhealpixNSide", 3),
+            "cell_metrics": self.cell_metrics,
         }
 
         def _fn(conv):

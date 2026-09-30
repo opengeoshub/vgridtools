@@ -31,10 +31,11 @@ def geo_with_fix(
     dggs_type,
     shift_antimeridian=False,
     split_antimeridian=False,
+    **kwargs,
 ):
     fix = resolve_fix_antimeridian(
         dggs_type, shift_antimeridian, split_antimeridian
     )
     if fix:
-        return converter(cell_id, fix_antimeridian=fix)
-    return converter(cell_id)
+        return converter(cell_id, fix_antimeridian=fix, **kwargs)
+    return converter(cell_id, **kwargs)

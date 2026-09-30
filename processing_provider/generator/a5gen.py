@@ -54,6 +54,16 @@ import a5
 from vgrid.conversion.dggs2geo.a52geo import a52geo_u64
 
 
+from ...utils.generator_helper import (
+    add_cell_metrics_parameter,
+    read_cell_metrics,
+    generator_output_fields,
+    MetricFilteringSink,
+    geodesic_metric_values,
+    graticule_metric_values,
+)
+
+
 class A5Gen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
@@ -163,10 +173,13 @@ class A5Gen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        add_cell_metrics_parameter(self)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "A5")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
+        self.cell_metrics = read_cell_metrics(self, parameters, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         # Get the extent parameter
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
@@ -201,7 +214,8 @@ class A5Gen(QgsProcessingAlgorithm):
         """
         Generate A5 DGGS polygons intersecting the requested extent.
         """
-        fields = self.outputFields()
+        full_fields = self.outputFields()
+        fields = generator_output_fields(full_fields, self.cell_metrics)
         layer_name = f"A5_{self.resolution}"
         set_output_layer_name(parameters, self.OUTPUT, "A5", layer_name)
         (sink, dest_id) = self.parameterAsSink(
@@ -215,6 +229,8 @@ class A5Gen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+
+        sink = MetricFilteringSink(sink, full_fields, self.cell_metrics)
         apply_loaded_layer_name(context, dest_id, "A5", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
@@ -296,7 +312,7 @@ class A5Gen(QgsProcessingAlgorithm):
                 avg_edge_len,
                 cell_area,
                 cell_perimeter,
-            ) = geodesic_dggs_metrics(cell_polygon, num_edges)
+            ) = geodesic_metric_values(cell_polygon, num_edges, self.cell_metrics)
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
             a5_feature = QgsFeature()

@@ -64,7 +64,7 @@ class A5Grid(QObject):
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | A5 resolution: {resolution}"
+                    f"Zoom: {zoom:.2f} | A5 res: {resolution}"
                 )
 
             min_lon, min_lat, max_lon, max_lat = (

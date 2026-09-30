@@ -162,7 +162,11 @@ def latlon2rhealpix(latitude, longitude, resolution, feature, parent):
       <li>Point features: <span class = function>latlon2rhealpix</span>(<span class = parameters>$y,$x,12</span>)</li>
     </ul>
     """
-    return latlon2dggs.latlon2rhealpix(latitude, longitude, resolution)
+    from .settings import settings
+    return latlon2dggs.latlon2rhealpix(
+        latitude, longitude, resolution,
+        N_side=getattr(settings, "rhealpixNSide", 3),
+    )
 
 
 @qgsfunction(args="auto", group=group_name)

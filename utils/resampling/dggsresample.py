@@ -20,8 +20,8 @@ from vgrid.stats.quadkeystats import quadkey_metrics
 from shapely.wkt import loads as load_wkt
 
 from numbers import Number
-from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+from ..rhealpix_helper import resolve_rhealpix_n_side
+from vgrid.utils.io import rhealpix_cell_from_id
 from pyproj import Geod
 import platform
 
@@ -44,7 +44,6 @@ from qgis.PyQt.QtCore import QVariant
 
 
 geod = Geod(ellps="WGS84")
-E = WGS84_ELLIPSOID
 
 
 def _dggal_short_type(dggs_key):
@@ -92,13 +91,10 @@ def get_nearest_resolution(
             _, _, from_area, _ = a5_metrics(from_resolution)
 
         elif from_dggs == "rhealpix":
-            rhealpix_uids = (from_dggs_id[0],) + tuple(map(int, from_dggs_id[1:]))
-            rhealpix_dggs = RHEALPixDGGS(
-                ellipsoid=E, north_square=1, south_square=3, N_side=3
-            )
-            rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
+            N_side = resolve_rhealpix_n_side()
+            rhealpix_cell = rhealpix_cell_from_id(str(from_dggs_id), N_side=N_side)
             from_resolution = rhealpix_cell.resolution
-            _, _, from_area, _ = rhealpix_metrics(from_resolution)
+            _, _, from_area, _ = rhealpix_metrics(from_resolution, N_side=N_side)
 
         elif from_dggs == "isea4t":
             if platform.system() == "Windows":
@@ -170,8 +166,9 @@ def get_nearest_resolution(
                     nearest_resolution = res
 
         elif to_dggs == "rhealpix":
+            N_side = resolve_rhealpix_n_side()
             for res in range(16):
-                _, _, avg_area, _ = rhealpix_metrics(res)
+                _, _, avg_area, _ = rhealpix_metrics(res, N_side=N_side)
                 diff = abs(avg_area - from_area)
                 if diff < min_diff:
                     min_diff = diff
@@ -256,10 +253,13 @@ def generate_grid(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    N_side=None,
+    cell_metrics=False,
 ):
     antimeridian_kw = {
         "shift_antimeridian": shift_antimeridian,
         "split_antimeridian": split_antimeridian,
+        "cell_metrics": cell_metrics,
     }
     dggs_grid = {}
     if to_dggs == "h3":
@@ -276,7 +276,11 @@ def generate_grid(
         )
     elif to_dggs == "rhealpix":
         dggs_grid = dggsgrid.generate_rhealpix_grid(
-            resolution, qgs_features, feedback, **antimeridian_kw
+            resolution,
+            qgs_features,
+            feedback,
+            N_side=resolve_rhealpix_n_side(N_side),
+            **antimeridian_kw,
         )
     elif to_dggs == "isea4t":
         if platform.system() == "Windows":
@@ -284,15 +288,25 @@ def generate_grid(
                 resolution, qgs_features, feedback, **antimeridian_kw
             )
     elif to_dggs == "qtm":
-        dggs_grid = dggsgrid.generate_qtm_grid(resolution, qgs_features, feedback)
+        dggs_grid = dggsgrid.generate_qtm_grid(
+            resolution, qgs_features, feedback, cell_metrics=cell_metrics
+        )
     elif to_dggs == "olc":
-        dggs_grid = dggsgrid.generate_olc_grid(resolution, qgs_features, feedback)
+        dggs_grid = dggsgrid.generate_olc_grid(
+            resolution, qgs_features, feedback, cell_metrics=cell_metrics
+        )
     elif to_dggs == "geohash":
-        dggs_grid = dggsgrid.generate_geohash_grid(resolution, qgs_features, feedback)
+        dggs_grid = dggsgrid.generate_geohash_grid(
+            resolution, qgs_features, feedback, cell_metrics=cell_metrics
+        )
     elif to_dggs == "tilecode":
-        dggs_grid = dggsgrid.generate_tilecode_grid(resolution, qgs_features, feedback)
+        dggs_grid = dggsgrid.generate_tilecode_grid(
+            resolution, qgs_features, feedback, cell_metrics=cell_metrics
+        )
     elif to_dggs == "quadkey":
-        dggs_grid = dggsgrid.generate_quadkey_grid(resolution, qgs_features, feedback)
+        dggs_grid = dggsgrid.generate_quadkey_grid(
+            resolution, qgs_features, feedback, cell_metrics=cell_metrics
+        )
     elif (dt := _dggal_short_type(to_dggs)) is not None:
         dt = validate_dggal_type(dt)
         dggs_grid = dggsgrid.generate_dggal_grid(
@@ -644,8 +658,12 @@ def resample(
     shift_antimeridian=False,
     split_antimeridian=False,
     predicate="centroid_within",
+    N_side=None,
+    cell_metrics=False,
+    **_kwargs,
 ):
     resampled_features = None
+    N_side = resolve_rhealpix_n_side(_kwargs.get("N_side", N_side))
     if resolution == -1:
         resolution = get_nearest_resolution(
             dggs_layer, dggstype_from, dggstype_to, dggs_field
@@ -665,6 +683,8 @@ def resample(
         feedback,
         shift_antimeridian=shift_antimeridian,
         split_antimeridian=split_antimeridian,
+        N_side=N_side,
+        cell_metrics=cell_metrics,
     )
     if resampled_features is not None:
         resampled_features = _filter_target_layer_by_predicate(

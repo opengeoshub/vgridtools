@@ -74,6 +74,16 @@ def _set_output_layer_name(parameters, output_key, default_name, layer_name):
         parameters[output_key] = defn
 
 
+from ...utils.generator_helper import (
+    add_cell_metrics_parameter,
+    read_cell_metrics,
+    generator_output_fields,
+    MetricFilteringSink,
+    geodesic_metric_values,
+    graticule_metric_values,
+)
+
+
 class DGGALGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     DGGS_TYPE = "DGGS_TYPE"
@@ -178,10 +188,13 @@ class DGGALGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        add_cell_metrics_parameter(self)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr("DGGAL"))
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
+        self.cell_metrics = read_cell_metrics(self, parameters, context)
         dggs_type_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         self.dggs_type = list(DGGAL_TYPES.keys())[dggs_type_index]
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
@@ -215,7 +228,8 @@ class DGGALGen(QgsProcessingAlgorithm):
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
-        fields = self.outputFields()
+        full_fields = self.outputFields()
+        fields = generator_output_fields(full_fields, self.cell_metrics)
         layer_name = f"DGGAL_{self.dggs_type.upper()}_{self.resolution}"
         _set_output_layer_name(parameters, self.OUTPUT, "DGGAL", layer_name)
         # Output layer initialization
@@ -233,6 +247,8 @@ class DGGALGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+
+        sink = MetricFilteringSink(sink, full_fields, self.cell_metrics)
 
         min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
             self, parameters, self.EXTENT, context, feedback
@@ -260,7 +276,7 @@ class DGGALGen(QgsProcessingAlgorithm):
             dggal_feature = QgsFeature()
             dggal_feature.setGeometry(cell_geometry)
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, self.cell_metrics)
             )
             dggal_feature.setAttributes(
                 [

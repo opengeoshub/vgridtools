@@ -52,6 +52,16 @@ from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_laye
 from vgrid.utils.constants import DGGS_TYPES
 
 
+from ...utils.generator_helper import (
+    add_cell_metrics_parameter,
+    read_cell_metrics,
+    generator_output_fields,
+    MetricFilteringSink,
+    geodesic_metric_values,
+    graticule_metric_values,
+)
+
+
 class DIGIPINGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
@@ -141,10 +151,13 @@ class DIGIPINGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        add_cell_metrics_parameter(self)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "DIGIPIN")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
+        self.cell_metrics = read_cell_metrics(self, parameters, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
         if self.resolution > 4 and (
@@ -170,7 +183,8 @@ class DIGIPINGen(QgsProcessingAlgorithm):
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
-        fields = self.outputFields()
+        full_fields = self.outputFields()
+        fields = generator_output_fields(full_fields, self.cell_metrics)
         layer_name = f"DIGIPIN_{self.resolution}"
         set_output_layer_name(parameters, self.OUTPUT, "DIGIPIN", layer_name)
         # Output layer initialization
@@ -185,6 +199,8 @@ class DIGIPINGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+
+        sink = MetricFilteringSink(sink, full_fields, self.cell_metrics)
         apply_loaded_layer_name(context, dest_id, "DIGIPIN", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
@@ -249,7 +265,7 @@ class DIGIPINGen(QgsProcessingAlgorithm):
                         cell_height,
                         cell_area,
                         cell_perimeter,
-                    ) = graticule_dggs_metrics(cell_polygon)
+                    ) = graticule_metric_values(cell_polygon, self.cell_metrics)
 
                     # Create QgsFeature
                     digipin_feature = QgsFeature()

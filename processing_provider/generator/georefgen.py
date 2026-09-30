@@ -53,6 +53,16 @@ from vgrid.conversion.latlon2dggs import latlon2georef
 from vgrid.conversion.dggs2geo import georef2geo
 
 
+from ...utils.generator_helper import (
+    add_cell_metrics_parameter,
+    read_cell_metrics,
+    generator_output_fields,
+    MetricFilteringSink,
+    geodesic_metric_values,
+    graticule_metric_values,
+)
+
+
 class GEOREFGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
@@ -141,10 +151,13 @@ class GEOREFGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        add_cell_metrics_parameter(self)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "GEOREF")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
+        self.cell_metrics = read_cell_metrics(self, parameters, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         if self.resolution < 0 or self.resolution > 10:
             feedback.reportError("Resolution must be in range [0..10]")
@@ -175,7 +188,8 @@ class GEOREFGen(QgsProcessingAlgorithm):
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
-        fields = self.outputFields()
+        full_fields = self.outputFields()
+        fields = generator_output_fields(full_fields, self.cell_metrics)
         layer_name = f"GEOREF_{self.resolution}"
         set_output_layer_name(parameters, self.OUTPUT, "GEOREF", layer_name)
         # Get the output sink and its destination ID
@@ -188,8 +202,10 @@ class GEOREFGen(QgsProcessingAlgorithm):
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
 
-        if sink is None:
+        if not sink:
             raise QgsProcessingException("Failed to create output sink")
+
+        sink = MetricFilteringSink(sink, full_fields, self.cell_metrics)
         apply_loaded_layer_name(context, dest_id, "GEOREF", layer_name)
 
         resolution_degrees = GEOREF_RESOLUTION_DEGREES.get(self.resolution)
@@ -221,7 +237,7 @@ class GEOREFGen(QgsProcessingAlgorithm):
                     cell_height,
                     cell_area,
                     cell_perimeter,
-                ) = graticule_dggs_metrics(cell_polygon)
+                ) = graticule_metric_values(cell_polygon, self.cell_metrics)
                 georef_feature.setAttributes(
                     [
                         georef_id,

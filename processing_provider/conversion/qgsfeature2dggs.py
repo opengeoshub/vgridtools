@@ -49,6 +49,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
     SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     AGGREGATE = "AGGREGATE"
+    CELL_METRICS = "CELL_METRICS"
     PREDICATE = "PREDICATE"
     PREDICATES = ["intersects", "within", "centroid_within", "largest_overlap"]
     DGGS_TYPES = [
@@ -242,6 +243,14 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
         add_shift_split_parameters(self, aggregate=True, dggrid_hints=True)
 
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.CELL_METRICS,
+                self.tr("Compute cell metrics"),
+                defaultValue=False,
+            )
+        )
+
     def checkParameterValues(self, parameters, context):
         """Dynamically update resolution limits before execution"""
         selected_dggs_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
@@ -286,6 +295,11 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             return f"{base_name}_{i}"
 
         dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
+
+        if not getattr(self, "cell_metrics", False):
+            output_fields.append(QgsField(get_unique_name(dggs_type), QVariant.String))
+            output_fields.append(QgsField(get_unique_name("resolution"), QVariant.Int))
+            return output_fields
 
         # Fields to be added
         new_fields = [
@@ -339,6 +353,9 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         self.compact = self.parameterAsBool(parameters, self.COMPACT, context)
         self.depth = self.parameterAsInt(parameters, self.DEPTH, context)
         self.predicate = self.parameterAsEnum(parameters, self.PREDICATE, context)
+        self.cell_metrics = self.parameterAsBoolean(
+            parameters, self.CELL_METRICS, context
+        )
         self.DGGS_TYPE_index = self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         antimeridian = normalize_antimeridian_options(
             feedback,
@@ -357,6 +374,7 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
             "split_antimeridian": self.split_antimeridian,
             "aggregate": self.aggregate,
             "depth": self.depth,
+            "N_side": getattr(settings, "rhealpixNSide", 3),
         }
 
         self.total_features = source.featureCount()
@@ -494,6 +512,19 @@ class Vector2DGGS(QgsProcessingFeatureBasedAlgorithm):
         return True
 
     def processFeature(self, feature, context, feedback):
+        cell_metrics = getattr(self, "cell_metrics", False)
+        token = set_cell_metrics(cell_metrics)
+        try:
+            out_features = self._convert_feature(feature, context, feedback)
+        finally:
+            reset_cell_metrics(token)
+        if not cell_metrics:
+            keep = feature.fields().count() + 2
+            for out_feature in out_features:
+                out_feature.setAttributes(out_feature.attributes()[:keep])
+        return out_features
+
+    def _convert_feature(self, feature, context, feedback):
         try:
             feature = prepare_feature_for_dggs_conversion(
                 feature, getattr(self, "_to_wgs84", None)

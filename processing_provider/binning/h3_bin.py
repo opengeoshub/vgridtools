@@ -21,6 +21,7 @@ from vgrid.utils.io import validate_h3_resolution
 
 from ...settings import settings
 from ...utils.binning.bin_helper import (
+    add_cell_metrics_parameter,
     load_wgs84_feature_source,
     BIN_AGG,
     add_shift_split_parameters,
@@ -164,6 +165,8 @@ class H3Bin(QgsProcessingFeatureBasedAlgorithm):
             )
         )
         add_shift_split_parameters(self)
+
+        add_cell_metrics_parameter(self)
 
     def prepareAlgorithm(self, parameters, context, feedback):
         self.agg_index = self.parameterAsEnum(parameters, self.AGG, context)

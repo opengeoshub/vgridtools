@@ -21,6 +21,7 @@ from vgrid.utils.io import validate_quadkey_resolution
 
 from ...settings import settings
 from ...utils.binning.bin_helper import (
+    add_cell_metrics_parameter,
     load_wgs84_feature_source,
     BIN_AGG,
     prepare_point_bin_algorithm,
@@ -161,6 +162,8 @@ class QuadkeyBin(QgsProcessingFeatureBasedAlgorithm):
                 optional=False,
             )
         )
+
+        add_cell_metrics_parameter(self)
 
     def prepareAlgorithm(self, parameters, context, feedback):
         self.agg_index = self.parameterAsEnum(parameters, self.AGG, context)

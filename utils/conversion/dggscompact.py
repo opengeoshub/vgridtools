@@ -13,7 +13,8 @@ from vgrid.dggs import s2
 import h3
 import a5
 
-from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+from ..rhealpix_helper import get_plugin_rhealpix_dggs, resolve_rhealpix_n_side
+from vgrid.utils.io import rhealpix_cell_from_id
 from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 from vgrid.utils.constants import DGGAL_TYPES
 from dggal import *
@@ -118,6 +119,30 @@ def append_compact_agg_field(fields, agg_col, agg):
     fields.append(QgsField(agg_col, agg_field_type(agg)))
 
 
+def append_compact_metric_fields(fields, cell_metrics, graticule=False):
+    if not cell_metrics:
+        return
+    names = (
+        ("center_lat", "center_lon", "cell_width", "cell_height", "cell_area", "cell_perimeter")
+        if graticule
+        else ("center_lat", "center_lon", "avg_edge_len", "cell_area", "cell_perimeter")
+    )
+    for name in names:
+        fields.append(QgsField(name, QVariant.Double))
+
+
+def geodesic_metric_values(cell_polygon, num_edges, cell_metrics):
+    if not cell_metrics:
+        return (None, None, None, None, None)
+    return geodesic_dggs_metrics(cell_polygon, num_edges)
+
+
+def graticule_metric_values(cell_polygon, cell_metrics):
+    if not cell_metrics:
+        return (None, None, None, None, None, None)
+    return graticule_dggs_metrics(cell_polygon)
+
+
 def compact_agg_value(bags, cell_id, agg):
     if not agg:
         return None
@@ -136,6 +161,7 @@ def h3compact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not H3ID_field:
         H3ID_field = "h3"
@@ -146,11 +172,7 @@ def h3compact(
     fields = QgsFields()
     fields.append(QgsField("h3", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics)
     append_compact_agg_field(fields, agg_col, agg)
 
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "h3_compacted", "memory")
@@ -190,7 +212,7 @@ def h3compact(
             resolution = h3.get_resolution(h3_id_compact)
             num_edges = 5 if h3.is_pentagon(h3_id_compact) else 6
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
             )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -229,6 +251,7 @@ def s2compact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not S2ID_field:
         S2ID_field = "s2"
@@ -239,11 +262,7 @@ def s2compact(
     fields = QgsFields()
     fields.append(QgsField("s2", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics)
     append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "s2_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -282,7 +301,7 @@ def s2compact(
             resolution = s2.CellId.from_token(s2_token_compact).level()
             num_edges = 4
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
             )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -321,6 +340,7 @@ def a5compact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not A5ID_field:
         A5ID_field = "a5"
@@ -331,11 +351,7 @@ def a5compact(
     fields = QgsFields()
     fields.append(QgsField("a5", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics)
     append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "a5_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -378,7 +394,7 @@ def a5compact(
             resolution = a5.get_resolution(a5.hex_to_u64(a5_hex_compact))
             num_edges = 5  # A5 cells are pentagons
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
             )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -417,6 +433,9 @@ def rhealpixcompact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    N_side=None,
+    cell_metrics=False,
+    **_kwargs,
 ) -> QgsVectorLayer:
     if not rHEALPixID_field:
         rHEALPixID_field = "rhealpix"
@@ -424,16 +443,13 @@ def rhealpixcompact(
         rhealpix_layer, rHEALPixID_field, agg=agg, numeric_col=numeric_col
     )
 
-    rhealpix_dggs = RHEALPixDGGS()
+    N_side = resolve_rhealpix_n_side(_kwargs.get("N_side", N_side))
+    rhealpix_dggs = get_plugin_rhealpix_dggs(N_side)
 
     fields = QgsFields()
     fields.append(QgsField("rhealpix", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics)
     append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "rhealpix_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -443,7 +459,7 @@ def rhealpixcompact(
     if bags:
         try:
             rhealpix_ids_compact = rhealpix_compact(
-                list(bags.keys()), depth=depth, bags=bags, verbose=False
+                list(bags.keys()), depth=depth, bags=bags, verbose=False, N_side=N_side
             )
         except BaseException:
             raise QgsProcessingException(
@@ -464,21 +480,21 @@ def rhealpixcompact(
                     "rhealpix",
                     shift_antimeridian,
                     split_antimeridian,
+                    N_side=N_side,
                 )
-                rhealpix_uids = (rhealpix_id_compact[0],) + tuple(
-                    map(int, rhealpix_id_compact[1:])
+                rhealpix_cell = rhealpix_cell_from_id(
+                    str(rhealpix_id_compact), dggs=rhealpix_dggs
                 )
-                rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
             except BaseException:
                 raise QgsProcessingException(
                     "Compact cells failed. Please check your rHEALPix ID field."
                 )
 
             resolution = rhealpix_cell.resolution
-            num_edges = 3 if rhealpix_cell.ellipsoidal_shape() == "dart" else 4
+            num_edges = 3 if rhealpix_cell.ellipsoidal_shape == "dart" else 4
 
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
             )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -519,6 +535,7 @@ def isea4tcompact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if platform.system() == "Windows":
         if not ISEA4TID_field:
@@ -530,11 +547,7 @@ def isea4tcompact(
         fields = QgsFields()
         fields.append(QgsField("isea4t", QVariant.String))
         fields.append(QgsField("resolution", QVariant.Int))
-        fields.append(QgsField("center_lat", QVariant.Double))
-        fields.append(QgsField("center_lon", QVariant.Double))
-        fields.append(QgsField("avg_edge_len", QVariant.Double))
-        fields.append(QgsField("cell_area", QVariant.Double))
-        fields.append(QgsField("cell_perimeter", QVariant.Double))
+        append_compact_metric_fields(fields, cell_metrics)
         append_compact_agg_field(fields, agg_col, agg)
         mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "isea4t_compacted", "memory")
         mem_provider = mem_layer.dataProvider()
@@ -571,7 +584,7 @@ def isea4tcompact(
                 num_edges = 3
 
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(cell_polygon, num_edges)
+                    geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
                 )
 
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -612,6 +625,7 @@ def isea3hcompact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if platform.system() == "Windows":
         if not ISEA3HID_field:
@@ -623,11 +637,7 @@ def isea3hcompact(
         fields = QgsFields()
         fields.append(QgsField("isea3h", QVariant.String))
         fields.append(QgsField("resolution", QVariant.Int))
-        fields.append(QgsField("center_lat", QVariant.Double))
-        fields.append(QgsField("center_lon", QVariant.Double))
-        fields.append(QgsField("avg_edge_len", QVariant.Double))
-        fields.append(QgsField("cell_area", QVariant.Double))
-        fields.append(QgsField("cell_perimeter", QVariant.Double))
+        append_compact_metric_fields(fields, cell_metrics)
         append_compact_agg_field(fields, agg_col, agg)
         mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "isea3h_compacted", "memory")
         mem_provider = mem_layer.dataProvider()
@@ -663,7 +673,7 @@ def isea3hcompact(
                 num_edges = 6
 
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(cell_polygon, num_edges)
+                    geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
                 )
 
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -705,6 +715,7 @@ def qtmcompact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not QTMID_field:
         QTMID_field = "qtm"
@@ -715,11 +726,7 @@ def qtmcompact(
     fields = QgsFields()
     fields.append(QgsField("qtm", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics)
     append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "qtm_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -747,7 +754,7 @@ def qtmcompact(
             resolution = get_qtm_resolution(qtm_id_compact)
             num_edges = 3
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
             )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -786,6 +793,7 @@ def olccompact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not OLCID_field:
         OLCID_field = "olc"
@@ -796,12 +804,7 @@ def olccompact(
     fields = QgsFields()
     fields.append(QgsField("olc", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics, graticule=True)
     append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "olc_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -834,7 +837,7 @@ def olccompact(
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = graticule_metric_values(cell_polygon, cell_metrics)
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             olc_feature = QgsFeature(fields)
@@ -872,6 +875,7 @@ def geohashcompact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not GeohashID_field:
         GeohashID_field = "geohash"
@@ -882,12 +886,7 @@ def geohashcompact(
     fields = QgsFields()
     fields.append(QgsField("geohash", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics, graticule=True)
     append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "geohash_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -920,7 +919,7 @@ def geohashcompact(
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = graticule_metric_values(cell_polygon, cell_metrics)
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             geohash_feature = QgsFeature(fields)
@@ -961,6 +960,7 @@ def tilecodecompact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not TilecodeID_field:
         TilecodeID_field = "tilecode"
@@ -971,12 +971,7 @@ def tilecodecompact(
     fields = QgsFields()
     fields.append(QgsField("tilecode", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics, graticule=True)
     append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "tilecode_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -1009,7 +1004,7 @@ def tilecodecompact(
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = graticule_metric_values(cell_polygon, cell_metrics)
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             tilecode_feature = QgsFeature(fields)
@@ -1050,6 +1045,7 @@ def quadkeycompact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not QuadkeyID_field:
         QuadkeyID_field = "quadkey"
@@ -1060,12 +1056,7 @@ def quadkeycompact(
     fields = QgsFields()
     fields.append(QgsField("quadkey", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics, graticule=True)
     append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "quadkey_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -1098,7 +1089,7 @@ def quadkeycompact(
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = graticule_metric_values(cell_polygon, cell_metrics)
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             quadkey_feature = QgsFeature(fields)
             quadkey_feature.setGeometry(cell_geom)
@@ -1139,6 +1130,7 @@ def dggalcompact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not DGGALID_field:
         DGGALID_field = f"dggal_{dggal_type}"
@@ -1151,11 +1143,7 @@ def dggalcompact(
     field_name = f"dggal_{dggal_type}"
     fields.append(QgsField(field_name, QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics)
     append_compact_agg_field(fields, agg_col, agg)
     layer_name = f"dggal_{dggal_type}_compacted" if dggal_type else "dggal_compacted"
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", layer_name, "memory")
@@ -1202,7 +1190,7 @@ def dggalcompact(
                     num_edges = 6  # Default for hexagonal cells
 
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(cell_polygon, num_edges)
+                    geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
                 )
             except Exception as e:
                 if feedback:
@@ -1247,6 +1235,7 @@ def digipincompact(
     numeric_col=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not DIGIPINID_field:
         DIGIPINID_field = "digipin"
@@ -1257,12 +1246,7 @@ def digipincompact(
     fields = QgsFields()
     fields.append(QgsField("digipin", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_compact_metric_fields(fields, cell_metrics, graticule=True)
     append_compact_agg_field(fields, agg_col, agg)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "digipin_compacted", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -1297,7 +1281,7 @@ def digipincompact(
                     cell_height,
                     cell_area,
                     cell_perimeter,
-                ) = graticule_dggs_metrics(cell_polygon)
+                ) = graticule_metric_values(cell_polygon, cell_metrics)
 
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 digipin_feature = QgsFeature(fields)

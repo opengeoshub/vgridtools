@@ -46,15 +46,23 @@ import os
 
 from collections import deque
 from vgrid.utils.geometry import geodesic_dggs_metrics
-from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
 from ...utils.help_footer import social_links_footer  # type: ignore
 from shapely.geometry import box
 from ...settings import settings  # type: ignore
 from ...utils.crs_helper import processing_extent_wgs84
 from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
+from ...utils.rhealpix_helper import get_plugin_rhealpix_dggs, resolve_rhealpix_n_side
 from vgrid.conversion.dggs2geo import rhealpix2geo
 
-rhealpix_dggs = RHEALPixDGGS()  # type: ignore
+
+from ...utils.generator_helper import (
+    add_cell_metrics_parameter,
+    read_cell_metrics,
+    generator_output_fields,
+    MetricFilteringSink,
+    geodesic_metric_values,
+    graticule_metric_values,
+)
 
 
 class rHEALPixGen(QgsProcessingAlgorithm):
@@ -161,11 +169,16 @@ class rHEALPixGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        add_cell_metrics_parameter(self)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "rHEALPix")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
+        self.cell_metrics = read_cell_metrics(self, parameters, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        self.N_side = resolve_rhealpix_n_side(None)
+        self.rhealpix_dggs = get_plugin_rhealpix_dggs(self.N_side)
         # Get the extent parameter
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
         self.shift_antimeridian = self.parameterAsBoolean(
@@ -196,7 +209,8 @@ class rHEALPixGen(QgsProcessingAlgorithm):
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
-        fields = self.outputFields()
+        full_fields = self.outputFields()
+        fields = generator_output_fields(full_fields, self.cell_metrics)
         layer_name = f"rHEALPix_{self.resolution}"
         set_output_layer_name(parameters, self.OUTPUT, "rHEALPix", layer_name)
         # Output layer initialization
@@ -211,6 +225,8 @@ class rHEALPixGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+
+        sink = MetricFilteringSink(sink, full_fields, self.cell_metrics)
         apply_loaded_layer_name(context, dest_id, "rHEALPix", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, _is_full_world = processing_extent_wgs84(
@@ -223,23 +239,24 @@ class rHEALPixGen(QgsProcessingAlgorithm):
             bbox_center_lat = extent_bbox.centroid.y
             seed_point = (bbox_center_lon, bbox_center_lat)
 
-            seed_cell = rhealpix_dggs.cell_from_point(
+            seed_cell = self.rhealpix_dggs.cell_from_point(
                 self.resolution, seed_point, plane=False
             )
             seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
             # Apply antimeridian fix if requested
             if self.shift_antimeridian:
                 seed_cell_polygon = rhealpix2geo(
-                    seed_cell_id, fix_antimeridian="shift_east"
+                    seed_cell_id, fix_antimeridian="shift_east",
+                    N_side=self.N_side,
                 )
             elif self.split_antimeridian:
-                seed_cell_polygon = rhealpix2geo(seed_cell_id, fix_antimeridian="split")
+                seed_cell_polygon = rhealpix2geo(seed_cell_id, fix_antimeridian="split", N_side=self.N_side)
             else:
-                seed_cell_polygon = rhealpix2geo(seed_cell_id)
+                seed_cell_polygon = rhealpix2geo(seed_cell_id, N_side=self.N_side)
 
             if seed_cell_polygon.contains(extent_bbox):
                 num_edges = 4
-                if seed_cell.ellipsoidal_shape() == "dart":
+                if seed_cell.ellipsoidal_shape == "dart":
                     num_edges = 3
 
                 seed_cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
@@ -248,7 +265,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                 rhealpix_feature.setGeometry(seed_cell_geometry)
 
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+                    geodesic_metric_values(seed_cell_polygon, num_edges, self.cell_metrics)
                 )
                 rhealpix_feature.setAttributes(
                     [
@@ -285,14 +302,16 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                     # Apply antimeridian fix if requested (apply once during BFS)
                     if self.shift_antimeridian:
                         cell_polygon = rhealpix2geo(
-                            current_cell_id, fix_antimeridian="shift_east"
+                            current_cell_id, fix_antimeridian="shift_east",
+                            N_side=self.N_side,
                         )
                     elif self.split_antimeridian:
                         cell_polygon = rhealpix2geo(
-                            current_cell_id, fix_antimeridian="split"
+                            current_cell_id, fix_antimeridian="split",
+                            N_side=self.N_side,
                         )
                     else:
-                        cell_polygon = rhealpix2geo(current_cell_id)
+                        cell_polygon = rhealpix2geo(current_cell_id, N_side=self.N_side)
 
                     # Skip cells that do not intersect the bounding box
                     if cell_polygon.intersects(extent_bbox):
@@ -327,7 +346,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                     rhealpix_feature.setGeometry(cell_geometry)
 
                     num_edges = 4
-                    if cell.ellipsoidal_shape() == "dart":
+                    if cell.ellipsoidal_shape == "dart":
                         num_edges = 3
 
                     (
@@ -336,7 +355,7 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                         avg_edge_len,
                         cell_area,
                         cell_perimeter,
-                    ) = geodesic_dggs_metrics(cell_polygon, num_edges)
+                    ) = geodesic_metric_values(cell_polygon, num_edges, self.cell_metrics)
                     rhealpix_feature.setAttributes(
                         [
                             cell_id,
@@ -354,9 +373,9 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                         break
 
         else:
-            total_cells = rhealpix_dggs.num_cells(self.resolution)
+            total_cells = self.rhealpix_dggs.num_cells(self.resolution)
             feedback.pushInfo(f"Total cells to be generated: {total_cells}.")
-            rhealpix_grid = rhealpix_dggs.grid(self.resolution)
+            rhealpix_grid = self.rhealpix_dggs.grid(self.resolution)
             for idx, cell in enumerate(rhealpix_grid):
                 progress = int((idx / total_cells) * 100)
                 feedback.setProgress(progress)
@@ -365,12 +384,13 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                 # Apply antimeridian fix if requested
                 if self.shift_antimeridian:
                     cell_polygon = rhealpix2geo(
-                        rhealpix_id, fix_antimeridian="shift_east"
+                        rhealpix_id, fix_antimeridian="shift_east",
+                        N_side=self.N_side,
                     )
                 elif self.split_antimeridian:
-                    cell_polygon = rhealpix2geo(rhealpix_id, fix_antimeridian="split")
+                    cell_polygon = rhealpix2geo(rhealpix_id, fix_antimeridian="split", N_side=self.N_side)
                 else:
-                    cell_polygon = rhealpix2geo(rhealpix_id)
+                    cell_polygon = rhealpix2geo(rhealpix_id, N_side=self.N_side)
 
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -378,10 +398,10 @@ class rHEALPixGen(QgsProcessingAlgorithm):
                 rhealpix_feature.setGeometry(cell_geometry)
 
                 num_edges = 4
-                if cell.ellipsoidal_shape() == "dart":
+                if cell.ellipsoidal_shape == "dart":
                     num_edges = 3
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(cell_polygon, num_edges)
+                    geodesic_metric_values(cell_polygon, num_edges, self.cell_metrics)
                 )
                 rhealpix_feature.setAttributes(
                     [

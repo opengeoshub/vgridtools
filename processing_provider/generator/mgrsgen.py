@@ -55,6 +55,16 @@ import numpy as np
 from vgrid.utils.geometry import graticule_dggs_metrics
 
 
+from ...utils.generator_helper import (
+    add_cell_metrics_parameter,
+    read_cell_metrics,
+    generator_output_fields,
+    MetricFilteringSink,
+    geodesic_metric_values,
+    graticule_metric_values,
+)
+
+
 class MGRSGen(QgsProcessingAlgorithm):
     GZD = "GZD"
     RESOLUTION = "RESOLUTION"
@@ -144,10 +154,13 @@ class MGRSGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        add_cell_metrics_parameter(self)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "MGRS")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
+        self.cell_metrics = read_cell_metrics(self, parameters, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         self.gzd = self.parameterAsString(parameters, self.GZD, context).upper()
         if self.resolution > 2:
@@ -168,13 +181,15 @@ class MGRSGen(QgsProcessingAlgorithm):
         output_fields.append(QgsField("resolution", QVariant.Int))
         output_fields.append(QgsField("center_lat", QVariant.Double))
         output_fields.append(QgsField("center_lon", QVariant.Double))
-        output_fields.append(QgsField("avg_edge_len", QVariant.Double))
+        output_fields.append(QgsField("cell_width", QVariant.Double))
+        output_fields.append(QgsField("cell_height", QVariant.Double))
         output_fields.append(QgsField("cell_area", QVariant.Double))
         output_fields.append(QgsField("cell_perimeter", QVariant.Double))
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
-        fields = self.outputFields()
+        full_fields = self.outputFields()
+        fields = generator_output_fields(full_fields, self.cell_metrics)
         layer_name = f"MGRS_{self.resolution}"
         set_output_layer_name(parameters, self.OUTPUT, "MGRS", layer_name)
         # Output layer initialization
@@ -189,6 +204,8 @@ class MGRSGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+
+        sink = MetricFilteringSink(sink, full_fields, self.cell_metrics)
         apply_loaded_layer_name(context, dest_id, "MGRS", layer_name)
 
         cell_size = 100_000 // (10**self.resolution)
@@ -270,7 +287,7 @@ class MGRSGen(QgsProcessingAlgorithm):
                         cell_height,
                         cell_area,
                         cell_perimeter,
-                    ) = graticule_dggs_metrics(cell_polygon)
+                    ) = graticule_metric_values(cell_polygon, self.cell_metrics)
                     mgrs_feature.setAttributes(
                         [
                             mgrs_id,
@@ -302,7 +319,7 @@ class MGRSGen(QgsProcessingAlgorithm):
                                 cell_height,
                                 cell_area,
                                 cell_perimeter,
-                            ) = graticule_dggs_metrics(intersected_polygon)
+                            ) = graticule_metric_values(intersected_polygon, self.cell_metrics)
                             cell_geometry = QgsGeometry.fromWkt(intersected_polygon.wkt)
                             mgrs_feature.setGeometry(cell_geometry)
                             mgrs_feature.setAttributes(

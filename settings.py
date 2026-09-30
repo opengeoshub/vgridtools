@@ -90,6 +90,9 @@ class Settings:
         self.a5Visible = int(qset.value("/vgrid/a5Visible", Qt.CheckState.Checked))
 
         self.rhealpixRes = int(qset.value("/vgrid/rhealpixRes", 5))
+        self.rhealpixNSide = int(qset.value("/vgrid/rhealpixNSide", 3))
+        if self.rhealpixNSide not in (2, 3):
+            self.rhealpixNSide = 3
         self.rhealpixColor = QColor(qset.value("/vgrid/rhealpixColor", "#7b0bff"))
         self.rhealpixColor.setAlpha(int(qset.value("/vgrid/rhealpixColorOpacity", 255)))
         self.rhealpixVisible = int(
@@ -661,6 +664,8 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.dggridDensificationSpinBox.setValue(30)
         settings.A5SgementsSpinBox = 30
         settings.dggridDensificationSpinBox = 30
+        self.rhealpixNSideSpinBox.setValue(3)
+        settings.rhealpixNSide = 3
 
         # Other DGGS settings
 
@@ -1069,6 +1074,10 @@ class SettingsWidget(QDialog, FORM_CLASS):
         qset.setValue("/vgrid/a5ColorOpacity", self.a5ColorButton.color().alpha())
 
         qset.setValue("/vgrid/rhealpixRes", int(self.rhealpixResSpinBox.value()))
+        n_side = int(self.rhealpixNSideSpinBox.value())
+        if n_side not in (2, 3):
+            n_side = 3
+        qset.setValue("/vgrid/rhealpixNSide", n_side)
         qset.setValue("/vgrid/rhealpixColor", self.rhealpixColorButton.color().name())
         qset.setValue(
             "/vgrid/rhealpixColorOpacity", self.rhealpixColorButton.color().alpha()
@@ -1706,6 +1715,7 @@ class SettingsWidget(QDialog, FORM_CLASS):
         self.markerWidthSpinBox.setValue(settings.markerWidth)
         self.gridWidthSpinBox.setValue(settings.gridWidth)
         self.A5SgementsSpinBox.setValue(settings.A5SgementsSpinBox)
+        self.rhealpixNSideSpinBox.setValue(getattr(settings, "rhealpixNSide", 3))
         self.dggridDensificationSpinBox.setValue(settings.dggridDensificationSpinBox)
 
         ### Other DGGS Settings ###

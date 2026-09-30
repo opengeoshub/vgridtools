@@ -31,6 +31,7 @@ from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.a52geo import a52geo
 from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
+from ..rhealpix_helper import resolve_rhealpix_n_side
 from vgrid.conversion.dggscompact.h3compact import h3_expand
 from vgrid.conversion.dggscompact.s2compact import s2_expand
 from vgrid.conversion.dggscompact.a5compact import a5_expand
@@ -75,6 +76,30 @@ from ..antimeridian_helper import (
 geod = Geod(ellps="WGS84")
 
 
+def append_expand_metric_fields(fields, cell_metrics, graticule=False):
+    if not cell_metrics:
+        return
+    names = (
+        ("center_lat", "center_lon", "cell_width", "cell_height", "cell_area", "cell_perimeter")
+        if graticule
+        else ("center_lat", "center_lon", "avg_edge_len", "cell_area", "cell_perimeter")
+    )
+    for name in names:
+        fields.append(QgsField(name, QVariant.Double))
+
+
+def geodesic_metric_values(cell_polygon, num_edges, cell_metrics):
+    if not cell_metrics:
+        return (None, None, None, None, None)
+    return geodesic_dggs_metrics(cell_polygon, num_edges)
+
+
+def graticule_metric_values(cell_polygon, cell_metrics):
+    if not cell_metrics:
+        return (None, None, None, None, None, None)
+    return graticule_dggs_metrics(cell_polygon)
+
+
 def _expand_resolution_depth(resolution, depth):
     """Map QGIS sentinels to vgrid expand kwargs (resolution wins when set)."""
     res = None if resolution is None or int(resolution) < 0 else int(resolution)
@@ -106,6 +131,7 @@ def h3expand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not H3ID_field:
         H3ID_field = "h3"
@@ -113,11 +139,7 @@ def h3expand(
     fields = QgsFields()
     fields.append(QgsField("h3", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics)
 
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "h3_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
@@ -167,7 +189,7 @@ def h3expand(
 
             num_edges = 5 if h3.is_pentagon(h3_id_expand) else 6
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
             )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -204,6 +226,7 @@ def s2expand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not S2Token_field:
         S2Token_field = "s2"
@@ -211,11 +234,7 @@ def s2expand(
     fields = QgsFields()
     fields.append(QgsField("s2", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "s2_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
@@ -268,7 +287,7 @@ def s2expand(
 
         num_edges = 4
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
         )
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -305,6 +324,7 @@ def a5expand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not A5ID_field:
         A5ID_field = "a5"
@@ -312,11 +332,7 @@ def a5expand(
     fields = QgsFields()
     fields.append(QgsField("a5", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "a5_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
@@ -366,7 +382,7 @@ def a5expand(
 
             num_edges = 5
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
             )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -403,18 +419,19 @@ def rhealpixexpand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    N_side=None,
+    cell_metrics=False,
+    **_kwargs,
 ) -> QgsVectorLayer:
     if not rHealPixID_field:
         rHealPixID_field = "rhealpix"
 
+    N_side = resolve_rhealpix_n_side(_kwargs.get("N_side", N_side))
+
     fields = QgsFields()
     fields.append(QgsField("rhealpix", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "rhealpix_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
@@ -433,12 +450,13 @@ def rhealpixexpand(
             res, d = _expand_resolution_depth(resolution, depth)
             if res is not None:
                 max_res = max(
-                    get_rhealpix_resolution(rhealpix_id) for rhealpix_id in rhealpix_ids
+                    get_rhealpix_resolution(rhealpix_id, N_side=N_side)
+                    for rhealpix_id in rhealpix_ids
                 )
                 if res < max_res:
                     return _report_expand_res_too_coarse(feedback, res, max_res)
             rhealpix_cells_expand = rhealpix_expand(
-                rhealpix_ids, resolution=res, depth=d, verbose=False
+                rhealpix_ids, resolution=res, depth=d, verbose=False, N_side=N_side
             )
         except QgsProcessingException:
             raise
@@ -462,13 +480,14 @@ def rhealpixexpand(
                 "rhealpix",
                 shift_antimeridian,
                 split_antimeridian,
+                N_side=N_side,
             )
 
             if not cell_polygon.is_valid:
                 continue
-            num_edges = 3 if rhealpix_cell_expand.ellipsoidal_shape() == "dart" else 4
+            num_edges = 3 if rhealpix_cell_expand.ellipsoidal_shape == "dart" else 4
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
             )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -507,6 +526,7 @@ def isea4texpand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if platform.system() == "Windows":
         if not ISEA4TID_field:
@@ -515,11 +535,7 @@ def isea4texpand(
         fields = QgsFields()
         fields.append(QgsField("isea4t", QVariant.String))
         fields.append(QgsField("resolution", QVariant.Int))
-        fields.append(QgsField("center_lat", QVariant.Double))
-        fields.append(QgsField("center_lon", QVariant.Double))
-        fields.append(QgsField("avg_edge_len", QVariant.Double))
-        fields.append(QgsField("cell_area", QVariant.Double))
-        fields.append(QgsField("cell_perimeter", QVariant.Double))
+        append_expand_metric_fields(fields, cell_metrics)
         mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "isea4t_expanded", "memory")
         mem_provider = mem_layer.dataProvider()
         mem_provider.addAttributes(fields)
@@ -571,7 +587,7 @@ def isea4texpand(
                     continue
                 num_edges = 3
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(cell_polygon, num_edges)
+                    geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
                 )
 
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -610,6 +626,7 @@ def isea3hexpand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not ISEA3HID_field:
         ISEA3HID_field = "isea3h"
@@ -617,11 +634,7 @@ def isea3hexpand(
     fields = QgsFields()
     fields.append(QgsField("isea3h", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "isea3h_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
@@ -674,7 +687,7 @@ def isea3hexpand(
 
             num_edges = 6
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
             )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -711,6 +724,7 @@ def qtmexpand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not QTMID_field:
         QTMID_field = "qtm"
@@ -718,11 +732,7 @@ def qtmexpand(
     fields = QgsFields()
     fields.append(QgsField("qtm", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "qtm_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
@@ -766,7 +776,7 @@ def qtmexpand(
 
             num_edges = 3
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
             )
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -803,6 +813,7 @@ def olcexpand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not OLCID_field:
         OLCID_field = "olc"
@@ -810,12 +821,7 @@ def olcexpand(
     fields = QgsFields()
     fields.append(QgsField("olc", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics, graticule=True)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "olc_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
@@ -864,7 +870,7 @@ def olcexpand(
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = graticule_metric_values(cell_polygon, cell_metrics)
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             olc_feature = QgsFeature(fields)
@@ -901,6 +907,7 @@ def geohashexpand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not GeohashID_field:
         GeohashID_field = "geohash"
@@ -908,12 +915,7 @@ def geohashexpand(
     fields = QgsFields()
     fields.append(QgsField("geohash", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics, graticule=True)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "geohash_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
@@ -965,7 +967,7 @@ def geohashexpand(
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = graticule_metric_values(cell_polygon, cell_metrics)
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             geohash_feature = QgsFeature(fields)
@@ -1004,6 +1006,7 @@ def tilecodeexpand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not TilecodeID_field:
         TilecodeID_field = "tilecode"
@@ -1011,12 +1014,7 @@ def tilecodeexpand(
     fields = QgsFields()
     fields.append(QgsField("tilecode", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics, graticule=True)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "tilecode_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
@@ -1068,7 +1066,7 @@ def tilecodeexpand(
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = graticule_metric_values(cell_polygon, cell_metrics)
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             tilecode_feature = QgsFeature(fields)
@@ -1107,6 +1105,7 @@ def quadkeyexpand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not QuadkeyID_field:
         QuadkeyID_field = "quadkey"
@@ -1114,12 +1113,7 @@ def quadkeyexpand(
     fields = QgsFields()
     fields.append(QgsField("quadkey", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics, graticule=True)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "quadkey_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
@@ -1171,7 +1165,7 @@ def quadkeyexpand(
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = graticule_metric_values(cell_polygon, cell_metrics)
 
             cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
             quadkey_feature = QgsFeature(fields)
@@ -1211,6 +1205,7 @@ def dggalexpand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not DGGALID_field:
         DGGALID_field = f"dggal_{dggal_type}"
@@ -1220,11 +1215,7 @@ def dggalexpand(
     field_name = f"dggal_{dggal_type}"
     fields.append(QgsField(field_name, QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics)
     layer_name = f"dggal_{dggal_type}_expanded" if dggal_type else "dggal_expanded"
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", layer_name, "memory")
     mem_provider = mem_layer.dataProvider()
@@ -1297,7 +1288,7 @@ def dggalexpand(
                     num_edges = 6  # Default for hexagonal cells
 
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(cell_polygon, num_edges)
+                    geodesic_metric_values(cell_polygon, num_edges, cell_metrics)
                 )
             except Exception as e:
                 if feedback:
@@ -1340,6 +1331,7 @@ def digipinexpand(
     shift_antimeridian=False,
     split_antimeridian=False,
     depth=None,
+    cell_metrics=False,
 ) -> QgsVectorLayer:
     if not DIGIPINID_field:
         DIGIPINID_field = "digipin"
@@ -1347,12 +1339,7 @@ def digipinexpand(
     fields = QgsFields()
     fields.append(QgsField("digipin", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    append_expand_metric_fields(fields, cell_metrics, graticule=True)
     mem_layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "digipin_expanded", "memory")
     mem_provider = mem_layer.dataProvider()
     mem_provider.addAttributes(fields)
@@ -1403,7 +1390,7 @@ def digipinexpand(
                     cell_height,
                     cell_area,
                     cell_perimeter,
-                ) = graticule_dggs_metrics(cell_polygon)
+                ) = graticule_metric_values(cell_polygon, cell_metrics)
 
                 cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                 digipin_feature = QgsFeature(fields)

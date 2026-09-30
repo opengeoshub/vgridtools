@@ -37,13 +37,9 @@ from shapely.geometry import Polygon
 
 from vgrid.dggs import s2, olc, georef, mgrs
 from gars_field.garsgrid import GARSGrid
-from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 from ..antimeridian_helper import geo_with_fix, use_split_antimeridian
-
-rhealpix_dggs = RHEALPixDGGS(
-    ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3
-)
+from ..rhealpix_helper import resolve_rhealpix_n_side
+from vgrid.utils.io import rhealpix_cell_from_id
 
 app = Application(appGlobals=globals())
 pydggal_setup(app)
@@ -59,8 +55,54 @@ if platform.system() == "Windows":
 
 geod = Geod(ellps="WGS84")
 
+GEODESIC_METRIC_NAMES = (
+    "center_lat",
+    "center_lon",
+    "avg_edge_len",
+    "cell_area",
+    "cell_perimeter",
+)
+GRATICULE_METRIC_NAMES = (
+    "center_lat",
+    "center_lon",
+    "cell_width",
+    "cell_height",
+    "cell_area",
+    "cell_perimeter",
+)
 
-def h32qgsfeature(feature, h3_id, shift_antimeridian=False, split_antimeridian=False):
+
+def _cell_metrics_enabled(kwargs):
+    return bool(kwargs.get("cell_metrics", False))
+
+
+def _attach_dggs_attributes(
+    qgs_feature,
+    source_feature,
+    id_field,
+    cell_id,
+    resolution,
+    cell_metrics,
+    metric_names,
+    metric_values,
+):
+    """Set the cell id, resolution, and optional metric attributes."""
+    all_fields = QgsFields()
+    for field in source_feature.fields():
+        all_fields.append(field)
+    all_fields.append(QgsField(id_field, QVariant.String))
+    all_fields.append(QgsField("resolution", QVariant.Int))
+    attributes = list(source_feature.attributes()) + [cell_id, resolution]
+    if cell_metrics:
+        for name in metric_names:
+            all_fields.append(QgsField(name, QVariant.Double))
+        attributes.extend(metric_values)
+    qgs_feature.setFields(all_fields)
+    qgs_feature.setAttributes(attributes)
+    return qgs_feature
+
+
+def h32qgsfeature(feature, h3_id, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     cell_polygon = geo_with_fix(
         h32geo, h3_id, "h3", shift_antimeridian, split_antimeridian
     )
@@ -68,57 +110,25 @@ def h32qgsfeature(feature, h3_id, shift_antimeridian=False, split_antimeridian=F
     if h3.is_pentagon(h3_id):
         num_edges = 5
     resolution = h3.get_resolution(h3_id)
-
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+    cell_metrics = _cell_metrics_enabled(_kwargs)
+    metrics = geodesic_dggs_metrics(cell_polygon, num_edges) if cell_metrics else None
 
     h3_feature = QgsFeature()
-    h3_feature.setGeometry(cell_geometry)
-
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new H3-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField("h3", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    h3_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
-    )
-
-    new_attributes = [
+    h3_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        h3_feature,
+        feature,
+        "h3",
         h3_id,
         resolution,
-        center_lat,
-        center_lon,
-        avg_edge_len,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    h3_feature.setAttributes(all_attributes)
-    return h3_feature
+        cell_metrics,
+        GEODESIC_METRIC_NAMES,
+        metrics,
+    )
 
 
 def s22qgsfeature(
-    feature, s2_token, shift_antimeridian=False, split_antimeridian=False
+    feature, s2_token, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     cell_id = s2.CellId.from_token(s2_token)
     cell_polygon = geo_with_fix(
@@ -126,54 +136,24 @@ def s22qgsfeature(
     )
     resolution = cell_id.level()
     num_edges = 4
-    center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
-    )
-
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+    cell_metrics = _cell_metrics_enabled(_kwargs)
+    metrics = geodesic_dggs_metrics(cell_polygon, num_edges) if cell_metrics else None
 
     s2_feature = QgsFeature()
-    s2_feature.setGeometry(cell_geometry)
-
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new H3-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField("s2", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    s2_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    new_attributes = [
+    s2_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        s2_feature,
+        feature,
+        "s2",
         s2_token,
         resolution,
-        center_lat,
-        center_lon,
-        avg_edge_len,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    s2_feature.setAttributes(all_attributes)
-    return s2_feature
+        cell_metrics,
+        GEODESIC_METRIC_NAMES,
+        metrics,
+    )
 
 
-def a52qgsfeature(feature, a5_hex, shift_antimeridian=False, split_antimeridian=False):
+def a52qgsfeature(feature, a5_hex, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     cell_polygon = a52geo(
         a5_hex,
         split_antimeridian=use_split_antimeridian(
@@ -183,118 +163,57 @@ def a52qgsfeature(feature, a5_hex, shift_antimeridian=False, split_antimeridian=
     num_edges = 5
     cell_bigint = a5.hex_to_u64(a5_hex)
     resolution = a5.get_resolution(cell_bigint)
-
-    center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
-    )
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+    cell_metrics = _cell_metrics_enabled(_kwargs)
+    metrics = geodesic_dggs_metrics(cell_polygon, num_edges) if cell_metrics else None
 
     a5_feature = QgsFeature()
-    a5_feature.setGeometry(cell_geometry)
-
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new H3-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField("a5", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    a5_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    new_attributes = [
+    a5_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        a5_feature,
+        feature,
+        "a5",
         a5_hex,
         resolution,
-        center_lat,
-        center_lon,
-        avg_edge_len,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    a5_feature.setAttributes(all_attributes)
-    return a5_feature
+        cell_metrics,
+        GEODESIC_METRIC_NAMES,
+        metrics,
+    )
 
 
 def rhealpix2qgsfeature(
-    feature, rhealpix_id, shift_antimeridian=False, split_antimeridian=False
+    feature, rhealpix_id, shift_antimeridian=False, split_antimeridian=False, N_side=None, **_kwargs
 ):
     rhealpix_id = str(rhealpix_id)
-    rhealpix_uids = (rhealpix_id[0],) + tuple(map(int, rhealpix_id[1:]))
-    rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
+    N_side = resolve_rhealpix_n_side(_kwargs.get("N_side", N_side))
+    rhealpix_cell = rhealpix_cell_from_id(rhealpix_id, N_side=N_side)
     resolution = rhealpix_cell.resolution
     cell_polygon = geo_with_fix(
-        rhealpix2geo, rhealpix_id, "rhealpix", shift_antimeridian, split_antimeridian
+        rhealpix2geo, rhealpix_id, "rhealpix", shift_antimeridian, split_antimeridian, N_side=N_side
     )
 
     num_edges = 4
-    if rhealpix_cell.ellipsoidal_shape() == "dart":
+    if rhealpix_cell.ellipsoidal_shape == "dart":
         num_edges = 3
 
-    center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
-    )
-
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+    cell_metrics = _cell_metrics_enabled(_kwargs)
+    metrics = geodesic_dggs_metrics(cell_polygon, num_edges) if cell_metrics else None
 
     rhealpix_feature = QgsFeature()
-    rhealpix_feature.setGeometry(cell_geometry)
-
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new H3-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField("rhealpix", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    rhealpix_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    new_attributes = [
+    rhealpix_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        rhealpix_feature,
+        feature,
+        "rhealpix",
         rhealpix_id,
         resolution,
-        center_lat,
-        center_lon,
-        avg_edge_len,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    rhealpix_feature.setAttributes(all_attributes)
-    return rhealpix_feature
+        cell_metrics,
+        GEODESIC_METRIC_NAMES,
+        metrics,
+    )
 
 
 def isea4t2qgsfeature(
-    feature, isea4t_id, shift_antimeridian=False, split_antimeridian=False
+    feature, isea4t_id, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     if platform.system() == "Windows":
         resolution = len(isea4t_id) - 2
@@ -303,53 +222,25 @@ def isea4t2qgsfeature(
         )
 
         num_edges = 3
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
-        )
+        cell_metrics = _cell_metrics_enabled(_kwargs)
+        metrics = geodesic_dggs_metrics(cell_polygon, num_edges) if cell_metrics else None
 
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
         isea4t_feature = QgsFeature()
-        isea4t_feature.setGeometry(cell_geometry)
-
-        # Get all attributes from the input feature
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        # Define new H3-related attributes
-        new_fields = QgsFields()
-        new_fields.append(QgsField("isea4t", QVariant.String))
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-        # Combine original fields and new fields
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
-        isea4t_feature.setFields(all_fields)
-        # Combine original attributes with new attributes
-        new_attributes = [
+        isea4t_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+        return _attach_dggs_attributes(
+            isea4t_feature,
+            feature,
+            "isea4t",
             isea4t_id,
             resolution,
-            center_lat,
-            center_lon,
-            avg_edge_len,
-            cell_area,
-            cell_perimeter,
-        ]
-        all_attributes = original_attributes + new_attributes
-
-        isea4t_feature.setAttributes(all_attributes)
-        return isea4t_feature
+            cell_metrics,
+            GEODESIC_METRIC_NAMES,
+            metrics,
+        )
 
 
 def isea3h2qgsfeature(
-    feature, isea3h_id, shift_antimeridian=False, split_antimeridian=False
+    feature, isea3h_id, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     if platform.system() == "Windows":
         DggsCell(isea3h_id)
@@ -392,46 +283,29 @@ def isea3h2qgsfeature(
             elif round(avg_edge_len, 3) <= 0.001:
                 resolution = 40
 
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+        cell_metrics = _cell_metrics_enabled(_kwargs)
+        metrics = None
+        if cell_metrics:
+            metrics = (
+                center_lat,
+                center_lon,
+                round(avg_edge_len, 3),
+                round(cell_area, 3),
+                round(cell_perimeter, 3),
+            )
+
         isea3h_feature = QgsFeature()
-        isea3h_feature.setGeometry(cell_geometry)
-
-        # Get all attributes from the input feature
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        # Define new H3-related attributes
-        new_fields = QgsFields()
-        new_fields.append(QgsField("isea3h", QVariant.String))
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-        # Combine original fields and new fields
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
-        isea3h_feature.setFields(all_fields)
-
-        # Combine original attributes with new attributes
-        new_attributes = [
+        isea3h_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+        return _attach_dggs_attributes(
+            isea3h_feature,
+            feature,
+            "isea3h",
             isea3h_id,
             resolution,
-            center_lat,
-            center_lon,
-            round(avg_edge_len, 3),
-            round(cell_area, 3),
-            round(cell_perimeter, 3),
-        ]
-        all_attributes = original_attributes + new_attributes
-
-        isea3h_feature.setAttributes(all_attributes)
-        return isea3h_feature
+            cell_metrics,
+            GEODESIC_METRIC_NAMES,
+            metrics,
+        )
 
 
 def ease2qgsfeature(feature, ease_id, **kwargs):
@@ -439,55 +313,25 @@ def ease2qgsfeature(feature, ease_id, **kwargs):
     cell_polygon = ease2geo(ease_id)
 
     num_edges = 4
-    center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
-    )
+    cell_metrics = _cell_metrics_enabled(kwargs)
+    metrics = geodesic_dggs_metrics(cell_polygon, num_edges) if cell_metrics else None
 
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
     ease_feature = QgsFeature()
-    ease_feature.setGeometry(cell_geometry)
-
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new H3-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField("ease", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    ease_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    new_attributes = [
+    ease_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        ease_feature,
+        feature,
+        "ease",
         ease_id,
         resolution,
-        center_lat,
-        center_lon,
-        avg_edge_len,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    ease_feature.setAttributes(all_attributes)
-
-    return ease_feature
+        cell_metrics,
+        GEODESIC_METRIC_NAMES,
+        metrics,
+    )
 
 
 def dggal2qgsfeature(
-    feature, zone_id, dggs_type, shift_antimeridian=False, split_antimeridian=False
+    feature, zone_id, dggs_type, shift_antimeridian=False, split_antimeridian=False, **_kwargs
 ):
     """
     Unified function to convert DGGSAL cell ID to QGIS feature for any DGGSAL type.
@@ -510,155 +354,63 @@ def dggal2qgsfeature(
     cell_polygon = dggal_to_geo(dggs_type, zone_id)
     if use_split_antimeridian(shift_antimeridian, split_antimeridian):
         cell_polygon = fix_polygon(cell_polygon)
-    center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
-    )
+    cell_metrics = _cell_metrics_enabled(_kwargs)
+    metrics = geodesic_dggs_metrics(cell_polygon, num_edges) if cell_metrics else None
 
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
     dggal_feature = QgsFeature()
-    dggal_feature.setGeometry(cell_geometry)
-
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new DGGSAL-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField(f"dggal_{dggs_type}", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    dggal_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    new_attributes = [
+    dggal_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        dggal_feature,
+        feature,
+        f"dggal_{dggs_type}",
         zone_id,
         resolution,
-        center_lat,
-        center_lon,
-        avg_edge_len,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    dggal_feature.setAttributes(all_attributes)
-
-    return dggal_feature
+        cell_metrics,
+        GEODESIC_METRIC_NAMES,
+        metrics,
+    )
 
 
 def qtm2qgsfeature(feature, qtm_id, **kwargs):
     cell_polygon = qtm2geo(qtm_id)
     resolution = len(qtm_id)
     num_edges = 3
-    center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
-    )
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+    cell_metrics = _cell_metrics_enabled(kwargs)
+    metrics = geodesic_dggs_metrics(cell_polygon, num_edges) if cell_metrics else None
 
     qtm_feature = QgsFeature()
-    qtm_feature.setGeometry(cell_geometry)
-
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new s2-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField("qtm", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("avg_edge_len", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    qtm_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    new_attributes = [
+    qtm_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        qtm_feature,
+        feature,
+        "qtm",
         qtm_id,
         resolution,
-        center_lat,
-        center_lon,
-        avg_edge_len,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    qtm_feature.setAttributes(all_attributes)
-
-    return qtm_feature
+        cell_metrics,
+        GEODESIC_METRIC_NAMES,
+        metrics,
+    )
 
 
 def olc2qgsfeature(feature, olc_id, **kwargs):
     cell_polygon = olc2geo(olc_id)
     coord = olc.decode(olc_id)
     resolution = coord.codeLength
-    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-        graticule_dggs_metrics(cell_polygon)
-    )
+    cell_metrics = _cell_metrics_enabled(kwargs)
+    metrics = graticule_dggs_metrics(cell_polygon) if cell_metrics else None
 
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new H3-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField("olc", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("cell_width", QVariant.Double))
-    new_fields.append(QgsField("cell_height", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
     olc_feature = QgsFeature()
-    olc_feature.setGeometry(cell_geometry)
-    olc_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    new_attributes = [
+    olc_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        olc_feature,
+        feature,
+        "olc",
         olc_id,
         resolution,
-        center_lat,
-        center_lon,
-        cell_width,
-        cell_height,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    olc_feature.setAttributes(all_attributes)
-
-    return olc_feature
+        cell_metrics,
+        GRATICULE_METRIC_NAMES,
+        metrics,
+    )
 
 
 def mgrs2qgsfeature(feature, mgrs_id, **kwargs):
@@ -667,96 +419,41 @@ def mgrs2qgsfeature(feature, mgrs_id, **kwargs):
         return None
 
     resolution, _ = mgrs.get_mgrs_resolution_and_cell_size(mgrs_id)
-    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-        graticule_dggs_metrics(cell_polygon)
-    )
-
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    new_fields = QgsFields()
-    new_fields.append(QgsField("mgrs", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("cell_width", QVariant.Double))
-    new_fields.append(QgsField("cell_height", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
+    cell_metrics = _cell_metrics_enabled(kwargs)
+    metrics = graticule_dggs_metrics(cell_polygon) if cell_metrics else None
 
     mgrs_feature = QgsFeature()
     mgrs_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
-    mgrs_feature.setFields(all_fields)
-    mgrs_feature.setAttributes(
-        original_attributes
-        + [
-            mgrs_id,
-            resolution,
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ]
+    return _attach_dggs_attributes(
+        mgrs_feature,
+        feature,
+        "mgrs",
+        mgrs_id,
+        resolution,
+        cell_metrics,
+        GRATICULE_METRIC_NAMES,
+        metrics,
     )
-    return mgrs_feature
 
 
 def geohash2qgsfeature(feature, geohash_id, **kwargs):
     cell_polygon = geohash2geo(geohash_id)
     resolution = len(geohash_id)
-    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-        graticule_dggs_metrics(cell_polygon)
-    )
+    cell_metrics = _cell_metrics_enabled(kwargs)
+    metrics = graticule_dggs_metrics(cell_polygon) if cell_metrics else None
 
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new H3-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField("geohash", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("cell_width", QVariant.Double))
-    new_fields.append(QgsField("cell_height", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
     geohash_feature = QgsFeature()
-    geohash_feature.setGeometry(cell_geometry)
-    geohash_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    new_attributes = [
+    geohash_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        geohash_feature,
+        feature,
+        "geohash",
         geohash_id,
         resolution,
-        center_lat,
-        center_lon,
-        cell_width,
-        cell_height,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    geohash_feature.setAttributes(all_attributes)
-
-    return geohash_feature
+        cell_metrics,
+        GRATICULE_METRIC_NAMES,
+        metrics,
+    )
 
 
 def georef2qgsfeature(feature, georef_id, **kwargs):
@@ -774,52 +471,21 @@ def georef2qgsfeature(feature, georef_id, **kwargs):
             ]
         )
 
-        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
-        )
+        cell_metrics = _cell_metrics_enabled(kwargs)
+        metrics = graticule_dggs_metrics(cell_polygon) if cell_metrics else None
 
-        # Get all attributes from the input feature
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        # Define new H3-related attributes
-        new_fields = QgsFields()
-        new_fields.append(QgsField("georef", QVariant.String))
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("cell_width", QVariant.Double))
-        new_fields.append(QgsField("cell_height", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-        # Combine original fields and new fields
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
         georef_feature = QgsFeature()
-        georef_feature.setGeometry(cell_geometry)
-        georef_feature.setFields(all_fields)
-
-        # Combine original attributes with new attributes
-        new_attributes = [
+        georef_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+        return _attach_dggs_attributes(
+            georef_feature,
+            feature,
+            "georef",
             georef_id,
             resolution,
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ]
-        all_attributes = original_attributes + new_attributes
-
-        georef_feature.setAttributes(all_attributes)
-
-        return georef_feature
+            cell_metrics,
+            GRATICULE_METRIC_NAMES,
+            metrics,
+        )
 
 
 def tilecode2qgsfeature(feature, tilecode_id, **kwargs):
@@ -850,52 +516,21 @@ def tilecode2qgsfeature(feature, tilecode_id, **kwargs):
             ]
         )
 
-        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
-        )
+        cell_metrics = _cell_metrics_enabled(kwargs)
+        metrics = graticule_dggs_metrics(cell_polygon) if cell_metrics else None
 
-        # Get all attributes from the input feature
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        # Define new H3-related attributes
-        new_fields = QgsFields()
-        new_fields.append(QgsField("tilecode", QVariant.String))
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("cell_width", QVariant.Double))
-        new_fields.append(QgsField("cell_height", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-        # Combine original fields and new fields
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
         tilecode_feature = QgsFeature()
-        tilecode_feature.setGeometry(cell_geometry)
-        tilecode_feature.setFields(all_fields)
-
-        # Combine original attributes with new attributes
-        new_attributes = [
+        tilecode_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+        return _attach_dggs_attributes(
+            tilecode_feature,
+            feature,
+            "tilecode",
             tilecode_id,
             z,
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ]
-        all_attributes = original_attributes + new_attributes
-
-        tilecode_feature.setAttributes(all_attributes)
-
-        return tilecode_feature
+            cell_metrics,
+            GRATICULE_METRIC_NAMES,
+            metrics,
+        )
 
 
 def quadkey2qgsfeature(feature, quadkey_id, **kwargs):
@@ -919,104 +554,41 @@ def quadkey2qgsfeature(feature, quadkey_id, **kwargs):
             ]
         )
 
-        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
-        )
+        cell_metrics = _cell_metrics_enabled(kwargs)
+        metrics = graticule_dggs_metrics(cell_polygon) if cell_metrics else None
 
-        # Get all attributes from the input feature
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        # Define new H3-related attributes
-        new_fields = QgsFields()
-        new_fields.append(QgsField("quadkey", QVariant.String))
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("cell_width", QVariant.Double))
-        new_fields.append(QgsField("cell_height", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-        # Combine original fields and new fields
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
         quadkey_feature = QgsFeature()
-        quadkey_feature.setGeometry(cell_geometry)
-        quadkey_feature.setFields(all_fields)
-
-        # Combine original attributes with new attributes
-        new_attributes = [
+        quadkey_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+        return _attach_dggs_attributes(
+            quadkey_feature,
+            feature,
+            "quadkey",
             quadkey_id,
             z,
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ]
-        all_attributes = original_attributes + new_attributes
-
-        quadkey_feature.setAttributes(all_attributes)
-
-        return quadkey_feature
+            cell_metrics,
+            GRATICULE_METRIC_NAMES,
+            metrics,
+        )
 
 
 def maidenhead2qgsfeature(feature, maidenhead_id, **kwargs):
     cell_polygon = maidenhead2geo(maidenhead_id)
     resolution = int(len(maidenhead_id) / 2)
+    cell_metrics = _cell_metrics_enabled(kwargs)
+    metrics = graticule_dggs_metrics(cell_polygon) if cell_metrics else None
 
-    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-        graticule_dggs_metrics(cell_polygon)
-    )
-
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new H3-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField("maidenhead", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("cell_width", QVariant.Double))
-    new_fields.append(QgsField("cell_height", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
     maidenhead_feature = QgsFeature()
-    maidenhead_feature.setGeometry(cell_geometry)
-    maidenhead_feature.setFields(all_fields)
-
-    # Combine original attributes with new attributes
-    new_attributes = [
+    maidenhead_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        maidenhead_feature,
+        feature,
+        "maidenhead",
         maidenhead_id,
         resolution,
-        center_lat,
-        center_lon,
-        cell_width,
-        cell_height,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    maidenhead_feature.setAttributes(all_attributes)
-
-    return maidenhead_feature
+        cell_metrics,
+        GRATICULE_METRIC_NAMES,
+        metrics,
+    )
 
 
 def gars2qgsfeature(feature, gars_id, **kwargs):
@@ -1054,112 +626,47 @@ def gars2qgsfeature(feature, gars_id, **kwargs):
             ]
         )
 
-        center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
-        )
+        cell_metrics = _cell_metrics_enabled(kwargs)
+        metrics = graticule_dggs_metrics(cell_polygon) if cell_metrics else None
 
-        # Get all attributes from the input feature
-        original_attributes = feature.attributes()
-        original_fields = feature.fields()
-
-        # Define new H3-related attributes
-        new_fields = QgsFields()
-        new_fields.append(QgsField("gars", QVariant.String))
-        new_fields.append(QgsField("resolution", QVariant.Int))
-        new_fields.append(QgsField("center_lat", QVariant.Double))
-        new_fields.append(QgsField("center_lon", QVariant.Double))
-        new_fields.append(QgsField("cell_width", QVariant.Double))
-        new_fields.append(QgsField("cell_height", QVariant.Double))
-        new_fields.append(QgsField("cell_area", QVariant.Double))
-        new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-        # Combine original fields and new fields
-        all_fields = QgsFields()
-        for field in original_fields:
-            all_fields.append(field)
-        for field in new_fields:
-            all_fields.append(field)
-
-        cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
         gars_feature = QgsFeature()
-        gars_feature.setGeometry(cell_geometry)
-        gars_feature.setFields(all_fields)
-
-        # Combine original attributes with new attributes
-        new_attributes = [
+        gars_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+        return _attach_dggs_attributes(
+            gars_feature,
+            feature,
+            "gars",
             gars_id,
             resolution,
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ]
-        all_attributes = original_attributes + new_attributes
-
-        gars_feature.setAttributes(all_attributes)
-
-        return gars_feature
+            cell_metrics,
+            GRATICULE_METRIC_NAMES,
+            metrics,
+        )
 
 
 def digipin2qgsfeature(feature, digipin_id, **kwargs):
     cell_polygon = digipin2geo(digipin_id)
     clean_id = digipin_id.replace("-", "")
     resolution = len(clean_id)
-
-    cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
+    cell_metrics = _cell_metrics_enabled(kwargs)
+    metrics = graticule_dggs_metrics(cell_polygon) if cell_metrics else None
 
     digipin_feature = QgsFeature()
-    digipin_feature.setGeometry(cell_geometry)
-
-    # Get all attributes from the input feature
-    original_attributes = feature.attributes()
-    original_fields = feature.fields()
-
-    # Define new DIGIPIN-related attributes
-    new_fields = QgsFields()
-    new_fields.append(QgsField("digipin", QVariant.String))
-    new_fields.append(QgsField("resolution", QVariant.Int))
-    new_fields.append(QgsField("center_lat", QVariant.Double))
-    new_fields.append(QgsField("center_lon", QVariant.Double))
-    new_fields.append(QgsField("cell_width", QVariant.Double))
-    new_fields.append(QgsField("cell_height", QVariant.Double))
-    new_fields.append(QgsField("cell_area", QVariant.Double))
-    new_fields.append(QgsField("cell_perimeter", QVariant.Double))
-
-    # Combine original fields and new fields
-    all_fields = QgsFields()
-    for field in original_fields:
-        all_fields.append(field)
-    for field in new_fields:
-        all_fields.append(field)
-
-    digipin_feature.setFields(all_fields)
-
-    # Calculate metrics
-    center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-        graticule_dggs_metrics(cell_polygon)
-    )
-
-    # Combine original attributes with new attributes
-    new_attributes = [
+    digipin_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
+    return _attach_dggs_attributes(
+        digipin_feature,
+        feature,
+        "digipin",
         digipin_id,
         resolution,
-        center_lat,
-        center_lon,
-        cell_width,
-        cell_height,
-        cell_area,
-        cell_perimeter,
-    ]
-    all_attributes = original_attributes + new_attributes
-
-    digipin_feature.setAttributes(all_attributes)
-
-    return digipin_feature
+        cell_metrics,
+        GRATICULE_METRIC_NAMES,
+        metrics,
+    )
 
 
-def dggrid_join_qgsfeature(feature, cell_id, lookup, dggs_type, out_fields):
+def dggrid_join_qgsfeature(
+    feature, cell_id, lookup, dggs_type, out_fields, cell_metrics=False
+):
     """Join one input feature to a batch DGGRID lookup by cell ID."""
     from ..dggrid_instance import normalize_dggrid_cell_id
     from vgrid.utils.io import validate_dggrid_type
@@ -1174,18 +681,21 @@ def dggrid_join_qgsfeature(feature, cell_id, lookup, dggs_type, out_fields):
 
     out_feature = QgsFeature(out_fields)
     out_feature.setGeometry(QgsGeometry.fromWkt(cell_info["geometry"].wkt))
-    out_feature.setAttributes(
-        list(feature.attributes())
-        + [
-            cell_info["cell_id"],
-            cell_info["resolution"],
-            cell_info["center_lat"],
-            cell_info["center_lon"],
-            cell_info["avg_edge_len"],
-            cell_info["cell_area"],
-            cell_info["cell_perimeter"],
-        ]
-    )
+    attributes = list(feature.attributes()) + [
+        cell_info["cell_id"],
+        cell_info["resolution"],
+    ]
+    if cell_metrics:
+        attributes.extend(
+            [
+                cell_info["center_lat"],
+                cell_info["center_lon"],
+                cell_info["avg_edge_len"],
+                cell_info["cell_area"],
+                cell_info["cell_perimeter"],
+            ]
+        )
+    out_feature.setAttributes(attributes)
     return out_feature
 
 
@@ -1198,6 +708,7 @@ def dggrid_batch2qgsfeatures(
     feedback=None,
     split_antimeridian=False,
     aggregate=False,
+    cell_metrics=False,
 ):
     """
     Convert many input features via one ``dggrid2geo`` call and join by cell ID.
@@ -1224,6 +735,7 @@ def dggrid_batch2qgsfeatures(
         feedback=feedback,
         split_antimeridian=split_antimeridian,
         aggregate=aggregate,
+        cell_metrics=cell_metrics,
     )
 
     if not lookup:
@@ -1245,7 +757,9 @@ def dggrid_batch2qgsfeatures(
             break
         try:
             output_features.append(
-                dggrid_join_qgsfeature(feat, cell_id, lookup, dggs_type, out_fields)
+                dggrid_join_qgsfeature(
+                    feat, cell_id, lookup, dggs_type, out_fields, cell_metrics=cell_metrics
+                )
             )
         except Exception as exc:
             num_bad += 1
@@ -1257,7 +771,7 @@ def dggrid_batch2qgsfeatures(
     return output_features, num_bad
 
 
-def dggrid2qgsfeature(feature, cell_id, dggs_type, resolution):
+def dggrid2qgsfeature(feature, cell_id, dggs_type, resolution, cell_metrics=False):
     """Convert a single DGGRID cell ID (uses batch lookup for one ID)."""
     from ...settings import settings
     from ..dggrid_instance import (
@@ -1277,19 +791,29 @@ def dggrid2qgsfeature(feature, cell_id, dggs_type, resolution):
         [cell_id],
         resolution,
         options=build_dggrid_options(settings.dggridDensificationSpinBox),
+        cell_metrics=cell_metrics,
     )
     field_name = f"dggrid_{dggs_type.lower()}"
     out_fields = QgsFields()
     for fld in feature.fields():
         out_fields.append(fld)
+    metric_fields = (
+        (
+            ("center_lat", QVariant.Double),
+            ("center_lon", QVariant.Double),
+            ("avg_edge_len", QVariant.Double),
+            ("cell_area", QVariant.Double),
+            ("cell_perimeter", QVariant.Double),
+        )
+        if cell_metrics
+        else ()
+    )
     for name, qtype in (
         (field_name, QVariant.String),
         ("resolution", QVariant.Int),
-        ("center_lat", QVariant.Double),
-        ("center_lon", QVariant.Double),
-        ("avg_edge_len", QVariant.Double),
-        ("cell_area", QVariant.Double),
-        ("cell_perimeter", QVariant.Double),
+        *metric_fields,
     ):
         out_fields.append(QgsField(name, qtype))
-    return dggrid_join_qgsfeature(feature, cell_id, lookup, dggs_type, out_fields)
+    return dggrid_join_qgsfeature(
+        feature, cell_id, lookup, dggs_type, out_fields, cell_metrics=cell_metrics
+    )

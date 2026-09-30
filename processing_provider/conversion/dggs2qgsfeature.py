@@ -80,6 +80,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
     SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
     AGGREGATE = "AGGREGATE"
+    CELL_METRICS = "CELL_METRICS"
     DGGS_TYPES = [
         "H3",
         "S2",
@@ -286,6 +287,14 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.CELL_METRICS,
+                self.tr("Compute cell metrics"),
+                defaultValue=False,
+            )
+        )
+
     def checkParameterValues(self, parameters, context):
         selected_dggs = self.DGGS_TYPES[
             self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
@@ -321,6 +330,9 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             parameters, self.SPLIT_ANTIMERIDIAN, context
         )
         self.aggregate = self.parameterAsBoolean(parameters, self.AGGREGATE, context)
+        self.cell_metrics = self.parameterAsBoolean(
+            parameters, self.CELL_METRICS, context
+        )
 
         dggs_key = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
         self._dggrid_type_name = None
@@ -425,80 +437,37 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
 
         dggs_type = self.DGGS_TYPES[self.DGGS_TYPE_index].lower()
 
+        geodesic = dggs_type in (
+            "h3",
+            "s2",
+            "a5",
+            "rhealpix",
+            "isea4t",
+            "isea3h",
+            "qtm",
+        ) or dggs_type.startswith(("dggrid_", "dggal_"))
+
         # Fields to be added
         new_fields = [
             QgsField(get_unique_name(dggs_type), QVariant.String),
             QgsField(get_unique_name("resolution"), QVariant.Int),
-            QgsField(get_unique_name("center_lat"), QVariant.Double),
-            QgsField(get_unique_name("center_lon"), QVariant.Double),
-            QgsField(
-                get_unique_name(
-                    "avg_edge_len"
-                    if dggs_type
-                    in (
-                        "h3",
-                        "s2",
-                        "a5",
-                        "rhealpix",
-                        "isea4t",
-                        "isea3h",
-                        "dggal_gnosis",
-                        "dggal_isea4r",
-                        "dggal_isea9r",
-                        "dggal_isea7h",
-                        "dggal_isea7h_z7",
-                        "dggal_ivea4r",
-                        "dggal_ivea9r",
-                        "dggal_ivea3h",
-                        "dggal_ivea7h",
-                        "dggal_ivea7h_z7",
-                        "dggal_rtea4r",
-                        "dggal_rtea9r",
-                        "dggal_rtea3h",
-                        "dggal_rtea7h",
-                        "dggal_rtea7h_z7",
-                        "dggal_healpix",
-                        "dggal_rhealpix",
-                        "qtm",
-                    )
-                    or dggs_type.startswith("dggrid_")
-                    else "cell_width"
-                ),
-                QVariant.Double,
-            ),
-            QgsField(get_unique_name("cell_height"), QVariant.Double)
-            if dggs_type
-            not in (
-                "h3",
-                "s2",
-                "a5",
-                "rhealpix",
-                "isea4t",
-                "isea3h",
-                "dggal_gnosis",
-                "dggal_isea4r",
-                "dggal_isea9r",
-                "dggal_isea7h",
-                "dggal_isea7h_z7",
-                "dggal_ivea4r",
-                "dggal_ivea9r",
-                "dggal_ivea3h",
-                "dggal_ivea7h",
-                "dggal_ivea7h_z7",
-                "dggal_rtea4r",
-                "dggal_rtea9r",
-                "dggal_rtea3h",
-                "dggal_rtea7h",
-                "dggal_rtea7h_z7",
-                "dggal_healpix",
-                "dggal_rhealpix",
-                "qtm",
-            )
-            and not dggs_type.startswith("dggrid_")
-            else None,
-            QgsField(get_unique_name("cell_area"), QVariant.Double),
-            QgsField(get_unique_name("cell_perimeter"), QVariant.Double),
         ]
+        if getattr(self, "cell_metrics", False):
+            new_fields.extend(
+                [
+                    QgsField(get_unique_name("center_lat"), QVariant.Double),
+                    QgsField(get_unique_name("center_lon"), QVariant.Double),
+                    QgsField(
+                        get_unique_name("avg_edge_len" if geodesic else "cell_width"),
+                        QVariant.Double,
+                    ),
+                    QgsField(get_unique_name("cell_height"), QVariant.Double)
+                    if not geodesic
+                    else None,
+                    QgsField(get_unique_name("cell_area"), QVariant.Double),
+                    QgsField(get_unique_name("cell_perimeter"), QVariant.Double),
+                ]
+            )
 
         # Append the fields to output_fields
         for field in new_fields:
@@ -517,6 +486,8 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
                 cell_id,
                 shift_antimeridian=self.shift_antimeridian,
                 split_antimeridian=self.split_antimeridian,
+                N_side=getattr(settings, "rhealpixNSide", 3),
+                cell_metrics=self.cell_metrics,
             )
             if cell_feature:
                 return [cell_feature]
@@ -580,6 +551,7 @@ class CellID2DGGS(QgsProcessingFeatureBasedAlgorithm):
             feedback=feedback,
             split_antimeridian=self.split_antimeridian,
             aggregate=self.aggregate,
+            cell_metrics=self.cell_metrics,
         )
         self.num_bad += batch_bad
 

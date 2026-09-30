@@ -29,21 +29,18 @@ from vgrid.conversion.dggs2geo.quadkey2geo import quadkey2geo
 from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.tilecode2geo import tilecode2geo
-from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
 from vgrid.utils.constants import DGGAL_TYPES
 from vgrid.utils.geometry import geodesic_dggs_metrics, graticule_dggs_metrics
+from vgrid.utils.io import rhealpix_cell_from_id
 
 from dggal import *
 from ...utils.resampling import dggsgrid
 from ..antimeridian_helper import geo_with_fix, use_split_antimeridian
+from ..rhealpix_helper import get_plugin_rhealpix_dggs, resolve_rhealpix_n_side
 from .raster2dggs_helper import (
     gdf_to_qgs_vector_layer,
     run_raster2,
 )
-
-E = WGS84_ELLIPSOID
-_RHEALPIX_DGGS = RHEALPixDGGS(ellipsoid=E, north_square=1, south_square=3, N_side=3)
 
 _dggal_app = Application(appGlobals=globals())
 pydggal_setup(_dggal_app)
@@ -57,7 +54,9 @@ if platform.system() == "Windows":
     _isea4t_dggs = Eaggr(Model.ISEA4T)
 
 
-def _geodesic_meta(cell_polygon, num_edges, cell_id, resolution):
+def _geodesic_meta(cell_polygon, num_edges, cell_id, resolution, cell_metrics=True):
+    if not cell_metrics:
+        return {"id": cell_id, "resolution": resolution}
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
         geodesic_dggs_metrics(cell_polygon, num_edges)
     )
@@ -72,23 +71,29 @@ def _geodesic_meta(cell_polygon, num_edges, cell_id, resolution):
     }
 
 
-def _h3_cell_builder(cell_id, resolution, shift_antimeridian=False, split_antimeridian=False):
+def _h3_cell_builder(
+    cell_id, resolution, shift_antimeridian=False, split_antimeridian=False, cell_metrics=True
+):
     cell_polygon = geo_with_fix(
         h32geo, cell_id, "h3", shift_antimeridian, split_antimeridian
     )
     if not cell_polygon:
         return None
     num_edges = 5 if h3.is_pentagon(cell_id) else 6
-    return cell_polygon, _geodesic_meta(cell_polygon, num_edges, cell_id, resolution)
+    return cell_polygon, _geodesic_meta(
+        cell_polygon, num_edges, cell_id, resolution, cell_metrics
+    )
 
 
-def _s2_cell_builder(cell_id, resolution, shift_antimeridian=False, split_antimeridian=False):
+def _s2_cell_builder(
+    cell_id, resolution, shift_antimeridian=False, split_antimeridian=False, cell_metrics=True
+):
     cell_polygon = geo_with_fix(
         s22geo, cell_id, "s2", shift_antimeridian, split_antimeridian
     )
     if not cell_polygon:
         return None
-    return cell_polygon, _geodesic_meta(cell_polygon, 4, cell_id, resolution)
+    return cell_polygon, _geodesic_meta(cell_polygon, 4, cell_id, resolution, cell_metrics)
 
 
 def raster2h3(
@@ -101,6 +106,7 @@ def raster2h3(
     split_antimeridian=False,
     **_kwargs,
 ):
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
     return run_raster2(
         raster_layer,
         resolution,
@@ -114,12 +120,14 @@ def raster2h3(
             fb,
             shift_antimeridian=shift_antimeridian,
             split_antimeridian=split_antimeridian,
+            cell_metrics=cell_metrics,
         ),
         lambda cid, res: _h3_cell_builder(
-            cid, res, shift_antimeridian, split_antimeridian
+            cid, res, shift_antimeridian, split_antimeridian, cell_metrics
         ),
         feedback=feedback,
         layer_name="H3",
+        cell_metrics=cell_metrics,
     )
 
 
@@ -133,6 +141,8 @@ def raster2s2(
     split_antimeridian=False,
     **_kwargs,
 ):
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
+
     def cell_id(lat, lon):
         lat_lng = s2.LatLng.from_degrees(lat, lon)
         return s2.CellId.to_token(s2.CellId.from_lat_lng(lat_lng).parent(resolution))
@@ -150,12 +160,14 @@ def raster2s2(
             fb,
             shift_antimeridian=shift_antimeridian,
             split_antimeridian=split_antimeridian,
+            cell_metrics=cell_metrics,
         ),
         lambda cid, res: _s2_cell_builder(
-            cid, res, shift_antimeridian, split_antimeridian
+            cid, res, shift_antimeridian, split_antimeridian, cell_metrics
         ),
         feedback=feedback,
         layer_name="S2",
+        cell_metrics=cell_metrics,
     )
 
 
@@ -169,6 +181,8 @@ def raster2a5(
     split_antimeridian=False,
     **_kwargs,
 ):
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
+
     def cell_id(lat, lon):
         try:
             return latlon2a5(lat, lon, resolution)
@@ -184,7 +198,7 @@ def raster2a5(
         )
         if not cell_polygon:
             return None
-        return cell_polygon, _geodesic_meta(cell_polygon, 5, cid, res)
+        return cell_polygon, _geodesic_meta(cell_polygon, 5, cid, res, cell_metrics)
 
     return run_raster2(
         raster_layer,
@@ -199,10 +213,12 @@ def raster2a5(
             fb,
             shift_antimeridian=shift_antimeridian,
             split_antimeridian=split_antimeridian,
+            cell_metrics=cell_metrics,
         ),
         builder,
         feedback=feedback,
         layer_name="A5",
+        cell_metrics=cell_metrics,
     )
 
 
@@ -216,22 +232,27 @@ def raster2rhealpix(
     split_antimeridian=False,
     **_kwargs,
 ):
+    N_side = resolve_rhealpix_n_side(_kwargs.get("N_side"))
+    rhealpix_dggs = get_plugin_rhealpix_dggs(N_side)
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
+
     def cell_id(lat, lon):
         try:
-            return latlon2rhealpix(lat, lon, resolution)
+            return latlon2rhealpix(lat, lon, resolution, N_side=N_side)
         except Exception:
             return None
 
     def builder(cid, res):
         cell_polygon = geo_with_fix(
-            rhealpix2geo, cid, "rhealpix", shift_antimeridian, split_antimeridian
+            rhealpix2geo, cid, "rhealpix", shift_antimeridian, split_antimeridian, N_side=N_side
         )
         if not cell_polygon:
             return None
-        uids = (cid[0],) + tuple(map(int, cid[1:]))
-        cell = _RHEALPIX_DGGS.cell(uids)
-        num_edges = 3 if cell.ellipsoidal_shape() == "dart" else 4
-        return cell_polygon, _geodesic_meta(cell_polygon, num_edges, cid, res)
+        num_edges = None
+        if cell_metrics:
+            cell = rhealpix_cell_from_id(str(cid), dggs=rhealpix_dggs)
+            num_edges = 3 if cell.ellipsoidal_shape == "dart" else 4
+        return cell_polygon, _geodesic_meta(cell_polygon, num_edges, cid, res, cell_metrics)
 
     return run_raster2(
         raster_layer,
@@ -246,16 +267,21 @@ def raster2rhealpix(
             fb,
             shift_antimeridian=shift_antimeridian,
             split_antimeridian=split_antimeridian,
+            N_side=N_side,
+            cell_metrics=cell_metrics,
         ),
         builder,
         feedback=feedback,
         layer_name="rHEALPix",
+        cell_metrics=cell_metrics,
     )
 
 
 def raster2qtm(
     raster_layer, resolution, feedback=None, method="nearest", stats="mean", **_kwargs
 ):
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
+
     def cell_id(lat, lon):
         try:
             return latlon2qtm(lat, lon, resolution)
@@ -266,7 +292,7 @@ def raster2qtm(
         cell_polygon = qtm2geo(cid)
         if not cell_polygon:
             return None
-        return cell_polygon, _geodesic_meta(cell_polygon, 3, cid, res)
+        return cell_polygon, _geodesic_meta(cell_polygon, 3, cid, res, cell_metrics)
 
     return run_raster2(
         raster_layer,
@@ -275,16 +301,21 @@ def raster2qtm(
         stats,
         "qtm",
         cell_id,
-        lambda res, feat, fb: dggsgrid.generate_qtm_grid(res, feat, fb),
+        lambda res, feat, fb: dggsgrid.generate_qtm_grid(
+            res, feat, fb, cell_metrics=cell_metrics
+        ),
         builder,
         feedback=feedback,
         layer_name="QTM",
+        cell_metrics=cell_metrics,
     )
 
 
 def raster2olc(
     raster_layer, resolution, feedback=None, method="nearest", stats="mean", **_kwargs
 ):
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
+
     def cell_id(lat, lon):
         try:
             return latlon2olc(lat, lon, resolution)
@@ -295,7 +326,7 @@ def raster2olc(
         cell_polygon = olc2geo(cid)
         if not cell_polygon:
             return None
-        return cell_polygon, _geodesic_meta(cell_polygon, 4, cid, res)
+        return cell_polygon, _geodesic_meta(cell_polygon, 4, cid, res, cell_metrics)
 
     return run_raster2(
         raster_layer,
@@ -304,16 +335,21 @@ def raster2olc(
         stats,
         "olc",
         cell_id,
-        lambda res, feat, fb: dggsgrid.generate_olc_grid(res, feat, fb),
+        lambda res, feat, fb: dggsgrid.generate_olc_grid(
+            res, feat, fb, cell_metrics=cell_metrics
+        ),
         builder,
         feedback=feedback,
         layer_name="OLC",
+        cell_metrics=cell_metrics,
     )
 
 
 def raster2geohash(
     raster_layer, resolution, feedback=None, method="nearest", stats="mean", **_kwargs
 ):
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
+
     def cell_id(lat, lon):
         try:
             return latlon2geohash(lat, lon, resolution)
@@ -324,7 +360,7 @@ def raster2geohash(
         cell_polygon = geohash2geo(cid)
         if not cell_polygon:
             return None
-        return cell_polygon, _geodesic_meta(cell_polygon, 4, cid, res)
+        return cell_polygon, _geodesic_meta(cell_polygon, 4, cid, res, cell_metrics)
 
     return run_raster2(
         raster_layer,
@@ -333,16 +369,21 @@ def raster2geohash(
         stats,
         "geohash",
         cell_id,
-        lambda res, feat, fb: dggsgrid.generate_geohash_grid(res, feat, fb),
+        lambda res, feat, fb: dggsgrid.generate_geohash_grid(
+            res, feat, fb, cell_metrics=cell_metrics
+        ),
         builder,
         feedback=feedback,
         layer_name="Geohash",
+        cell_metrics=cell_metrics,
     )
 
 
 def raster2tilecode(
     raster_layer, resolution, feedback=None, method="nearest", stats="mean", **_kwargs
 ):
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
+
     def cell_id(lat, lon):
         try:
             return tilecode.latlon2tilecode(lat, lon, resolution)
@@ -353,7 +394,7 @@ def raster2tilecode(
         cell_polygon = tilecode2geo(cid)
         if not cell_polygon:
             return None
-        return cell_polygon, _geodesic_meta(cell_polygon, 4, cid, res)
+        return cell_polygon, _geodesic_meta(cell_polygon, 4, cid, res, cell_metrics)
 
     return run_raster2(
         raster_layer,
@@ -362,16 +403,21 @@ def raster2tilecode(
         stats,
         "tilecode",
         cell_id,
-        lambda res, feat, fb: dggsgrid.generate_tilecode_grid(res, feat, fb),
+        lambda res, feat, fb: dggsgrid.generate_tilecode_grid(
+            res, feat, fb, cell_metrics=cell_metrics
+        ),
         builder,
         feedback=feedback,
         layer_name="Tilecode",
+        cell_metrics=cell_metrics,
     )
 
 
 def raster2quadkey(
     raster_layer, resolution, feedback=None, method="nearest", stats="mean", **_kwargs
 ):
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
+
     def cell_id(lat, lon):
         try:
             return tilecode.latlon2quadkey(lat, lon, resolution)
@@ -382,7 +428,7 @@ def raster2quadkey(
         cell_polygon = quadkey2geo(cid)
         if not cell_polygon:
             return None
-        return cell_polygon, _geodesic_meta(cell_polygon, 4, cid, res)
+        return cell_polygon, _geodesic_meta(cell_polygon, 4, cid, res, cell_metrics)
 
     return run_raster2(
         raster_layer,
@@ -391,16 +437,21 @@ def raster2quadkey(
         stats,
         "quadkey",
         cell_id,
-        lambda res, feat, fb: dggsgrid.generate_quadkey_grid(res, feat, fb),
+        lambda res, feat, fb: dggsgrid.generate_quadkey_grid(
+            res, feat, fb, cell_metrics=cell_metrics
+        ),
         builder,
         feedback=feedback,
         layer_name="Quadkey",
+        cell_metrics=cell_metrics,
     )
 
 
 def raster2digipin(
     raster_layer, resolution, feedback=None, method="nearest", stats="mean", **_kwargs
 ):
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
+
     def cell_id(lat, lon):
         try:
             return latlon2digipin(lat, lon, resolution)
@@ -411,6 +462,8 @@ def raster2digipin(
         cell_polygon = digipin2geo(cid)
         if not cell_polygon or isinstance(cell_polygon, str):
             return None
+        if not cell_metrics:
+            return cell_polygon, {"id": cid, "resolution": res}
         clat, clon, cw, ch, carea, cperi = graticule_dggs_metrics(cell_polygon)
         return cell_polygon, {
             "id": cid,
@@ -433,7 +486,7 @@ def raster2digipin(
             ext.xMaximum(),
             ext.yMaximum(),
         )
-        gdf = digipin_grid(res, bbox)
+        gdf = digipin_grid(res, bbox, cell_metrics=cell_metrics)
         return gdf_to_qgs_vector_layer(gdf, "DIGIPIN")
 
     return run_raster2(
@@ -448,6 +501,7 @@ def raster2digipin(
         feedback=feedback,
         layer_name="DIGIPIN",
         digipin_metrics_fn=True,
+        cell_metrics=cell_metrics,
     )
 
 
@@ -463,6 +517,7 @@ def raster2dggal(
     **_kwargs,
 ):
     id_field = f"dggal_{dggal_type}"
+    cell_metrics = bool(_kwargs.get("cell_metrics", False))
 
     def cell_id(lat, lon):
         try:
@@ -481,11 +536,13 @@ def raster2dggal(
             )
             if not cell_polygon:
                 return None
-            cls_name = DGGAL_TYPES[dggal_type]["class_name"]
-            dggrs = globals()[cls_name]()
-            zone = dggrs.getZoneFromTextID(zone_id)
-            num_edges = dggrs.countZoneEdges(zone)
-            meta = _geodesic_meta(cell_polygon, num_edges, zone_id, res)
+            num_edges = None
+            if cell_metrics:
+                cls_name = DGGAL_TYPES[dggal_type]["class_name"]
+                dggrs = globals()[cls_name]()
+                zone = dggrs.getZoneFromTextID(zone_id)
+                num_edges = dggrs.countZoneEdges(zone)
+            meta = _geodesic_meta(cell_polygon, num_edges, zone_id, res, cell_metrics)
             return cell_polygon, meta
         except Exception:
             return None
@@ -504,10 +561,12 @@ def raster2dggal(
             fb,
             shift_antimeridian=shift_antimeridian,
             split_antimeridian=split_antimeridian,
+            cell_metrics=cell_metrics,
         ),
         builder,
         feedback=feedback,
         layer_name=f"DGGAL_{dggal_type}",
+        cell_metrics=cell_metrics,
     )
 
 
@@ -523,6 +582,8 @@ if platform.system() == "Windows":
         split_antimeridian=False,
         **_kwargs,
     ):
+        cell_metrics = bool(_kwargs.get("cell_metrics", False))
+
         def cell_id(lat, lon):
             try:
                 return latlon2isea4t(lat, lon, resolution)
@@ -535,7 +596,7 @@ if platform.system() == "Windows":
             )
             if not cell_polygon:
                 return None
-            return cell_polygon, _geodesic_meta(cell_polygon, 3, cid, res)
+            return cell_polygon, _geodesic_meta(cell_polygon, 3, cid, res, cell_metrics)
 
         return run_raster2(
             raster_layer,
@@ -550,10 +611,12 @@ if platform.system() == "Windows":
                 fb,
                 shift_antimeridian=shift_antimeridian,
                 split_antimeridian=split_antimeridian,
+                cell_metrics=cell_metrics,
             ),
             builder,
             feedback=feedback,
             layer_name="ISEA4T",
+            cell_metrics=cell_metrics,
         )
 
 else:

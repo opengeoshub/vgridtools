@@ -61,7 +61,7 @@ class H3Grid(QObject):
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | H3 resolution: {resolution}"
+                    f"Zoom: {zoom:.2f} | H3 res: {resolution}"
                 )
 
             if resolution == 0:
@@ -148,7 +148,7 @@ class H3Grid(QObject):
         zoom = 29.1402 - log2(scale)
         min_res = DGGS_TYPES["h3"]["min_res"]
         max_res = DGGS_TYPES["h3"]["max_res"]
-        res = min(max_res, max(min_res, floor((zoom - 3) * 0.8)))
+        res = min(max_res, max(min_res, floor((zoom - 2) * 0.8)))
         return res
 
     @pyqtSlot()

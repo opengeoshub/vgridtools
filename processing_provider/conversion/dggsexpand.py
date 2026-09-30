@@ -24,6 +24,7 @@ from qgis.core import (
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtCore import QCoreApplication
 
+from ...settings import settings
 from ...utils.help_footer import social_links_footer
 from ...utils.crs_helper import attributes_only_source
 from ...utils.binning.bin_helper import apply_loaded_layer_name, set_output_layer_name
@@ -38,6 +39,7 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
     DEPTH = "DEPTH"
     SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
+    CELL_METRICS = "CELL_METRICS"
     OUTPUT = "OUTPUT"
 
     DGGS_TYPES = [
@@ -208,6 +210,14 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.CELL_METRICS,
+                self.tr("Compute cell metrics"),
+                defaultValue=False,
+            )
+        )
+
     def prepareAlgorithm(self, parameters, context, feedback):
         self.parameterAsEnum(parameters, self.DGGS_TYPE, context)
         resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
@@ -228,6 +238,9 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
         )
         self.split_antimeridian = self.parameterAsBoolean(
             parameters, self.SPLIT_ANTIMERIDIAN, context
+        )
+        self.cell_metrics = self.parameterAsBoolean(
+            parameters, self.CELL_METRICS, context
         )
 
         def _dggal_fn(dggal_type):
@@ -303,6 +316,8 @@ class DGGSExpand(QgsProcessingFeatureBasedAlgorithm):
             shift_antimeridian=self.shift_antimeridian,
             split_antimeridian=self.split_antimeridian,
             depth=self.depth,
+            N_side=getattr(settings, "rhealpixNSide", 3),
+            cell_metrics=self.cell_metrics,
         )
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():

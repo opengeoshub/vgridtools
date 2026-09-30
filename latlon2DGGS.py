@@ -44,8 +44,8 @@ from vgrid.conversion.latlon2dggs import *
 from vgrid.conversion.dggs2geo import *
 from vgrid.utils.geometry import geodesic_dggs_metrics, graticule_dggs_metrics
 
-from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+from .utils.rhealpix_helper import resolve_rhealpix_n_side
+from vgrid.utils.io import rhealpix_cell_from_id
 import traceback
 from vgrid.utils.antimeridian import fix_polygon
 
@@ -1081,7 +1081,7 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             self.a5LineEdit.setText(s)
         if self._should_update_coord(id, 7, "rhealpixVisible"):  # rHEALPix
             try:
-                s = latlon2rhealpix(pt4326.y(), pt4326.x(), settings.rhealpixRes)
+                s = latlon2rhealpix(pt4326.y(), pt4326.x(), settings.rhealpixRes, N_side=getattr(settings, 'rhealpixNSide', 3))
             except Exception:
                 s = s_invalid
             self.rhealpixLineEdit.setText(s)
@@ -1450,14 +1450,11 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
     def commitrHEALPix(self):
         text = self.rhealpixLineEdit.text().strip()
         try:
-            rhealpix_dggs = RHEALPixDGGS(
-                ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3
-            )
-            rhealpix_geometry = rhealpix2geo(text)
-            rhealpix_uids = (text[0],) + tuple(map(int, text[1:]))
-            rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
+            N_side = resolve_rhealpix_n_side(getattr(settings, "rhealpixNSide", 3))
+            rhealpix_geometry = rhealpix2geo(text, N_side=N_side)
+            rhealpix_cell = rhealpix_cell_from_id(text, N_side=N_side)
             num_edges = 4
-            if rhealpix_cell.ellipsoidal_shape() == "dart":
+            if rhealpix_cell.ellipsoidal_shape == "dart":
                 num_edges = 3
             center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
                 rhealpix_geometry, num_edges
@@ -2504,14 +2501,11 @@ class LatLon2DGGSWidget(QDockWidget, FORM_CLASS):
             if not text:
                 return
 
-            rhealpix_dggs = RHEALPixDGGS(
-                ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3
-            )
-            cell_polygon = rhealpix2geo(text)
-            rhealpix_uids = (text[0],) + tuple(map(int, text[1:]))
-            rhealpix_cell = rhealpix_dggs.cell(rhealpix_uids)
+            N_side = resolve_rhealpix_n_side(getattr(settings, "rhealpixNSide", 3))
+            cell_polygon = rhealpix2geo(text, N_side=N_side)
+            rhealpix_cell = rhealpix_cell_from_id(text, N_side=N_side)
             num_edges = 4
-            if rhealpix_cell.ellipsoidal_shape() == "dart":
+            if rhealpix_cell.ellipsoidal_shape == "dart":
                 num_edges = 3
             center_lat, center_lon, _, _, _ = geodesic_dggs_metrics(
                 cell_polygon, num_edges

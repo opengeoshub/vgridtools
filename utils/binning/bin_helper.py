@@ -35,6 +35,7 @@ from ..crs_helper import (
 SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
 SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
 AGGREGATE = "AGGREGATE"
+CELL_METRICS = "CELL_METRICS"
 
 _WGS84 = QgsCoordinateReferenceSystem("EPSG:4326")
 
@@ -200,21 +201,15 @@ def h3_num_edges(h3_id):
     return 5 if h3.is_pentagon(h3_id) else 6
 
 
-def rhealpix_num_edges(rhealpix_id, rhealpix_dggs=None):
+def rhealpix_num_edges(rhealpix_id, rhealpix_dggs=None, N_side=None):
     if rhealpix_dggs is None:
-        from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-        from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+        from ..rhealpix_helper import get_plugin_rhealpix_dggs
 
-        rhealpix_dggs = RHEALPixDGGS(
-            ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3
-        )
-    if ":" in rhealpix_id:
-        parts = rhealpix_id.split(":")
-        rhealpix_uids = (parts[0],) + tuple(int(p) for p in parts[1:])
-    else:
-        rhealpix_uids = (rhealpix_id[0],) + tuple(map(int, rhealpix_id[1:]))
-    cell = rhealpix_dggs.cell(rhealpix_uids)
-    return 3 if cell.ellipsoidal_shape() == "dart" else 4
+        rhealpix_dggs = get_plugin_rhealpix_dggs(N_side)
+    from vgrid.utils.io import rhealpix_cell_from_id
+
+    cell = rhealpix_cell_from_id(str(rhealpix_id), dggs=rhealpix_dggs)
+    return 3 if cell.ellipsoidal_shape == "dart" else 4
 
 
 def dggal_num_edges(dggs_type, zone_id):
@@ -448,13 +443,32 @@ def bbox_memory_layer(minx, miny, maxx, maxy, layer_name="bin_extent"):
     return layer
 
 
-def empty_bin_output_fields(id_col, metric_kind="geodesic"):
+def empty_bin_output_fields(id_col, metric_kind="geodesic", cell_metrics=False):
     out_fields = QgsFields()
     out_fields.append(QgsField(id_col, QVariant.String))
-    if metric_kind == "graticule":
-        append_graticule_metric_fields(out_fields)
-    else:
-        append_geodesic_metric_fields(out_fields)
+    out_fields.append(QgsField("resolution", QVariant.Int))
+    if not cell_metrics:
+        return out_fields
+    names = (
+        (
+            "center_lat",
+            "center_lon",
+            "cell_width",
+            "cell_height",
+            "cell_area",
+            "cell_perimeter",
+        )
+        if metric_kind == "graticule"
+        else (
+            "center_lat",
+            "center_lon",
+            "avg_edge_len",
+            "cell_area",
+            "cell_perimeter",
+        )
+    )
+    for name in names:
+        out_fields.append(QgsField(name, QVariant.Double))
     return out_fields
 
 
@@ -469,23 +483,24 @@ def build_bin_output_fields(grid_layer, grouped, agg, id_col):
 
 
 def dggrid_gdf_to_memory_layer(
-    dggrid_gdf, id_col, resolution, dggs_type, feedback=None
+    dggrid_gdf, id_col, resolution, dggs_type, feedback=None, cell_metrics=True
 ):
     """Build a WGS84 memory polygon layer from a DGGRID GeoDataFrame (no GeoPandas sjoin)."""
     from vgrid.utils.geometry import dggrid_num_edges
 
     from ..dggrid_instance import normalize_dggrid_cell_id
 
-    num_edges = dggrid_num_edges(dggs_type)
+    num_edges = dggrid_num_edges(dggs_type) if cell_metrics else None
 
     fields = QgsFields()
     fields.append(QgsField(id_col, QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    if cell_metrics:
+        fields.append(QgsField("center_lat", QVariant.Double))
+        fields.append(QgsField("center_lon", QVariant.Double))
+        fields.append(QgsField("avg_edge_len", QVariant.Double))
+        fields.append(QgsField("cell_area", QVariant.Double))
+        fields.append(QgsField("cell_perimeter", QVariant.Double))
 
     layer = QgsVectorLayer("Polygon?crs=EPSG:4326", "dggrid_bin_grid", "memory")
     provider = layer.dataProvider()
@@ -514,23 +529,18 @@ def dggrid_gdf_to_memory_layer(
         if cell_id is None:
             continue
 
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
-        )
+        attrs = [cell_id, resolution]
+        if cell_metrics:
+            center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+                geodesic_dggs_metrics(cell_polygon, num_edges)
+            )
+            attrs.extend(
+                [center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter]
+            )
 
         feat = QgsFeature(fields)
         feat.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
-        feat.setAttributes(
-            [
-                cell_id,
-                resolution,
-                center_lat,
-                center_lon,
-                avg_edge_len,
-                cell_area,
-                cell_perimeter,
-            ]
-        )
+        feat.setAttributes(attrs)
         features.append(feat)
         if feedback and total and idx % 500 == 0:
             feedback.setProgress(int(15 * idx / total))
@@ -551,6 +561,7 @@ def generate_dggrid_grid_qgis(
     densification=None,
     split_antimeridian=False,
     aggregate=False,
+    cell_metrics=True,
 ):
     """DGGRID grid over extent bbox for point binning."""
     from vgrid.utils.io import validate_dggrid_resolution, validate_dggrid_type
@@ -607,17 +618,24 @@ def generate_dggrid_grid_qgis(
 
     dggrid_gdf, _ = _ensure_dggrid_global_id_column(dggrid_gdf)
     return dggrid_gdf_to_memory_layer(
-        dggrid_gdf, id_col, resolution, dggs_type, feedback=feedback
+        dggrid_gdf,
+        id_col,
+        resolution,
+        dggs_type,
+        feedback=feedback,
+        cell_metrics=cell_metrics,
     )
 
 
-def generate_digipin_grid_qgis(resolution, extent_layer, feedback=None):
+def generate_digipin_grid_qgis(
+    resolution, extent_layer, feedback=None, cell_metrics=True
+):
     """DIGIPIN grid over extent (vgrid IDs → QgsVectorLayer, no tqdm)."""
     import geopandas as gpd
     from vgrid.conversion.dggs2geo.digipin2geo import digipin2geo
     from vgrid.dggs.digipin import digipin_resolution
     from vgrid.generator.digipingrid import digipin_grid_ids
-    from vgrid.utils.geometry import graticule_dggs_to_geoseries
+    from vgrid.utils.geometry import dggs_cell_row
     from vgrid.utils.io import validate_digipin_resolution
 
     from ..conversion.raster2dggs_helper import gdf_to_qgs_vector_layer
@@ -648,11 +666,12 @@ def generate_digipin_grid_qgis(resolution, extent_layer, feedback=None):
         if isinstance(cell_polygon, str):
             continue
         records.append(
-            graticule_dggs_to_geoseries(
+            dggs_cell_row(
                 "digipin",
                 digipin_code,
                 digipin_resolution(digipin_code),
                 cell_polygon,
+                cell_metrics=cell_metrics,
             )
         )
         if feedback and total:
@@ -719,6 +738,20 @@ def add_shift_split_parameters(
                 defaultValue=False,
             )
         )
+
+
+def add_cell_metrics_parameter(algorithm):
+    algorithm.addParameter(
+        QgsProcessingParameterBoolean(
+            CELL_METRICS,
+            algorithm.tr("Compute cell metrics"),
+            defaultValue=False,
+        )
+    )
+
+
+def read_cell_metrics(algorithm, parameters, context):
+    return algorithm.parameterAsBoolean(parameters, CELL_METRICS, context)
 
 
 def add_dggrid_antimeridian_parameters(algorithm):
@@ -847,6 +880,7 @@ def process_point_dggs_bin(
     generate_grid_fn,
     metric_kind="geodesic",
     grid_kwargs=None,
+    cell_metrics=None,
 ):
     """
     Grid over point extent → spatial join → aggregate → write binned cells.
@@ -854,6 +888,10 @@ def process_point_dggs_bin(
     *generate_grid_fn* is ``(resolution, extent_layer, feedback, **grid_kwargs)
     -> QgsVectorLayer``.
     """
+    if cell_metrics is None:
+        cell_metrics = read_cell_metrics(alg, parameters, context)
+    grid_kwargs = dict(grid_kwargs or {})
+    grid_kwargs["cell_metrics"] = cell_metrics
     resolution = validate_resolution_fn(resolution)
     category = category_field or None
     numeric_field = numeric_field or None
@@ -879,7 +917,9 @@ def process_point_dggs_bin(
 
     if not points:
         feedback.pushInfo("No point features to bin.")
-        sink, dest_id = _create_sink(empty_bin_output_fields(id_col, metric_kind))
+        sink, dest_id = _create_sink(
+            empty_bin_output_fields(id_col, metric_kind, cell_metrics)
+        )
         return {alg.OUTPUT: dest_id}
 
     minx, miny, maxx, maxy = bbox
@@ -892,7 +932,7 @@ def process_point_dggs_bin(
         "for point layer extent..."
     )
     grid_layer = generate_grid_fn(
-        resolution, extent_layer, feedback, **dict(grid_kwargs or {})
+        resolution, extent_layer, feedback, **grid_kwargs
     )
     if grid_layer is None or feedback.isCanceled():
         return {}
@@ -904,7 +944,9 @@ def process_point_dggs_bin(
 
     if joined.empty:
         feedback.pushInfo(f"No points fell inside {dggs_label} cells.")
-        sink, dest_id = _create_sink(empty_bin_output_fields(id_col, metric_kind))
+        sink, dest_id = _create_sink(
+            empty_bin_output_fields(id_col, metric_kind, cell_metrics)
+        )
         return {alg.OUTPUT: dest_id}
 
     feedback.pushInfo(f"Aggregating {len(joined)} point-in-cell match(es) ({agg})...")

@@ -23,6 +23,7 @@ from vgrid.utils.io import validate_dggrid_resolution
 from ...settings import settings
 from ...utils.dggrid_instance import DGGRID_TYPES_NO_ANTIMERIDIAN
 from ...utils.binning.bin_helper import (
+    add_cell_metrics_parameter,
     load_wgs84_feature_source,
     AGGREGATE,
     BIN_AGG,
@@ -199,6 +200,8 @@ class DGGRIDBin(QgsProcessingFeatureBasedAlgorithm):
                 optional=False,
             )
         )
+
+        add_cell_metrics_parameter(self)
 
     def prepareAlgorithm(self, parameters, context, feedback):
         self.agg_index = self.parameterAsEnum(parameters, self.AGG, context)

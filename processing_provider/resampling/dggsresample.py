@@ -50,6 +50,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
     PREDICATE = "PREDICATE"
     SHIFT_ANTIMERIDIAN = "SHIFT_ANTIMERIDIAN"
     SPLIT_ANTIMERIDIAN = "SPLIT_ANTIMERIDIAN"
+    CELL_METRICS = "CELL_METRICS"
     OUTPUT = "OUTPUT"
 
     DGGS_TYPES = [
@@ -212,6 +213,14 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
             )
         )
 
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.CELL_METRICS,
+                self.tr("Compute cell metrics"),
+                defaultValue=False,
+            )
+        )
+
     def prepareAlgorithm(self, parameters, context, feedback):
         self.DGGSTYPE_FROM_index = self.parameterAsEnum(
             parameters, self.DGGSTYPE_FROM, context
@@ -241,6 +250,9 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
         self.split_antimeridian = self.parameterAsBoolean(
             parameters, self.SPLIT_ANTIMERIDIAN, context
         )
+        self.cell_metrics = self.parameterAsBoolean(
+            parameters, self.CELL_METRICS, context
+        )
         return True
 
     def processAlgorithm(self, parameters, context, feedback):
@@ -266,6 +278,7 @@ class DGGSResample(QgsProcessingFeatureBasedAlgorithm):
             shift_antimeridian=self.shift_antimeridian,
             split_antimeridian=self.split_antimeridian,
             predicate=self.predicate,
+            cell_metrics=self.cell_metrics,
         )
 
         if not isinstance(memory_layer, QgsVectorLayer) or not memory_layer.isValid():

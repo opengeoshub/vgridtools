@@ -175,7 +175,7 @@ class VgridTools(object):
         zoom = 29.1402 - log2(scale)
         if settings.zoomLevel:
             self.iface.mainWindow().statusBar().showMessage(
-                "Zoom Level: {:.2f}".format(zoom)
+                "Zoom: {:.2f}".format(zoom)
             )
 
     def initProcessing(self):
@@ -380,6 +380,16 @@ class VgridTools(object):
         self.dggsExpandAction.setToolTip(tr("DGGS Expand"))
         self.dggsExpandAction.triggered.connect(self.runDGGSExpand)
         self.conversion_menu.addAction(self.dggsExpandAction)
+
+        # DGGS Aggregate
+        icon = QIcon(os.path.dirname(__file__) + "/images/conversion/aggregate.svg")
+        self.dggsAggregateAction = QAction(
+            icon, tr("DGGS Aggregate"), self.iface.mainWindow()
+        )
+        self.dggsAggregateAction.setObjectName("dggsAggregate")
+        self.dggsAggregateAction.setToolTip(tr("DGGS Aggregate"))
+        self.dggsAggregateAction.triggered.connect(self.runDGGSAggregate)
+        self.conversion_menu.addAction(self.dggsAggregateAction)
 
         # DGGS Resample
         icon = QIcon(os.path.dirname(__file__) + "/images/conversion/dggsresample.svg")
@@ -774,6 +784,9 @@ class VgridTools(object):
         # Settings may have changed so we need to make sure the zoomToDialog window is configured properly
         if self.latlon2DGGSDialog is not None:
             self.latlon2DGGSDialog.configure()
+        rhealpixgrid = getattr(self, "rhealpixgrid", None)
+        if rhealpixgrid is not None and rhealpixgrid.rhealpix_enabled:
+            rhealpixgrid.rhealpix_grid()
 
     def zoomTo(self, src_crs, lat, lon):
         canvas_crs = self.canvas.mapSettings().destinationCrs()
@@ -886,6 +899,10 @@ class VgridTools(object):
     def runDGGSExpand(self):
         """Run DGGS Expand algorithm"""
         processing.execAlgorithmDialog("vgrid:dggsexpand", {})
+
+    def runDGGSAggregate(self):
+        """Run DGGS Aggregate algorithm"""
+        processing.execAlgorithmDialog("vgrid:dggsagg", {})
 
     def runRaster2DGGS(self):
         """Run Raster to DGGS algorithm"""

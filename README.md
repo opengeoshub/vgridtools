@@ -28,6 +28,7 @@
         <li><a href="#raster-to-dggs">Raster to DGGS</a></li>
         <li><a href="#dggs-compact">DGGS Compact</a></li>
         <li><a href="#dggs-expand">DGGS Expand</a></li>
+        <li><a href="#dggs-aggregate">DGGS Aggregate</a></li>
       </ul>
         <li><a href="#dggs-binning">DGGS Binning</a></li>
         <li><a href="#dggs-resampling">DGGS Resampling</a></li>
@@ -146,6 +147,14 @@ Convert raster layers in geographic CRS to DGGS.
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/dggsexpand_isea4t.png">
+</div>
+
+### DGGS Aggregate
+
+Roll DGGS cells up to a coarser parent resolution and aggregate values there (count, sum, mean, min, max, etc. of a numeric field). Every cell is assigned to its parent even when sibling cells are missing, so this is a group-by parent rather than compaction. Optionally computes cell metrics and handles the antimeridian.
+
+<div align="center">
+  <img src="https://raw.githubusercontent.com/opengeoshub/vgridtools/main/images/readme/aggregate.png">
 </div>
 
 ### DGGS Resampling

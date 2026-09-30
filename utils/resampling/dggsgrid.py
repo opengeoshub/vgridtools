@@ -24,9 +24,9 @@ from vgrid.dggs.qtm import QTM_INITIAL_FACETS
 from vgrid.generator.olcgrid import olc_refine_cell
 from vgrid.utils.antimeridian import fix_polygon
 from vgrid.utils.geometry import (
+    dggs_cell_row,
     geodesic_dggs_metrics,
     graticule_dggs_metrics,
-    graticule_dggs_to_geoseries,
 )
 from vgrid.utils.constants import INITIAL_GEOHASHES
 from vgrid.utils.io import (
@@ -48,13 +48,8 @@ from vgrid.conversion.dggs2geo.geohash2geo import geohash2geo
 from vgrid.conversion.dggs2geo.s22geo import s22geo
 from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
-from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
+from ..rhealpix_helper import get_plugin_rhealpix_dggs, resolve_rhealpix_n_side
 import platform
-
-_RHEALPIX_DGGS = RHEALPixDGGS(
-    ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3
-)
 
 if platform.system() == "Windows":
     from vgrid.dggs.eaggr.enums.model import Model
@@ -198,6 +193,43 @@ def _unified_geom_and_bbox(qgs_features):
     return unified_geom, bbox
 
 
+def _cell_attribute_values(cell_id, resolution, cell_polygon, cell_metrics, num_edges=None):
+    """Cell id and resolution, plus metric values when ``cell_metrics`` is true."""
+    values = [cell_id, resolution]
+    if not cell_metrics:
+        return values
+    if num_edges is None:
+        values.extend(graticule_dggs_metrics(cell_polygon))
+    else:
+        values.extend(geodesic_dggs_metrics(cell_polygon, num_edges))
+    return values
+
+
+def _append_cell_metric_fields(fields, cell_metrics, graticule=False):
+    if not cell_metrics:
+        return
+    names = (
+        (
+            "center_lat",
+            "center_lon",
+            "cell_width",
+            "cell_height",
+            "cell_area",
+            "cell_perimeter",
+        )
+        if graticule
+        else (
+            "center_lat",
+            "center_lon",
+            "avg_edge_len",
+            "cell_area",
+            "cell_perimeter",
+        )
+    )
+    for name in names:
+        fields.append(QgsField(name, QVariant.Double))
+
+
 #########################
 # H3
 #########################
@@ -217,6 +249,7 @@ def generate_h3_grid(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=True,
 ):
     if not qgs_features:
         raise ValueError("No features provided for H3 grid generation.")
@@ -254,33 +287,19 @@ def generate_h3_grid(
 
         h3_id = str(h3_cell)
         num_edges = 6 if not h3.is_pentagon(h3_id) else 5
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
-        )
-
         qgs_feature = QgsFeature()
         qgs_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
         qgs_feature.setAttributes(
-            [
-                h3_id,
-                resolution,
-                center_lat,
-                center_lon,
-                avg_edge_len,
-                cell_area,
-                cell_perimeter,
-            ]
+            _cell_attribute_values(
+                h3_id, resolution, cell_polygon, cell_metrics, num_edges
+            )
         )
         h3_features.append(qgs_feature)
 
     fields = QgsFields()
     fields.append(QgsField("h3", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics)
 
     layer = QgsVectorLayer("Polygon?crs=EPSG:4326", f"h3_{resolution}", "memory")
     layer.startEditing()
@@ -305,6 +324,7 @@ def generate_s2_grid(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=True,
 ):
     if not qgs_features:
         raise ValueError("No features provided for S2 grid generation.")
@@ -347,33 +367,19 @@ def generate_s2_grid(
         if not cell_polygon.intersects(unified_geom):
             continue
         num_edges = 4
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
-        )
-
         qgs_feature = QgsFeature()
         qgs_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
         qgs_feature.setAttributes(
-            [
-                s2_token,
-                resolution,
-                center_lat,
-                center_lon,
-                avg_edge_len,
-                cell_area,
-                cell_perimeter,
-            ]
+            _cell_attribute_values(
+                s2_token, resolution, cell_polygon, cell_metrics, num_edges
+            )
         )
         s2_features.append(qgs_feature)
 
     fields = QgsFields()
     fields.append(QgsField("s2", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics)
     layer = QgsVectorLayer("Polygon?crs=EPSG:4326", f"s2_{resolution}", "memory")
     layer.startEditing()
     layer.dataProvider().addAttributes(fields)
@@ -398,23 +404,27 @@ def generate_rhealpix_grid(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    N_side=None,
+    cell_metrics=True,
 ):
     if not qgs_features:
         raise ValueError("No features provided for rHEALPix grid generation.")
 
     resolution = validate_rhealpix_resolution(resolution)
+    N_side = resolve_rhealpix_n_side(N_side)
+    rhealpix_dggs = get_plugin_rhealpix_dggs(N_side)
     unified_geom, bbox = _unified_geom_and_bbox(qgs_features)
     fix = _resolve_fix_antimeridian("rhealpix", shift_antimeridian, split_antimeridian)
     bbox_polygon = box(*bbox)
     bbox_center_lon = bbox_polygon.centroid.x
     bbox_center_lat = bbox_polygon.centroid.y
     seed_point = (bbox_center_lon, bbox_center_lat)
-    seed_cell = _RHEALPIX_DGGS.cell_from_point(resolution, seed_point, plane=False)
+    seed_cell = rhealpix_dggs.cell_from_point(resolution, seed_point, plane=False)
     seed_cell_id = str(seed_cell)
     seed_cell_polygon = (
-        rhealpix2geo(seed_cell_id, fix_antimeridian=fix)
+        rhealpix2geo(seed_cell_id, fix_antimeridian=fix, N_side=N_side)
         if fix
-        else rhealpix2geo(seed_cell_id)
+        else rhealpix2geo(seed_cell_id, N_side=N_side)
     )
 
     intersecting_cells = {}
@@ -431,9 +441,9 @@ def generate_rhealpix_grid(
             covered_cells.add(current_cell_id)
 
             cell_polygon = (
-                rhealpix2geo(current_cell_id, fix_antimeridian=fix)
+                rhealpix2geo(current_cell_id, fix_antimeridian=fix, N_side=N_side)
                 if fix
-                else rhealpix2geo(current_cell_id)
+                else rhealpix2geo(current_cell_id, N_side=N_side)
             )
             if cell_polygon.intersects(bbox_polygon):
                 intersecting_cells[current_cell_id] = (current_cell, cell_polygon)
@@ -453,23 +463,13 @@ def generate_rhealpix_grid(
         if not cell_polygon.intersects(unified_geom):
             continue
 
-        num_edges = 3 if cell.ellipsoidal_shape() == "dart" else 4
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
-        )
-
+        num_edges = 3 if cell.ellipsoidal_shape == "dart" else 4
         feature = QgsFeature()
         feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
         feature.setAttributes(
-            [
-                cell_id,
-                resolution,
-                center_lat,
-                center_lon,
-                avg_edge_len,
-                cell_area,
-                cell_perimeter,
-            ]
+            _cell_attribute_values(
+                cell_id, resolution, cell_polygon, cell_metrics, num_edges
+            )
         )
         rhealpix_features.append(feature)
 
@@ -479,11 +479,7 @@ def generate_rhealpix_grid(
     fields = QgsFields()
     fields.append(QgsField("rhealpix", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics)
     layer = QgsVectorLayer("Polygon?crs=EPSG:4326", f"rhealpix_{resolution}", "memory")
     layer.startEditing()
     layer.dataProvider().addAttributes(fields)
@@ -510,6 +506,7 @@ def generate_isea4t_grid(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=True,
 ):
     if not qgs_features:
         raise ValueError("No features provided for ISEA4T grid generation.")
@@ -551,22 +548,12 @@ def generate_isea4t_grid(
             continue
 
         num_edges = 3
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
-        )
-
         feature = QgsFeature()
         feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
         feature.setAttributes(
-            [
-                isea4t_id,
-                resolution,
-                center_lat,
-                center_lon,
-                avg_edge_len,
-                cell_area,
-                cell_perimeter,
-            ]
+            _cell_attribute_values(
+                isea4t_id, resolution, cell_polygon, cell_metrics, num_edges
+            )
         )
         isea4t_features.append(feature)
 
@@ -576,11 +563,7 @@ def generate_isea4t_grid(
     fields = QgsFields()
     fields.append(QgsField("isea4t", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics)
     layer = QgsVectorLayer("Polygon?crs=EPSG:4326", f"isea4t_{resolution}", "memory")
     layer.startEditing()
     layer.dataProvider().addAttributes(fields)
@@ -600,7 +583,7 @@ def generate_isea4t_grid(
 #########################
 # QTM
 #########################
-def generate_qtm_grid(resolution, qgs_features, feedback=None):
+def generate_qtm_grid(resolution, qgs_features, feedback=None, cell_metrics=True):
     if not qgs_features:
         raise ValueError("No features provided for QTM grid generation.")
 
@@ -642,22 +625,12 @@ def generate_qtm_grid(resolution, qgs_features, feedback=None):
                         continue
                     qtm_id = QTMID[0][i]
                     num_edges = 3
-                    center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                        geodesic_dggs_metrics(facet_geom, num_edges)
-                    )
-
                     feature = QgsFeature()
                     feature.setGeometry(QgsGeometry.fromWkt(facet_geom.wkt))
                     feature.setAttributes(
-                        [
-                            qtm_id,
-                            resolution,
-                            center_lat,
-                            center_lon,
-                            avg_edge_len,
-                            cell_area,
-                            cell_perimeter,
-                        ]
+                        _cell_attribute_values(
+                            qtm_id, resolution, facet_geom, cell_metrics, num_edges
+                        )
                     )
                     qtm_features.append(feature)
 
@@ -675,37 +648,23 @@ def generate_qtm_grid(resolution, qgs_features, feedback=None):
                             if not shape(subfacet_geom).intersects(unified_geom):
                                 continue
                             num_edges = 3
-                            (
-                                center_lat,
-                                center_lon,
-                                avg_edge_len,
-                                cell_area,
-                                cell_perimeter,
-                            ) = geodesic_dggs_metrics(subfacet_geom, num_edges)
-
                             feature = QgsFeature()
                             feature.setGeometry(QgsGeometry.fromWkt(subfacet_geom.wkt))
                             feature.setAttributes(
-                                [
+                                _cell_attribute_values(
                                     new_id,
                                     resolution,
-                                    center_lat,
-                                    center_lon,
-                                    avg_edge_len,
-                                    cell_area,
-                                    cell_perimeter,
-                                ]
+                                    subfacet_geom,
+                                    cell_metrics,
+                                    num_edges,
+                                )
                             )
                             qtm_features.append(feature)
 
     fields = QgsFields()
     fields.append(QgsField("qtm", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics)
     layer = QgsVectorLayer("Polygon?crs=EPSG:4326", f"qtm_{resolution}", "memory")
     layer.startEditing()
     layer.dataProvider().addAttributes(fields)
@@ -724,7 +683,7 @@ def generate_qtm_grid(resolution, qgs_features, feedback=None):
 #########################
 # OLC
 #########################
-def _olc_world_cell_records(resolution, feedback=None):
+def _olc_world_cell_records(resolution, feedback=None, cell_metrics=True):
     """Global OLC cells as flat dict records (no GeoPandas — safe inside QGIS)."""
     resolution = validate_olc_resolution(resolution)
     sw_lat, sw_lng = -90, -180
@@ -758,7 +717,9 @@ def _olc_world_cell_records(resolution, feedback=None):
                 ]
             )
             records.append(
-                graticule_dggs_to_geoseries("olc", olc_id, code_len, cell_polygon)
+                dggs_cell_row(
+                    "olc", olc_id, code_len, cell_polygon, cell_metrics=cell_metrics
+                )
             )
             lng += lng_step
             step += 1
@@ -840,67 +801,56 @@ def _olc_record_id(record):
     return str(record["olc"])
 
 
-def _olc_record_to_qgs_feature(record):
+def _olc_record_to_qgs_feature(record, cell_metrics=True):
     if isinstance(record, QgsFeature):
         field_names = record.fields().names()
-        if "center_lat" in field_names:
-            return record
+        if "center_lat" in field_names or not cell_metrics:
+            if not cell_metrics and "center_lat" in field_names:
+                olc_id = _olc_record_id(record)
+                resolution = _olc_record_resolution(record)
+                feat = QgsFeature()
+                feat.setGeometry(record.geometry())
+                feat.setAttributes([olc_id, resolution])
+                return feat
+            if "center_lat" in field_names:
+                return record
         olc_id = _olc_record_id(record)
         cell_geom = record.geometry()
         cell_polygon = load_wkt(cell_geom.asWkt())
-        (
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ) = graticule_dggs_metrics(cell_polygon)
         feat = QgsFeature()
         feat.setGeometry(cell_geom)
         feat.setAttributes(
-            [
-                olc_id,
-                olc.decode(olc_id).codeLength,
-                center_lat,
-                center_lon,
-                cell_width,
-                cell_height,
-                cell_area,
-                cell_perimeter,
-            ]
+            _cell_attribute_values(
+                olc_id, olc.decode(olc_id).codeLength, cell_polygon, cell_metrics
+            )
         )
         return feat
 
     cell_polygon = record["geometry"]
     feat = QgsFeature()
     feat.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
-    feat.setAttributes(
-        [
-            str(record["olc"]),
-            int(record["resolution"]),
-            record["center_lat"],
-            record["center_lon"],
-            record["cell_width"],
-            record["cell_height"],
-            record["cell_area"],
-            record["cell_perimeter"],
-        ]
-    )
+    attrs = [str(record["olc"]), int(record["resolution"])]
+    if cell_metrics:
+        attrs.extend(
+            [
+                record["center_lat"],
+                record["center_lon"],
+                record["cell_width"],
+                record["cell_height"],
+                record["cell_area"],
+                record["cell_perimeter"],
+            ]
+        )
+    feat.setAttributes(attrs)
     return feat
 
 
-def _olc_build_layer(records, resolution, feedback=None):
+def _olc_build_layer(records, resolution, feedback=None, cell_metrics=True):
     """Build a memory layer from OLC grid records (GeoDataFrame rows or refine dicts)."""
     fields = QgsFields()
     fields.append(QgsField("olc", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics, graticule=True)
 
     seen_olc_ids = set()
     qgis_features = []
@@ -912,7 +862,7 @@ def _olc_build_layer(records, resolution, feedback=None):
         if olc_id in seen_olc_ids:
             continue
         seen_olc_ids.add(olc_id)
-        qgis_features.append(_olc_record_to_qgs_feature(record))
+        qgis_features.append(_olc_record_to_qgs_feature(record, cell_metrics))
         if feedback and total:
             feedback.setProgress(int((idx + 1) / total * 100))
 
@@ -929,7 +879,7 @@ def _olc_build_layer(records, resolution, feedback=None):
     return layer
 
 
-def generate_olc_grid(resolution, qgs_features, feedback=None):
+def generate_olc_grid(resolution, qgs_features, feedback=None, cell_metrics=True):
     """Match ``olc_grid_within_bbox``: bbox-scoped seeds, refine, filter by resolution."""
     if not qgs_features:
         raise ValueError("No features provided for OLC grid generation.")
@@ -940,14 +890,17 @@ def generate_olc_grid(resolution, qgs_features, feedback=None):
 
     if _is_world_bbox(bbox):
         return _olc_build_layer(
-            _olc_world_cell_records(resolution, feedback), resolution, feedback
+            _olc_world_cell_records(resolution, feedback, cell_metrics),
+            resolution,
+            feedback,
+            cell_metrics,
         )
 
     bbox_polygon = box(*bbox)
     base_resolution = 2
     seed_cells = [
         record
-        for record in _olc_world_cell_records(base_resolution)
+        for record in _olc_world_cell_records(base_resolution, cell_metrics=cell_metrics)
         if bbox_polygon.intersects(record["geometry"])
     ]
 
@@ -968,13 +921,13 @@ def generate_olc_grid(resolution, qgs_features, feedback=None):
         if feedback and total_seeds:
             feedback.setProgress(33 + int((idx + 1) / total_seeds * 67))
 
-    return _olc_build_layer(refined_records, resolution, feedback)
+    return _olc_build_layer(refined_records, resolution, feedback, cell_metrics)
 
 
 #########################
 # Geohash
 #########################
-def generate_geohash_grid(resolution, qgs_features, feedback=None):
+def generate_geohash_grid(resolution, qgs_features, feedback=None, cell_metrics=True):
     if not qgs_features:
         raise ValueError("No features provided for Geohash grid generation.")
 
@@ -995,37 +948,15 @@ def generate_geohash_grid(resolution, qgs_features, feedback=None):
     fields = QgsFields()
     fields.append(QgsField("geohash", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics, graticule=True)
     qgis_features = []
     for i, gh in enumerate(geohashes_geom):
         cell_polygon = geohash2geo(gh)
-        (
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ) = graticule_dggs_metrics(cell_polygon)
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
         feat = QgsFeature()
         feat.setGeometry(cell_geometry)
         feat.setAttributes(
-            [
-                gh,
-                resolution,
-                center_lat,
-                center_lon,
-                cell_width,
-                cell_height,
-                cell_area,
-                cell_perimeter,
-            ]
+            _cell_attribute_values(gh, resolution, cell_polygon, cell_metrics)
         )
         qgis_features.append(feat)
 
@@ -1051,7 +982,7 @@ def generate_geohash_grid(resolution, qgs_features, feedback=None):
 #########################
 # Tilecode
 #########################
-def generate_tilecode_grid(resolution, qgs_features, feedback=None):
+def generate_tilecode_grid(resolution, qgs_features, feedback=None, cell_metrics=True):
     if not qgs_features:
         raise ValueError("No features provided for Tilecode grid generation.")
 
@@ -1066,12 +997,7 @@ def generate_tilecode_grid(resolution, qgs_features, feedback=None):
     fields = QgsFields()
     fields.append(QgsField("tilecode", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics, graticule=True)
     qgis_features = []
 
     # Step 4: Iterate over tiles and test intersection
@@ -1091,27 +1017,10 @@ def generate_tilecode_grid(resolution, qgs_features, feedback=None):
         )
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
-        (
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ) = graticule_dggs_metrics(cell_polygon)
         feature = QgsFeature()
         feature.setGeometry(cell_geom)
         feature.setAttributes(
-            [
-                tilecode_id,
-                resolution,
-                center_lat,
-                center_lon,
-                cell_width,
-                cell_height,
-                cell_area,
-                cell_perimeter,
-            ]
+            _cell_attribute_values(tilecode_id, resolution, cell_polygon, cell_metrics)
         )
         qgis_features.append(feature)
 
@@ -1137,7 +1046,7 @@ def generate_tilecode_grid(resolution, qgs_features, feedback=None):
 #########################
 # Quadkey
 #########################
-def generate_quadkey_grid(resolution, qgs_features, feedback=None):
+def generate_quadkey_grid(resolution, qgs_features, feedback=None, cell_metrics=True):
     if not qgs_features:
         raise ValueError("No features provided for Quadkey grid generation.")
 
@@ -1152,12 +1061,7 @@ def generate_quadkey_grid(resolution, qgs_features, feedback=None):
     fields = QgsFields()
     fields.append(QgsField("quadkey", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("cell_width", QVariant.Double))
-    fields.append(QgsField("cell_height", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics, graticule=True)
     qgis_features = []
 
     # Step 4: Iterate over tiles and test intersection
@@ -1177,27 +1081,10 @@ def generate_quadkey_grid(resolution, qgs_features, feedback=None):
         )
 
         cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
-        (
-            center_lat,
-            center_lon,
-            cell_width,
-            cell_height,
-            cell_area,
-            cell_perimeter,
-        ) = graticule_dggs_metrics(cell_polygon)
         feature = QgsFeature()
         feature.setGeometry(cell_geom)
         feature.setAttributes(
-            [
-                quadkey_id,
-                resolution,
-                center_lat,
-                center_lon,
-                cell_width,
-                cell_height,
-                cell_area,
-                cell_perimeter,
-            ]
+            _cell_attribute_values(quadkey_id, resolution, cell_polygon, cell_metrics)
         )
         qgis_features.append(feature)
 
@@ -1229,6 +1116,7 @@ def generate_a5_grid(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=True,
 ):
     if not qgs_features:
         raise ValueError("No features provided for A5 grid generation.")
@@ -1274,11 +1162,7 @@ def generate_a5_grid(
     fields = QgsFields()
     fields.append(QgsField("a5", QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics)
     a5_features = []
     total = len(intersecting_cells)
 
@@ -1296,22 +1180,12 @@ def generate_a5_grid(
         num_edges = 5
         if a5.get_resolution(cell_id) == 1:
             num_edges = 3
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
-        )
-
         qgs_feature = QgsFeature()
         qgs_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
         qgs_feature.setAttributes(
-            [
-                a5_hex,
-                resolution,
-                center_lat,
-                center_lon,
-                avg_edge_len,
-                cell_area,
-                cell_perimeter,
-            ]
+            _cell_attribute_values(
+                a5_hex, resolution, cell_polygon, cell_metrics, num_edges
+            )
         )
         a5_features.append(qgs_feature)
 
@@ -1349,6 +1223,7 @@ def generate_dggal_grid(
     feedback=None,
     shift_antimeridian=False,
     split_antimeridian=False,
+    cell_metrics=True,
 ):
     if not qgs_features:
         raise ValueError("No features provided for DGGAL grid generation.")
@@ -1383,11 +1258,7 @@ def generate_dggal_grid(
     fields = QgsFields()
     fields.append(QgsField(field_name, QVariant.String))
     fields.append(QgsField("resolution", QVariant.Int))
-    fields.append(QgsField("center_lat", QVariant.Double))
-    fields.append(QgsField("center_lon", QVariant.Double))
-    fields.append(QgsField("avg_edge_len", QVariant.Double))
-    fields.append(QgsField("cell_area", QVariant.Double))
-    fields.append(QgsField("cell_perimeter", QVariant.Double))
+    _append_cell_metric_fields(fields, cell_metrics)
 
     dggal_features = []
     for idx, zone in enumerate(zones):
@@ -1403,24 +1274,14 @@ def generate_dggal_grid(
         if not cell_polygon.intersects(unified_geom):
             continue
 
-        num_edges = dggrs.countZoneEdges(zone)
+        num_edges = dggrs.countZoneEdges(zone) if cell_metrics else None
         cell_resolution = dggrs.getZoneLevel(zone)
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
-        )
-
         qgs_feature = QgsFeature()
         qgs_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
         qgs_feature.setAttributes(
-            [
-                zone_id,
-                cell_resolution,
-                center_lat,
-                center_lon,
-                avg_edge_len,
-                cell_area,
-                cell_perimeter,
-            ]
+            _cell_attribute_values(
+                zone_id, cell_resolution, cell_polygon, cell_metrics, num_edges
+            )
         )
         dggal_features.append(qgs_feature)
 

@@ -28,6 +28,7 @@ from .processing_provider.conversion.qgsfeature2dggs import Vector2DGGS
 from .processing_provider.conversion.raster2dggs import Raster2DGGS
 from .processing_provider.conversion.dggsexpand import DGGSExpand
 from .processing_provider.conversion.dggscompact import DGGSCompact
+from .processing_provider.conversion.dggsagg import DGGSAggregate
 from .processing_provider.conversion.dggsresample import DGGSResample
 
 from .processing_provider.binning.h3_bin import H3Bin
@@ -92,6 +93,7 @@ class VgridProvider(QgsProcessingProvider):
         self.addAlgorithm(Vector2DGGS())
         self.addAlgorithm(DGGSCompact())
         self.addAlgorithm(DGGSExpand())
+        self.addAlgorithm(DGGSAggregate())
         self.addAlgorithm(Raster2DGGS())
         self.addAlgorithm(DGGSResample())
 

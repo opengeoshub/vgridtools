@@ -776,6 +776,7 @@ def batch_dggrid_cells_qgis(
     feedback=None,
     split_antimeridian=None,
     aggregate=False,
+    cell_metrics=False,
 ):
     """
     Convert many DGGRID cell IDs in one ``dggrid2geo`` call.
@@ -838,9 +839,11 @@ def batch_dggrid_cells_qgis(
             "Indexing DGGRID polygons by input cell ID order (shapefile IDs may differ)."
         )
 
-    from vgrid.utils.geometry import dggrid_num_edges
+    num_edges = None
+    if cell_metrics:
+        from vgrid.utils.geometry import dggrid_num_edges
 
-    num_edges = dggrid_num_edges(dggs_type)
+        num_edges = dggrid_num_edges(dggs_type)
     for idx in range(len(gdf)):
         if feedback and feedback.isCanceled():
             break
@@ -857,9 +860,11 @@ def batch_dggrid_cells_qgis(
         if not cell_id_str:
             continue
 
-        center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(geom, num_edges)
-        )
+        center_lat = center_lon = avg_edge_len = cell_area = cell_perimeter = None
+        if cell_metrics:
+            center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
+                geodesic_dggs_metrics(geom, num_edges)
+            )
         cell_info = {
             "geometry": geom,
             "cell_id": cell_id_str,

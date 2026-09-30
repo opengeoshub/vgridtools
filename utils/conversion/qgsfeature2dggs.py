@@ -48,6 +48,7 @@ from vgrid.conversion.dggs2geo.h32geo import h32geo
 from vgrid.utils.geometry import geodesic_buffer
 from vgrid.conversion.dggs2geo.rhealpix2geo import rhealpix2geo
 from collections import deque
+from contextvars import ContextVar
 from shapely.geometry import Polygon, box
 from shapely.wkt import loads as wkt_loads
 import platform
@@ -101,12 +102,8 @@ from ..dggrid_instance import (
     vector_geom_to_dggrid_gdf_qgis,
 )
 from ...settings import settings
-from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
-from vgrid.dggs.rhealpixdggs.ellipsoids import WGS84_ELLIPSOID
-
-rhealpix_dggs = RHEALPixDGGS(
-    ellipsoid=WGS84_ELLIPSOID, north_square=1, south_square=3, N_side=3
-)
+from ..rhealpix_helper import get_plugin_rhealpix_dggs, resolve_rhealpix_n_side
+from vgrid.utils.io import rhealpix_cell_from_id
 
 
 if platform.system() == "Windows":
@@ -128,6 +125,29 @@ app = Application(appGlobals=globals())
 pydggal_setup(app)
 
 geod = Geod(ellps="WGS84")
+
+# Per-thread so concurrent Processing runs do not share the flag.
+_CELL_METRICS = ContextVar("vgrid_vector2dggs_cell_metrics", default=True)
+
+
+def set_cell_metrics(enabled):
+    return _CELL_METRICS.set(bool(enabled))
+
+
+def reset_cell_metrics(token):
+    _CELL_METRICS.reset(token)
+
+
+def _geodesic_metrics(cell_polygon, num_edges):
+    if not _CELL_METRICS.get():
+        return (None, None, None, None, None)
+    return geodesic_dggs_metrics(cell_polygon, num_edges)
+
+
+def _graticule_metrics(cell_polygon):
+    if not _CELL_METRICS.get():
+        return (None, None, None, None, None, None)
+    return graticule_dggs_metrics(cell_polygon)
 
 
 def prepare_feature_for_dggs_conversion(feature, to_wgs84_transform):
@@ -165,7 +185,7 @@ def point2h3(feature, resolution, feedback, shift_antimeridian=False, split_anti
         num_edges = 5
 
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
+        _geodesic_metrics(cell_polygon, num_edges)
     )
 
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -239,7 +259,7 @@ def polyline2h3(feature, resolution, predicate=None, compact=None, feedback=None
 
         h3_id = str(bbox_buffer_cell)
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
         cell_resolution = h3.get_resolution(h3_id)
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -355,7 +375,7 @@ def polygon2h3(feature, resolution, predicate=None, compact=None, feedback=None,
 
         h3_id = str(cell_id)
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
         cell_resolution = h3.get_resolution(h3_id)
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -434,7 +454,7 @@ def point2s2(feature, resolution, feedback, shift_antimeridian=False, split_anti
     cell_polygon = geo_with_fix(s22geo, s2_token, "s2", shift_antimeridian, split_antimeridian)
     num_edges = 4
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
+        _geodesic_metrics(cell_polygon, num_edges)
     )
 
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -565,7 +585,7 @@ def polyline2s2(feature, resolution, predicate=None, compact=None, feedback=None
             cell_resolution = cell.level()
             num_edges = 4
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                _geodesic_metrics(cell_polygon, num_edges)
             )
             s2_feature = QgsFeature()
             s2_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
@@ -650,7 +670,7 @@ def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None,
 
         num_edges = 4
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -702,7 +722,7 @@ def polygon2s2(feature, resolution, predicate=None, compact=None, feedback=None,
 
             num_edges = 4
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                _geodesic_metrics(cell_polygon, num_edges)
             )
 
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -766,7 +786,7 @@ def point2a5(feature, resolution, feedback, shift_antimeridian=False, split_anti
     if resolution == 1:
         num_edges = 3
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
+        _geodesic_metrics(cell_polygon, num_edges)
     )
 
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -856,7 +876,7 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
             num_edges = 3
 
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+            _geodesic_metrics(seed_cell_polygon, num_edges)
         )
 
         cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
@@ -938,7 +958,7 @@ def polyline2a5(feature, resolution, predicate=None, compact=None, feedback=None
             num_edges = 3
 
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -1032,7 +1052,7 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None,
         if seed_cell_resolution == 1:
             num_edges = 3
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+            _geodesic_metrics(seed_cell_polygon, num_edges)
         )
 
         cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
@@ -1117,7 +1137,7 @@ def polygon2a5(feature, resolution, predicate=None, compact=None, feedback=None,
             num_edges = 3
 
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -1214,7 +1234,7 @@ def a5compact_from_qgsfeatures(qgs_features, feedback, depth=-1):
         if cell_resolution == 1:
             num_edges = 3
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -1280,7 +1300,7 @@ def point2dggal(dggal_type, feature, resolution, feedback, shift_antimeridian=Fa
 
     cell_polygon = dggal2geo(dggal_type, dggal_id, split_antimeridian=use_split_antimeridian(shift_antimeridian, split_antimeridian))
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
+        _geodesic_metrics(cell_polygon, num_edges)
     )
 
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -1420,7 +1440,7 @@ def polyline2dggal(
         cell_resolution = dggrs.getZoneLevel(zone)
         num_edges = dggrs.countZoneEdges(zone)
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
         dggal_feature = QgsFeature()
         dggal_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
@@ -1498,7 +1518,7 @@ def polygon2dggal(
 
         # Calculate metrics
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
 
         # Create QGIS feature
@@ -1632,7 +1652,7 @@ def dggalcompact_from_qgsfeatures(
         )
         cell_resolution = dggrs.getZoneLevel(zone)
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -1678,9 +1698,9 @@ def qgsfeature2rhealpix(
     resolution = validate_rhealpix_resolution(resolution)
     gfeature_geom = feature.geometry()
     if gfeature_geom.wkbType() == QgsWkbTypes.Type.Point:
-        return point2rhealpix(feature, resolution, feedback, shift_antimeridian, split_antimeridian)
+        return point2rhealpix(feature, resolution, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
     elif gfeature_geom.wkbType() == QgsWkbTypes.Type.LineString:
-        return polyline2rhealpix(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian)
+        return polyline2rhealpix(feature, resolution, None, None, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
     elif gfeature_geom.wkbType() == QgsWkbTypes.Type.Polygon:
         return polygon2rhealpix(feature, resolution, predicate, compact, feedback, shift_antimeridian, split_antimeridian, **_kwargs)
 
@@ -1688,6 +1708,9 @@ def qgsfeature2rhealpix(
 def point2rhealpix(feature, resolution, feedback, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     if feedback and feedback.isCanceled():
         return []
+
+    N_side = resolve_rhealpix_n_side(_kwargs.get("N_side"))
+    rhealpix_dggs = get_plugin_rhealpix_dggs(N_side)
 
     feature_geometry = feature.geometry()
     point = feature_geometry.asPoint()
@@ -1699,13 +1722,13 @@ def point2rhealpix(feature, resolution, feedback, shift_antimeridian=False, spli
         resolution, (longitude, latitude), plane=False
     )
     seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
-    seed_cell_polygon = geo_with_fix(rhealpix2geo, seed_cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
+    seed_cell_polygon = geo_with_fix(rhealpix2geo, seed_cell_id, "rhealpix", shift_antimeridian, split_antimeridian, N_side=N_side)
 
     num_edges = 4
-    if seed_cell.ellipsoidal_shape() == "dart":
+    if seed_cell.ellipsoidal_shape == "dart":
         num_edges = 3
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+        _geodesic_metrics(seed_cell_polygon, num_edges)
     )
 
     cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
@@ -1755,6 +1778,8 @@ def point2rhealpix(feature, resolution, feedback, shift_antimeridian=False, spli
 
 def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     rhealpix_features = []
+    N_side = resolve_rhealpix_n_side(_kwargs.get("N_side"))
+    rhealpix_dggs = get_plugin_rhealpix_dggs(N_side)
 
     feature_geometry = feature.geometry()
     shapely_geom = wkt_loads(feature_geometry.asWkt())
@@ -1774,14 +1799,14 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
 
     seed_cell = rhealpix_dggs.cell_from_point(resolution, seed_point, plane=False)
     seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
-    seed_cell_polygon = geo_with_fix(rhealpix2geo, seed_cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
+    seed_cell_polygon = geo_with_fix(rhealpix2geo, seed_cell_id, "rhealpix", shift_antimeridian, split_antimeridian, N_side=N_side)
 
     if seed_cell_polygon.contains(bbox_polygon):
         num_edges = 4
-        if seed_cell.ellipsoidal_shape() == "dart":
+        if seed_cell.ellipsoidal_shape == "dart":
             num_edges = 3
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+            _geodesic_metrics(seed_cell_polygon, num_edges)
         )
         cell_resolution = resolution
         cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
@@ -1846,7 +1871,7 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
             covered_cells.add(current_cell_id)
 
             # Convert current cell to polygon
-            cell_polygon = geo_with_fix(rhealpix2geo, current_cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
+            cell_polygon = geo_with_fix(rhealpix2geo, current_cell_id, "rhealpix", shift_antimeridian, split_antimeridian, N_side=N_side)
             if not cell_polygon.intersects(bbox_polygon):
                 continue  # Get neighbors and add to queue
             neighbors = current_cell.neighbors(plane=False)
@@ -1865,15 +1890,14 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
             if feedback and feedback.isCanceled():
                 return []
 
-            rhealpix_uids = (cell_id[0],) + tuple(map(int, cell_id[1:]))
-            rhelpix_cell = rhealpix_dggs.cell(rhealpix_uids)
-            cell_polygon = geo_with_fix(rhealpix2geo, cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
+            rhelpix_cell = rhealpix_cell_from_id(str(cell_id), dggs=rhealpix_dggs)
+            cell_polygon = geo_with_fix(rhealpix2geo, cell_id, "rhealpix", shift_antimeridian, split_antimeridian, N_side=N_side)
 
             num_edges = 4
-            if seed_cell.ellipsoidal_shape() == "dart":
+            if seed_cell.ellipsoidal_shape == "dart":
                 num_edges = 3
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                _geodesic_metrics(cell_polygon, num_edges)
             )
             cell_resolution = rhelpix_cell.resolution
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -1932,6 +1956,8 @@ def polyline2rhealpix(feature, resolution, predicate=None, compact=None, feedbac
 
 def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback=None, shift_antimeridian=False, split_antimeridian=False, **_kwargs):
     rhealpix_features = []
+    N_side = resolve_rhealpix_n_side(_kwargs.get("N_side"))
+    rhealpix_dggs = get_plugin_rhealpix_dggs(N_side)
 
     feature_geometry = feature.geometry()
     shapely_geom = wkt_loads(feature_geometry.asWkt())
@@ -1951,14 +1977,14 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
 
     seed_cell = rhealpix_dggs.cell_from_point(resolution, seed_point, plane=False)
     seed_cell_id = str(seed_cell)  # Unique identifier for the current cell
-    seed_cell_polygon = geo_with_fix(rhealpix2geo, seed_cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
+    seed_cell_polygon = geo_with_fix(rhealpix2geo, seed_cell_id, "rhealpix", shift_antimeridian, split_antimeridian, N_side=N_side)
 
     if seed_cell_polygon.contains(bbox_polygon):
         num_edges = 4
-        if seed_cell.ellipsoidal_shape() == "dart":
+        if seed_cell.ellipsoidal_shape == "dart":
             num_edges = 3
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(seed_cell_polygon, num_edges)
+            _geodesic_metrics(seed_cell_polygon, num_edges)
         )
         cell_resolution = resolution
         cell_geometry = QgsGeometry.fromWkt(seed_cell_polygon.wkt)
@@ -2023,7 +2049,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
             covered_cells.add(current_cell_id)
 
             # Convert current cell to polygon
-            cell_polygon = geo_with_fix(rhealpix2geo, current_cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
+            cell_polygon = geo_with_fix(rhealpix2geo, current_cell_id, "rhealpix", shift_antimeridian, split_antimeridian, N_side=N_side)
             if not cell_polygon.intersects(bbox_polygon):
                 continue
             # Get neighbors and add to queue
@@ -2043,17 +2069,16 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
             if feedback and feedback.isCanceled():
                 return []
 
-            rhealpix_uids = (cell_id[0],) + tuple(map(int, cell_id[1:]))
-            rhelpix_cell = rhealpix_dggs.cell(rhealpix_uids)
-            cell_polygon = geo_with_fix(rhealpix2geo, cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
+            rhelpix_cell = rhealpix_cell_from_id(str(cell_id), dggs=rhealpix_dggs)
+            cell_polygon = geo_with_fix(rhealpix2geo, cell_id, "rhealpix", shift_antimeridian, split_antimeridian, N_side=N_side)
             if not check_predicate(cell_polygon, shapely_geom, predicate):
                 continue
 
             num_edges = 4
-            if rhelpix_cell.ellipsoidal_shape() == "dart":
+            if rhelpix_cell.ellipsoidal_shape == "dart":
                 num_edges = 3
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                _geodesic_metrics(cell_polygon, num_edges)
             )
             cell_resolution = rhelpix_cell.resolution
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -2110,7 +2135,7 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
             ]
             # Apply compact
             cells_to_process = rhealpix_compact(
-                cells_to_process, depth=_kwargs.get("depth", -1), verbose=False
+                cells_to_process, depth=_kwargs.get("depth", -1), verbose=False, N_side=N_side
             )
             # Rebuild rhealpix_features with compacted cells
             rhealpix_features = []
@@ -2123,17 +2148,16 @@ def polygon2rhealpix(feature, resolution, predicate=None, compact=None, feedback
                 if feedback and feedback.isCanceled():
                     return []
 
-                rhealpix_uids = (cell_id[0],) + tuple(map(int, cell_id[1:]))
-                rhelpix_cell = rhealpix_dggs.cell(rhealpix_uids)
-                cell_polygon = geo_with_fix(rhealpix2geo, cell_id, "rhealpix", shift_antimeridian, split_antimeridian)
+                rhelpix_cell = rhealpix_cell_from_id(str(cell_id), dggs=rhealpix_dggs)
+                cell_polygon = geo_with_fix(rhealpix2geo, cell_id, "rhealpix", shift_antimeridian, split_antimeridian, N_side=N_side)
 
                 # No need to re-check predicate for parent cells from compact mode
 
                 num_edges = 4
-                if rhelpix_cell.ellipsoidal_shape() == "dart":
+                if rhelpix_cell.ellipsoidal_shape == "dart":
                     num_edges = 3
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(cell_polygon, num_edges)
+                    _geodesic_metrics(cell_polygon, num_edges)
                 )
                 cell_resolution = rhelpix_cell.resolution
                 cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -2217,7 +2241,7 @@ def point2isea4t(feature, resolution, feedback, shift_antimeridian=False, split_
 
     num_edges = 3
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
+        _geodesic_metrics(cell_polygon, num_edges)
     )
 
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -2312,7 +2336,7 @@ def polyline2isea4t(feature, resolution, predicate=None, compact=None, feedback=
 
         num_edges = 3
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
         cell_resolution = len(isea4t_id) - 2
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -2427,7 +2451,7 @@ def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=N
 
         num_edges = 3
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
         cell_resolution = len(isea4t_id) - 2
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -2484,7 +2508,7 @@ def polygon2isea4t(feature, resolution, predicate=None, compact=None, feedback=N
                 avg_edge_len,
                 cell_area,
                 cell_perimeter,
-            ) = geodesic_dggs_metrics(cell_polygon, num_edges)
+            ) = _geodesic_metrics(cell_polygon, num_edges)
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
             isea4t_feature = QgsFeature()
@@ -2542,7 +2566,7 @@ def point2isea3h(feature, resolution, feedback, shift_antimeridian=False, split_
     if cell_resolution == 0:
         num_edges = 3  # icosahedron faces
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
+        _geodesic_metrics(cell_polygon, num_edges)
     )
 
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -2635,7 +2659,7 @@ def polyline2isea3h(feature, resolution, predicate=None, compact=None, feedback=
         cell_resolution = ISEA3H_ACCURACY_RES_DICT.get(cell_accuracy)
         num_edges = 3 if cell_resolution == 0 else 6
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -2753,7 +2777,7 @@ def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=N
 
         num_edges = 3 if cell_resolution == 0 else 6
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -2806,7 +2830,7 @@ def polygon2isea3h(feature, resolution, predicate=None, compact=None, feedback=N
             cell_resolution = ISEA3H_ACCURACY_RES_DICT.get(cell_accuracy)
             num_edges = 3 if cell_resolution == 0 else 6
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                _geodesic_metrics(cell_polygon, num_edges)
             )
             cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -2862,7 +2886,7 @@ def point2qtm(feature, resolution, feedback, shift_antimeridian=False, split_ant
     cell_polygon = qtm2geo(qtm_id)
     num_edges = 3
     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-        geodesic_dggs_metrics(cell_polygon, num_edges)
+        _geodesic_metrics(cell_polygon, num_edges)
     )
     cell_resolution = resolution
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -2928,7 +2952,7 @@ def qtmcompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
         cell_resolution = len(qtm_id_compact)
         num_edges = 3
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
 
@@ -2974,7 +2998,7 @@ def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=Non
                 facet_geom = qtm.constructGeometry(facet)
                 num_edges = 3
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(facet_geom, num_edges)
+                    _geodesic_metrics(facet_geom, num_edges)
                 )
 
                 levelFacets[0].append(facet)
@@ -3048,7 +3072,7 @@ def polyline2qtm(feature, resolution, predicate=None, compact=None, feedback=Non
                                 avg_edge_len,
                                 cell_area,
                                 cell_perimeter,
-                            ) = geodesic_dggs_metrics(subfacet_geom, num_edges)
+                            ) = _geodesic_metrics(subfacet_geom, num_edges)
 
                             # Create a single QGIS feature
                             qtm_feature = QgsFeature()
@@ -3128,7 +3152,7 @@ def polygon2qtm(feature, resolution, predicate, compact, feedback, **_kwargs):
                 facet_geom = qtm.constructGeometry(facet)
                 num_edges = 3
                 center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                    geodesic_dggs_metrics(facet_geom, num_edges)
+                    _geodesic_metrics(facet_geom, num_edges)
                 )
 
                 levelFacets[0].append(facet)
@@ -3203,7 +3227,7 @@ def polygon2qtm(feature, resolution, predicate, compact, feedback, **_kwargs):
                                 avg_edge_len,
                                 cell_area,
                                 cell_perimeter,
-                            ) = geodesic_dggs_metrics(subfacet_geom, num_edges)
+                            ) = _geodesic_metrics(subfacet_geom, num_edges)
 
                             # Create a single QGIS feature
                             qtm_feature = QgsFeature()
@@ -3286,7 +3310,7 @@ def point2olc(feature, resolution, feedback, shift_antimeridian=False, split_ant
     cell_polygon = olc2geo(olc_id)
     # Create the b
     center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-        graticule_dggs_metrics(cell_polygon)
+        _graticule_metrics(cell_polygon)
     )
 
     # Get all attributes from the input feature
@@ -3362,7 +3386,7 @@ def olccompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
             ]
         )
         center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
+            _graticule_metrics(cell_polygon)
         )
 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -3533,7 +3557,7 @@ def polyline2olc(feature, resolution, predicate=None, compact=None, feedback=Non
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = _graticule_metrics(cell_polygon)
 
             olc_feature = QgsFeature()
             olc_feature.setGeometry(cell_geometry)
@@ -3688,7 +3712,7 @@ def polygon2olc(feature, resolution, predicate=None, compact=None, feedback=None
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = _graticule_metrics(cell_polygon)
 
             olc_feature = QgsFeature()
             olc_feature.setGeometry(cell_geometry)
@@ -3774,7 +3798,7 @@ def point2geohash(feature, resolution, feedback, shift_antimeridian=False, split
     geohash_id = latlon2geohash(point.y(), point.x(), resolution)
     cell_polygon = geohash2geo(geohash_id)
     center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-        graticule_dggs_metrics(cell_polygon)
+        _graticule_metrics(cell_polygon)
     )
 
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -3842,7 +3866,7 @@ def geohashcompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
         cell_resolution = len(geohash_id_compact)
 
         center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
+            _graticule_metrics(cell_polygon)
         )
 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -3906,7 +3930,7 @@ def polyline2geohash(feature, resolution, predicate=None, compact=None, feedback
         geohash_feature.setGeometry(cell_geometry)
 
         center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
+            _graticule_metrics(cell_polygon)
         )
         cell_resolution = resolution
 
@@ -3999,7 +4023,7 @@ def polygon2geohash(feature, resolution, predicate=None, compact=None, feedback=
         geohash_feature.setGeometry(cell_geometry)
 
         center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
+            _graticule_metrics(cell_polygon)
         )
         cell_resolution = resolution
 
@@ -4084,7 +4108,7 @@ def point2tilecode(feature, resolution, feedback, shift_antimeridian=False, spli
     cell_polygon = tilecode2geo(tilecode_id)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
     center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-        graticule_dggs_metrics(cell_polygon)
+        _graticule_metrics(cell_polygon)
     )
 
     # Create a single QGIS feature
@@ -4177,7 +4201,7 @@ def tilecodecompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
         cell_resolution = z
 
         center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
+            _graticule_metrics(cell_polygon)
         )
 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -4286,7 +4310,7 @@ def polyline2tilecode(feature, resolution, predicate=None, compact=None, feedbac
             match = re.match(r"z(\d+)x(\d+)y(\d+)", cell_id)
             cell_resolution = int(match.group(1)) if match else resolution
             center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-                graticule_dggs_metrics(cell_polygon)
+                _graticule_metrics(cell_polygon)
             )
             tilecode_feature = QgsFeature()
             tilecode_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
@@ -4367,7 +4391,7 @@ def polygon2tilecode(feature, resolution, predicate=None, compact=None, feedback
         tilecode_feature.setGeometry(cell_geometry)
 
         center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
+            _graticule_metrics(cell_polygon)
         )
         resolution = tile.z
 
@@ -4452,7 +4476,7 @@ def point2quadkey(feature, resolution, feedback, shift_antimeridian=False, split
     cell_polygon = quadkey2geo(quadkey_id)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
     center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-        graticule_dggs_metrics(cell_polygon)
+        _graticule_metrics(cell_polygon)
     )
 
     # Create a single QGIS feature
@@ -4540,7 +4564,7 @@ def quadkeycompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
         cell_resolution = z
 
         center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
+            _graticule_metrics(cell_polygon)
         )
 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -4647,7 +4671,7 @@ def polyline2quadkey(feature, resolution, predicate=None, compact=None, feedback
                 continue
             cell_resolution = len(cell_id)
             center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-                graticule_dggs_metrics(cell_polygon)
+                _graticule_metrics(cell_polygon)
             )
             quadkey_feature = QgsFeature()
             quadkey_feature.setGeometry(QgsGeometry.fromWkt(cell_polygon.wkt))
@@ -4727,7 +4751,7 @@ def polygon2quadkey(feature, resolution, predicate=None, compact=None, feedback=
         quadkey_feature.setGeometry(cell_geometry)
 
         center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
+            _graticule_metrics(cell_polygon)
         )
         cell_resolution = tile.z
 
@@ -4810,7 +4834,7 @@ def point2digipin(feature, resolution, feedback, shift_antimeridian=False, split
     cell_polygon = digipin2geo(digipin_id)
     cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
     center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-        graticule_dggs_metrics(cell_polygon)
+        _graticule_metrics(cell_polygon)
     )
 
     # Create a single QGIS feature
@@ -4880,7 +4904,7 @@ def digipincompact_from_qgsfeatures(qgs_features, feedback, depth=-1):
         cell_resolution = len(clean_id)
 
         center_lat, center_lon, cell_width, cell_height, cell_area, cell_perimeter = (
-            graticule_dggs_metrics(cell_polygon)
+            _graticule_metrics(cell_polygon)
         )
 
         cell_geometry = QgsGeometry.fromWkt(cell_polygon.wkt)
@@ -4983,7 +5007,7 @@ def polyline2digipin(feature, resolution, predicate=None, compact=None, feedback
                     cell_height,
                     cell_area,
                     cell_perimeter,
-                ) = graticule_dggs_metrics(cell_polygon)
+                ) = _graticule_metrics(cell_polygon)
 
                 original_attributes = feature.attributes()
                 original_fields = feature.fields()
@@ -5116,7 +5140,7 @@ def polygon2digipin(feature, resolution, predicate=None, compact=None, feedback=
                 cell_height,
                 cell_area,
                 cell_perimeter,
-            ) = graticule_dggs_metrics(cell_polygon)
+            ) = _graticule_metrics(cell_polygon)
 
             original_attributes = feature.attributes()
             original_fields = feature.fields()
@@ -5234,7 +5258,7 @@ def _dggrid_gdf_to_qgs_features(gdf, field_name, resolution, input_feature, feed
             else 4
         )
         center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-            geodesic_dggs_metrics(cell_polygon, num_edges)
+            _geodesic_metrics(cell_polygon, num_edges)
         )
 
         dggrid_feature = QgsFeature()

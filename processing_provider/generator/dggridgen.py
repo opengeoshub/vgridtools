@@ -92,6 +92,16 @@ def _set_output_layer_name(parameters, output_key, default_name, layer_name):
         parameters[output_key] = defn
 
 
+from ...utils.generator_helper import (
+    add_cell_metrics_parameter,
+    read_cell_metrics,
+    generator_output_fields,
+    MetricFilteringSink,
+    geodesic_metric_values,
+    graticule_metric_values,
+)
+
+
 class DGGRIDGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     DGGS_TYPE = "DGGS_TYPE"
@@ -232,6 +242,8 @@ class DGGRIDGen(QgsProcessingAlgorithm):
             )
         )
 
+        add_cell_metrics_parameter(self)
+
         self.addParameter(
             QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr("DGGRID"))
         )
@@ -243,6 +255,7 @@ class DGGRIDGen(QgsProcessingAlgorithm):
         return options[index]
 
     def prepareAlgorithm(self, parameters, context, feedback):
+        self.cell_metrics = read_cell_metrics(self, parameters, context)
         self.dggs_type = validate_dggrid_type(
             self._enum_choice(
                 parameters,
@@ -315,7 +328,8 @@ class DGGRIDGen(QgsProcessingAlgorithm):
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
-        fields = self.outputFields()
+        full_fields = self.outputFields()
+        fields = generator_output_fields(full_fields, self.cell_metrics)
         layer_name = f"DGGRID_{self.dggs_type.upper()}_{self.resolution}"
         _set_output_layer_name(parameters, self.OUTPUT, "DGGRID", layer_name)
         sink, dest_id = self.parameterAsSink(
@@ -329,6 +343,8 @@ class DGGRIDGen(QgsProcessingAlgorithm):
 
         if not sink:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
+
+        sink = MetricFilteringSink(sink, full_fields, self.cell_metrics)
 
         min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
             self, parameters, self.EXTENT, context, feedback
@@ -380,7 +396,7 @@ class DGGRIDGen(QgsProcessingAlgorithm):
                 continue
 
             center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                geodesic_dggs_metrics(cell_polygon, num_edges)
+                geodesic_metric_values(cell_polygon, num_edges, self.cell_metrics)
             )
 
             feature = QgsFeature()

@@ -66,6 +66,16 @@ from vgrid.utils.geometry import geodesic_dggs_metrics
 from ...utils.crs_helper import processing_extent_wgs84
 
 
+from ...utils.generator_helper import (
+    add_cell_metrics_parameter,
+    read_cell_metrics,
+    generator_output_fields,
+    MetricFilteringSink,
+    geodesic_metric_values,
+    graticule_metric_values,
+)
+
+
 class ISEA4TGen(QgsProcessingAlgorithm):
     EXTENT = "EXTENT"
     RESOLUTION = "RESOLUTION"
@@ -170,10 +180,13 @@ class ISEA4TGen(QgsProcessingAlgorithm):
         )
         self.addParameter(param)
 
+        add_cell_metrics_parameter(self)
+
         param = QgsProcessingParameterFeatureSink(self.OUTPUT, "ISEA4T")
         self.addParameter(param)
 
     def prepareAlgorithm(self, parameters, context, feedback):
+        self.cell_metrics = read_cell_metrics(self, parameters, context)
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
         # Get the extent parameter
         self.canvas_extent = self.parameterAsExtent(parameters, self.EXTENT, context)
@@ -237,7 +250,8 @@ class ISEA4TGen(QgsProcessingAlgorithm):
         return output_fields
 
     def processAlgorithm(self, parameters, context, feedback):
-        fields = self.outputFields()
+        full_fields = self.outputFields()
+        fields = generator_output_fields(full_fields, self.cell_metrics)
         layer_name = f"ISEA4T_{self.resolution}"
         set_output_layer_name(parameters, self.OUTPUT, "ISEA4T", layer_name)
         # Output layer initialization
@@ -249,6 +263,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
             QgsWkbTypes.Type.Polygon,
             QgsCoordinateReferenceSystem("EPSG:4326"),
         )
+        sink = MetricFilteringSink(sink, full_fields, self.cell_metrics)
         apply_loaded_layer_name(context, dest_id, "ISEA4T", layer_name)
 
         min_lon, min_lat, max_lon, max_lat, is_full_world = processing_extent_wgs84(
@@ -287,7 +302,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
 
                     num_edges = 3
                     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                        geodesic_dggs_metrics(cell_polygon, num_edges)
+                        geodesic_metric_values(cell_polygon, num_edges, self.cell_metrics)
                     )
                     isea4t_feature.setAttributes(
                         [
@@ -330,7 +345,7 @@ class ISEA4TGen(QgsProcessingAlgorithm):
 
                     num_edges = 3
                     center_lat, center_lon, avg_edge_len, cell_area, cell_perimeter = (
-                        geodesic_dggs_metrics(cell_polygon, num_edges)
+                        geodesic_metric_values(cell_polygon, num_edges, self.cell_metrics)
                     )
                     isea4t_feature.setAttributes(
                         [

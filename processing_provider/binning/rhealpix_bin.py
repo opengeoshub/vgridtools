@@ -20,7 +20,9 @@ import os
 from vgrid.utils.io import validate_rhealpix_resolution
 
 from ...settings import settings
+from ...utils.rhealpix_helper import resolve_rhealpix_n_side
 from ...utils.binning.bin_helper import (
+    add_cell_metrics_parameter,
     load_wgs84_feature_source,
     BIN_AGG,
     add_shift_split_parameters,
@@ -165,10 +167,13 @@ class rHEALPixBin(QgsProcessingFeatureBasedAlgorithm):
         )
         add_shift_split_parameters(self)
 
+        add_cell_metrics_parameter(self)
+
     def prepareAlgorithm(self, parameters, context, feedback):
         self.agg_index = self.parameterAsEnum(parameters, self.AGG, context)
         self.agg = self.AGG_OPTIONS[self.agg_index]
         self.resolution = self.parameterAsInt(parameters, self.RESOLUTION, context)
+        self.N_side = resolve_rhealpix_n_side(None)
         self.numeric_field = self.parameterAsString(
             parameters, self.NUMERIC_FIELD, context
         )
@@ -214,5 +219,6 @@ class rHEALPixBin(QgsProcessingFeatureBasedAlgorithm):
             grid_kwargs={
                 "shift_antimeridian": self.shift_antimeridian,
                 "split_antimeridian": self.split_antimeridian,
+                "N_side": self.N_side,
             },
         )

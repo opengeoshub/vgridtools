@@ -90,7 +90,7 @@ class DGGRIDGrid(QObject):
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | DGGRID {self.dggs_type} resolution: {resolution}"
+                    f"Zoom: {zoom:.2f} | DGGRID {self.dggs_type} res: {resolution}"
                 )
 
             if resolution <= 3:

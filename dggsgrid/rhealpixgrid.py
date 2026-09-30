@@ -18,10 +18,9 @@ from qgis.PyQt.QtCore import pyqtSlot
 from pyproj import Geod
 from math import log2, floor
 
-from vgrid.dggs.rhealpixdggs.dggs import RHEALPixDGGS
+from ..utils.rhealpix_helper import get_plugin_rhealpix_dggs, resolve_rhealpix_n_side
 
 geod = Geod(ellps="WGS84")
-rhealpix_dggs = RHEALPixDGGS()
 
 
 class RhealpixGrid(QObject):
@@ -44,11 +43,18 @@ class RhealpixGrid(QObject):
         self._extentTimer.timeout.connect(self._refreshRhealpixGridOnExtent)
         self.removeMarker()
 
-        # Reuse one DGGS instance
-        self._rhealpix_dggs = RHEALPixDGGS()
+        self._rhealpix_n_side = None
+        self._rhealpix_dggs = None
 
     def _onExtentsChanged(self):
         self._extentTimer.start()
+
+    def _ensure_rhealpix_dggs(self):
+        n_side = resolve_rhealpix_n_side(getattr(settings, "rhealpixNSide", 3))
+        if self._rhealpix_dggs is None or self._rhealpix_n_side != n_side:
+            self._rhealpix_n_side = n_side
+            self._rhealpix_dggs = get_plugin_rhealpix_dggs(n_side)
+        return self._rhealpix_dggs, n_side
 
     def rhealpix_grid(self):
         try:
@@ -56,16 +62,18 @@ class RhealpixGrid(QObject):
             self.removeMarker()
             self.rhealpix_marker.reset(QgsWkbTypes.GeometryType.PolygonGeometry)
 
+            rhealpix_dggs, N_side = self._ensure_rhealpix_dggs()
             canvas_extent = self.canvas.extent()
             scale = self.canvas.scale()
             # resolution = self._get_rhealpix_resolution(scale)
+            relative_depth = 8 if N_side == 2 else 5
             resolution = get_rhealpix_resolution_from_scale_denominator(
-                scale, relative_depth=5, mm_per_pixel=0.28
+                scale, relative_depth=relative_depth, mm_per_pixel=0.28, N_side=N_side
             )
             if settings.zoomLevel:
                 zoom = 29.1402 - log2(scale)
                 self.iface.mainWindow().statusBar().showMessage(
-                    f"Zoom Level: {zoom:.2f} | rHEALPix resolution: {resolution}"
+                    f"Zoom: {zoom:.2f} | rHEALPix res: {resolution}"
                 )
             canvas_crs = self.canvas.mapSettings().destinationCrs()
             if resolution <= 2:
@@ -76,11 +84,13 @@ class RhealpixGrid(QObject):
                     # Apply antimeridian fix if requested
                     if settings.splitAntimeridian:
                         cell_polygon = rhealpix2geo(
-                            rhealpix_id, fix_antimeridian="split"
+                            rhealpix_id, fix_antimeridian="split",
+                            N_side=N_side,
                         )
                     else:
                         cell_polygon = rhealpix2geo(
-                            rhealpix_id, fix_antimeridian="shift_east"
+                            rhealpix_id, fix_antimeridian="shift_east",
+                            N_side=N_side,
                         )
                     # cell_geom = QgsGeometry.fromWkt(cell_polygon.wkt)
                     # if epsg4326 != canvas_crs:
@@ -135,18 +145,20 @@ class RhealpixGrid(QObject):
                 bbox_center_lat = (min_lat + max_lat) / 2.0
                 seed_point = (bbox_center_lon, bbox_center_lat)
 
-                seed_cell = self._rhealpix_dggs.cell_from_point(
+                seed_cell = rhealpix_dggs.cell_from_point(
                     resolution, seed_point, plane=False
                 )
                 seed_cell_id = str(seed_cell)
                 # Apply antimeridian fix if requested for intersection check
                 if settings.splitAntimeridian:
                     seed_cell_polygon = rhealpix2geo(
-                        seed_cell_id, fix_antimeridian="split"
+                        seed_cell_id, fix_antimeridian="split",
+                        N_side=N_side,
                     )
                 else:
                     seed_cell_polygon = rhealpix2geo(
-                        seed_cell_id, fix_antimeridian="shift_east"
+                        seed_cell_id, fix_antimeridian="shift_east",
+                        N_side=N_side,
                     )
 
                 cells_to_draw_ids = set()
@@ -173,11 +185,13 @@ class RhealpixGrid(QObject):
                         # Apply antimeridian fix if requested for intersection check
                         if settings.splitAntimeridian:
                             cell_polygon = rhealpix2geo(
-                                current_id, fix_antimeridian="split"
+                                current_id, fix_antimeridian="split",
+                                N_side=N_side,
                             )
                         else:
                             cell_polygon = rhealpix2geo(
-                                current_id, fix_antimeridian="shift_east"
+                                current_id, fix_antimeridian="shift_east",
+                                N_side=N_side,
                             )
 
                         if cell_polygon.intersects(extent_bbox):
@@ -234,7 +248,11 @@ class RhealpixGrid(QObject):
         zoom = 29.1402 - log2(scale)
         min_res = DGGS_TYPES["rhealpix"]["min_res"]
         max_res = DGGS_TYPES["rhealpix"]["max_res"]
-        res = min(max_res, max(min_res, floor(zoom * 0.6)))
+        n_side = resolve_rhealpix_n_side(getattr(settings, "rhealpixNSide", 3))
+        if n_side == 3:
+            res = min(max_res, max(min_res, floor(zoom * 0.6)))
+        else:
+            res = min(max_res, max(min_res, floor(zoom*0.95)))
         return res
 
     @pyqtSlot()
